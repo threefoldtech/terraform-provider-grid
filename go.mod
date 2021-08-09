@@ -8,3 +8,5 @@ require (
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.6.1
 	github.com/threefoldtech/zos v0.4.10-0.20210804135636-7f25d677f88c
 )
+
+replace github.com/threefoldtech/zos => ../zos

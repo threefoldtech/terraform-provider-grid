@@ -34,11 +34,11 @@ func New(version string) func() *schema.Provider {
 					Required:    true,
 					DefaultFunc: schema.EnvDefaultFunc("TWIN_ID", 0),
 				},
-				"seed": &schema.Schema{
+				"mnemonics": &schema.Schema{
 					Type:        schema.TypeString,
 					Required:    true,
 					Sensitive:   true,
-					DefaultFunc: schema.EnvDefaultFunc("SEED", nil),
+					DefaultFunc: schema.EnvDefaultFunc("MNEMONICS", nil),
 				},
 				"substrate_url": &schema.Schema{
 					Type:        schema.TypeString,
@@ -67,22 +67,11 @@ func New(version string) func() *schema.Provider {
 
 type apiClient struct {
 	twin_id       uint32
-	seed          []byte
+	mnemonics     []byte
 	substrate_url string
 	rmb_url       string
 	client        rmb.Client
 }
-
-// func configure(version string, p *schema.Provider) func(context.Context, *schema.ResourceData) (interface{}, diag.Diagnostics) {
-// 	return func(context.Context, *schema.ResourceData) (interface{}, diag.Diagnostics) {
-// 		// Setup a User-Agent for your API client (replace the provider name for yours):
-// 		// userAgent := p.UserAgent("terraform-provider-scaffolding", version)
-// 		myClient = apiClient()
-// 		p.user
-
-// 		return &apiClient{}, nil
-// 	}
-// }
 
 func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 	seed, err := hex.DecodeString(d.Get("seed").(string))
