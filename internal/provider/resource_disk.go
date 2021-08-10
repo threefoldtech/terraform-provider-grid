@@ -67,7 +67,7 @@ func resourceDisk() *schema.Resource {
 // }
 func resourceDiskCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	apiClient := meta.(*apiClient)
-	identity, err := substrate.IdentityFromPhrase("dutch agree conduct uphold absent endorse ticket cloth robot invite know vote")
+	identity, err := substrate.IdentityFromPhrase(string(apiClient.mnemonics))
 	if err != nil {
 		panic(err)
 	}
@@ -162,64 +162,16 @@ func resourceDiskCreate(ctx context.Context, d *schema.ResourceData, meta interf
 	enc.SetIndent("", "  ")
 	enc.Encode(got)
 	d.SetId(strconv.FormatUint(contractID, 10))
+	resourceDiskRead(ctx, d, meta)
+
 	return diags
 }
 
 func resourceDiskRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	// use the meta value to retrieve your client from the provider configure method
 	apiClient := meta.(*apiClient)
-	identity, err := substrate.IdentityFromPhrase("dutch agree conduct uphold absent endorse ticket cloth robot invite know vote")
-	if err != nil {
-		panic(err)
-	}
-	userSK, err := identity.SecureKey()
 	cl := apiClient.client
-
 	var diags diag.Diagnostics
-
-	workload := gridtypes.Workload{
-		Name:        gridtypes.Name(d.Get("name").(string)),
-		Version:     Version,
-		Type:        zos.ZMountType,
-		Description: d.Get("description").(string),
-		Data: gridtypes.MustMarshal(zos.ZMount{
-			Size: gridtypes.Unit(d.Get("size").(int)) * gridtypes.Gigabyte,
-		}),
-	}
-	dl := gridtypes.Deployment{
-		Version: Version,
-		TwinID:  apiClient.twin_id, //LocalTwin,
-		// this contract id must match the one on substrate
-		Workloads: []gridtypes.Workload{
-			workload,
-		},
-		SignatureRequirement: gridtypes.SignatureRequirement{
-			WeightRequired: 1,
-			Requests: []gridtypes.SignatureRequest{
-				{
-					TwinID: apiClient.twin_id,
-					Weight: 1,
-				},
-			},
-		},
-	}
-
-	if err := dl.Valid(); err != nil {
-		panic("invalid: " + err.Error())
-	}
-	//return
-	if err := dl.Sign(apiClient.twin_id, userSK); err != nil {
-		panic(err)
-	}
-
-	hash, err := dl.ChallengeHash()
-	if err != nil {
-		panic("failed to create hash")
-	}
-
-	hashHex := hex.EncodeToString(hash)
-	fmt.Printf("hash: %s\n", hashHex)
-	// create contract
 	sub, err := substrate.NewSubstrate(apiClient.substrate_url)
 	if err != nil {
 		panic(err)
@@ -233,33 +185,19 @@ func resourceDiskRead(ctx context.Context, d *schema.ResourceData, meta interfac
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-
-	total, used, err := node.Counters(ctx)
+	contractId, err := strconv.ParseUint(d.Id(), 10, 64)
+	deployment, err := node.DeploymentGet(ctx, contractId)
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Printf("Total: %+v\nUsed: %+v\n", total, used)
-
-	contractID, err := sub.CreateContract(&identity, NodeID, nil, hashHex, 1)
+	data, err := deployment.Workloads[0].WorkloadData()
 	if err != nil {
 		panic(err)
 	}
-	dl.ContractID = contractID // from substrate
-
-	// err = node.DeploymentDeploy(ctx, dl)
-	// if err != nil {
-	// 	panic(err)
-	// }
-
-	got, err := node.DeploymentGet(ctx, dl.ContractID)
-	if err != nil {
-		panic(err)
-	}
-	enc := json.NewEncoder(os.Stdout)
-	enc.SetIndent("", "  ")
-	enc.Encode(got)
-	d.SetId(strconv.FormatUint(contractID, 10))
+	d.Set("name", deployment.Workloads[0].Name)
+	d.Set("description", deployment.Workloads[0].Description)
+	d.Set("size", data.(zos.ZMount).Size)
 	return diags
 }
 
@@ -338,8 +276,11 @@ func resourceDiskUpdate(ctx context.Context, d *schema.ResourceData, meta interf
 	}
 
 	fmt.Printf("Total: %+v\nUsed: %+v\n", total, used)
-
-	contractID, err := sub.CreateContract(&identity, NodeID, nil, hashHex, 1)
+	contractID, err := strconv.ParseUint(d.Id(), 10, 64)
+	if err != nil {
+		panic(err)
+	}
+	_, err = sub.UpdateContract(&identity, contractID, nil, hashHex)
 	if err != nil {
 		panic(err)
 	}
@@ -363,62 +304,18 @@ func resourceDiskUpdate(ctx context.Context, d *schema.ResourceData, meta interf
 }
 
 func resourceDiskDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
 	// userSK := ed25519.NewKeyFromSeed(apiClient.seed)
-	identity, err := substrate.IdentityFromPhrase(apiClient.mnemonics)
+	identity, err := substrate.IdentityFromPhrase(string(apiClient.mnemonics))
 	if err != nil {
 		panic(err)
 	}
-	userSK, err := identity.SecureKey()
 
 	if err != nil {
 		panic(err)
 	}
 	cl := apiClient.client
-	var diags diag.Diagnostics
-	workload := gridtypes.Workload{
-		Name:        gridtypes.Name(d.Get("name").(string)),
-		Version:     d.Get("version").(int),
-		Type:        zos.ZMountType,
-		Description: d.Get("description").(string),
-		Data: gridtypes.MustMarshal(zos.ZMount{
-			Size: gridtypes.Unit(d.Get("size").(int)) * gridtypes.Gigabyte,
-		}),
-	}
-	dl := gridtypes.Deployment{
-		Version: d.Get("version").(int),
-		TwinID:  apiClient.twin_id, //LocalTwin,
-		// this contract id must match the one on substrate
-		Workloads: []gridtypes.Workload{
-			workload,
-		},
-		SignatureRequirement: gridtypes.SignatureRequirement{
-			WeightRequired: 1,
-			Requests: []gridtypes.SignatureRequest{
-				{
-					TwinID: apiClient.twin_id,
-					Weight: 1,
-				},
-			},
-		},
-	}
-
-	if err := dl.Valid(); err != nil {
-		panic("invalid: " + err.Error())
-	}
-	//return
-	if err := dl.Sign(apiClient.twin_id, userSK); err != nil {
-		panic(err)
-	}
-
-	hash, err := dl.ChallengeHash()
-	if err != nil {
-		panic("failed to create hash")
-	}
-
-	hashHex := hex.EncodeToString(hash)
-	fmt.Printf("hash: %s\n", hashHex)
-	// create contract
 	sub, err := substrate.NewSubstrate(apiClient.substrate_url)
 	if err != nil {
 		panic(err)
@@ -432,19 +329,14 @@ func resourceDiskDelete(ctx context.Context, d *schema.ResourceData, meta interf
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-
-	total, used, err := node.Counters(ctx)
+	contractID, err := strconv.ParseUint(d.Id(), 10, 64)
 	if err != nil {
 		panic(err)
 	}
-
-	fmt.Printf("Total: %+v\nUsed: %+v\n", total, used)
-
-	contractID, err := sub.CreateContract(&identity, NodeID, nil, hashHex, 1)
+	err = sub.CancelContract(&identity, contractID)
 	if err != nil {
 		panic(err)
 	}
-	dl.ContractID = contractID // from substrate
 
 	err = node.DeploymentDelete(ctx, contractID)
 	if err != nil {
