@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"encoding/hex"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -55,7 +54,7 @@ func New(version string) func() *schema.Provider {
 				"scaffolding_data_source": dataSourceDisk(),
 			},
 			ResourcesMap: map[string]*schema.Resource{
-				"grid_disk": resourceDisk(),
+				"grid_deployment": resourceDeployment(),
 			},
 		}
 
@@ -67,22 +66,19 @@ func New(version string) func() *schema.Provider {
 
 type apiClient struct {
 	twin_id       uint32
-	mnemonics     []byte
+	mnemonics     string
 	substrate_url string
 	rmb_url       string
 	client        rmb.Client
 }
 
 func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
-	seed, err := hex.DecodeString(d.Get("seed").(string))
-	if err != nil {
-		panic(err)
-	}
+
 	apiClient := apiClient{}
+	apiClient.mnemonics = d.Get("mnemonics").(string)
 	apiClient.twin_id = uint32(d.Get("twin_id").(int))
 	apiClient.substrate_url = d.Get("substrate_url").(string)
 	apiClient.rmb_url = d.Get("rmb_url").(string)
-	apiClient.seed = seed
 	cl, err := rmb.NewClient(apiClient.rmb_url)
 
 	if err != nil {

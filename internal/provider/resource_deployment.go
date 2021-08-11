@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"strconv"
 	"time"
@@ -21,42 +22,115 @@ import (
 const (
 	Version = 0
 	// Twin      = 14
-	NodeID = 4
+	// NodeID = 4
 	// Seed      = "d161de46d136d96085906b9f3d40d08b3649c80a3e4d77f0b14d3dc6889e9dcb"
 	// Substrate = "wss://explorer.devnet.grid.tf/ws"
 	// rmb_url   = "tcp://127.0.0.1:6379"
 )
 
-func resourceDisk() *schema.Resource {
+func resourceDeployment() *schema.Resource {
 	return &schema.Resource{
 		// This description is used by the documentation generator and the language server.
 		Description: "Sample resource in the Terraform provider scaffolding.",
 
-		CreateContext: resourceDiskCreate,
+		CreateContext: resourceDeploymentCreate,
 		ReadContext:   resourceDiskRead,
 		UpdateContext: resourceDiskUpdate,
 		DeleteContext: resourceDiskDelete,
 
 		Schema: map[string]*schema.Schema{
-			"name": {
-				Description: "Disk Name",
-				Type:        schema.TypeString,
-				Required:    true,
-			},
+			// "twinid": {
+			// 	Description: "user twin id",
+			// 	Type:        schema.TypeString,
+			// 	Required:    true,
+			// },
 			"version": {
 				Description: "Version",
 				Type:        schema.TypeInt,
 				Optional:    true,
 			},
-			"description": {
-				Description: "Description field",
-				Type:        schema.TypeString,
-				Required:    true,
-			},
-			"size": {
-				Description: "Disk size in Gigabytes",
+
+			"node": {
+				Description: "Node id to place deployment on",
 				Type:        schema.TypeInt,
 				Required:    true,
+			},
+			"disks": &schema.Schema{
+				Type:     schema.TypeList,
+				Required: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"name": &schema.Schema{
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"size": &schema.Schema{
+							Type:     schema.TypeInt,
+							Required: true,
+						},
+						"description": &schema.Schema{
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"version": {
+							Description: "Version",
+							Type:        schema.TypeInt,
+							Optional:    true,
+						},
+					},
+				},
+			},
+			"vms": &schema.Schema{
+				Type:     schema.TypeList,
+				Required: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"name": &schema.Schema{
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"flist": &schema.Schema{
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"version": {
+							Description: "Version",
+							Type:        schema.TypeInt,
+							Optional:    true,
+						},
+						"cpu": {
+							Description: "CPU size",
+							Type:        schema.TypeInt,
+							Optional:    true,
+						},
+						"memory": {
+							Description: "Memory size",
+							Type:        schema.TypeInt,
+							Optional:    true,
+						},
+						"entrypoint": {
+							Description: "VM entry point",
+							Type:        schema.TypeString,
+							Optional:    true,
+						},
+						"mounts": &schema.Schema{
+							Type:     schema.TypeList,
+							Required: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"disk_name": &schema.Schema{
+										Type:     schema.TypeString,
+										Required: true,
+									},
+									"mount_point": &schema.Schema{
+										Type:     schema.TypeString,
+										Required: true,
+									},
+								},
+							},
+						},
+					},
+				},
 			},
 		},
 	}
@@ -65,7 +139,33 @@ func resourceDisk() *schema.Resource {
 // func deploy(deployment []gridtypes.Workload, apiClient apiClient){
 
 // }
-func resourceDiskCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func network() gridtypes.Workload {
+	wgKey := "GDU+cjKrHNJS9fodzjFDzNFl5su3kJXTZ3ipPgUjOUE="
+
+	return gridtypes.Workload{
+		Version:     0,
+		Type:        zos.NetworkType,
+		Description: "test network",
+		Name:        "network",
+		Data: gridtypes.MustMarshal(zos.Network{
+			NetworkIPRange: gridtypes.MustParseIPNet("10.1.0.0/16"),
+			Subnet:         gridtypes.MustParseIPNet("10.1.1.0/24"),
+			WGPrivateKey:   wgKey,
+			WGListenPort:   3011,
+			Peers: []zos.Peer{
+				{
+					Subnet:      gridtypes.MustParseIPNet("10.1.2.0/24"),
+					WGPublicKey: "4KTvZS2KPWYfMr+GbiUUly0ANVg8jBC7xP9Bl79Z8zM=",
+					// AllowedIPs: []gridtypes.IPNet{
+					// 	gridtypes.MustParseIPNet("10.1.2.0/24"),
+					// 	gridtypes.MustParseIPNet("100.64.0.0/16"),
+					// },
+				},
+			},
+		}),
+	}
+}
+func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	apiClient := meta.(*apiClient)
 	identity, err := substrate.IdentityFromPhrase(string(apiClient.mnemonics))
 	if err != nil {
@@ -75,24 +175,71 @@ func resourceDiskCreate(ctx context.Context, d *schema.ResourceData, meta interf
 	cl := apiClient.client
 
 	var diags diag.Diagnostics
+	// twinID := d.Get("twinid").(string)
+	nodeID := uint32(d.Get("node").(int))
 
-	workload := gridtypes.Workload{
-		Name:        gridtypes.Name(d.Get("name").(string)),
-		Version:     Version,
-		Type:        zos.ZMountType,
-		Description: d.Get("description").(string),
-		Data: gridtypes.MustMarshal(zos.ZMount{
-			Size: gridtypes.Unit(d.Get("size").(int)) * gridtypes.Gigabyte,
-		}),
+	disks := d.Get("disks").([]interface{})
+	vms := d.Get("vms").([]interface{})
+
+	workloads := []gridtypes.Workload{}
+	workloads = append(workloads, network())
+	for _, disk := range disks {
+		data := disk.(map[string]interface{})
+		workload := gridtypes.Workload{
+			Name:        gridtypes.Name(data["name"].(string)),
+			Version:     Version,
+			Type:        zos.ZMountType,
+			Description: data["description"].(string),
+			Data: gridtypes.MustMarshal(zos.ZMount{
+				Size: gridtypes.Unit(data["size"].(int)) * gridtypes.Gigabyte,
+			}),
+		}
+		workloads = append(workloads, workload)
+	}
+	for _, vm := range vms {
+		data := vm.(map[string]interface{})
+		log.Printf("[DEBUG] HASH: %#v", data)
+		mount_points := data["mounts"].([]interface{})
+		mounts := []zos.MachineMount{}
+		for _, mount_point := range mount_points {
+			point := mount_point.(map[string]interface{})
+			mount := zos.MachineMount{Name: gridtypes.Name(point["disk_name"].(string)), Mountpoint: point["mount_point"].(string)}
+			mounts = append(mounts, mount)
+		}
+		workload := gridtypes.Workload{
+			Version: Version,
+			Name:    gridtypes.Name(data["name"].(string)),
+			Type:    zos.ZMachineType,
+			Data: gridtypes.MustMarshal(zos.ZMachine{
+				FList: data["flist"].(string),
+				Network: zos.MachineNetwork{
+					Interfaces: []zos.MachineInterface{
+						{
+							Network: "network",
+							IP:      net.ParseIP("10.1.1.3"),
+						},
+					},
+					Planetary: true,
+				},
+				ComputeCapacity: zos.MachineCapacity{
+					CPU:    uint8(data["cpu"].(int)),
+					Memory: gridtypes.Unit(uint(data["memory"].(int))) * gridtypes.Megabyte,
+				},
+				Entrypoint: data["entrypoint"].(string),
+				Mounts:     mounts,
+				Env: map[string]string{
+					"SSH_KEY": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDTwULSsUubOq3VPWL6cdrDvexDmjfznGydFPyaNcn7gAL9lRxwFbCDPMj7MbhNSpxxHV2+/iJPQOTVJu4oc1N7bPP3gBCnF51rPrhTpGCt5pBbTzeyNweanhedkKDsCO2mIEh/92Od5Hg512dX4j7Zw6ipRWYSaepapfyoRnNSriW/s3DH/uewezVtL5EuypMdfNngV/u2KZYWoeiwhrY/yEUykQVUwDysW/xUJNP5o+KSTAvNSJatr3FbuCFuCjBSvageOLHePTeUwu6qjqe+Xs4piF1ByO/6cOJ8bt5Vcx0bAtI8/MPApplUU/JWevsPNApvnA/ntffI+u8DCwgP",
+				},
+			}),
+		}
+		workloads = append(workloads, workload)
 	}
 
 	dl := gridtypes.Deployment{
 		Version: Version,
 		TwinID:  uint32(apiClient.twin_id), //LocalTwin,
 		// this contract id must match the one on substrate
-		Workloads: []gridtypes.Workload{
-			workload,
-		},
+		Workloads: workloads,
 		SignatureRequirement: gridtypes.SignatureRequirement{
 			WeightRequired: 1,
 			Requests: []gridtypes.SignatureRequest{
@@ -126,7 +273,7 @@ func resourceDiskCreate(ctx context.Context, d *schema.ResourceData, meta interf
 	if err != nil {
 		panic(err)
 	}
-	nodeInfo, err := sub.GetNode(NodeID)
+	nodeInfo, err := sub.GetNode(nodeID)
 	if err != nil {
 		panic(err)
 	}
@@ -143,7 +290,7 @@ func resourceDiskCreate(ctx context.Context, d *schema.ResourceData, meta interf
 
 	fmt.Printf("Total: %+v\nUsed: %+v\n", total, used)
 
-	contractID, err := sub.CreateContract(&identity, NodeID, nil, hashHex, 1)
+	contractID, err := sub.CreateContract(&identity, nodeID, nil, hashHex, 1)
 	if err != nil {
 		panic(err)
 	}
@@ -162,7 +309,7 @@ func resourceDiskCreate(ctx context.Context, d *schema.ResourceData, meta interf
 	enc.SetIndent("", "  ")
 	enc.Encode(got)
 	d.SetId(strconv.FormatUint(contractID, 10))
-	resourceDiskRead(ctx, d, meta)
+	// resourceDiskRead(ctx, d, meta)
 
 	return diags
 }
@@ -176,7 +323,8 @@ func resourceDiskRead(ctx context.Context, d *schema.ResourceData, meta interfac
 	if err != nil {
 		panic(err)
 	}
-	nodeInfo, err := sub.GetNode(NodeID)
+	nodeID := uint32(d.Get("node").(int))
+	nodeInfo, err := sub.GetNode(nodeID)
 	if err != nil {
 		panic(err)
 	}
@@ -260,7 +408,8 @@ func resourceDiskUpdate(ctx context.Context, d *schema.ResourceData, meta interf
 	if err != nil {
 		panic(err)
 	}
-	nodeInfo, err := sub.GetNode(NodeID)
+	nodeID := uint32(d.Get("node").(int))
+	nodeInfo, err := sub.GetNode(nodeID)
 	if err != nil {
 		panic(err)
 	}
@@ -306,7 +455,7 @@ func resourceDiskUpdate(ctx context.Context, d *schema.ResourceData, meta interf
 func resourceDiskDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	// userSK := ed25519.NewKeyFromSeed(apiClient.seed)
+	nodeID := uint32(d.Get("node").(int))
 	identity, err := substrate.IdentityFromPhrase(string(apiClient.mnemonics))
 	if err != nil {
 		panic(err)
@@ -320,7 +469,7 @@ func resourceDiskDelete(ctx context.Context, d *schema.ResourceData, meta interf
 	if err != nil {
 		panic(err)
 	}
-	nodeInfo, err := sub.GetNode(NodeID)
+	nodeInfo, err := sub.GetNode(nodeID)
 	if err != nil {
 		panic(err)
 	}
