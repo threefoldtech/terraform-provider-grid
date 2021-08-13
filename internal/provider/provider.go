@@ -42,7 +42,7 @@ func New(version string) func() *schema.Provider {
 				"substrate_url": &schema.Schema{
 					Type:        schema.TypeString,
 					Required:    true,
-					DefaultFunc: schema.EnvDefaultFunc("SUBSTRATE_URL", "wss://explorer.devnet.grid.tf/ws"),
+					DefaultFunc: schema.EnvDefaultFunc("", "wss://explorer.devnet.grid.tf/ws"),
 				},
 				"rmb_url": &schema.Schema{
 					Type:        schema.TypeString,
