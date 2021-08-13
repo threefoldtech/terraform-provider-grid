@@ -15,19 +15,19 @@ resource "grid_deployment" "d1" {
   disks {
     name = "mydisk1"
     size = 2
-    description = "this is my disk description2"
+    description = "this is my disk description1"
     
   }
   disks {
     name = "mydisk2"
-    size=3
+    size=2
     description = "this is my disk2"
   }
   vms {
     name = "vm1"
     flist = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
     cpu = 1
-    memory = 1024
+    memory = 2048
     entrypoint = "/sbin/zinit init"
     mounts {
       disk_name = "mydisk1"
