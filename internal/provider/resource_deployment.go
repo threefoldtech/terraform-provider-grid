@@ -315,7 +315,7 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 
 	log.Printf("[DEBUG] NodeId: %#v", nodeID)
 	log.Printf("[DEBUG] HASH: %#v", hashHex)
-	contractID, err := sub.CreateContract(&identity, nodeID, nil, hashHex, 1)
+	contractID, err := sub.CreateContract(&identity, nodeID, nil, hashHex, 0)
 	if err != nil {
 		panic(err)
 	}
@@ -330,7 +330,7 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 	if err != nil {
 		panic(err)
 	}
-	enc := json.NewEncoder(os.Stdout)
+	enc := json.NewEncoder(log.Writer())
 	enc.SetIndent("", "  ")
 	enc.Encode(got)
 	d.SetId(strconv.FormatUint(contractID, 10))
