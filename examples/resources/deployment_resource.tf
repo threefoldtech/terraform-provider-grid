@@ -27,7 +27,7 @@ resource "grid_deployment" "d1" {
     name = "vm1"
     flist = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
     cpu = 1
-    memory = 2048
+    memory = 1024
     entrypoint = "/sbin/zinit init"
     mounts {
       disk_name = "mydisk1"

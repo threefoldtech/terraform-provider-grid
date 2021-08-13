@@ -43,6 +43,7 @@ func resourceDeployment() *schema.Resource {
 				Description: "Version",
 				Type:        schema.TypeInt,
 				Optional:    true,
+				Computed:    true,
 			},
 
 			"node": {
@@ -71,6 +72,7 @@ func resourceDeployment() *schema.Resource {
 							Description: "Version",
 							Type:        schema.TypeInt,
 							Optional:    true,
+							Computed:    true,
 						},
 					},
 				},
@@ -92,6 +94,7 @@ func resourceDeployment() *schema.Resource {
 							Description: "Version",
 							Type:        schema.TypeInt,
 							Optional:    true,
+							Computed:    true,
 						},
 						"cpu": {
 							Description: "CPU size",
@@ -197,7 +200,7 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 
 	workloads := []gridtypes.Workload{}
 	workloads = append(workloads, network())
-	updated_disks := make([]interface{}, 0, 0)
+	updated_disks := make([]interface{}, 0)
 	for _, disk := range disks {
 		data := disk.(map[string]interface{})
 		data["version"] = Version
@@ -445,7 +448,20 @@ func diskHasChanged(disk map[string]interface{}, oldDisks []interface{}) (bool, 
 	}
 	return false, nil
 }
-func vmHasChanged() {
+func vmHasChanged(vm map[string]interface{}, oldVms []interface{}) (bool, map[string]interface{}) {
+	for _, machine := range oldVms {
+		vmData := machine.(map[string]interface{})
+		if vmData["name"] == vm["name"] && vmData["flist"] == vm["flist"] {
+			if vmData["cpu"] != vm["cpu"] || vmData["memory"] != vm["memory"] || vmData["entrypoint"] != vm["entrypoint"] || vmData["mounts"] != vm["mounts"] || vmData["env_vars"] != vm["env_vars"] {
+				return true, vmData
+			} else {
+				return false, vmData
+			}
+
+		}
+
+	}
+	return false, nil
 
 }
 func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -467,26 +483,24 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 	}
 	deploymentHasChange := false
 	disksHasChange := false
-	// vmsHasChange := false
+	vmsHasChange := false
 
 	if d.HasChange("disks") {
 		deploymentHasChange = true
 		disksHasChange = true
 	}
-	// if d.HasChange("vms") {
-	// 	deploymentHasChange = true
-	// 	vmsHasChange = true
-	// }
+	if d.HasChange("vms") {
+		deploymentHasChange = true
+		vmsHasChange = true
+	}
 
 	oldDisks, _ := d.GetChange("disks")
-	// oldVms, _ := d.GetChange("vms")
+	oldVms, _ := d.GetChange("vms")
 	nodeID := uint32(d.Get("node").(int))
-
-	// oldDisksInfo := oldDisks.([]interface{})
-	// oldVmsInfo := oldVms.([]interface{})
 
 	disks := d.Get("disks").([]interface{})
 	vms := d.Get("vms").([]interface{})
+	updatedDisks := make([]interface{}, 0)
 
 	workloads := []gridtypes.Workload{}
 	workloads = append(workloads, network())
@@ -502,6 +516,7 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 				version = oldDisk["version"].(int)
 			}
 		}
+		data["version"] = version
 		workload := gridtypes.Workload{
 			Name:        gridtypes.Name(data["name"].(string)),
 			Version:     version,
@@ -512,10 +527,24 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 			}),
 		}
 		workloads = append(workloads, workload)
+		updatedDisks = append(updatedDisks, data)
 	}
+	d.Set("disks", updatedDisks)
+
+	updatedVms := make([]interface{}, 0)
 	for _, vm := range vms {
 		data := vm.(map[string]interface{})
-		log.Printf("[DEBUG] HASH: %#v", data)
+		version := 0
+		if vmsHasChange {
+
+			changed, oldVmachine := vmHasChanged(data, oldVms.([]interface{}))
+			if changed && oldVmachine != nil {
+				version = oldVmachine["version"].(int) + 1
+			} else if !changed && oldVmachine != nil {
+				version = oldVmachine["version"].(int)
+			}
+		}
+		data["version"] = version
 		mount_points := data["mounts"].([]interface{})
 		mounts := []zos.MachineMount{}
 		for _, mount_point := range mount_points {
@@ -524,7 +553,7 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 			mounts = append(mounts, mount)
 		}
 		workload := gridtypes.Workload{
-			Version: Version,
+			Version: version,
 			Name:    gridtypes.Name(data["name"].(string)),
 			Type:    zos.ZMachineType,
 			Data: gridtypes.MustMarshal(zos.ZMachine{
@@ -550,7 +579,9 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 			}),
 		}
 		workloads = append(workloads, workload)
+		updatedVms = append(updatedVms, data)
 	}
+	d.Set("vms", updatedVms)
 	dlVersion := d.Get("version").(int)
 	if deploymentHasChange {
 		dlVersion = dlVersion + 1
