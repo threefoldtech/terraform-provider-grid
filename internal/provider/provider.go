@@ -55,6 +55,7 @@ func New(version string) func() *schema.Provider {
 			},
 			ResourcesMap: map[string]*schema.Resource{
 				"grid_deployment": resourceDeployment(),
+				"grid_network":    resourceNetwork(),
 			},
 		}
 
