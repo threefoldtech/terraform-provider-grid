@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"reflect"
 	"strconv"
 	"time"
 
@@ -448,11 +449,13 @@ func diskHasChanged(disk map[string]interface{}, oldDisks []interface{}) (bool, 
 	}
 	return false, nil
 }
+
 func vmHasChanged(vm map[string]interface{}, oldVms []interface{}) (bool, map[string]interface{}) {
 	for _, machine := range oldVms {
 		vmData := machine.(map[string]interface{})
 		if vmData["name"] == vm["name"] && vmData["flist"] == vm["flist"] {
-			if vmData["cpu"] != vm["cpu"] || vmData["memory"] != vm["memory"] || vmData["entrypoint"] != vm["entrypoint"] || vmData["mounts"] != vm["mounts"] || vmData["env_vars"] != vm["env_vars"] {
+			// if vmData.HasChange("cpu") || vmData.HasChange("memory") || vmData.HasChange("entrypoint") || vmData.HasChange("mounts") || vmData.HasChange("env_vars") {
+			if vmData["cpu"] != vm["cpu"] || vmData["memory"] != vm["memory"] || vmData["entrypoint"] != vm["entrypoint"] || reflect.DeepEqual(vmData["mounts"], vm["mounts"]) || reflect.DeepEqual(vmData["env_vars"], vm["env_vars"]) {
 				return true, vmData
 			} else {
 				return false, vmData
