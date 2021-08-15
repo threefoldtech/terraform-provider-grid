@@ -347,8 +347,9 @@ func (nc *NetworkConfiguration) generateDeployments(ctx context.Context, userInf
 				return nil, err
 			}
 			l := len(publicConfig.IPv4.IP)
+			ip := wgIP(nc.ExternalNodeIP)
 			publicIPStr := fmt.Sprintf("%d.%d.%d.%d", publicConfig.IPv4.IP[l-4], publicConfig.IPv4.IP[l-3], publicConfig.IPv4.IP[l-2], publicConfig.IPv4.IP[l-1])
-			externalNodeIPStr := fmt.Sprintf("100.64.%d.%d", publicConfig.IPv4.IP[l-3], publicConfig.IPv4.IP[l-2])
+			externalNodeIPStr := fmt.Sprintf("100.64.%d.%d", ip.IP[l-2], ip.IP[l-1])
 			nodePubky := nc.Keys[node].PublicKey().String()
 			WGConfig := generateWGConfig(externalNodeIPStr, nc.ExternalNodeKey.String(), nodePubky, fmt.Sprintf("%s:%d", publicIPStr, nc.WGPort[nc.PublicNodeID]), nc.IPRange)
 			log.Printf(WGConfig)
