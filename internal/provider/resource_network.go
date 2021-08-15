@@ -411,6 +411,7 @@ func (nc *NetworkConfiguration) generateDeployments(ctx context.Context, userInf
 	return deploymentInfotmation, nil
 }
 func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	diags := make([]diag.Diagnostic, 0)
 	apiClient := meta.(*apiClient)
 	networkName := d.Get("name").(string)
 	networkIPRange := d.Get("ip_range").(string)
@@ -531,6 +532,15 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 
 		log.Printf("node: %d, contract: %d", node, contractID)
 
+		err = waitDeployment(ctx, nodeClient, deployment.ContractID)
+		if err != nil {
+			diags = append(diags, diag.Diagnostic{
+				Severity: diag.Error,
+				Summary:  "One network deployment failed",
+				Detail:   err.Error(),
+			})
+		}
+
 		enc := json.NewEncoder(log.Writer())
 		enc.SetIndent("", "  ")
 		enc.Encode(deployment)
@@ -542,7 +552,7 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 	d.Set("external_ip", external_node_ip.String())
 	d.Set("external_sk", external_node_key.String())
 	d.SetId(uuid.New().String())
-	return nil
+	return diags
 }
 
 func StoreState(d *schema.ResourceData, stateInfo []NodeDeploymentsInfo) {
@@ -609,6 +619,7 @@ func loadNetworkConfig(d *schema.ResourceData, stateInfo []NodeDeploymentsInfo) 
 }
 
 func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	diags := make([]diag.Diagnostic, 0)
 	apiClient := meta.(*apiClient)
 	networkName := d.Get("name").(string)
 	identity, err := substrate.IdentityFromPhrase(apiClient.mnemonics)
@@ -762,6 +773,15 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 
 		log.Printf("node: %d, contract: %d", node, contractID)
 
+		err = waitDeployment(ctx, nodeClient, deployment.ContractID)
+		if err != nil {
+			diags = append(diags, diag.Diagnostic{
+				Severity: diag.Error,
+				Summary:  "One network deployment update or create failed",
+				Detail:   err.Error(),
+			})
+		}
+
 		got, err := nodeClient.DeploymentGet(ctx, deployment.ContractID)
 		if err != nil {
 			return diag.FromErr(err)
@@ -792,7 +812,7 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 	}
 	StoreState(d, newStateInfo)
 
-	return diag.Diagnostics{}
+	return diags
 }
 
 func resourceNetworkDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {

@@ -55,7 +55,7 @@ func resourceDeployment() *schema.Resource {
 			},
 			"disks": &schema.Schema{
 				Type:     schema.TypeList,
-				Required: true,
+				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": &schema.Schema{
@@ -121,7 +121,7 @@ func resourceDeployment() *schema.Resource {
 						},
 						"mounts": &schema.Schema{
 							Type:     schema.TypeList,
-							Required: true,
+							Optional: true,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
 									"disk_name": &schema.Schema{
@@ -137,7 +137,7 @@ func resourceDeployment() *schema.Resource {
 						},
 						"env_vars": &schema.Schema{
 							Type:     schema.TypeList,
-							Required: true,
+							Optional: true,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
 									"key": &schema.Schema{
@@ -192,6 +192,30 @@ func getFreeIP(ipRange gridtypes.IPNet, usedIPs []string) (string, error) {
 	return "", errors.New("all ips are used")
 }
 
+func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deploymentID uint64) error {
+	done := false
+	for start := time.Now(); time.Since(start) < 4*time.Minute; {
+		done = true
+		dl, err := nodeClient.DeploymentGet(ctx, deploymentID)
+		if err != nil {
+			return err
+		}
+		for idx, wl := range dl.Workloads {
+			if wl.Result.State == "" {
+				done = false
+				continue
+			}
+			if wl.Result.State != gridtypes.StateOk {
+				return errors.New(fmt.Sprintf("workload %d failed within deployment %d with error %s", idx, deploymentID, wl.Result.Error))
+			}
+		}
+		if done {
+			return nil
+		}
+	}
+	return errors.New(fmt.Sprintf("waiting for deployment %d timedout", deploymentID))
+}
+
 func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	ipRangeStr := d.Get("ip_range").(string)
 	ipRange, err := gridtypes.ParseIPNet(ipRangeStr)
@@ -203,16 +227,16 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 	networkName := d.Get("network_name").(string)
 
 	if err != nil {
-		panic(err)
+		return diag.FromErr(err)
 	}
 	apiClient := meta.(*apiClient)
 	identity, err := substrate.IdentityFromPhrase(string(apiClient.mnemonics))
 	if err != nil {
-		panic(err)
+		return diag.FromErr(err)
 	}
 	userSK, err := identity.SecureKey()
 	if err != nil {
-		panic(err)
+		return diag.FromErr(err)
 	}
 	cl := apiClient.client
 
@@ -263,7 +287,7 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 		}
 		freeIP, err := getFreeIP(ipRange, usedIPs)
 		if err != nil {
-			panic(err)
+			return diag.FromErr(err)
 		}
 		usedIPs = append(usedIPs, freeIP)
 		data["ip"] = freeIP
@@ -315,18 +339,18 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 	}
 
 	if err := dl.Valid(); err != nil {
-		panic("invalid: " + err.Error())
+		return diag.FromErr(errors.New("invalid: " + err.Error()))
 	}
 	//return
 	if err := dl.Sign(apiClient.twin_id, userSK); err != nil {
-		panic(err)
+		return diag.FromErr(err)
 	}
 
 	hash, err := dl.ChallengeHash()
 	log.Printf("[DEBUG] HASH: %#v", hash)
 
 	if err != nil {
-		panic("failed to create hash")
+		return diag.FromErr(errors.New("failed to create hash"))
 	}
 
 	hashHex := hex.EncodeToString(hash)
@@ -334,11 +358,11 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 	// create contract
 	sub, err := substrate.NewSubstrate(apiClient.substrate_url)
 	if err != nil {
-		panic(err)
+		return diag.FromErr(err)
 	}
 	nodeInfo, err := sub.GetNode(nodeID)
 	if err != nil {
-		panic(err)
+		return diag.FromErr(err)
 	}
 
 	node := client.NewNodeClient(uint32(nodeInfo.TwinID), cl)
@@ -350,18 +374,21 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 	log.Printf("[DEBUG] HASH: %#v", hashHex)
 	contractID, err := sub.CreateContract(&identity, nodeID, nil, hashHex, 0)
 	if err != nil {
-		panic(err)
+		return diag.FromErr(err)
 	}
 	dl.ContractID = contractID // from substrate
 
 	err = node.DeploymentDeploy(ctx, dl)
 	if err != nil {
-		panic(err)
+		return diag.FromErr(err)
 	}
-
+	err = waitDeployment(ctx, node, dl.ContractID)
+	if err != nil {
+		return diag.FromErr(err)
+	}
 	got, err := node.DeploymentGet(ctx, dl.ContractID)
 	if err != nil {
-		panic(err)
+		return diag.FromErr(err)
 	}
 	enc := json.NewEncoder(log.Writer())
 	enc.SetIndent("", "  ")
@@ -373,28 +400,28 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 	return diags
 }
 
-func flattenDiskData(workload gridtypes.Workload) map[string]interface{} {
+func flattenDiskData(workload gridtypes.Workload) (map[string]interface{}, error) {
 	if workload.Type == zos.ZMountType {
 		wl := make(map[string]interface{})
 		data, err := workload.WorkloadData()
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 		wl["name"] = workload.Name
 		wl["size"] = data.(*zos.ZMount).Size / gridtypes.Gigabyte
 		wl["description"] = workload.Description
 		wl["version"] = workload.Version
-		return wl
+		return wl, nil
 	}
 
-	panic("The wrokload is not of type zos.ZMountType")
+	return nil, errors.New("The wrokload is not of type zos.ZMountType")
 }
-func flattenVMData(workload gridtypes.Workload) map[string]interface{} {
+func flattenVMData(workload gridtypes.Workload) (map[string]interface{}, error) {
 	if workload.Type == zos.ZMachineType {
 		wl := make(map[string]interface{})
 		workloadData, err := workload.WorkloadData()
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 		data := workloadData.(*zos.ZMachine)
 		// envVarsData := data.Env
@@ -417,10 +444,10 @@ func flattenVMData(workload gridtypes.Workload) map[string]interface{} {
 		wl["flist"] = data.FList
 		wl["version"] = workload.Version
 		wl["description"] = workload.Description
-		return wl
+		return wl, nil
 	}
 
-	return make(map[string]interface{})
+	return nil, errors.New("The wrokload is not of type zos.ZMachineType")
 }
 
 func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -430,12 +457,12 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 	var diags diag.Diagnostics
 	sub, err := substrate.NewSubstrate(apiClient.substrate_url)
 	if err != nil {
-		panic(err)
+		return diag.FromErr(err)
 	}
 	nodeID := uint32(d.Get("node").(int))
 	nodeInfo, err := sub.GetNode(nodeID)
 	if err != nil {
-		panic(err)
+		return diag.FromErr(err)
 	}
 
 	node := client.NewNodeClient(uint32(nodeInfo.TwinID), cl)
@@ -445,17 +472,26 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 	contractId, err := strconv.ParseUint(d.Id(), 10, 64)
 	deployment, err := node.DeploymentGet(ctx, contractId)
 	if err != nil {
-		panic(err)
+		return diag.FromErr(err)
 	}
 
 	disks := make([]map[string]interface{}, 0, 0)
 	vms := make([]map[string]interface{}, 0, 0)
 	for _, workload := range deployment.Workloads {
 		if workload.Type == zos.ZMountType {
-			disks = append(disks, flattenDiskData(workload))
+			flattened, err := flattenDiskData(workload)
+			if err != nil {
+				return diag.FromErr(err)
+			}
+			disks = append(disks, flattened)
+
 		}
 		if workload.Type == zos.ZMachineType {
-			vms = append(vms, flattenVMData(workload))
+			flattened, err := flattenVMData(workload)
+			if err != nil {
+				return diag.FromErr(err)
+			}
+			vms = append(vms, flattened)
 		}
 	}
 	d.Set("vms", vms)
@@ -501,23 +537,31 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 	apiClient := meta.(*apiClient)
 	identity, err := substrate.IdentityFromPhrase(string(apiClient.mnemonics))
 	if err != nil {
-		panic(err)
+		return diag.FromErr(err)
 	}
 	userSK, err := identity.SecureKey()
 	if err != nil {
-		panic(err)
+		return diag.FromErr(err)
 	}
 	cl := apiClient.client
 
 	var diags diag.Diagnostics
 	// twinID := d.Get("twinid").(string)
 	if d.HasChange("node") {
-		panic("changing node is not supported, you need to destroy the deployment and reapply it again")
+		return diag.FromErr(errors.New("changing node is not supported, you need to destroy the deployment and reapply it again"))
 	}
 	deploymentHasChange := false
 	disksHasChange := false
 	vmsHasChange := false
 
+	if d.HasChange("newtork_name") {
+		deploymentHasChange = true
+		disksHasChange = true
+	}
+	if d.HasChange("ip_range") {
+		deploymentHasChange = true
+		disksHasChange = true
+	}
 	if d.HasChange("disks") {
 		deploymentHasChange = true
 		disksHasChange = true
@@ -643,18 +687,18 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 	}
 
 	if err := dl.Valid(); err != nil {
-		panic("invalid: " + err.Error())
+		return diag.FromErr(errors.New("invalid: " + err.Error()))
 	}
 	//return
 	if err := dl.Sign(apiClient.twin_id, userSK); err != nil {
-		panic(err)
+		return diag.FromErr(err)
 	}
 
 	hash, err := dl.ChallengeHash()
 	log.Printf("[DEBUG] HASH: %#v", hash)
 
 	if err != nil {
-		panic("failed to create hash")
+		return diag.FromErr(errors.New("failed to create hash"))
 	}
 
 	hashHex := hex.EncodeToString(hash)
@@ -662,11 +706,11 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 	// create contract
 	sub, err := substrate.NewSubstrate(apiClient.substrate_url)
 	if err != nil {
-		panic(err)
+		return diag.FromErr(err)
 	}
 	nodeInfo, err := sub.GetNode(nodeID)
 	if err != nil {
-		panic(err)
+		return diag.FromErr(err)
 	}
 
 	node := client.NewNodeClient(uint32(nodeInfo.TwinID), cl)
@@ -676,28 +720,33 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 
 	total, used, err := node.Counters(ctx)
 	if err != nil {
-		panic(err)
+		return diag.FromErr(err)
 	}
 
 	fmt.Printf("Total: %+v\nUsed: %+v\n", total, used)
 	contractID, err := strconv.ParseUint(d.Id(), 10, 64)
 	if err != nil {
-		panic(err)
+		return diag.FromErr(err)
 	}
 	contractID, err = sub.UpdateContract(&identity, contractID, nil, hashHex)
 	if err != nil {
-		panic(err)
+		return diag.FromErr(err)
 	}
 	dl.ContractID = contractID // from substrate
 
 	err = node.DeploymentUpdate(ctx, dl)
 	if err != nil {
-		panic(err)
+		return diag.FromErr(err)
+	}
+
+	err = waitDeployment(ctx, node, dl.ContractID)
+	if err != nil {
+		return diag.FromErr(err)
 	}
 
 	got, err := node.DeploymentGet(ctx, dl.ContractID)
 	if err != nil {
-		panic(err)
+		return diag.FromErr(err)
 	}
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
@@ -714,20 +763,20 @@ func resourceDeploymentDelete(ctx context.Context, d *schema.ResourceData, meta 
 	nodeID := uint32(d.Get("node").(int))
 	identity, err := substrate.IdentityFromPhrase(string(apiClient.mnemonics))
 	if err != nil {
-		panic(err)
+		return diag.FromErr(err)
 	}
 
 	if err != nil {
-		panic(err)
+		return diag.FromErr(err)
 	}
 	cl := apiClient.client
 	sub, err := substrate.NewSubstrate(apiClient.substrate_url)
 	if err != nil {
-		panic(err)
+		return diag.FromErr(err)
 	}
 	nodeInfo, err := sub.GetNode(nodeID)
 	if err != nil {
-		panic(err)
+		return diag.FromErr(err)
 	}
 
 	node := client.NewNodeClient(uint32(nodeInfo.TwinID), cl)
@@ -736,16 +785,16 @@ func resourceDeploymentDelete(ctx context.Context, d *schema.ResourceData, meta 
 	defer cancel()
 	contractID, err := strconv.ParseUint(d.Id(), 10, 64)
 	if err != nil {
-		panic(err)
+		return diag.FromErr(err)
 	}
 	err = sub.CancelContract(&identity, contractID)
 	if err != nil {
-		panic(err)
+		return diag.FromErr(err)
 	}
 
 	err = node.DeploymentDelete(ctx, contractID)
 	if err != nil {
-		panic(err)
+		return diag.FromErr(err)
 	}
 	d.SetId("")
 
