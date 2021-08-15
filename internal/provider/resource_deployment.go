@@ -98,6 +98,12 @@ func resourceDeployment() *schema.Resource {
 							Optional:    true,
 							Computed:    true,
 						},
+						"ip": {
+							Description: "IP",
+							Type:        schema.TypeString,
+							Optional:    true,
+							Computed:    true,
+						},
 						"cpu": {
 							Description: "CPU size",
 							Type:        schema.TypeInt,
@@ -176,11 +182,12 @@ func getFreeIP(ipRange gridtypes.IPNet, usedIPs []string) (string, error) {
 	l := len(ipRange.IP)
 	for i < 255 {
 		ip := ipNet(ipRange.IP[l-4], ipRange.IP[l-3], ipRange.IP[l-2], byte(i), 32)
-		ipStr := ip.String()
+		ipStr := fmt.Sprintf("%d.%d.%d.%d", ip.IP[l-4], ip.IP[l-3], ip.IP[l-2], ip.IP[l-1])
 		log.Printf("ip string: %s\n", ipStr)
 		if !isInStr(usedIPs, ipStr) {
-			return fmt.Sprintf("%d.%d.%d.%d", ip.IP[l-4], ip.IP[l-3], ip.IP[l-2], ip.IP[l-1]), nil
+			return ipStr, nil
 		}
+		i += 1
 	}
 	return "", errors.New("all ips are used")
 }
@@ -259,6 +266,7 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 			panic(err)
 		}
 		usedIPs = append(usedIPs, freeIP)
+		data["ip"] = freeIP
 		workload := gridtypes.Workload{
 			Version: Version,
 			Name:    gridtypes.Name(data["name"].(string)),
@@ -285,6 +293,7 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 		}
 		updated_vms = append(updated_vms, data)
 		workloads = append(workloads, workload)
+
 	}
 
 	d.Set("vms", updated_vms)
