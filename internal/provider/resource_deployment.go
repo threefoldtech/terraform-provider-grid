@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -147,6 +148,21 @@ func resourceDeployment() *schema.Resource {
 					},
 				},
 			},
+			"used_ips": {
+				Type:     schema.TypeList,
+				Computed: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
+			"ip_range": {
+				Type:     schema.TypeString,
+				Required: true,
+			},
+			"network_name": {
+				Type:     schema.TypeString,
+				Required: true,
+			},
 		},
 	}
 }
@@ -154,33 +170,34 @@ func resourceDeployment() *schema.Resource {
 // func deploy(deployment []gridtypes.Workload, apiClient apiClient){
 
 // }
-func network() gridtypes.Workload {
-	wgKey := "GDU+cjKrHNJS9fodzjFDzNFl5su3kJXTZ3ipPgUjOUE="
 
-	return gridtypes.Workload{
-		Version:     0,
-		Type:        zos.NetworkType,
-		Description: "test network",
-		Name:        "network",
-		Data: gridtypes.MustMarshal(zos.Network{
-			NetworkIPRange: gridtypes.MustParseIPNet("10.1.0.0/16"),
-			Subnet:         gridtypes.MustParseIPNet("10.1.1.0/24"),
-			WGPrivateKey:   wgKey,
-			WGListenPort:   3011,
-			Peers: []zos.Peer{
-				{
-					Subnet:      gridtypes.MustParseIPNet("10.1.2.0/24"),
-					WGPublicKey: "4KTvZS2KPWYfMr+GbiUUly0ANVg8jBC7xP9Bl79Z8zM=",
-					AllowedIPs: []gridtypes.IPNet{
-						gridtypes.MustParseIPNet("10.1.2.0/24"),
-						gridtypes.MustParseIPNet("100.64.0.0/16"),
-					},
-				},
-			},
-		}),
+func getFreeIP(ipRange gridtypes.IPNet, usedIPs []string) (string, error) {
+	i := 2
+	l := len(ipRange.IP)
+	for i < 255 {
+		ip := ipNet(ipRange.IP[l-4], ipRange.IP[l-3], ipRange.IP[l-2], byte(i), 32)
+		ipStr := ip.String()
+		log.Printf("ip string: %s\n", ipStr)
+		if !isInStr(usedIPs, ipStr) {
+			return fmt.Sprintf("%d.%d.%d.%d", ip.IP[l-4], ip.IP[l-3], ip.IP[l-2], ip.IP[l-1]), nil
+		}
 	}
+	return "", errors.New("all ips are used")
 }
+
 func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	ipRangeStr := d.Get("ip_range").(string)
+	ipRange, err := gridtypes.ParseIPNet(ipRangeStr)
+	usedIPsIfs := d.Get("used_ips").([]interface{})
+	usedIPs := make([]string, 0)
+	for _, ip := range usedIPsIfs {
+		usedIPs = append(usedIPs, ip.(string))
+	}
+	networkName := d.Get("network_name").(string)
+
+	if err != nil {
+		panic(err)
+	}
 	apiClient := meta.(*apiClient)
 	identity, err := substrate.IdentityFromPhrase(string(apiClient.mnemonics))
 	if err != nil {
@@ -200,7 +217,6 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 	vms := d.Get("vms").([]interface{})
 
 	workloads := []gridtypes.Workload{}
-	workloads = append(workloads, network())
 	updated_disks := make([]interface{}, 0)
 	for _, disk := range disks {
 		data := disk.(map[string]interface{})
@@ -238,7 +254,11 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 			envVar := env_var.(map[string]interface{})
 			envVars[envVar["key"].(string)] = envVar["value"].(string)
 		}
-
+		freeIP, err := getFreeIP(ipRange, usedIPs)
+		if err != nil {
+			panic(err)
+		}
+		usedIPs = append(usedIPs, freeIP)
 		workload := gridtypes.Workload{
 			Version: Version,
 			Name:    gridtypes.Name(data["name"].(string)),
@@ -248,8 +268,8 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 				Network: zos.MachineNetwork{
 					Interfaces: []zos.MachineInterface{
 						{
-							Network: "network",
-							IP:      net.ParseIP("10.1.1.3"),
+							Network: gridtypes.Name(networkName),
+							IP:      net.ParseIP(freeIP),
 						},
 					},
 					Planetary: true,
@@ -337,6 +357,7 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 	enc := json.NewEncoder(log.Writer())
 	enc.SetIndent("", "  ")
 	enc.Encode(got)
+	d.Set("used_ips", usedIPs)
 	d.SetId(strconv.FormatUint(contractID, 10))
 	// resourceDiskRead(ctx, d, meta)
 
@@ -506,7 +527,7 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 	updatedDisks := make([]interface{}, 0)
 
 	workloads := []gridtypes.Workload{}
-	workloads = append(workloads, network())
+	// workloads = append(workloads, network())
 	for _, disk := range disks {
 		data := disk.(map[string]interface{})
 		version := 0
@@ -555,6 +576,14 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 			mount := zos.MachineMount{Name: gridtypes.Name(point["disk_name"].(string)), Mountpoint: point["mount_point"].(string)}
 			mounts = append(mounts, mount)
 		}
+
+		env_vars := data["env_vars"].([]interface{})
+		envVars := make(map[string]string)
+
+		for _, env_var := range env_vars {
+			envVar := env_var.(map[string]interface{})
+			envVars[envVar["key"].(string)] = envVar["value"].(string)
+		}
 		workload := gridtypes.Workload{
 			Version: version,
 			Name:    gridtypes.Name(data["name"].(string)),
@@ -576,9 +605,7 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 				},
 				Entrypoint: data["entrypoint"].(string),
 				Mounts:     mounts,
-				Env: map[string]string{
-					"SSH_KEY": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDTwULSsUubOq3VPWL6cdrDvexDmjfznGydFPyaNcn7gAL9lRxwFbCDPMj7MbhNSpxxHV2+/iJPQOTVJu4oc1N7bPP3gBCnF51rPrhTpGCt5pBbTzeyNweanhedkKDsCO2mIEh/92Od5Hg512dX4j7Zw6ipRWYSaepapfyoRnNSriW/s3DH/uewezVtL5EuypMdfNngV/u2KZYWoeiwhrY/yEUykQVUwDysW/xUJNP5o+KSTAvNSJatr3FbuCFuCjBSvageOLHePTeUwu6qjqe+Xs4piF1ByO/6cOJ8bt5Vcx0bAtI8/MPApplUU/JWevsPNApvnA/ntffI+u8DCwgP",
-				},
+				Env:        envVars,
 			}),
 		}
 		workloads = append(workloads, workload)
