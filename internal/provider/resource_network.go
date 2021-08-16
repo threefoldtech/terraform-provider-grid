@@ -84,16 +84,16 @@ func getNodClient(nodeId uint32) (*client.NodeClient, error) {
 	Substrate := "wss://explorer.devnet.grid.tf/ws"
 	cl, err := rmb.NewClient("tcp://127.0.0.1:6379")
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to create rmb client")
 	}
 	sub, err := substrate.NewSubstrate(Substrate)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to create substrate client")
 	}
 	log.Printf("fre node port, node id: %d\n", nodeId)
 	nodeInfo, err := sub.GetNode(nodeId)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to create node client")
 	}
 
 	node := client.NewNodeClient(uint32(nodeInfo.TwinID), cl)
@@ -103,7 +103,7 @@ func getNodClient(nodeId uint32) (*client.NodeClient, error) {
 func getNodeFreeWGPort(ctx context.Context, nodeClient *client.NodeClient, nodeId uint32) (int, error) {
 	freeports, err := nodeClient.NetworkListWGPorts(ctx)
 	if err != nil {
-		return 0, err
+		return 0, errors.Wrap(err, "failed to list wg ports")
 	}
 	log.Printf("reserved ports for node %d: %v\n", nodeId, freeports)
 	p := uint(rand.Intn(6000) + 2000)
@@ -340,11 +340,11 @@ func (nc *NetworkConfiguration) generateDeployments(ctx context.Context, userInf
 		if node == nc.PublicNodeID {
 			nodeClient, err := getNodClient(uint32(node))
 			if err != nil {
-				return nil, err
+				return nil, errors.Wrap(err, "failed to get node client")
 			}
 			publicConfig, err := nodeClient.NetworkGetPublicConfig(ctx)
 			if err != nil {
-				return nil, err
+				return nil, errors.Wrap(err, "failed to get public config")
 			}
 			l := len(publicConfig.IPv4.IP)
 			ip := wgIP(nc.ExternalNodeIP)
@@ -399,11 +399,11 @@ func (nc *NetworkConfiguration) generateDeployments(ctx context.Context, userInf
 			},
 		}
 		if err := deployment.Valid(); err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "deployment is invalid")
 		}
 
 		if err := deployment.Sign(userInfo.TwinID, userInfo.UserSK); err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to sign deployment")
 		}
 		deployments = append(deployments, deployment)
 	}
@@ -418,21 +418,21 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 	networkIP, err := gridtypes.ParseIPNet(networkIPRange)
 
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "failed to parse network ip range"))
 	}
 
 	identity, err := substrate.IdentityFromPhrase(apiClient.mnemonics)
 
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "failed to get identity from phrase"))
 	}
 	userSK, err := identity.SecureKey()
-	cl := apiClient.client
 
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "failed to get identity secret key"))
 	}
 
+	cl := apiClient.client
 	userInfo := &UserIdentityInfo{
 		TwinID:   apiClient.twin_id,
 		Identity: identity,
@@ -453,14 +453,10 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 
 	external_node_key, err := wgtypes.GeneratePrivateKey()
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "failed to generate private key"))
 	}
 	l := len(networkIP.IP)
 	external_node_ip := ipNet(networkIP.IP[l-4], networkIP.IP[l-3], 2, 0, 24)
-
-	if err != nil {
-		return diag.FromErr(err)
-	}
 	networkConfig := &NetworkConfiguration{
 		Description:     d.Get("description").(string),
 		IPRange:         networkIPRange,
@@ -473,17 +469,17 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 	for idx, node := range node_ids {
 		nodeClient, err := getNodClient(uint32(node))
 		if err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "failed to create node client"))
 		}
 		key, err := wgtypes.GeneratePrivateKey()
 		if err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "failed to generate wg private key"))
 		}
 		privateKeys[node] = key
 		ip[node] = ipNet(networkIP.IP[l-4], networkIP.IP[l-3], byte(idx+3), 0, 24)
 		port, err := getNodeFreeWGPort(ctx, nodeClient, uint32(node))
 		if err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "failed to get node free wg port"))
 		}
 		freePort[node] = port
 		log.Printf("node pubkey: %s, node privkey: %s, node id: %d", key.String(), key.PublicKey(), node)
@@ -500,34 +496,38 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 	networkConfig.NodeIDs = node_ids
 	deployments, err := networkConfig.generateDeployments(ctx, userInfo, networkName)
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "failed to generate deployments"))
 	}
 	for idx, deployment := range deployments.Deployments {
 		node := node_ids[idx]
 		hash, err := deployment.ChallengeHash()
 		if err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "failed to create challenge hash"))
 		}
 
 		hashHex := hex.EncodeToString(hash)
 		sub, err := substrate.NewSubstrate(Substrate)
 		if err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "failed to create new substrate client"))
 		}
 
 		nodeClient, err := getNodClient(uint32(node))
+
+		if err != nil {
+			return diag.FromErr(errors.Wrap(err, "failed to create new node client"))
+		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 80*time.Second)
 		defer cancel()
 		log.Printf("creating conract, node: %d, hash: %s\n", node, hashHex)
 		contractID, err := sub.CreateContract(&identity, uint32(node), nil, hashHex, 0)
 		if err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "failed to create contract"))
 		}
 		deployment.ContractID = contractID // from substrate
 		err = nodeClient.DeploymentDeploy(ctx, deployment)
 		if err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "failed to deploy deployment"))
 		}
 
 		log.Printf("node: %d, contract: %d", node, contractID)
@@ -589,7 +589,7 @@ func loadNetworkConfig(d *schema.ResourceData, stateInfo []NodeDeploymentsInfo) 
 	log.Printf("Fetched node key: %s\n", d.Get("external_sk").(string))
 	nodeKey, err := wgtypes.ParseKey(d.Get("external_sk").(string))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to parse external_sk key")
 	}
 	networkConfig := &NetworkConfiguration{
 		Description:     d.Get("description").(string),
@@ -608,7 +608,7 @@ func loadNetworkConfig(d *schema.ResourceData, stateInfo []NodeDeploymentsInfo) 
 		networkConfig.NodeIDs = append(networkConfig.NodeIDs, info.NodeID)
 		networkConfig.Keys[info.NodeID], err = wgtypes.ParseKey(info.WGPrivateKey)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to parse node private key")
 		}
 		networkConfig.IPs[info.NodeID] = gridtypes.MustParseIPNet(info.IPRange)
 		networkConfig.WGPort[info.NodeID] = info.WGPort
@@ -625,15 +625,15 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 	identity, err := substrate.IdentityFromPhrase(apiClient.mnemonics)
 
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "failed to get identity from phrase"))
 	}
 	userSK, err := identity.SecureKey()
-	cl := apiClient.client
 
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "failed to get identity secret key"))
 	}
 
+	cl := apiClient.client
 	userInfo := &UserIdentityInfo{
 		TwinID:   apiClient.twin_id,
 		Identity: identity,
@@ -646,7 +646,7 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 	node_ids := make([]int, len(node_ids_ifs))
 	networkConfig, err := loadNetworkConfig(d, stateInfo)
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "failed to load network config"))
 	}
 	network_ip := gridtypes.MustParseIPNet(d.Get("ip_range").(string))
 	l := len(network_ip.IP)
@@ -671,16 +671,16 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 			// log.Printf("ip is: %d %d %d %d\n", network_ip.IP[l - 4], network_ip.IP[l - 3], cur, network_ip.IP[l - 1])
 			key, err := wgtypes.GeneratePrivateKey()
 			if err != nil {
-				return diag.FromErr(err)
+				return diag.FromErr(errors.Wrap(err, "failed to generate wg private key"))
 			}
 			networkConfig.Keys[node] = key
 			nodeClient, err := getNodClient(uint32(node))
 			if err != nil {
-				return diag.FromErr(err)
+				return diag.FromErr(errors.Wrap(err, "failed to get node client"))
 			}
 			port, err := getNodeFreeWGPort(ctx, nodeClient, uint32(node))
 			if err != nil {
-				return diag.FromErr(err)
+				return diag.FromErr(errors.Wrap(err, "failed to get node free wg ports"))
 			}
 			networkConfig.WGPort[node] = port
 			networkConfig.Versions[node] = -1
@@ -706,34 +706,29 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 	networkConfig.NodeIDs = node_ids
 	deployments, err := networkConfig.generateDeployments(ctx, userInfo, networkName)
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "failed to generate deployments"))
 	}
 	for idx, deployment := range deployments.Deployments {
 		sub, err := substrate.NewSubstrate(Substrate)
 		if err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "failed to create new substrate client"))
 		}
 		node := node_ids[idx]
-
-		if err != nil {
-			return diag.FromErr(err)
-		}
-
 		ver, _ := networkConfig.Versions[node]
 		deployment.Version = ver + 1
 		deployment.Workloads[0].Version = ver + 1
 		newStateInfo[idx].Version = ver + 1
 		if err := deployment.Valid(); err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "deployment is not valid"))
 		}
 
 		if err := deployment.Sign(apiClient.twin_id, userSK); err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "failed to sign deployment"))
 		}
 
 		hash, err := deployment.ChallengeHash()
 		if err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "failed to generate challenge hash"))
 		}
 		hashHex := hex.EncodeToString(hash)
 
@@ -741,34 +736,39 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 		if networkConfig.Versions[node] == -1 {
 			contractID, err = sub.CreateContract(&identity, uint32(node), nil, hashHex, 0)
 			log.Printf("Creating contract %d\n", contractID)
+			if err != nil {
+				return diag.FromErr(errors.Wrap(err, "failed to create contract"))
+			}
 		} else {
 
 			deploymentID, _ := networkConfig.DeplotmentIDs[node]
 			log.Printf("Updating contract %d\n", deploymentID)
 			contractID, err = sub.UpdateContract(&identity, uint64(deploymentID), nil, hashHex)
-		}
-
-		if err != nil {
-			return diag.FromErr(err)
+			if err != nil {
+				return diag.FromErr(errors.Wrap(err, "failed to update contract"))
+			}
 		}
 
 		deployment.ContractID = contractID // from substrate
 
 		nodeClient, err := getNodClient(uint32(node))
 		if err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "failed to get node client"))
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 80*time.Second)
 		defer cancel()
 		if ver == -1 {
 			log.Printf("Creating deployment\n")
 			err = nodeClient.DeploymentDeploy(ctx, deployment)
+			if err != nil {
+				return diag.FromErr(errors.Wrap(err, "failed to create deployment"))
+			}
 		} else {
 			log.Printf("Updating deployment %v\n", deployment)
 			err = nodeClient.DeploymentUpdate(ctx, deployment)
-		}
-		if err != nil {
-			return diag.FromErr(err)
+			if err != nil {
+				return diag.FromErr(errors.Wrap(err, "failed to update deployment"))
+			}
 		}
 
 		log.Printf("node: %d, contract: %d", node, contractID)
@@ -784,7 +784,7 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 
 		got, err := nodeClient.DeploymentGet(ctx, deployment.ContractID)
 		if err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "failed to get deplyment"))
 		}
 		enc := json.NewEncoder(log.Writer())
 		enc.SetIndent("", "  ")
@@ -796,12 +796,12 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 			node := info.NodeID
 			sub, err := substrate.NewSubstrate(Substrate)
 			if err != nil {
-				return diag.FromErr(err)
+				return diag.FromErr(errors.Wrap(err, "failed to get substrate client"))
 			}
 
 			nodeInfo, err := sub.GetNode(uint32(node))
 			if err != nil {
-				return diag.FromErr(err)
+				return diag.FromErr(errors.Wrap(err, "failed to get node info"))
 			}
 
 			node_client := client.NewNodeClient(uint32(nodeInfo.TwinID), cl)
@@ -822,37 +822,34 @@ func resourceNetworkDelete(ctx context.Context, d *schema.ResourceData, meta int
 	identity, err := substrate.IdentityFromPhrase(apiClient.mnemonics)
 
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "failed to get identity from phrase"))
 	}
 
 	cl, err := rmb.NewClient("tcp://127.0.0.1:6379")
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "failed to create rmb client"))
 	}
 	sub, err := substrate.NewSubstrate(Substrate)
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "failed to create new substrate client"))
 	}
 
 	for _, info := range stateInfo {
 		cid := uint64(info.DeploymentID)
 		nodeIDint := info.NodeID
-		if err != nil {
-			return diag.FromErr(err)
-		}
 		nodeInfo, err := sub.GetNode(uint32(nodeIDint))
 		if err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "failed to get node info"))
 		}
 		node := client.NewNodeClient(uint32(nodeInfo.TwinID), cl)
 		ctx := context.Background()
 
 		err = sub.CancelContract(&identity, cid)
 		if err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "failed to cancel contract"))
 		}
 		if err := node.DeploymentDelete(ctx, cid); err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "failed to delete deployment"))
 		}
 	}
 
