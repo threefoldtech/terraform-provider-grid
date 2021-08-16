@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/threefoldtech/zos/client"
+	"github.com/threefoldtech/zos/pkg/crypto"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 	"github.com/threefoldtech/zos/pkg/substrate"
@@ -73,6 +74,42 @@ func resourceDeployment() *schema.Resource {
 						"version": {
 							Description: "Version",
 							Type:        schema.TypeInt,
+							Optional:    true,
+							Computed:    true,
+						},
+					},
+				},
+			},
+			"zdbs": &schema.Schema{
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"name": &schema.Schema{
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"password": &schema.Schema{
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"size": &schema.Schema{
+							Type:     schema.TypeInt,
+							Required: true,
+						},
+						"description": &schema.Schema{
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"version": {
+							Description: "Version",
+							Type:        schema.TypeInt,
+							Optional:    true,
+							Computed:    true,
+						},
+						"mode": {
+							Description: "Mode of the zdb",
+							Type:        schema.TypeString,
 							Optional:    true,
 							Computed:    true,
 						},
@@ -238,6 +275,7 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 	if err != nil {
 		return diag.FromErr(err)
 	}
+
 	cl := apiClient.client
 
 	var diags diag.Diagnostics
@@ -266,7 +304,32 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 	}
 	d.Set("disks", updated_disks)
 
-	updated_vms := make([]interface{}, 0, 0)
+	zdbs := d.Get("zdbs").([]interface{})
+	updated_zdbs := make([]interface{}, 0)
+	for _, zdb := range zdbs {
+		data := zdb.(map[string]interface{})
+		pwd, err := crypto.EncryptECDH([]byte(data["password"].(string)), userSK, identity.PublicKey)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		data["version"] = Version
+		workload := gridtypes.Workload{
+			Name:        gridtypes.Name(data["name"].(string)),
+			Type:        zos.ZDBType,
+			Description: data["description"].(string),
+			Version:     Version,
+			Data: gridtypes.MustMarshal(zos.ZDB{
+				Size:     gridtypes.Unit(data["size"].(int)),
+				Mode:     zos.ZDBMode(data["mode"].(string)),
+				Password: hex.EncodeToString(pwd),
+			}),
+		}
+		updated_zdbs = append(updated_zdbs, data)
+		workloads = append(workloads, workload)
+	}
+	d.Set("zdb", updated_zdbs)
+
+	updated_vms := make([]interface{}, 0)
 	for _, vm := range vms {
 		data := vm.(map[string]interface{})
 		data["version"] = Version
@@ -424,13 +487,8 @@ func flattenVMData(workload gridtypes.Workload) (map[string]interface{}, error) 
 			return nil, err
 		}
 		data := workloadData.(*zos.ZMachine)
-		// envVarsData := data.Env
-		// envVars := make([]map[string]interface{})
-		// for _, var := range(envvarsDaenvVarsData){
 
-		// }
-
-		mounts := make([]map[string]interface{}, 0, 0)
+		mounts := make([]map[string]interface{}, 0)
 		for diskName, mountPoint := range data.Mounts {
 			mount := map[string]interface{}{
 				"disk_name": diskName, "mount_point": mountPoint,
@@ -515,6 +573,21 @@ func diskHasChanged(disk map[string]interface{}, oldDisks []interface{}) (bool, 
 	}
 	return false, nil
 }
+func zdbHasChanged(zdb map[string]interface{}, oldZdbs []interface{}) (bool, map[string]interface{}) {
+	for _, d := range oldZdbs {
+		zdbData := d.(map[string]interface{})
+		if zdbData["name"] == zdb["name"] {
+			if zdbData["password"] != zdb["password"] || zdbData["size"] != zdb["size"] || zdbData["description"] != zdb["description"] || zdbData["mode"] != zdb["mode"] {
+				return true, zdbData
+			} else {
+				return false, zdbData
+			}
+
+		}
+
+	}
+	return false, nil
+}
 
 func vmHasChanged(vm map[string]interface{}, oldVms []interface{}) (bool, map[string]interface{}) {
 	for _, machine := range oldVms {
@@ -553,6 +626,7 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 	deploymentHasChange := false
 	disksHasChange := false
 	vmsHasChange := false
+	zdbsHasChange := false
 
 	if d.HasChange("newtork_name") {
 		deploymentHasChange = true
@@ -571,6 +645,10 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 		vmsHasChange = true
 	}
 
+	if d.HasChange("zdbs") {
+		deploymentHasChange = true
+		zdbsHasChange = true
+	}
 	oldDisks, _ := d.GetChange("disks")
 	oldVms, _ := d.GetChange("vms")
 	nodeID := uint32(d.Get("node").(int))
@@ -607,6 +685,42 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 		updatedDisks = append(updatedDisks, data)
 	}
 	d.Set("disks", updatedDisks)
+
+	oldZdbs, _ := d.GetChange("zdbs")
+	zdbs := d.Get("zdbs").([]interface{})
+	updatedZdbs := make([]interface{}, 0)
+	for _, zdb := range zdbs {
+		data := zdb.(map[string]interface{})
+		version := 0
+		if zdbsHasChange {
+
+			changed, oldZdb := zdbHasChanged(data, oldZdbs.([]interface{}))
+			if changed && oldZdb != nil {
+				version = oldZdb["version"].(int) + 1
+			} else if !changed && oldZdb != nil {
+				version = oldZdb["version"].(int)
+			}
+		}
+		data["version"] = version
+		pwd, err := crypto.EncryptECDH([]byte(data["password"].(string)), userSK, identity.PublicKey)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		workload := gridtypes.Workload{
+			Type:        zos.ZDBType,
+			Name:        gridtypes.Name(data["name"].(string)),
+			Description: data["description"].(string),
+			Version:     Version,
+			Data: gridtypes.MustMarshal(zos.ZDB{
+				Size:     gridtypes.Unit(data["size"].(int)),
+				Mode:     zos.ZDBMode(data["mode"].(string)),
+				Password: hex.EncodeToString(pwd),
+			}),
+		}
+		workloads = append(workloads, workload)
+		updatedZdbs = append(updatedZdbs, data)
+	}
+	d.Set("zdbs", updatedZdbs)
 
 	updatedVms := make([]interface{}, 0)
 	for _, vm := range vms {

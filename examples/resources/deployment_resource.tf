@@ -7,8 +7,7 @@ terraform {
   }
 }
 
-provider "grid" {
-    twin_id = 17    
+provider "grid" {    
 }
 
 resource "grid_network" "net1" {
@@ -22,6 +21,21 @@ resource "grid_deployment" "d1" {
   node = 1
   network_name = grid_network.net1.name
   ip_range = grid_network.net1.deployment_info[0].ip_range
+
+  zdbs{
+    name = "zdb1"
+    size = 1
+    description = "zdb1 description"
+    password = "zdbpasswd1"
+    mode = "user"
+  }
+  zdbs{
+    name = "zdb2"
+    size = 2
+    description = "zdb2 description"
+    password = "zdbpasswd2"
+    mode = "seq"
+  }
   disks {
     name = "mydisk1"
     size = 2
