@@ -191,13 +191,6 @@ func resourceDeployment() *schema.Resource {
 					},
 				},
 			},
-			"used_ips": {
-				Type:     schema.TypeList,
-				Computed: true,
-				Elem: &schema.Schema{
-					Type: schema.TypeString,
-				},
-			},
 			"ip_range": {
 				Type:     schema.TypeString,
 				Required: true,
@@ -229,6 +222,11 @@ func getFreeIP(ipRange gridtypes.IPNet, usedIPs []string) (string, error) {
 	return "", errors.New("all ips are used")
 }
 
+func getIPOnly(ip gridtypes.IPNet) string {
+	l := len(ip.IP)
+	return fmt.Sprintf("%d.%d.%d.%d", ip.IP[l-4], ip.IP[l-3], ip.IP[l-2], ip.IP[l-1])
+}
+
 func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deploymentID uint64) error {
 	done := false
 	for start := time.Now(); time.Since(start) < 4*time.Minute; {
@@ -256,10 +254,11 @@ func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deployme
 func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	ipRangeStr := d.Get("ip_range").(string)
 	ipRange, err := gridtypes.ParseIPNet(ipRangeStr)
-	usedIPsIfs := d.Get("used_ips").([]interface{})
 	usedIPs := make([]string, 0)
-	for _, ip := range usedIPsIfs {
-		usedIPs = append(usedIPs, ip.(string))
+	vms := d.Get("vms").([]interface{})
+	for _, vm := range vms {
+		data := vm.(map[string]interface{})
+		usedIPs = append(usedIPs, data["ip"].(string))
 	}
 	networkName := d.Get("network_name").(string)
 
@@ -283,7 +282,6 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 	nodeID := uint32(d.Get("node").(int))
 
 	disks := d.Get("disks").([]interface{})
-	vms := d.Get("vms").([]interface{})
 
 	workloads := []gridtypes.Workload{}
 	updated_disks := make([]interface{}, 0)
@@ -456,7 +454,6 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 	enc := json.NewEncoder(log.Writer())
 	enc.SetIndent("", "  ")
 	enc.Encode(got)
-	d.Set("used_ips", usedIPs)
 	d.SetId(strconv.FormatUint(contractID, 10))
 	// resourceDiskRead(ctx, d, meta)
 
@@ -509,7 +506,7 @@ func flattenVMData(workload gridtypes.Workload) (map[string]interface{}, error) 
 }
 
 func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	// use the meta value to retrieve your client from the provider configure method
+	// use the meta valufreeIPe to retrieve your client from the provider configure method
 	apiClient := meta.(*apiClient)
 	cl := apiClient.client
 	var diags diag.Diagnostics
@@ -607,6 +604,16 @@ func vmHasChanged(vm map[string]interface{}, oldVms []interface{}) (bool, map[st
 
 }
 func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	ipRangeStr := d.Get("ip_range").(string)
+	networkName := d.Get("network_name").(string)
+	ipRange, err := gridtypes.ParseIPNet(ipRangeStr)
+	usedIPs := make([]string, 0)
+	vms := d.Get("vms").([]interface{})
+	for _, vm := range vms {
+		data := vm.(map[string]interface{})
+		usedIPs = append(usedIPs, data["ip"].(string))
+	}
+
 	apiClient := meta.(*apiClient)
 	identity, err := substrate.IdentityFromPhrase(string(apiClient.mnemonics))
 	if err != nil {
@@ -625,7 +632,6 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 	}
 	deploymentHasChange := false
 	disksHasChange := false
-	vmsHasChange := false
 	zdbsHasChange := false
 
 	if d.HasChange("newtork_name") {
@@ -642,7 +648,6 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 	}
 	if d.HasChange("vms") {
 		deploymentHasChange = true
-		vmsHasChange = true
 	}
 
 	if d.HasChange("zdbs") {
@@ -654,7 +659,6 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 	nodeID := uint32(d.Get("node").(int))
 
 	disks := d.Get("disks").([]interface{})
-	vms := d.Get("vms").([]interface{})
 	updatedDisks := make([]interface{}, 0)
 
 	workloads := []gridtypes.Workload{}
@@ -726,15 +730,21 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 	for _, vm := range vms {
 		data := vm.(map[string]interface{})
 		version := 0
-		if vmsHasChange {
-
-			changed, oldVmachine := vmHasChanged(data, oldVms.([]interface{}))
-			if changed && oldVmachine != nil {
-				version = oldVmachine["version"].(int) + 1
-			} else if !changed && oldVmachine != nil {
-				version = oldVmachine["version"].(int)
-			}
+		ip, err := getFreeIP(ipRange, usedIPs)
+		changed, oldVmachine := vmHasChanged(data, oldVms.([]interface{}))
+		if err != nil {
+			return diag.FromErr(err)
 		}
+		if changed && oldVmachine != nil {
+			version = oldVmachine["version"].(int) + 1
+			ip = oldVmachine["ip_range"].(string)
+		} else if !changed && oldVmachine != nil {
+			version = oldVmachine["version"].(int)
+			ip = oldVmachine["ip_range"].(string)
+		} else {
+			usedIPs = append(usedIPs, ip)
+		}
+
 		data["version"] = version
 		mount_points := data["mounts"].([]interface{})
 		mounts := []zos.MachineMount{}
@@ -760,8 +770,8 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 				Network: zos.MachineNetwork{
 					Interfaces: []zos.MachineInterface{
 						{
-							Network: "network",
-							IP:      net.ParseIP("10.1.1.3"),
+							Network: gridtypes.Name(networkName),
+							IP:      net.ParseIP(ip),
 						},
 					},
 					Planetary: true,
