@@ -134,6 +134,11 @@ func resourceDeployment() *schema.Resource {
 							Optional:    true,
 							Computed:    true,
 						},
+						"publicip": {
+							Description: "If you want to enable public ip or not",
+							Type:        schema.TypeBool,
+							Optional:    true,
+						},
 						"ip": {
 							Description: "IP",
 							Type:        schema.TypeString,
@@ -250,6 +255,14 @@ func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deployme
 	return errors.New(fmt.Sprintf("waiting for deployment %d timedout", deploymentID))
 }
 
+func constructPublicIPWorkload(workloadName string) gridtypes.Workload {
+	return gridtypes.Workload{
+		Version: 0,
+		Name:    gridtypes.Name(workloadName),
+		Type:    zos.PublicIPType,
+		Data:    gridtypes.MustMarshal(zos.PublicIP{}),
+	}
+}
 func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	err := validate(d)
 	if err != nil {
@@ -326,7 +339,7 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 		workloads = append(workloads, workload)
 	}
 	d.Set("zdbs", updated_zdbs)
-
+	publicIPCount := 0
 	updated_vms := make([]interface{}, 0)
 	for _, vm := range vms {
 		data := vm.(map[string]interface{})
@@ -338,7 +351,11 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 			mount := zos.MachineMount{Name: gridtypes.Name(point["disk_name"].(string)), Mountpoint: point["mount_point"].(string)}
 			mounts = append(mounts, mount)
 		}
-
+		if data["publicip"].(bool) {
+			publicIPCount += 1
+			publicIPName := fmt.Sprintf("%sip", data["name"].(string))
+			workloads = append(workloads, constructPublicIPWorkload(publicIPName))
+		}
 		env_vars := data["env_vars"].([]interface{})
 		envVars := make(map[string]string)
 
@@ -433,7 +450,7 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 
 	log.Printf("[DEBUG] NodeId: %#v", nodeID)
 	log.Printf("[DEBUG] HASH: %#v", hashHex)
-	contractID, err := sub.CreateContract(&identity, nodeID, nil, hashHex, 0)
+	contractID, err := sub.CreateContract(&identity, nodeID, nil, hashHex, uint32(publicIPCount))
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -791,6 +808,7 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 						},
 					},
 					Planetary: true,
+					PublicIP:  gridtypes.Name(fmt.Sprintf("%sip", data["name"].(string))),
 				},
 				ComputeCapacity: zos.MachineCapacity{
 					CPU:    uint8(data["cpu"].(int)),
