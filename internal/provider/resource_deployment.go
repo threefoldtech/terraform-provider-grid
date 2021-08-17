@@ -16,7 +16,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/zos/client"
-	"github.com/threefoldtech/zos/pkg/crypto"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 	"github.com/threefoldtech/zos/pkg/substrate"
@@ -311,10 +310,6 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 	updated_zdbs := make([]interface{}, 0)
 	for _, zdb := range zdbs {
 		data := zdb.(map[string]interface{})
-		pwd, err := crypto.EncryptECDH([]byte(data["password"].(string)), userSK, identity.PublicKey)
-		if err != nil {
-			return diag.FromErr(err)
-		}
 		data["version"] = Version
 		workload := gridtypes.Workload{
 			Name:        gridtypes.Name(data["name"].(string)),
@@ -324,7 +319,7 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 			Data: gridtypes.MustMarshal(zos.ZDB{
 				Size:     gridtypes.Unit(data["size"].(int)),
 				Mode:     zos.ZDBMode(data["mode"].(string)),
-				Password: hex.EncodeToString(pwd),
+				Password: data["password"].(string),
 			}),
 		}
 		updated_zdbs = append(updated_zdbs, data)
@@ -731,10 +726,6 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 			}
 		}
 		data["version"] = version
-		pwd, err := crypto.EncryptECDH([]byte(data["password"].(string)), userSK, identity.PublicKey)
-		if err != nil {
-			return diag.FromErr(err)
-		}
 		workload := gridtypes.Workload{
 			Type:        zos.ZDBType,
 			Name:        gridtypes.Name(data["name"].(string)),
@@ -743,7 +734,7 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 			Data: gridtypes.MustMarshal(zos.ZDB{
 				Size:     gridtypes.Unit(data["size"].(int)),
 				Mode:     zos.ZDBMode(data["mode"].(string)),
-				Password: hex.EncodeToString(pwd),
+				Password: data["password"].(string),
 			}),
 		}
 		workloads = append(workloads, workload)
