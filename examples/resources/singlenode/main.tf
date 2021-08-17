@@ -13,8 +13,8 @@ provider "grid" {
 resource "grid_network" "net1" {
     nodes = [1]
     ip_range = "10.1.0.0/16"
-    name = "net1"
-    description = "new network"
+    name = "network"
+    description = "newer network"
 }
 
 resource "grid_deployment" "d1" {
@@ -26,6 +26,7 @@ resource "grid_deployment" "d1" {
     name = "vm1"
     flist = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
     cpu = 1
+    publicip = true
     memory = 1024
     entrypoint = "/sbin/zinit init"
     env_vars {
@@ -35,7 +36,7 @@ resource "grid_deployment" "d1" {
 
   }
   vms {
-    name = "vm2"
+    name = "anothervm"
     flist = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
     cpu = 1
     memory = 1024
@@ -60,3 +61,6 @@ output "node1_container2_ip" {
     value = grid_deployment.d1.vms[1].ip
 }
 
+output "public_ip" {
+    value = grid_deployment.d1.vms[0].computedip
+}
