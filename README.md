@@ -27,7 +27,7 @@ mv terraform-provider-grid ~/.terraform.d/plugins/threefoldtech.com/providers/gr
 cd examples/resources
 export MNEMONICS="<mnemonics workds>"
 export TWIN_ID="<your twin id>"
-terraform init && terraform apply
+terraform init && terraform apply -parallelism=1
 ```
 ## Destroying deployment
 ```bash
