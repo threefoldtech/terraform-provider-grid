@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -15,6 +14,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/pkg/errors"
 	"github.com/threefoldtech/zos/client"
 	"github.com/threefoldtech/zos/pkg/crypto"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
@@ -118,7 +118,7 @@ func resourceDeployment() *schema.Resource {
 			},
 			"vms": &schema.Schema{
 				Type:     schema.TypeList,
-				Required: true,
+				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": &schema.Schema{
@@ -193,11 +193,11 @@ func resourceDeployment() *schema.Resource {
 			},
 			"ip_range": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 			},
 			"network_name": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 			},
 		},
 	}
@@ -252,6 +252,11 @@ func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deployme
 }
 
 func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	err := validate(d)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
 	ipRangeStr := d.Get("ip_range").(string)
 	ipRange, err := gridtypes.ParseIPNet(ipRangeStr)
 	usedIPs := make([]string, 0)
@@ -603,7 +608,27 @@ func vmHasChanged(vm map[string]interface{}, oldVms []interface{}) (bool, map[st
 	return false, nil
 
 }
+
+func validate(d *schema.ResourceData) error {
+	ipRangeStr := d.Get("ip_range").(string)
+	networkName := d.Get("network_name").(string)
+	vms := d.Get("vms").([]interface{})
+	_, err := gridtypes.ParseIPNet(ipRangeStr)
+	if len(vms) != 0 && err != nil {
+		return errors.Wrap(err, "If you pass a vm, ip_range must be set to a valid ip range (e.g. 10.1.3.0/16)")
+	}
+	if len(vms) != 0 && networkName == "" {
+		return errors.Wrap(err, "If you pass a vm, network_name must be non-empty")
+	}
+
+	return nil
+}
+
 func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	err := validate(d)
+	if err != nil {
+		return diag.FromErr(err)
+	}
 	ipRangeStr := d.Get("ip_range").(string)
 	networkName := d.Get("network_name").(string)
 	ipRange, err := gridtypes.ParseIPNet(ipRangeStr)

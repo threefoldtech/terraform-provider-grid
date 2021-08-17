@@ -34,14 +34,75 @@ const (
 // rmb_url   = "tcp://127.0.0.1:6379"
 )
 
-func getNodeEndpoint(nodeId int, wgPort int) string {
-	nodeIps := make(map[int]string)
-	nodeIps[1] = "2a02:1802:5e:16:ec4:7aff:fe30:65b4"
-	nodeIps[2] = "2a02:1802:5e:16:225:90ff:fef5:582e"
-	nodeIps[3] = "2a02:1802:5e:16:225:90ff:fef5:6d02"
-	nodeIps[4] = "2a02:1802:5e:16:225:90ff:fe87:d7b4"
+func isPrivateIP(ip net.IP) bool {
+	privateIPBlocks := []*net.IPNet{}
+	for _, cidr := range []string{
+		"127.0.0.0/8",    // IPv4 loopback
+		"10.0.0.0/8",     // RFC1918
+		"172.16.0.0/12",  // RFC1918
+		"192.168.0.0/16", // RFC1918
+		"169.254.0.0/16", // RFC3927 link-local
+		"::1/128",        // IPv6 loopback
+		"fe80::/10",      // IPv6 link-local
+		"fc00::/7",       // IPv6 unique local addr
+	} {
+		_, block, err := net.ParseCIDR(cidr)
+		if err != nil {
+			panic(fmt.Errorf("parse error on %q: %v", cidr, err))
+		}
+		privateIPBlocks = append(privateIPBlocks, block)
+	}
+	if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+		return true
+	}
 
-	return fmt.Sprintf("[%s]:%d", nodeIps[nodeId], wgPort)
+	for _, block := range privateIPBlocks {
+		if block.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+func getNodeEndpoint(ctx context.Context, nodeClient *client.NodeClient) (string, error) {
+	publicConfig, err := nodeClient.NetworkGetPublicConfig(ctx)
+	log.Printf("publicConfig: %v\n", publicConfig)
+	log.Printf("publicConfig.IPv4: %v\n", publicConfig.IPv4)
+	log.Printf("publicConfig.IPv.IP: %v\n", publicConfig.IPv4.IP)
+	log.Printf("err: %s\n", err)
+	if err == nil && publicConfig.IPv4.IP != nil {
+
+		ip := publicConfig.IPv4.IP
+		log.Printf("ip: %s, globalunicast: %t, privateIP: %t\n", ip.String(), ip.IsGlobalUnicast(), isPrivateIP(ip))
+		if ip.IsGlobalUnicast() && !isPrivateIP(ip) {
+			return ip.String(), nil
+		}
+	} else if err == nil && publicConfig.IPv6.IP != nil {
+		ip := publicConfig.IPv6.IP
+		log.Printf("ip: %s, globalunicast: %t, privateIP: %t\n", ip.String(), ip.IsGlobalUnicast(), isPrivateIP(ip))
+		if ip.IsGlobalUnicast() && !isPrivateIP(ip) {
+			return fmt.Sprintf("[%s]", ip.String()), nil
+		}
+	}
+
+	ifs, err := nodeClient.NetworkListInterfaces(ctx)
+	log.Printf("if: %v\n", ifs)
+	if err == nil {
+		for _, iface := range ifs {
+			for _, ip := range iface {
+				log.Printf("ip: %s, globalunicast: %t, privateIP: %t\n", ip.String(), ip.IsGlobalUnicast(), isPrivateIP(ip))
+				if !ip.IsGlobalUnicast() || isPrivateIP(ip) {
+					continue
+				}
+				if ip.To4() != nil {
+					return ip.String(), nil
+				} else {
+					return fmt.Sprintf("[%s]", ip.String()), nil
+				}
+			}
+		}
+	}
+	return "", errors.New("can't find an interface with public ipv4 or ipv6")
 }
 
 func isIn(l []uint16, i uint16) bool {
@@ -244,6 +305,12 @@ func wgIP(ip gridtypes.IPNet) gridtypes.IPNet {
 
 }
 
+func ipOnly(ip gridtypes.IPNet) string {
+	l := len(ip.IP)
+	return fmt.Sprintf("%d.%d.%d.%d", ip.IP[l-4], ip.IP[l-3], ip.IP[l-2], ip.IP[l-1])
+
+}
+
 type NetworkConfiguration struct {
 	IPRange         string
 	Description     string
@@ -312,6 +379,10 @@ func (nc *NetworkConfiguration) generateDeployments(ctx context.Context, userInf
 	deploymentInfotmation := &DeploymentInformation{}
 	deployments := make([]gridtypes.Deployment, 0)
 	for _, node := range nc.NodeIDs {
+		nodeClient, err := getNodClient(uint32(node))
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get node client")
+		}
 		peers := make([]zos.Peer, 0, len(nc.NodeIDs))
 		for _, neigh := range nc.NodeIDs {
 			if node == neigh {
@@ -329,19 +400,19 @@ func (nc *NetworkConfiguration) generateDeployments(ctx context.Context, userInf
 				allowed_ips = append(allowed_ips, wgIP(nc.ExternalNodeIP))
 			}
 			log.Printf("%v\n", allowed_ips)
+			endpoint, err := getNodeEndpoint(ctx, nodeClient)
+			if err != nil {
+				return nil, errors.Wrap(err, "couldn't get node endpoint")
+			}
 			peers = append(peers, zos.Peer{
 				Subnet:      neigh_ip_range,
 				WGPublicKey: neigh_pubkey,
-				Endpoint:    getNodeEndpoint(neigh, neigh_port),
+				Endpoint:    fmt.Sprintf("%s:%d", endpoint, neigh_port),
 				AllowedIPs:  allowed_ips,
 			})
 		}
 
 		if node == nc.PublicNodeID {
-			nodeClient, err := getNodClient(uint32(node))
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to get node client")
-			}
 			publicConfig, err := nodeClient.NetworkGetPublicConfig(ctx)
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to get public config")
