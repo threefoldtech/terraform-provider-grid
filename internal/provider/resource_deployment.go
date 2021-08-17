@@ -325,7 +325,7 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 		updated_zdbs = append(updated_zdbs, data)
 		workloads = append(workloads, workload)
 	}
-	d.Set("zdb", updated_zdbs)
+	d.Set("zdbs", updated_zdbs)
 
 	updated_vms := make([]interface{}, 0)
 	for _, vm := range vms {
