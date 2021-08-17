@@ -139,6 +139,11 @@ func resourceDeployment() *schema.Resource {
 							Type:        schema.TypeBool,
 							Optional:    true,
 						},
+						"computedip": {
+							Description: "The public ip",
+							Type:        schema.TypeString,
+							Computed:    true,
+						},
 						"ip": {
 							Description: "IP",
 							Type:        schema.TypeString,
@@ -263,6 +268,12 @@ func constructPublicIPWorkload(workloadName string) gridtypes.Workload {
 		Data:    gridtypes.MustMarshal(zos.PublicIP{}),
 	}
 }
+
+type PubIPData struct {
+	IP      string `json:"ip"`
+	Gateway string `json:"gateway"`
+}
+
 func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	err := validate(d)
 	if err != nil {
@@ -369,21 +380,25 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 		}
 		usedIPs = append(usedIPs, freeIP)
 		data["ip"] = freeIP
+		w := zos.MachineNetwork{
+			Interfaces: []zos.MachineInterface{
+				{
+					Network: gridtypes.Name(networkName),
+					IP:      net.ParseIP(freeIP),
+				},
+			},
+			Planetary: true,
+		}
+		if data["publicip"].(bool) {
+			w.PublicIP = gridtypes.Name(fmt.Sprintf("%sip", data["name"].(string)))
+		}
 		workload := gridtypes.Workload{
 			Version: Version,
 			Name:    gridtypes.Name(data["name"].(string)),
 			Type:    zos.ZMachineType,
 			Data: gridtypes.MustMarshal(zos.ZMachine{
-				FList: data["flist"].(string),
-				Network: zos.MachineNetwork{
-					Interfaces: []zos.MachineInterface{
-						{
-							Network: gridtypes.Name(networkName),
-							IP:      net.ParseIP(freeIP),
-						},
-					},
-					Planetary: true,
-				},
+				FList:   data["flist"].(string),
+				Network: w,
 				ComputeCapacity: zos.MachineCapacity{
 					CPU:    uint8(data["cpu"].(int)),
 					Memory: gridtypes.Unit(uint(data["memory"].(int))) * gridtypes.Megabyte,
@@ -468,6 +483,31 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 	if err != nil {
 		return diag.FromErr(err)
 	}
+	pubIP := make(map[string]string)
+	for _, wl := range got.Workloads {
+		if wl.Type != zos.PublicIPType {
+			continue
+		}
+		d := PubIPData{}
+		if err := json.Unmarshal(wl.Result.Data, &d); err != nil {
+			return diag.FromErr(err)
+		}
+		pubIP[string(wl.Name)] = d.IP
+
+	}
+
+	updated_vms2 := make([]interface{}, 0)
+
+	for _, vm := range updated_vms {
+		data := vm.(map[string]interface{})
+		data["version"] = Version
+		ip, ok := pubIP[fmt.Sprintf("%sip", data["name"].(string))]
+		if ok {
+			data["computedip"] = ip
+		}
+		updated_vms2 = append(updated_vms2, data)
+	}
+	d.Set("vms", updated_vms2)
 	enc := json.NewEncoder(log.Writer())
 	enc.SetIndent("", "  ")
 	enc.Encode(got)
