@@ -23,8 +23,9 @@ import (
 
 const (
 	Version = 0
+)
 
-func resourceDeployment() *schema.Resource {
+func k8sDeployment() *schema.Resource {
 	return &schema.Resource{
 		// This description is used by the documentation generator and the language server.
 		Description: "Sample resource in the Terraform provider scaffolding.",
@@ -35,17 +36,34 @@ func resourceDeployment() *schema.Resource {
 		DeleteContext: resourceDeploymentDelete,
 
 		Schema: map[string]*schema.Schema{
-			"version": {
-				Description: "Version",
-				Type:        schema.TypeInt,
-				Optional:    true,
-				Computed:    true,
-			},
 
-			"node": {
-				Description: "Node id to place deployment on",
-				Type:        schema.TypeInt,
-				Required:    true,
+			"deployments": &schema.Schema{
+				Type:     schema.TypeList,
+				Computed: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"deploymentid": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"nodeid": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"version": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"ip_range": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"network_name": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
 			},
 			"disks": &schema.Schema{
 				Type:     schema.TypeList,
@@ -70,27 +88,24 @@ func resourceDeployment() *schema.Resource {
 							Optional:    true,
 							Computed:    true,
 						},
+						"nodeid": {
+							Description: "Node ID",
+							Type:        schema.TypeInt,
+							Required:    true,
+						},
 					},
 				},
 			},
-			"zdbs": &schema.Schema{
+			"master": {
 				Type:     schema.TypeList,
-				Optional: true,
+				Required: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": &schema.Schema{
 							Type:     schema.TypeString,
 							Required: true,
 						},
-						"password": &schema.Schema{
-							Type:     schema.TypeString,
-							Required: true,
-						},
-						"size": &schema.Schema{
-							Type:     schema.TypeInt,
-							Required: true,
-						},
-						"description": &schema.Schema{
+						"flist": &schema.Schema{
 							Type:     schema.TypeString,
 							Required: true,
 						},
@@ -100,16 +115,74 @@ func resourceDeployment() *schema.Resource {
 							Optional:    true,
 							Computed:    true,
 						},
-						"mode": {
-							Description: "Mode of the zdb",
+						"publicip": {
+							Description: "If you want to enable public ip or not",
+							Type:        schema.TypeBool,
+							Optional:    true,
+						},
+						"computedip": {
+							Description: "The public ip",
+							Type:        schema.TypeString,
+							Computed:    true,
+						},
+						"ip": {
+							Description: "IP",
 							Type:        schema.TypeString,
 							Optional:    true,
 							Computed:    true,
 						},
+						"cpu": {
+							Description: "CPU size",
+							Type:        schema.TypeInt,
+							Optional:    true,
+						},
+						"memory": {
+							Description: "Memory size",
+							Type:        schema.TypeInt,
+							Optional:    true,
+						},
+						"entrypoint": {
+							Description: "VM entry point",
+							Type:        schema.TypeString,
+							Optional:    true,
+						},
+						"mounts": &schema.Schema{
+							Type:     schema.TypeList,
+							Optional: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"disk_name": &schema.Schema{
+										Type:     schema.TypeString,
+										Required: true,
+									},
+									"mount_point": &schema.Schema{
+										Type:     schema.TypeString,
+										Required: true,
+									},
+								},
+							},
+						},
+						"env_vars": &schema.Schema{
+							Type:     schema.TypeList,
+							Optional: true,
+							Computed: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"key": &schema.Schema{
+										Type:     schema.TypeString,
+										Required: true,
+									},
+									"value": &schema.Schema{
+										Type:     schema.TypeString,
+										Required: true,
+									},
+								},
+							},
+						},
 					},
 				},
 			},
-			"vms": &schema.Schema{
+			"workers": &schema.Schema{
 				Type:     schema.TypeList,
 				Optional: true,
 				Elem: &schema.Resource{
@@ -178,6 +251,7 @@ func resourceDeployment() *schema.Resource {
 						"env_vars": &schema.Schema{
 							Type:     schema.TypeList,
 							Optional: true,
+							Computed: true,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
 									"key": &schema.Schema{
@@ -194,21 +268,9 @@ func resourceDeployment() *schema.Resource {
 					},
 				},
 			},
-			"ip_range": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-			"network_name": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
 		},
 	}
 }
-
-// func deploy(deployment []gridtypes.Workload, apiClient apiClient){
-
-// }
 
 func getFreeIP(ipRange gridtypes.IPNet, usedIPs []string) (string, error) {
 	i := 2
@@ -277,7 +339,7 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 	ipRangeStr := d.Get("ip_range").(string)
 	ipRange, err := gridtypes.ParseIPNet(ipRangeStr)
 	usedIPs := make([]string, 0)
-	vms := d.Get("vms").([]interface{})
+	vms := d.Get("workers").([]interface{})
 	for _, vm := range vms {
 		data := vm.(map[string]interface{})
 		usedIPs = append(usedIPs, data["ip"].(string))
@@ -301,14 +363,15 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 
 	var diags diag.Diagnostics
 	// twinID := d.Get("twinid").(string)
-	nodeID := uint32(d.Get("node").(int))
+	// nodeID := uint32(d.Get("node").(int))
 
 	disks := d.Get("disks").([]interface{})
-
+	workloadsNodesMap := make(map[uint32][]gridtypes.Workload)
 	workloads := []gridtypes.Workload{}
 	updated_disks := make([]interface{}, 0)
 	for _, disk := range disks {
 		data := disk.(map[string]interface{})
+		nodeID := uint32(data["node"].(int))
 		data["version"] = Version
 		workload := gridtypes.Workload{
 			Name:        gridtypes.Name(data["name"].(string)),
@@ -320,34 +383,15 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 			}),
 		}
 		updated_disks = append(updated_disks, data)
-		workloads = append(workloads, workload)
+		workloadsNodesMap[nodeID] = append(workloadsNodesMap[nodeID], workload)
 	}
 	d.Set("disks", updated_disks)
 
-	zdbs := d.Get("zdbs").([]interface{})
-	updated_zdbs := make([]interface{}, 0)
-	for _, zdb := range zdbs {
-		data := zdb.(map[string]interface{})
-		data["version"] = Version
-		workload := gridtypes.Workload{
-			Name:        gridtypes.Name(data["name"].(string)),
-			Type:        zos.ZDBType,
-			Description: data["description"].(string),
-			Version:     Version,
-			Data: gridtypes.MustMarshal(zos.ZDB{
-				Size:     gridtypes.Unit(data["size"].(int)),
-				Mode:     zos.ZDBMode(data["mode"].(string)),
-				Password: data["password"].(string),
-			}),
-		}
-		updated_zdbs = append(updated_zdbs, data)
-		workloads = append(workloads, workload)
-	}
-	d.Set("zdbs", updated_zdbs)
 	publicIPCount := 0
 	updated_vms := make([]interface{}, 0)
 	for _, vm := range vms {
 		data := vm.(map[string]interface{})
+		nodeID := uint32(data["node"].(int))
 		data["version"] = Version
 		mount_points := data["mounts"].([]interface{})
 		mounts := []zos.MachineMount{}
@@ -403,111 +447,112 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 			}),
 		}
 		updated_vms = append(updated_vms, data)
-		workloads = append(workloads, workload)
+		workloadsNodesMap[nodeID] = append(workloadsNodesMap[nodeID], workload)
 
 	}
 
-	d.Set("vms", updated_vms)
+	d.Set("workers", updated_vms)
+	for nodeID, workloads := range workloadsNodesMap {
 
-	dl := gridtypes.Deployment{
-		Version: Version,
-		TwinID:  uint32(apiClient.twin_id), //LocalTwin,
-		// this contract id must match the one on substrate
-		Workloads: workloads,
-		SignatureRequirement: gridtypes.SignatureRequirement{
-			WeightRequired: 1,
-			Requests: []gridtypes.SignatureRequest{
-				{
-					TwinID: apiClient.twin_id,
-					Weight: 1,
+		dl := gridtypes.Deployment{
+			Version: Version,
+			TwinID:  uint32(apiClient.twin_id), //LocalTwin,
+			// this contract id must match the one on substrate
+			Workloads: workloads,
+			SignatureRequirement: gridtypes.SignatureRequirement{
+				WeightRequired: 1,
+				Requests: []gridtypes.SignatureRequest{
+					{
+						TwinID: apiClient.twin_id,
+						Weight: 1,
+					},
 				},
 			},
-		},
-	}
-
-	if err := dl.Valid(); err != nil {
-		return diag.FromErr(errors.New("invalid: " + err.Error()))
-	}
-	//return
-	if err := dl.Sign(apiClient.twin_id, userSK); err != nil {
-		return diag.FromErr(err)
-	}
-
-	hash, err := dl.ChallengeHash()
-	log.Printf("[DEBUG] HASH: %#v", hash)
-
-	if err != nil {
-		return diag.FromErr(errors.New("failed to create hash"))
-	}
-
-	hashHex := hex.EncodeToString(hash)
-	fmt.Printf("hash: %s\n", hashHex)
-	// create contract
-	sub, err := substrate.NewSubstrate(apiClient.substrate_url)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	nodeInfo, err := sub.GetNode(nodeID)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-
-	node := client.NewNodeClient(uint32(nodeInfo.TwinID), cl)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	log.Printf("[DEBUG] NodeId: %#v", nodeID)
-	log.Printf("[DEBUG] HASH: %#v", hashHex)
-	contractID, err := sub.CreateContract(&identity, nodeID, nil, hashHex, uint32(publicIPCount))
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	dl.ContractID = contractID // from substrate
-
-	err = node.DeploymentDeploy(ctx, dl)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	err = waitDeployment(ctx, node, dl.ContractID)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	got, err := node.DeploymentGet(ctx, dl.ContractID)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	pubIP := make(map[string]string)
-	for _, wl := range got.Workloads {
-		if wl.Type != zos.PublicIPType {
-			continue
 		}
-		d := PubIPData{}
-		if err := json.Unmarshal(wl.Result.Data, &d); err != nil {
+
+		if err := dl.Valid(); err != nil {
+			return diag.FromErr(errors.New("invalid: " + err.Error()))
+		}
+		//return
+		if err := dl.Sign(apiClient.twin_id, userSK); err != nil {
 			return diag.FromErr(err)
 		}
-		pubIP[string(wl.Name)] = d.IP
 
-	}
+		hash, err := dl.ChallengeHash()
+		log.Printf("[DEBUG] HASH: %#v", hash)
 
-	updated_vms2 := make([]interface{}, 0)
-
-	for _, vm := range updated_vms {
-		data := vm.(map[string]interface{})
-		data["version"] = Version
-		ip, ok := pubIP[fmt.Sprintf("%sip", data["name"].(string))]
-		if ok {
-			data["computedip"] = ip
+		if err != nil {
+			return diag.FromErr(errors.New("failed to create hash"))
 		}
-		updated_vms2 = append(updated_vms2, data)
-	}
-	d.Set("vms", updated_vms2)
-	enc := json.NewEncoder(log.Writer())
-	enc.SetIndent("", "  ")
-	enc.Encode(got)
-	d.SetId(strconv.FormatUint(contractID, 10))
-	// resourceDiskRead(ctx, d, meta)
 
+		hashHex := hex.EncodeToString(hash)
+		fmt.Printf("hash: %s\n", hashHex)
+		// create contract
+		sub, err := substrate.NewSubstrate(apiClient.substrate_url)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		nodeInfo, err := sub.GetNode(nodeID)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+
+		node := client.NewNodeClient(uint32(nodeInfo.TwinID), cl)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		log.Printf("[DEBUG] NodeId: %#v", nodeID)
+		log.Printf("[DEBUG] HASH: %#v", hashHex)
+		contractID, err := sub.CreateContract(&identity, nodeID, nil, hashHex, uint32(publicIPCount))
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		dl.ContractID = contractID // from substrate
+
+		err = node.DeploymentDeploy(ctx, dl)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		err = waitDeployment(ctx, node, dl.ContractID)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		got, err := node.DeploymentGet(ctx, dl.ContractID)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		pubIP := make(map[string]string)
+		for _, wl := range got.Workloads {
+			if wl.Type != zos.PublicIPType {
+				continue
+			}
+			d := PubIPData{}
+			if err := json.Unmarshal(wl.Result.Data, &d); err != nil {
+				return diag.FromErr(err)
+			}
+			pubIP[string(wl.Name)] = d.IP
+
+		}
+
+		updated_vms2 := make([]interface{}, 0)
+
+		for _, vm := range updated_vms {
+			data := vm.(map[string]interface{})
+			data["version"] = Version
+			ip, ok := pubIP[fmt.Sprintf("%sip", data["name"].(string))]
+			if ok {
+				data["computedip"] = ip
+			}
+			updated_vms2 = append(updated_vms2, data)
+		}
+		d.Set("vms", updated_vms2)
+		enc := json.NewEncoder(log.Writer())
+		enc.SetIndent("", "  ")
+		enc.Encode(got)
+		d.SetId(strconv.FormatUint(contractID, 10))
+		// resourceDiskRead(ctx, d, meta)
+	}
 	return diags
 }
 
