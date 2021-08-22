@@ -23,6 +23,7 @@ import (
 
 const (
 	Version = 0
+)
 
 func resourceDeployment() *schema.Resource {
 	return &schema.Resource{

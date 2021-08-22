@@ -8,10 +8,10 @@ import (
 	"log"
 	"net"
 	"os"
-	"reflect"
 	"strconv"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
@@ -21,49 +21,21 @@ import (
 	"github.com/threefoldtech/zos/pkg/substrate"
 )
 
-const (
-	Version = 0
-)
-
 func k8sDeployment() *schema.Resource {
 	return &schema.Resource{
 		// This description is used by the documentation generator and the language server.
 		Description: "Sample resource in the Terraform provider scaffolding.",
 
-		CreateContext: resourceDeploymentCreate,
-		ReadContext:   resourceDeploymentRead,
-		UpdateContext: resourceDeploymentUpdate,
-		DeleteContext: resourceDeploymentDelete,
+		CreateContext: resourceK8sCreate,
+		ReadContext:   resourceK8sRead,
+		UpdateContext: resourceK8sUpdate,
+		DeleteContext: resourceK8sDelete,
 
 		Schema: map[string]*schema.Schema{
-
-			"deployments": &schema.Schema{
-				Type:     schema.TypeList,
+			"node_deployment_id": &schema.Schema{
+				Type:     schema.TypeMap,
 				Computed: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"deploymentid": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"nodeid": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"version": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"ip_range": {
-							Type:     schema.TypeString,
-							Optional: true,
-						},
-						"network_name": {
-							Type:     schema.TypeString,
-							Optional: true,
-						},
-					},
-				},
+				Elem:     &schema.Schema{Type: schema.TypeInt},
 			},
 			"disks": &schema.Schema{
 				Type:     schema.TypeList,
@@ -96,6 +68,11 @@ func k8sDeployment() *schema.Resource {
 					},
 				},
 			},
+			"nodes_ip_range": {
+				Type:     schema.TypeMap,
+				Required: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+			},
 			"master": {
 				MaxItems: 1,
 				Type:     schema.TypeList,
@@ -111,6 +88,17 @@ func k8sDeployment() *schema.Resource {
 							Type:        schema.TypeInt,
 							Optional:    true,
 							Computed:    true,
+							Default:     -1,
+						},
+						"node_id": {
+							Description: "Node ID",
+							Type:        schema.TypeInt,
+							Required:    true,
+						},
+						"disk_size": {
+							Description: "Data disk size",
+							Type:        schema.TypeInt,
+							Required:    true,
 						},
 						"publicip": {
 							Description: "If you want to enable public ip or not",
@@ -119,6 +107,11 @@ func k8sDeployment() *schema.Resource {
 						},
 						"computedip": {
 							Description: "The public ip",
+							Type:        schema.TypeString,
+							Computed:    true,
+						},
+						"token": {
+							Description: "The master token",
 							Type:        schema.TypeString,
 							Computed:    true,
 						},
@@ -269,65 +262,129 @@ func k8sDeployment() *schema.Resource {
 	}
 }
 
-func getFreeIP(ipRange gridtypes.IPNet, usedIPs []string) (string, error) {
-	i := 2
+func generateMasterWorkload(data map[string]interface{}, IP string, networkName string) []gridtypes.Workload {
+
+	size := data["disk_size"].(int)
+	version := data["version"].(int) + 1
+	diskWorkload := gridtypes.Workload{
+		Name:        "masterdisk",
+		Version:     0,
+		Type:        zos.ZMountType,
+		Description: "Master disk",
+		Data: gridtypes.MustMarshal(zos.ZMount{
+			Size: gridtypes.Unit(size) * gridtypes.Gigabyte,
+		}),
+	}
+
+	data["version"] = version
+	data["ip"] = IP
+	envVars := map[string]string{
+		"SSH_KEY":           data["ssh_key"].(string),
+		"K3S_TOKEN":         data["token"].(string),
+		"K3S_DATA_DIR":      "/mydisk",
+		"K3S_FLANNEL_IFACE": "eth0",
+		"K3S_NODE_NAME":     "master",
+		"K3S_URL":           "",
+	}
+	workload := gridtypes.Workload{
+		Version: Version,
+		Name:    gridtypes.Name(data["name"].(string)),
+		Type:    zos.ZMachineType,
+		Data: gridtypes.MustMarshal(zos.ZMachine{
+			FList: data["flist"].(string),
+			Network: zos.MachineNetwork{
+				Interfaces: []zos.MachineInterface{
+					{
+						Network: gridtypes.Name(networkName),
+						IP:      net.ParseIP(IP),
+					},
+				},
+			},
+			ComputeCapacity: zos.MachineCapacity{
+				CPU:    uint8(data["cpu"].(int)),
+				Memory: gridtypes.Unit(uint(data["memory"].(int))) * gridtypes.Megabyte,
+			},
+			Entrypoint: data["entrypoint"].(string),
+			Mounts: []zos.MachineMount{
+				zos.MachineMount{Name: gridtypes.Name("masterdisk"), Mountpoint: "/mydisk"},
+			},
+			Env: envVars,
+		}),
+	}
+
+	return []gridtypes.Workload{workload, diskWorkload}
+}
+
+func generateWorkerWorkload(data map[string]interface{}, workerName string, IP string, masterIP string, networkName string) []gridtypes.Workload {
+
+	size := data["disk_size"].(int)
+	version := data["version"].(int) + 1
+	diskName := gridtypes.Name(fmt.Sprintf("%s-disk", workerName))
+	diskWorkload := gridtypes.Workload{
+		Name:        diskName,
+		Version:     0,
+		Type:        zos.ZMountType,
+		Description: "Worker disk",
+		Data: gridtypes.MustMarshal(zos.ZMount{
+			Size: gridtypes.Unit(size) * gridtypes.Gigabyte,
+		}),
+	}
+
+	data["version"] = version
+	data["ip"] = IP
+	envVars := map[string]string{
+		"SSH_KEY":           data["ssh_key"].(string),
+		"K3S_TOKEN":         data["token"].(string),
+		"K3S_DATA_DIR":      "/mydisk",
+		"K3S_FLANNEL_IFACE": "eth0",
+		"K3S_NODE_NAME":     workerName,
+		"K3S_URL":           fmt.Sprintf("https://%s:6443", masterIP),
+	}
+	workload := gridtypes.Workload{
+		Version: Version,
+		Name:    gridtypes.Name(data["name"].(string)),
+		Type:    zos.ZMachineType,
+		Data: gridtypes.MustMarshal(zos.ZMachine{
+			FList: data["flist"].(string),
+			Network: zos.MachineNetwork{
+				Interfaces: []zos.MachineInterface{
+					{
+						Network: gridtypes.Name(networkName),
+						IP:      net.ParseIP(IP),
+					},
+				},
+			},
+			ComputeCapacity: zos.MachineCapacity{
+				CPU:    uint8(data["cpu"].(int)),
+				Memory: gridtypes.Unit(uint(data["memory"].(int))) * gridtypes.Megabyte,
+			},
+			Entrypoint: data["entrypoint"].(string),
+			Mounts: []zos.MachineMount{
+				zos.MachineMount{Name: diskName, Mountpoint: "/mydisk"},
+			},
+			Env: envVars,
+		}),
+	}
+
+	return []gridtypes.Workload{workload, diskWorkload}
+}
+
+func getK8sFreeIP(ipRange gridtypes.IPNet, usedIPs []string) (string, error) {
+	i := 254
 	l := len(ipRange.IP)
-	for i < 255 {
+	for i >= 2 {
 		ip := ipNet(ipRange.IP[l-4], ipRange.IP[l-3], ipRange.IP[l-2], byte(i), 32)
 		ipStr := fmt.Sprintf("%d.%d.%d.%d", ip.IP[l-4], ip.IP[l-3], ip.IP[l-2], ip.IP[l-1])
 		log.Printf("ip string: %s\n", ipStr)
 		if !isInStr(usedIPs, ipStr) {
 			return ipStr, nil
 		}
-		i += 1
+		i -= 1
 	}
 	return "", errors.New("all ips are used")
 }
 
-func getIPOnly(ip gridtypes.IPNet) string {
-	l := len(ip.IP)
-	return fmt.Sprintf("%d.%d.%d.%d", ip.IP[l-4], ip.IP[l-3], ip.IP[l-2], ip.IP[l-1])
-}
-
-func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deploymentID uint64) error {
-	done := false
-	for start := time.Now(); time.Since(start) < 4*time.Minute; {
-		done = true
-		dl, err := nodeClient.DeploymentGet(ctx, deploymentID)
-		if err != nil {
-			return err
-		}
-		for idx, wl := range dl.Workloads {
-			if wl.Result.State == "" {
-				done = false
-				continue
-			}
-			if wl.Result.State != gridtypes.StateOk {
-				return errors.New(fmt.Sprintf("workload %d failed within deployment %d with error %s", idx, deploymentID, wl.Result.Error))
-			}
-		}
-		if done {
-			return nil
-		}
-	}
-	return errors.New(fmt.Sprintf("waiting for deployment %d timedout", deploymentID))
-}
-
-func constructPublicIPWorkload(workloadName string) gridtypes.Workload {
-	return gridtypes.Workload{
-		Version: 0,
-		Name:    gridtypes.Name(workloadName),
-		Type:    zos.PublicIPType,
-		Data:    gridtypes.MustMarshal(zos.PublicIP{}),
-	}
-}
-
-type PubIPData struct {
-	IP      string `json:"ip"`
-	Gateway string `json:"gateway"`
-}
-
-func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	err := validate(d)
 	if err != nil {
 		return diag.FromErr(err)
@@ -349,104 +406,42 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 	// twinID := d.Get("twinid").(string)
 	// nodeID := uint32(d.Get("node").(int))
 
-	disks := d.Get("disks").([]interface{})
 	workloadsNodesMap := make(map[uint32][]gridtypes.Workload)
-	workloads := []gridtypes.Workload{}
-	updated_disks := make([]interface{}, 0)
-	for _, disk := range disks {
-		data := disk.(map[string]interface{})
-		nodeID := uint32(data["node"].(int))
-		data["version"] = Version
-		workload := gridtypes.Workload{
-			Name:        gridtypes.Name(data["name"].(string)),
-			Version:     Version,
-			Type:        zos.ZMountType,
-			Description: data["description"].(string),
-			Data: gridtypes.MustMarshal(zos.ZMount{
-				Size: gridtypes.Unit(data["size"].(int)) * gridtypes.Gigabyte,
-			}),
-		}
-		updated_disks = append(updated_disks, data)
-		workloadsNodesMap[nodeID] = append(workloadsNodesMap[nodeID], workload)
-	}
-	d.Set("disks", updated_disks)
 
 	ipRangeStr := d.Get("ip_range").(string)
 	ipRange, err := gridtypes.ParseIPNet(ipRangeStr)
 	usedIPs := make([]string, 0)
-
+	masterIP, err := getK8sFreeIP(ipRange, usedIPs)
+	if err != nil {
+		return diag.FromErr(errors.Wrap(err, "couldn't find a free ip"))
+	}
+	usedIPs = append(usedIPs, masterIP)
 	networkName := d.Get("network_name").(string)
 
 	publicIPCount := 0
-	master := d.Get("workers").([]interface{})[0]
-	updated_master := make([]interface{}, 0)
-
-	vms := d.Get("workers").([]interface{})
-	updated_vms := make([]interface{}, 0)
-	for _, vm := range vms {
+	master := d.Get("master").(map[string]interface{})
+	masterWorkloads := generateMasterWorkload(master, masterIP, networkName)
+	masterNodeID := uint32(master["node_id"].(int))
+	workloadsNodesMap[masterNodeID] = append(workloadsNodesMap[masterNodeID], masterWorkloads...)
+	workers := d.Get("workers").([]interface{})
+	updatedWorkers := make([]interface{}, 0)
+	for idx, vm := range workers {
 		data := vm.(map[string]interface{})
 		nodeID := uint32(data["node"].(int))
 		usedIPs = append(usedIPs, data["ip"].(string))
 		data["version"] = Version
-		mount_points := data["mounts"].([]interface{})
-		mounts := []zos.MachineMount{}
-		for _, mount_point := range mount_points {
-			point := mount_point.(map[string]interface{})
-			mount := zos.MachineMount{Name: gridtypes.Name(point["disk_name"].(string)), Mountpoint: point["mount_point"].(string)}
-			mounts = append(mounts, mount)
-		}
-		if data["publicip"].(bool) {
-			publicIPCount += 1
-			publicIPName := fmt.Sprintf("%sip", data["name"].(string))
-			workloads = append(workloads, constructPublicIPWorkload(publicIPName))
-		}
-		env_vars := data["env_vars"].([]interface{})
-		envVars := make(map[string]string)
-
-		for _, env_var := range env_vars {
-			envVar := env_var.(map[string]interface{})
-			envVars[envVar["key"].(string)] = envVar["value"].(string)
-		}
-		freeIP, err := getFreeIP(ipRange, usedIPs)
+		freeIP, err := getK8sFreeIP(ipRange, usedIPs)
 		if err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "couldn't get worker free ip"))
 		}
 		usedIPs = append(usedIPs, freeIP)
-		data["ip"] = freeIP
-		w := zos.MachineNetwork{
-			Interfaces: []zos.MachineInterface{
-				{
-					Network: gridtypes.Name(networkName),
-					IP:      net.ParseIP(freeIP),
-				},
-			},
-			Planetary: true,
-		}
-		if data["publicip"].(bool) {
-			w.PublicIP = gridtypes.Name(fmt.Sprintf("%sip", data["name"].(string)))
-		}
-		workload := gridtypes.Workload{
-			Version: Version,
-			Name:    gridtypes.Name(data["name"].(string)),
-			Type:    zos.ZMachineType,
-			Data: gridtypes.MustMarshal(zos.ZMachine{
-				FList:   data["flist"].(string),
-				Network: w,
-				ComputeCapacity: zos.MachineCapacity{
-					CPU:    uint8(data["cpu"].(int)),
-					Memory: gridtypes.Unit(uint(data["memory"].(int))) * gridtypes.Megabyte,
-				},
-				Entrypoint: data["entrypoint"].(string),
-				Mounts:     mounts,
-				Env:        envVars,
-			}),
-		}
-		updated_vms = append(updated_vms, data)
-		workloadsNodesMap[nodeID] = append(workloadsNodesMap[nodeID], workload)
+		workerName := fmt.Sprintf("worker-%d", idx)
+		workerWorkloads := generateWorkerWorkload(data, workerName, freeIP, masterIP, networkName)
+		updatedWorkers = append(updatedWorkers, data)
+		workloadsNodesMap[nodeID] = append(workloadsNodesMap[nodeID], workerWorkloads...)
 
 	}
-
-	d.Set("workers", updated_vms)
+	nodeDeploymendID := make(map[string]interface{})
 	for nodeID, workloads := range workloadsNodesMap {
 
 		dl := gridtypes.Deployment{
@@ -517,200 +512,19 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		pubIP := make(map[string]string)
-		for _, wl := range got.Workloads {
-			if wl.Type != zos.PublicIPType {
-				continue
-			}
-			d := PubIPData{}
-			if err := json.Unmarshal(wl.Result.Data, &d); err != nil {
-				return diag.FromErr(err)
-			}
-			pubIP[string(wl.Name)] = d.IP
-
-		}
-
-		updated_vms2 := make([]interface{}, 0)
-
-		for _, vm := range updated_vms {
-			data := vm.(map[string]interface{})
-			data["version"] = Version
-			ip, ok := pubIP[fmt.Sprintf("%sip", data["name"].(string))]
-			if ok {
-				data["computedip"] = ip
-			}
-			updated_vms2 = append(updated_vms2, data)
-		}
-		d.Set("vms", updated_vms2)
+		nodeDeploymendID[fmt.Sprintf("%d", nodeID)] = contractID
 		enc := json.NewEncoder(log.Writer())
 		enc.SetIndent("", "  ")
 		enc.Encode(got)
-		d.SetId(strconv.FormatUint(contractID, 10))
 		// resourceDiskRead(ctx, d, meta)
 	}
+	d.SetId(uuid.New().String())
+	d.Set("workers", updatedWorkers)
+	d.Set("master", master)
 	return diags
 }
 
-func flattenDiskData(workload gridtypes.Workload) (map[string]interface{}, error) {
-	if workload.Type == zos.ZMountType {
-		wl := make(map[string]interface{})
-		data, err := workload.WorkloadData()
-		if err != nil {
-			return nil, err
-		}
-		wl["name"] = workload.Name
-		wl["size"] = data.(*zos.ZMount).Size / gridtypes.Gigabyte
-		wl["description"] = workload.Description
-		wl["version"] = workload.Version
-		return wl, nil
-	}
-
-	return nil, errors.New("The wrokload is not of type zos.ZMountType")
-}
-func flattenVMData(workload gridtypes.Workload) (map[string]interface{}, error) {
-	if workload.Type == zos.ZMachineType {
-		wl := make(map[string]interface{})
-		workloadData, err := workload.WorkloadData()
-		if err != nil {
-			return nil, err
-		}
-		data := workloadData.(*zos.ZMachine)
-
-		mounts := make([]map[string]interface{}, 0)
-		for diskName, mountPoint := range data.Mounts {
-			mount := map[string]interface{}{
-				"disk_name": diskName, "mount_point": mountPoint,
-			}
-			mounts = append(mounts, mount)
-		}
-		wl["cpu"] = data.ComputeCapacity.CPU
-		wl["memory"] = data.ComputeCapacity.Memory
-		wl["mounts"] = mounts
-		wl["name"] = workload.Name
-		wl["flist"] = data.FList
-		wl["version"] = workload.Version
-		wl["description"] = workload.Description
-		return wl, nil
-	}
-
-	return nil, errors.New("The wrokload is not of type zos.ZMachineType")
-}
-
-func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	// use the meta valufreeIPe to retrieve your client from the provider configure method
-	apiClient := meta.(*apiClient)
-	cl := apiClient.client
-	var diags diag.Diagnostics
-	sub, err := substrate.NewSubstrate(apiClient.substrate_url)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	nodeID := uint32(d.Get("node").(int))
-	nodeInfo, err := sub.GetNode(nodeID)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-
-	node := client.NewNodeClient(uint32(nodeInfo.TwinID), cl)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	contractId, err := strconv.ParseUint(d.Id(), 10, 64)
-	deployment, err := node.DeploymentGet(ctx, contractId)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-
-	disks := make([]map[string]interface{}, 0, 0)
-	vms := make([]map[string]interface{}, 0, 0)
-	for _, workload := range deployment.Workloads {
-		if workload.Type == zos.ZMountType {
-			flattened, err := flattenDiskData(workload)
-			if err != nil {
-				return diag.FromErr(err)
-			}
-			disks = append(disks, flattened)
-
-		}
-		if workload.Type == zos.ZMachineType {
-			flattened, err := flattenVMData(workload)
-			if err != nil {
-				return diag.FromErr(err)
-			}
-			vms = append(vms, flattened)
-		}
-	}
-	d.Set("vms", vms)
-	d.Set("disks", disks)
-	d.Set("version", deployment.Version)
-	return diags
-}
-
-func diskHasChanged(disk map[string]interface{}, oldDisks []interface{}) (bool, map[string]interface{}) {
-	for _, d := range oldDisks {
-		diskData := d.(map[string]interface{})
-		if diskData["name"] == disk["name"] {
-			if diskData["description"] != disk["description"] || diskData["size"] != disk["size"] {
-				return true, diskData
-			} else {
-				return false, diskData
-			}
-
-		}
-
-	}
-	return false, nil
-}
-func zdbHasChanged(zdb map[string]interface{}, oldZdbs []interface{}) (bool, map[string]interface{}) {
-	for _, d := range oldZdbs {
-		zdbData := d.(map[string]interface{})
-		if zdbData["name"] == zdb["name"] {
-			if zdbData["password"] != zdb["password"] || zdbData["size"] != zdb["size"] || zdbData["description"] != zdb["description"] || zdbData["mode"] != zdb["mode"] {
-				return true, zdbData
-			} else {
-				return false, zdbData
-			}
-
-		}
-
-	}
-	return false, nil
-}
-
-func vmHasChanged(vm map[string]interface{}, oldVms []interface{}) (bool, map[string]interface{}) {
-	for _, machine := range oldVms {
-		vmData := machine.(map[string]interface{})
-		if vmData["name"] == vm["name"] && vmData["flist"] == vm["flist"] {
-			// if vmData.HasChange("cpu") || vmData.HasChange("memory") || vmData.HasChange("entrypoint") || vmData.HasChange("mounts") || vmData.HasChange("env_vars") {
-			if vmData["cpu"] != vm["cpu"] || vmData["memory"] != vm["memory"] || vmData["entrypoint"] != vm["entrypoint"] || reflect.DeepEqual(vmData["mounts"], vm["mounts"]) || reflect.DeepEqual(vmData["env_vars"], vm["env_vars"]) {
-				return true, vmData
-			} else {
-				return false, vmData
-			}
-
-		}
-
-	}
-	return false, nil
-
-}
-
-func validate(d *schema.ResourceData) error {
-	ipRangeStr := d.Get("ip_range").(string)
-	networkName := d.Get("network_name").(string)
-	vms := d.Get("vms").([]interface{})
-	_, err := gridtypes.ParseIPNet(ipRangeStr)
-	if len(vms) != 0 && err != nil {
-		return errors.Wrap(err, "If you pass a vm, ip_range must be set to a valid ip range (e.g. 10.1.3.0/16)")
-	}
-	if len(vms) != 0 && networkName == "" {
-		return errors.Wrap(err, "If you pass a vm, network_name must be non-empty")
-	}
-
-	return nil
-}
-
-func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceK8sUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	err := validate(d)
 	if err != nil {
 		return diag.FromErr(err)
@@ -989,7 +803,57 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 	return diags
 }
 
-func resourceDeploymentDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceK8sRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	// use the meta valufreeIPe to retrieve your client from the provider configure method
+	apiClient := meta.(*apiClient)
+	cl := apiClient.client
+	var diags diag.Diagnostics
+	sub, err := substrate.NewSubstrate(apiClient.substrate_url)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	nodeID := uint32(d.Get("node").(int))
+	nodeInfo, err := sub.GetNode(nodeID)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	node := client.NewNodeClient(uint32(nodeInfo.TwinID), cl)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	contractId, err := strconv.ParseUint(d.Id(), 10, 64)
+	deployment, err := node.DeploymentGet(ctx, contractId)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	disks := make([]map[string]interface{}, 0, 0)
+	vms := make([]map[string]interface{}, 0, 0)
+	for _, workload := range deployment.Workloads {
+		if workload.Type == zos.ZMountType {
+			flattened, err := flattenDiskData(workload)
+			if err != nil {
+				return diag.FromErr(err)
+			}
+			disks = append(disks, flattened)
+
+		}
+		if workload.Type == zos.ZMachineType {
+			flattened, err := flattenVMData(workload)
+			if err != nil {
+				return diag.FromErr(err)
+			}
+			vms = append(vms, flattened)
+		}
+	}
+	d.Set("vms", vms)
+	d.Set("disks", disks)
+	d.Set("version", deployment.Version)
+	return diags
+}
+
+func resourceK8sDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
 	nodeID := uint32(d.Get("node").(int))
