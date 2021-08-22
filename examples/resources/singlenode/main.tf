@@ -11,19 +11,19 @@ provider "grid" {
 }
 
 resource "grid_network" "net1" {
-    nodes = [1]
+    nodes = [2, 3]
     ip_range = "10.1.0.0/16"
     name = "network"
-    description = "newer network"
+    description = "very newer network"
 }
 
 resource "grid_deployment" "d1" {
-  node = 1
+  node = 2 
   network_name = grid_network.net1.name
-  ip_range = grid_network.net1.deployment_info[0].ip_range
+  ip_range = grid_network.net1.nodes_ip_range["2"]
 
   vms {
-    name = "vm1"
+    name = "vm"
     flist = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
     cpu = 1
     publicip = true
