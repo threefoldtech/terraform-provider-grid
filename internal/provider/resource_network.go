@@ -247,6 +247,13 @@ func resourceNetwork() *schema.Resource {
 				Required:    false,
 				Computed:    true,
 			},
+			"nodes_ip_range": {
+				Description: "Computed values of nodes' ip ranges after deployment",
+				Type:        schema.TypeMap,
+				Computed:    true,
+				Required:    false,
+				Elem:        &schema.Schema{Type: schema.TypeString},
+			},
 			"deployment_info": &schema.Schema{
 				Type:     schema.TypeList,
 				Required: false,
@@ -522,6 +529,10 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 		node_ids[i] = node_ids_ifs[i].(int)
 	}
 
+	if !isInInt(node_ids, public_node) {
+		node_ids = append(node_ids, public_node)
+	}
+
 	external_node_key, err := wgtypes.GeneratePrivateKey()
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "failed to generate private key"))
@@ -631,22 +642,31 @@ func StoreState(d *schema.ResourceData, stateInfo []NodeDeploymentsInfo) {
 	for _, info := range stateInfo {
 		encoded = append(encoded, info.Dictify())
 	}
+	nodesIpRange := make(map[string]interface{})
+	for _, info := range stateInfo {
+		infoDict := info.Dictify()
+		nodesIpRange[fmt.Sprintf("%d", infoDict["node_id"].(int))] = infoDict["ip_range"].(string)
+		encoded = append(encoded, infoDict)
+	}
+	d.Set("nodes_ip_range", nodesIpRange)
 	d.Set("deployment_info", encoded)
 }
 
 func loadState(d *schema.ResourceData) []NodeDeploymentsInfo {
 	encoded := d.Get("deployment_info").([]interface{})
+	nodesIpRange := d.Get("nodes_ip_range").(map[string]interface{})
 	stateInfo := make([]NodeDeploymentsInfo, 0)
 	for _, infoI := range encoded {
 		info := infoI.(map[string]interface{})
+		nodeID := info["node_id"].(int)
 		stateInfo = append(stateInfo, NodeDeploymentsInfo{
 			Version:      info["version"].(int),
 			DeploymentID: info["deployment_id"].(int),
-			NodeID:       info["node_id"].(int),
+			NodeID:       nodeID,
 			WGPrivateKey: info["wg_private_key"].(string),
 			WGPublicKey:  info["wg_public_key"].(string),
 			WGPort:       info["wg_port"].(int),
-			IPRange:      info["ip_range"].(string),
+			IPRange:      nodesIpRange[fmt.Sprintf("%d", nodeID)].(string), //
 		})
 	}
 	return stateInfo
@@ -730,7 +750,9 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 	for i := range node_ids_ifs {
 		node_ids[i] = node_ids_ifs[i].(int)
 	}
-
+	if !isInInt(node_ids, networkConfig.PublicNodeID) {
+		node_ids = append(node_ids, networkConfig.PublicNodeID)
+	}
 	var cur byte = 3
 	for _, node := range node_ids {
 		if _, exists := networkConfig.WGPort[node]; !exists {
