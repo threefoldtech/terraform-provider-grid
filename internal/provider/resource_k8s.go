@@ -97,15 +97,12 @@ func k8sDeployment() *schema.Resource {
 				},
 			},
 			"master": {
+				MaxItems: 1,
 				Type:     schema.TypeList,
 				Required: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": &schema.Schema{
-							Type:     schema.TypeString,
-							Required: true,
-						},
-						"flist": &schema.Schema{
 							Type:     schema.TypeString,
 							Required: true,
 						},
@@ -336,19 +333,6 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 		return diag.FromErr(err)
 	}
 
-	ipRangeStr := d.Get("ip_range").(string)
-	ipRange, err := gridtypes.ParseIPNet(ipRangeStr)
-	usedIPs := make([]string, 0)
-	vms := d.Get("workers").([]interface{})
-	for _, vm := range vms {
-		data := vm.(map[string]interface{})
-		usedIPs = append(usedIPs, data["ip"].(string))
-	}
-	networkName := d.Get("network_name").(string)
-
-	if err != nil {
-		return diag.FromErr(err)
-	}
 	apiClient := meta.(*apiClient)
 	identity, err := substrate.IdentityFromPhrase(string(apiClient.mnemonics))
 	if err != nil {
@@ -387,11 +371,22 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 	}
 	d.Set("disks", updated_disks)
 
+	ipRangeStr := d.Get("ip_range").(string)
+	ipRange, err := gridtypes.ParseIPNet(ipRangeStr)
+	usedIPs := make([]string, 0)
+
+	networkName := d.Get("network_name").(string)
+
 	publicIPCount := 0
+	master := d.Get("workers").([]interface{})[0]
+	updated_master := make([]interface{}, 0)
+
+	vms := d.Get("workers").([]interface{})
 	updated_vms := make([]interface{}, 0)
 	for _, vm := range vms {
 		data := vm.(map[string]interface{})
 		nodeID := uint32(data["node"].(int))
+		usedIPs = append(usedIPs, data["ip"].(string))
 		data["version"] = Version
 		mount_points := data["mounts"].([]interface{})
 		mounts := []zos.MachineMount{}
