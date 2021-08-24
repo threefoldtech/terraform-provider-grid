@@ -28,23 +28,23 @@ func New(version string) func() *schema.Provider {
 	return func() *schema.Provider {
 		p := &schema.Provider{
 			Schema: map[string]*schema.Schema{
-				"twin_id": &schema.Schema{
+				"twin_id": {
 					Type:        schema.TypeInt,
 					Required:    true,
 					DefaultFunc: schema.EnvDefaultFunc("TWIN_ID", 0),
 				},
-				"mnemonics": &schema.Schema{
+				"mnemonics": {
 					Type:        schema.TypeString,
 					Required:    true,
 					Sensitive:   true,
 					DefaultFunc: schema.EnvDefaultFunc("MNEMONICS", nil),
 				},
-				"substrate_url": &schema.Schema{
+				"substrate_url": {
 					Type:        schema.TypeString,
 					Required:    true,
 					DefaultFunc: schema.EnvDefaultFunc("", "wss://explorer.devnet.grid.tf/ws"),
 				},
-				"rmb_url": &schema.Schema{
+				"rmb_url": {
 					Type:        schema.TypeString,
 					Required:    true,
 					DefaultFunc: schema.EnvDefaultFunc("RMB_URL", "tcp://127.0.0.1:6379"),

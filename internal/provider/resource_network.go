@@ -182,10 +182,6 @@ func getNodeFreeWGPort(ctx context.Context, nodeClient *client.NodeClient, nodeI
 	return int(p), nil
 }
 
-func getNetworkFreeIp(fm string) string {
-	return fmt.Sprintf(fm, rand.Int31()%254+2)
-}
-
 func getPublicNode() int {
 	return 2
 }
@@ -264,38 +260,38 @@ func resourceNetwork() *schema.Resource {
 				},
 				Elem: &schema.Schema{Type: schema.TypeString},
 			},
-			"deployment_info": &schema.Schema{
+			"deployment_info": {
 
 				Type:     schema.TypeList,
 				Required: false,
 				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"node_id": &schema.Schema{
+						"node_id": {
 							Type:     schema.TypeInt,
 							Required: true,
 						},
-						"version": &schema.Schema{
+						"version": {
 							Type:     schema.TypeInt,
 							Required: true,
 						},
-						"deployment_id": &schema.Schema{
+						"deployment_id": {
 							Type:     schema.TypeInt,
 							Required: true,
 						},
-						"wg_private_key": &schema.Schema{
+						"wg_private_key": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
-						"wg_public_key": &schema.Schema{
+						"wg_public_key": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
-						"wg_port": &schema.Schema{
+						"wg_port": {
 							Type:     schema.TypeInt,
 							Required: true,
 						},
-						"ip_range": &schema.Schema{
+						"ip_range": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
@@ -320,12 +316,6 @@ func wgIP(ip gridtypes.IPNet) gridtypes.IPNet {
 		IP:   net.IPv4(100, 64, a, b),
 		Mask: net.CIDRMask(32, 32),
 	})
-
-}
-
-func ipOnly(ip gridtypes.IPNet) string {
-	l := len(ip.IP)
-	return fmt.Sprintf("%d.%d.%d.%d", ip.IP[l-4], ip.IP[l-3], ip.IP[l-2], ip.IP[l-1])
 
 }
 
@@ -406,8 +396,8 @@ func (nc *NetworkConfiguration) generateDeployments(ctx context.Context, userInf
 			if node == neigh {
 				continue
 			}
-			neigh_ip_range, _ := nc.IPs[neigh]
-			neigh_port, _ := nc.WGPort[neigh]
+			neigh_ip_range := nc.IPs[neigh]
+			neigh_port := nc.WGPort[neigh]
 			neigh_pubkey := nc.Keys[neigh].PublicKey().String()
 			neighClient, err := getNodClient(uint32(neigh))
 			if err != nil {
@@ -445,7 +435,7 @@ func (nc *NetworkConfiguration) generateDeployments(ctx context.Context, userInf
 			externalNodeIPStr := fmt.Sprintf("100.64.%d.%d", ip.IP[l-2], ip.IP[l-1])
 			nodePubky := nc.Keys[node].PublicKey().String()
 			WGConfig := generateWGConfig(externalNodeIPStr, nc.ExternalNodeKey.String(), nodePubky, fmt.Sprintf("%s:%d", publicIPStr, nc.WGPort[nc.PublicNodeID]), nc.IPRange)
-			log.Printf(WGConfig)
+			log.Printf("%s\n", WGConfig)
 			deploymentInfotmation.WGAccessConfiguration = WGConfig
 			peers = append(peers, zos.Peer{
 				Subnet:      nc.ExternalNodeIP,
@@ -638,7 +628,7 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 			return diag.FromErr(errors.Wrap(err, "failed to create new node client"))
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 80*time.Second)
+		ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
 		defer cancel()
 		log.Printf("creating conract, node: %d, hash: %s\n", node, hashHex)
 		contractID, err := sub.CreateContract(&identity, uint32(node), nil, hashHex, 0)
@@ -655,7 +645,7 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 
 		log.Printf("node: %d, contract: %d", node, contractID)
 
-		err = waitDeployment(ctx, nodeClient, deployment.ContractID)
+		err = waitDeployment(ctx, nodeClient, deployment.ContractID, Version)
 		if err != nil {
 			revokeDeployments = true
 			diags = append(diags, diag.Diagnostic{
@@ -713,36 +703,8 @@ func loadState(d *schema.ResourceData) []NodeDeploymentsInfo {
 }
 
 func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	// d.Set()
-	// nodesIfs := d.Get("nodes").([]interface{})
-	// nodes := make([]int, 0)
-	// for _, nodeIf := range nodesIfs {
-	// 	nodes = append(nodes, nodeIf.(int))
-	// }
-	// log.Printf("Is Reading issued?\n")
-	// nodesIpRange := d.Get("nodes_ip_range").(map[string]interface{})
-	// log.Printf("nodes %v\n", nodes)
-	// log.Printf("Old ip range %v\n", nodesIpRange)
 
-	// for _, node := range nodes {
-	// 	nodeStr := fmt.Sprintf("%d", node)
-	// 	_, ok := nodesIpRange[nodeStr]
-	// 	if !ok {
-	// 		nodesIpRange[nodeStr] = ""
-	// 	}
-	// }
-	// for nodeStr, _ := range nodesIpRange {
-	// 	node, err := strconv.Atoi(nodeStr)
-	// 	if err != nil {
-	// 		return diag.FromErr(err)
-	// 	}
-	// 	if !isInInt(nodes, node) {
-	// 		delete(nodesIpRange, nodeStr)
-	// 	}
-	// }
-	// log.Printf("New ip range %v\n", nodesIpRange)
-	// d.Set("nodes_ip_range", nil)
-	// d.SetNewComputed()
+	// hack in progress
 	FileContent, err := ioutil.ReadFile("main.tf") // just pass the file name
 	if err != nil {
 		fmt.Print(err)
@@ -750,6 +712,9 @@ func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta inter
 	var out interface{}
 	FileContentString := string(FileContent) // convert content to a 'string'
 	err = hcl.Decode(&out, FileContentString)
+	if err != nil {
+		return diag.FromErr(errors.Wrap(err, "decoding hcl"))
+	}
 	log.Println(out)
 
 	outData, err := json.Marshal(out)
@@ -894,7 +859,7 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 			return diag.FromErr(errors.Wrap(err, "failed to create new substrate client"))
 		}
 		node := node_ids[idx]
-		ver, _ := networkConfig.Versions[node]
+		ver := networkConfig.Versions[node]
 		deployment.Version = ver + 1
 		deployment.Workloads[0].Version = ver + 1
 		newStateInfo[idx].Version = ver + 1
@@ -921,7 +886,7 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 			}
 		} else {
 
-			deploymentID, _ := networkConfig.DeplotmentIDs[node]
+			deploymentID := networkConfig.DeplotmentIDs[node]
 			log.Printf("Updating contract %d\n", deploymentID)
 			contractID, err = sub.UpdateContract(&identity, uint64(deploymentID), nil, hashHex)
 			if err != nil {
@@ -953,7 +918,7 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 
 		log.Printf("node: %d, contract: %d", node, contractID)
 
-		err = waitDeployment(ctx, nodeClient, deployment.ContractID)
+		err = waitDeployment(ctx, nodeClient, deployment.ContractID, deployment.Version)
 		if err != nil {
 			diags = append(diags, diag.Diagnostic{
 				Severity: diag.Error,

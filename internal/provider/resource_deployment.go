@@ -48,20 +48,20 @@ func resourceDeployment() *schema.Resource {
 				Type:        schema.TypeInt,
 				Required:    true,
 			},
-			"disks": &schema.Schema{
+			"disks": {
 				Type:     schema.TypeList,
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"name": &schema.Schema{
+						"name": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
-						"size": &schema.Schema{
+						"size": {
 							Type:     schema.TypeInt,
 							Required: true,
 						},
-						"description": &schema.Schema{
+						"description": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
@@ -74,24 +74,24 @@ func resourceDeployment() *schema.Resource {
 					},
 				},
 			},
-			"zdbs": &schema.Schema{
+			"zdbs": {
 				Type:     schema.TypeList,
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"name": &schema.Schema{
+						"name": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
-						"password": &schema.Schema{
+						"password": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
-						"size": &schema.Schema{
+						"size": {
 							Type:     schema.TypeInt,
 							Required: true,
 						},
-						"description": &schema.Schema{
+						"description": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
@@ -110,16 +110,16 @@ func resourceDeployment() *schema.Resource {
 					},
 				},
 			},
-			"vms": &schema.Schema{
+			"vms": {
 				Type:     schema.TypeList,
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"name": &schema.Schema{
+						"name": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
-						"flist": &schema.Schema{
+						"flist": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
@@ -160,32 +160,32 @@ func resourceDeployment() *schema.Resource {
 							Type:        schema.TypeString,
 							Optional:    true,
 						},
-						"mounts": &schema.Schema{
+						"mounts": {
 							Type:     schema.TypeList,
 							Optional: true,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
-									"disk_name": &schema.Schema{
+									"disk_name": {
 										Type:     schema.TypeString,
 										Required: true,
 									},
-									"mount_point": &schema.Schema{
+									"mount_point": {
 										Type:     schema.TypeString,
 										Required: true,
 									},
 								},
 							},
 						},
-						"env_vars": &schema.Schema{
+						"env_vars": {
 							Type:     schema.TypeList,
 							Optional: true,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
-									"key": &schema.Schema{
+									"key": {
 										Type:     schema.TypeString,
 										Required: true,
 									},
-									"value": &schema.Schema{
+									"value": {
 										Type:     schema.TypeString,
 										Required: true,
 									},
@@ -226,18 +226,16 @@ func getFreeIP(ipRange gridtypes.IPNet, usedIPs []string) (string, error) {
 	return "", errors.New("all ips are used")
 }
 
-func getIPOnly(ip gridtypes.IPNet) string {
-	l := len(ip.IP)
-	return fmt.Sprintf("%d.%d.%d.%d", ip.IP[l-4], ip.IP[l-3], ip.IP[l-2], ip.IP[l-1])
-}
-
-func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deploymentID uint64) error {
+func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deploymentID uint64, version int) error {
 	done := false
-	for start := time.Now(); time.Since(start) < 4*time.Minute; {
+	for start := time.Now(); time.Since(start) < 4*time.Minute; time.Sleep(1 * time.Second) {
 		done = true
 		dl, err := nodeClient.DeploymentGet(ctx, deploymentID)
 		if err != nil {
 			return err
+		}
+		if dl.Version != version {
+			continue
 		}
 		for idx, wl := range dl.Workloads {
 			if wl.Result.State == "" {
@@ -272,11 +270,14 @@ type PubIPData struct {
 func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	err := validate(d)
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error validating deployment"))
 	}
 
 	ipRangeStr := d.Get("ip_range").(string)
 	ipRange, err := gridtypes.ParseIPNet(ipRangeStr)
+	if err != nil {
+		return diag.FromErr(errors.Wrap(err, "error parsing ip range"))
+	}
 	usedIPs := make([]string, 0)
 	vms := d.Get("vms").([]interface{})
 	for _, vm := range vms {
@@ -284,18 +285,14 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 		usedIPs = append(usedIPs, data["ip"].(string))
 	}
 	networkName := d.Get("network_name").(string)
-
-	if err != nil {
-		return diag.FromErr(err)
-	}
 	apiClient := meta.(*apiClient)
 	identity, err := substrate.IdentityFromPhrase(string(apiClient.mnemonics))
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error getting identity from phrase"))
 	}
 	userSK, err := identity.SecureKey()
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error getting identity's secret key"))
 	}
 
 	cl := apiClient.client
@@ -371,7 +368,7 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 		}
 		freeIP, err := getFreeIP(ipRange, usedIPs)
 		if err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "error getting free ip"))
 		}
 		usedIPs = append(usedIPs, freeIP)
 		data["ip"] = freeIP
@@ -431,7 +428,7 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 	}
 	//return
 	if err := dl.Sign(apiClient.twin_id, userSK); err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error signing deployment"))
 	}
 
 	hash, err := dl.ChallengeHash()
@@ -446,40 +443,40 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 	// create contract
 	sub, err := substrate.NewSubstrate(apiClient.substrate_url)
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error getting substrate client"))
 	}
 	nodeInfo, err := sub.GetNode(nodeID)
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error getting node info"))
 	}
 
 	node := client.NewNodeClient(uint32(nodeInfo.TwinID), cl)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()
 
 	log.Printf("[DEBUG] NodeId: %#v", nodeID)
 	log.Printf("[DEBUG] HASH: %#v", hashHex)
 	contractID, err := sub.CreateContract(&identity, nodeID, nil, hashHex, uint32(publicIPCount))
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error creating contract"))
 	}
 	dl.ContractID = contractID // from substrate
 
 	err = node.DeploymentDeploy(ctx, dl)
 	if err != nil {
 		cancelDeployment(ctx, node, sub, identity, contractID)
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error cancelling deployment"))
 	}
-	err = waitDeployment(ctx, node, dl.ContractID)
+	err = waitDeployment(ctx, node, dl.ContractID, Version)
 	if err != nil {
 		cancelDeployment(ctx, node, sub, identity, contractID)
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error waiting for deployment"))
 	}
 	got, err := node.DeploymentGet(ctx, dl.ContractID)
 	if err != nil {
 		cancelDeployment(ctx, node, sub, identity, contractID)
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error getting deployment"))
 	}
 	pubIP := make(map[string]string)
 	for _, wl := range got.Workloads {
@@ -488,7 +485,7 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 		}
 		d := PubIPData{}
 		if err := json.Unmarshal(wl.Result.Data, &d); err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "error unmarshalling"))
 		}
 		pubIP[string(wl.Name)] = d.IP
 
@@ -567,31 +564,35 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 	var diags diag.Diagnostics
 	sub, err := substrate.NewSubstrate(apiClient.substrate_url)
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error getting substrate client"))
 	}
 	nodeID := uint32(d.Get("node").(int))
 	nodeInfo, err := sub.GetNode(nodeID)
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error getting node client"))
 	}
 
 	node := client.NewNodeClient(uint32(nodeInfo.TwinID), cl)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()
 	contractId, err := strconv.ParseUint(d.Id(), 10, 64)
-	deployment, err := node.DeploymentGet(ctx, contractId)
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error parsing contract id"))
 	}
 
-	disks := make([]map[string]interface{}, 0, 0)
-	vms := make([]map[string]interface{}, 0, 0)
+	deployment, err := node.DeploymentGet(ctx, contractId)
+	if err != nil {
+		return diag.FromErr(errors.Wrap(err, "error getting deployment"))
+	}
+
+	disks := make([]map[string]interface{}, 0)
+	vms := make([]map[string]interface{}, 0)
 	for _, workload := range deployment.Workloads {
 		if workload.Type == zos.ZMountType {
 			flattened, err := flattenDiskData(workload)
 			if err != nil {
-				return diag.FromErr(err)
+				return diag.FromErr(errors.Wrap(err, "error flattening disk"))
 			}
 			disks = append(disks, flattened)
 
@@ -599,7 +600,7 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 		if workload.Type == zos.ZMachineType {
 			flattened, err := flattenVMData(workload)
 			if err != nil {
-				return diag.FromErr(err)
+				return diag.FromErr(errors.Wrap(err, "error flattening vm"))
 			}
 			vms = append(vms, flattened)
 		}
@@ -677,11 +678,14 @@ func validate(d *schema.ResourceData) error {
 func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	err := validate(d)
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error validating deployment"))
 	}
 	ipRangeStr := d.Get("ip_range").(string)
 	networkName := d.Get("network_name").(string)
 	ipRange, err := gridtypes.ParseIPNet(ipRangeStr)
+	if err != nil {
+		return diag.FromErr(errors.Wrap(err, "error parsing ip range"))
+	}
 	usedIPs := make([]string, 0)
 	vms := d.Get("vms").([]interface{})
 	for _, vm := range vms {
@@ -692,11 +696,11 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 	apiClient := meta.(*apiClient)
 	identity, err := substrate.IdentityFromPhrase(string(apiClient.mnemonics))
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error getting identity"))
 	}
 	userSK, err := identity.SecureKey()
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error getting user sk"))
 	}
 	cl := apiClient.client
 
@@ -804,14 +808,14 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 		ip, err := getFreeIP(ipRange, usedIPs)
 		changed, oldVmachine := vmHasChanged(data, oldVms.([]interface{}))
 		if err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "error when checking whether vm changed"))
 		}
 		if changed && oldVmachine != nil {
 			version = oldVmachine["version"].(int) + 1
-			ip = oldVmachine["ip_range"].(string)
+			ip = oldVmachine["ip"].(string)
 		} else if !changed && oldVmachine != nil {
 			version = oldVmachine["version"].(int)
-			ip = oldVmachine["ip_range"].(string)
+			ip = oldVmachine["ip"].(string)
 		} else {
 			usedIPs = append(usedIPs, ip)
 		}
@@ -887,7 +891,7 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 	}
 	//return
 	if err := dl.Sign(apiClient.twin_id, userSK); err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error signing deployment"))
 	}
 
 	hash, err := dl.ChallengeHash()
@@ -902,47 +906,47 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 	// create contract
 	sub, err := substrate.NewSubstrate(apiClient.substrate_url)
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error getting substrate client"))
 	}
 	nodeInfo, err := sub.GetNode(nodeID)
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error getting node info"))
 	}
 
 	node := client.NewNodeClient(uint32(nodeInfo.TwinID), cl)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()
 
 	total, used, err := node.Counters(ctx)
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error getting node counters"))
 	}
 
 	fmt.Printf("Total: %+v\nUsed: %+v\n", total, used)
 	contractID, err := strconv.ParseUint(d.Id(), 10, 64)
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error parsing contract id"))
 	}
 	contractID, err = sub.UpdateContract(&identity, contractID, nil, hashHex)
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error updating contract"))
 	}
 	dl.ContractID = contractID // from substrate
 
 	err = node.DeploymentUpdate(ctx, dl)
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error updating deployment"))
 	}
 
-	err = waitDeployment(ctx, node, dl.ContractID)
+	err = waitDeployment(ctx, node, dl.ContractID, dlVersion)
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error waiting for deployment"))
 	}
 
 	got, err := node.DeploymentGet(ctx, dl.ContractID)
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error getting deployment"))
 	}
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
@@ -959,38 +963,35 @@ func resourceDeploymentDelete(ctx context.Context, d *schema.ResourceData, meta 
 	nodeID := uint32(d.Get("node").(int))
 	identity, err := substrate.IdentityFromPhrase(string(apiClient.mnemonics))
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error getting identity"))
 	}
 
-	if err != nil {
-		return diag.FromErr(err)
-	}
 	cl := apiClient.client
 	sub, err := substrate.NewSubstrate(apiClient.substrate_url)
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error getting substrate client"))
 	}
 	nodeInfo, err := sub.GetNode(nodeID)
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error getting node info"))
 	}
 
 	node := client.NewNodeClient(uint32(nodeInfo.TwinID), cl)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()
 	contractID, err := strconv.ParseUint(d.Id(), 10, 64)
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error parsing contract id"))
 	}
 	err = sub.CancelContract(&identity, contractID)
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error cancelling contract"))
 	}
 
 	err = node.DeploymentDelete(ctx, contractID)
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error deleting deployment"))
 	}
 	d.SetId("")
 
