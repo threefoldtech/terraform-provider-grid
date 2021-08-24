@@ -5,6 +5,7 @@ go 1.15
 require (
 	github.com/emicklei/dot v0.16.0
 	github.com/google/uuid v1.2.0
+	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hashicorp/terraform-plugin-docs v0.4.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.6.1
 	github.com/pkg/errors v0.9.1

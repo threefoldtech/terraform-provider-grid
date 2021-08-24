@@ -455,7 +455,7 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 
 	node := client.NewNodeClient(uint32(nodeInfo.TwinID), cl)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
 	log.Printf("[DEBUG] NodeId: %#v", nodeID)
@@ -468,14 +468,17 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 
 	err = node.DeploymentDeploy(ctx, dl)
 	if err != nil {
+		cancelDeployment(ctx, node, sub, identity, contractID)
 		return diag.FromErr(err)
 	}
 	err = waitDeployment(ctx, node, dl.ContractID)
 	if err != nil {
+		cancelDeployment(ctx, node, sub, identity, contractID)
 		return diag.FromErr(err)
 	}
 	got, err := node.DeploymentGet(ctx, dl.ContractID)
 	if err != nil {
+		cancelDeployment(ctx, node, sub, identity, contractID)
 		return diag.FromErr(err)
 	}
 	pubIP := make(map[string]string)
@@ -574,7 +577,7 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 
 	node := client.NewNodeClient(uint32(nodeInfo.TwinID), cl)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 	contractId, err := strconv.ParseUint(d.Id(), 10, 64)
 	deployment, err := node.DeploymentGet(ctx, contractId)
@@ -908,7 +911,7 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 
 	node := client.NewNodeClient(uint32(nodeInfo.TwinID), cl)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
 	total, used, err := node.Counters(ctx)
@@ -974,7 +977,7 @@ func resourceDeploymentDelete(ctx context.Context, d *schema.ResourceData, meta 
 
 	node := client.NewNodeClient(uint32(nodeInfo.TwinID), cl)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 	contractID, err := strconv.ParseUint(d.Id(), 10, 64)
 	if err != nil {

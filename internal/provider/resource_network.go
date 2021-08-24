@@ -6,12 +6,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"net"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
@@ -88,7 +90,11 @@ func getNodeEndpoint(ctx context.Context, nodeClient *client.NodeClient) (string
 	ifs, err := nodeClient.NetworkListInterfaces(ctx)
 	log.Printf("if: %v\n", ifs)
 	if err == nil {
-		for _, iface := range ifs {
+		for name, iface := range ifs {
+			if name == "ygg0" {
+				// don't use yggdrasil, why?
+				continue
+			}
 			for _, ip := range iface {
 				log.Printf("ip: %s, globalunicast: %t, privateIP: %t\n", ip.String(), ip.IsGlobalUnicast(), isPrivateIP(ip))
 				if !ip.IsGlobalUnicast() || isPrivateIP(ip) {
@@ -181,7 +187,7 @@ func getNetworkFreeIp(fm string) string {
 }
 
 func getPublicNode() int {
-	return 1
+	return 2
 }
 
 func resourceNetwork() *schema.Resource {
@@ -251,10 +257,15 @@ func resourceNetwork() *schema.Resource {
 				Description: "Computed values of nodes' ip ranges after deployment",
 				Type:        schema.TypeMap,
 				Computed:    true,
+				Optional:    true,
 				Required:    false,
-				Elem:        &schema.Schema{Type: schema.TypeString},
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					return false
+				},
+				Elem: &schema.Schema{Type: schema.TypeString},
 			},
 			"deployment_info": &schema.Schema{
+
 				Type:     schema.TypeList,
 				Required: false,
 				Computed: true,
@@ -398,6 +409,10 @@ func (nc *NetworkConfiguration) generateDeployments(ctx context.Context, userInf
 			neigh_ip_range, _ := nc.IPs[neigh]
 			neigh_port, _ := nc.WGPort[neigh]
 			neigh_pubkey := nc.Keys[neigh].PublicKey().String()
+			neighClient, err := getNodClient(uint32(neigh))
+			if err != nil {
+				return nil, errors.Wrap(err, "coudn't get neighnbor node client")
+			}
 			allowed_ips := []gridtypes.IPNet{
 				neigh_ip_range,
 				wgIP(neigh_ip_range),
@@ -407,7 +422,7 @@ func (nc *NetworkConfiguration) generateDeployments(ctx context.Context, userInf
 				allowed_ips = append(allowed_ips, wgIP(nc.ExternalNodeIP))
 			}
 			log.Printf("%v\n", allowed_ips)
-			endpoint, err := getNodeEndpoint(ctx, nodeClient)
+			endpoint, err := getNodeEndpoint(ctx, neighClient)
 			if err != nil {
 				return nil, errors.Wrap(err, "couldn't get node endpoint")
 			}
@@ -510,6 +525,11 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 		return diag.FromErr(errors.Wrap(err, "failed to get identity secret key"))
 	}
 
+	sub, err := substrate.NewSubstrate(Substrate)
+	if err != nil {
+		return diag.FromErr(errors.Wrap(err, "failed to create new substrate client"))
+	}
+
 	cl := apiClient.client
 	userInfo := &UserIdentityInfo{
 		TwinID:   apiClient.twin_id,
@@ -572,6 +592,27 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 		stateInfo[idx].WGPrivateKey = privateKeys[node].String()
 		stateInfo[idx].WGPublicKey = privateKeys[node].PublicKey().String()
 	}
+	revokeDeployments := false
+	defer func() {
+		if !revokeDeployments {
+			return
+		}
+		for _, ndi := range stateInfo {
+			nodeID := uint32(ndi.NodeID)
+			deploymentID := ndi.DeploymentID
+			nodeClient, err := getNodClient(nodeID)
+			if err != nil {
+				log.Printf("couldn't get node client to delete non-successful deployments\n")
+				continue
+			}
+			log.Printf("deleting deployment %d", deploymentID)
+			err = cancelDeployment(ctx, nodeClient, sub, identity, uint64(deploymentID))
+
+			if err != nil {
+				log.Printf("couldn't cancel deployment %d because of %s\n", deploymentID, err)
+			}
+		}
+	}()
 	networkConfig.IPs = ip
 	networkConfig.WGPort = freePort
 	networkConfig.Keys = privateKeys
@@ -584,18 +625,16 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 		node := node_ids[idx]
 		hash, err := deployment.ChallengeHash()
 		if err != nil {
+			revokeDeployments = true
 			return diag.FromErr(errors.Wrap(err, "failed to create challenge hash"))
 		}
 
 		hashHex := hex.EncodeToString(hash)
-		sub, err := substrate.NewSubstrate(Substrate)
-		if err != nil {
-			return diag.FromErr(errors.Wrap(err, "failed to create new substrate client"))
-		}
 
 		nodeClient, err := getNodClient(uint32(node))
 
 		if err != nil {
+			revokeDeployments = true
 			return diag.FromErr(errors.Wrap(err, "failed to create new node client"))
 		}
 
@@ -604,11 +643,13 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 		log.Printf("creating conract, node: %d, hash: %s\n", node, hashHex)
 		contractID, err := sub.CreateContract(&identity, uint32(node), nil, hashHex, 0)
 		if err != nil {
+			revokeDeployments = true
 			return diag.FromErr(errors.Wrap(err, "failed to create contract"))
 		}
 		deployment.ContractID = contractID // from substrate
 		err = nodeClient.DeploymentDeploy(ctx, deployment)
 		if err != nil {
+			revokeDeployments = true
 			return diag.FromErr(errors.Wrap(err, "failed to deploy deployment"))
 		}
 
@@ -616,11 +657,13 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 
 		err = waitDeployment(ctx, nodeClient, deployment.ContractID)
 		if err != nil {
+			revokeDeployments = true
 			diags = append(diags, diag.Diagnostic{
 				Severity: diag.Error,
 				Summary:  "One network deployment failed",
 				Detail:   err.Error(),
 			})
+			return diags
 		}
 
 		enc := json.NewEncoder(log.Writer())
@@ -639,9 +682,6 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 
 func StoreState(d *schema.ResourceData, stateInfo []NodeDeploymentsInfo) {
 	encoded := make([]map[string]interface{}, 0)
-	for _, info := range stateInfo {
-		encoded = append(encoded, info.Dictify())
-	}
 	nodesIpRange := make(map[string]interface{})
 	for _, info := range stateInfo {
 		infoDict := info.Dictify()
@@ -673,6 +713,53 @@ func loadState(d *schema.ResourceData) []NodeDeploymentsInfo {
 }
 
 func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	// d.Set()
+	// nodesIfs := d.Get("nodes").([]interface{})
+	// nodes := make([]int, 0)
+	// for _, nodeIf := range nodesIfs {
+	// 	nodes = append(nodes, nodeIf.(int))
+	// }
+	// log.Printf("Is Reading issued?\n")
+	// nodesIpRange := d.Get("nodes_ip_range").(map[string]interface{})
+	// log.Printf("nodes %v\n", nodes)
+	// log.Printf("Old ip range %v\n", nodesIpRange)
+
+	// for _, node := range nodes {
+	// 	nodeStr := fmt.Sprintf("%d", node)
+	// 	_, ok := nodesIpRange[nodeStr]
+	// 	if !ok {
+	// 		nodesIpRange[nodeStr] = ""
+	// 	}
+	// }
+	// for nodeStr, _ := range nodesIpRange {
+	// 	node, err := strconv.Atoi(nodeStr)
+	// 	if err != nil {
+	// 		return diag.FromErr(err)
+	// 	}
+	// 	if !isInInt(nodes, node) {
+	// 		delete(nodesIpRange, nodeStr)
+	// 	}
+	// }
+	// log.Printf("New ip range %v\n", nodesIpRange)
+	// d.Set("nodes_ip_range", nil)
+	// d.SetNewComputed()
+	FileContent, err := ioutil.ReadFile("main.tf") // just pass the file name
+	if err != nil {
+		fmt.Print(err)
+	}
+	var out interface{}
+	FileContentString := string(FileContent) // convert content to a 'string'
+	err = hcl.Decode(&out, FileContentString)
+	log.Println(out)
+
+	outData, err := json.Marshal(out)
+	if err != nil {
+		log.Println(err.Error())
+
+	}
+	jsonStr := string(outData)
+	log.Println("The JSON data is:")
+	log.Println(jsonStr)
 	return diag.Diagnostics{}
 }
 
