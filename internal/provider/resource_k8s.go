@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -31,7 +32,7 @@ func resourceKubernetes() *schema.Resource {
 		DeleteContext: resourceK8sDelete,
 
 		Schema: map[string]*schema.Schema{
-			"node_deployment_id": &schema.Schema{
+			"node_deployment_id": {
 				Type:     schema.TypeMap,
 				Computed: true,
 				Elem:     &schema.Schema{Type: schema.TypeInt},
@@ -50,37 +51,6 @@ func resourceKubernetes() *schema.Resource {
 				Type:        schema.TypeString,
 				Required:    true,
 			},
-			"disks": &schema.Schema{
-				Type:     schema.TypeList,
-				Optional: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"name": &schema.Schema{
-							Type:     schema.TypeString,
-							Required: true,
-						},
-						"size": &schema.Schema{
-							Type:     schema.TypeInt,
-							Required: true,
-						},
-						"description": &schema.Schema{
-							Type:     schema.TypeString,
-							Required: true,
-						},
-						"version": {
-							Description: "Version",
-							Type:        schema.TypeInt,
-							Optional:    true,
-							Computed:    true,
-						},
-						"nodeid": {
-							Description: "Node ID",
-							Type:        schema.TypeInt,
-							Required:    true,
-						},
-					},
-				},
-			},
 			"nodes_ip_range": {
 				Type:     schema.TypeMap,
 				Required: true,
@@ -92,7 +62,7 @@ func resourceKubernetes() *schema.Resource {
 				Required: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"name": &schema.Schema{
+						"name": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
@@ -116,7 +86,7 @@ func resourceKubernetes() *schema.Resource {
 							Type:        schema.TypeBool,
 							Optional:    true,
 						},
-						"flist": &schema.Schema{
+						"flist": {
 							Type:     schema.TypeString,
 							Optional: true,
 							Default:  "https://hub.grid.tf/ahmed_hanafy_1/ahmedhanafy725-k3s-latest.flist",
@@ -142,33 +112,33 @@ func resourceKubernetes() *schema.Resource {
 							Type:        schema.TypeInt,
 							Required:    true,
 						},
-						"mounts": &schema.Schema{
+						"mounts": {
 							Type:     schema.TypeList,
 							Optional: true,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
-									"disk_name": &schema.Schema{
+									"disk_name": {
 										Type:     schema.TypeString,
 										Required: true,
 									},
-									"mount_point": &schema.Schema{
+									"mount_point": {
 										Type:     schema.TypeString,
 										Required: true,
 									},
 								},
 							},
 						},
-						"env_vars": &schema.Schema{
+						"env_vars": {
 							Type:     schema.TypeList,
 							Optional: true,
 							Computed: true,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
-									"key": &schema.Schema{
+									"key": {
 										Type:     schema.TypeString,
 										Required: true,
 									},
-									"value": &schema.Schema{
+									"value": {
 										Type:     schema.TypeString,
 										Required: true,
 									},
@@ -178,16 +148,16 @@ func resourceKubernetes() *schema.Resource {
 					},
 				},
 			},
-			"workers": &schema.Schema{
+			"workers": {
 				Type:     schema.TypeList,
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"name": &schema.Schema{
+						"name": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
-						"flist": &schema.Schema{
+						"flist": {
 							Type:     schema.TypeString,
 							Optional: true,
 							Default:  "https://hub.grid.tf/ahmed_hanafy_1/ahmedhanafy725-k3s-latest.flist",
@@ -234,33 +204,33 @@ func resourceKubernetes() *schema.Resource {
 							Type:        schema.TypeInt,
 							Required:    true,
 						},
-						"mounts": &schema.Schema{
+						"mounts": {
 							Type:     schema.TypeList,
 							Optional: true,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
-									"disk_name": &schema.Schema{
+									"disk_name": {
 										Type:     schema.TypeString,
 										Required: true,
 									},
-									"mount_point": &schema.Schema{
+									"mount_point": {
 										Type:     schema.TypeString,
 										Required: true,
 									},
 								},
 							},
 						},
-						"env_vars": &schema.Schema{
+						"env_vars": {
 							Type:     schema.TypeList,
 							Optional: true,
 							Computed: true,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
-									"key": &schema.Schema{
+									"key": {
 										Type:     schema.TypeString,
 										Required: true,
 									},
-									"value": &schema.Schema{
+									"value": {
 										Type:     schema.TypeString,
 										Required: true,
 									},
@@ -327,7 +297,7 @@ func generateMasterWorkload(data map[string]interface{}, IP string, networkName 
 			},
 			Entrypoint: "/sbin/zinit init",
 			Mounts: []zos.MachineMount{
-				zos.MachineMount{Name: gridtypes.Name("masterdisk"), Mountpoint: "/mydisk"},
+				{Name: gridtypes.Name("masterdisk"), Mountpoint: "/mydisk"},
 			},
 			Env: envVars,
 		}),
@@ -391,7 +361,7 @@ func generateWorkerWorkload(data map[string]interface{}, IP string, masterIP str
 			},
 			Entrypoint: "/sbin/zinit init",
 			Mounts: []zos.MachineMount{
-				zos.MachineMount{Name: diskName, Mountpoint: "/mydisk"},
+				{Name: diskName, Mountpoint: "/mydisk"},
 			},
 			Env: envVars,
 		}),
@@ -419,17 +389,17 @@ func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 	apiClient := meta.(*apiClient)
 	identity, err := substrate.IdentityFromPhrase(string(apiClient.mnemonics))
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error getting deployment"))
 	}
 	userSK, err := identity.SecureKey()
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error getting user sk"))
 	}
 
 	cl := apiClient.client
 	sub, err := substrate.NewSubstrate(apiClient.substrate_url)
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error getting substrate client"))
 	}
 
 	var diags diag.Diagnostics
@@ -496,7 +466,7 @@ func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 		for nodeID, deploymentID := range nodeDeploymentID {
 			nodeID, err := strconv.Atoi(nodeID)
 			if err != nil {
-				log.Printf("couldn't convert node if to int %s\n", nodeID)
+				log.Printf("couldn't convert node if to int %d\n", nodeID)
 				continue
 			}
 			nodeClient, err := getNodClient(uint32(nodeID))
@@ -512,6 +482,7 @@ func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 			}
 		}
 	}()
+	pubIP := make(map[string]string)
 	for nodeID, workloads := range workloadsNodesMap {
 
 		publicIPCount := 0
@@ -521,9 +492,8 @@ func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 			}
 		}
 		dl := gridtypes.Deployment{
-			Version: Version,
-			TwinID:  uint32(apiClient.twin_id), //LocalTwin,
-			// this contract id must match the one on substrate
+			Version:   Version,
+			TwinID:    uint32(apiClient.twin_id), //LocalTwin,
 			Workloads: workloads,
 			SignatureRequirement: gridtypes.SignatureRequirement{
 				WeightRequired: 1,
@@ -543,7 +513,7 @@ func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 		//return
 		if err := dl.Sign(apiClient.twin_id, userSK); err != nil {
 			revokeDeployments = true
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "error signing deployment"))
 		}
 
 		hash, err := dl.ChallengeHash()
@@ -560,7 +530,7 @@ func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 		nodeInfo, err := sub.GetNode(nodeID)
 		if err != nil {
 			revokeDeployments = true
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "error getting node info"))
 		}
 
 		node := client.NewNodeClient(uint32(nodeInfo.TwinID), cl)
@@ -573,7 +543,7 @@ func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 		contractID, err := sub.CreateContract(&identity, nodeID, nil, hashHex, uint32(publicIPCount))
 		if err != nil {
 			revokeDeployments = true
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "failed to create contract"))
 		}
 		dl.ContractID = contractID // from substrate
 		nodeDeploymentID[fmt.Sprintf("%d", nodeID)] = contractID
@@ -581,22 +551,45 @@ func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 		err = node.DeploymentDeploy(ctx, dl)
 		if err != nil {
 			revokeDeployments = true
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "failed to deploy deployment"))
 		}
-		err = waitDeployment(ctx, node, dl.ContractID)
+		err = waitDeployment(ctx, node, dl.ContractID, Version)
 		if err != nil {
 			revokeDeployments = true
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "error waiting for deployment"))
 		}
 		got, err := node.DeploymentGet(ctx, dl.ContractID)
 		if err != nil {
 			revokeDeployments = true
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "error getting deployment"))
 		}
 		enc := json.NewEncoder(log.Writer())
 		enc.SetIndent("", "  ")
 		enc.Encode(got)
+		for _, wl := range got.Workloads {
+			if wl.Type != zos.PublicIPType {
+				continue
+			}
+			d := PubIPData{}
+			if err := json.Unmarshal(wl.Result.Data, &d); err != nil {
+				return diag.FromErr(errors.Wrap(err, "error unmarshalling json"))
+			}
+			pubIP[string(wl.Name)] = d.IP
+
+		}
+
 		// resourceDiskRead(ctx, d, meta)
+	}
+	if master["publicip"].(bool) {
+		ipName := fmt.Sprintf("%sip", master["name"].(string))
+		master["computedip"] = pubIP[ipName]
+	}
+	for idx := range workers {
+		if !workers[idx].(map[string]interface{})["publicip"].(bool) {
+			continue
+		}
+		ipName := fmt.Sprintf("%sip", workers[idx].(map[string]interface{})["name"].(string))
+		workers[idx].(map[string]interface{})["computedip"] = pubIP[ipName]
 	}
 	d.SetId(uuid.New().String())
 	d.Set("workers", updatedWorkers)
@@ -609,15 +602,19 @@ func resourceK8sUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 	apiClient := meta.(*apiClient)
 	identity, err := substrate.IdentityFromPhrase(string(apiClient.mnemonics))
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error getting identity from phrase"))
 	}
 	userSK, err := identity.SecureKey()
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error getting user sk"))
 	}
 
 	cl := apiClient.client
 	sub, err := substrate.NewSubstrate(Substrate)
+
+	if err != nil {
+		return diag.FromErr(errors.Wrap(err, "error getting substrate client"))
+	}
 
 	var diags diag.Diagnostics
 	// twinID := d.Get("twinid").(string)
@@ -642,21 +639,32 @@ func resourceK8sUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 	token := d.Get("token").(string)
 	SSHKey := d.Get("ssh_key").(string)
 	nodeDeploymentID := d.Get("node_deployment_id").(map[string]interface{})
+	oldWorkloadHashes := make(map[string]string)
+	oldWorkloadVersion := make(map[string]int)
 	oldDeployments := make(map[int]gridtypes.Deployment)
 	for nodeID, deploymentID := range nodeDeploymentID {
 		nodeID, err := strconv.Atoi(nodeID)
 		if err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "error parsing node id"))
 		}
 		nodeClient, err := getNodClient(uint32(nodeID))
 		if err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "error getting node client"))
 		}
-		oldDeployments[nodeID], err = nodeClient.DeploymentGet(ctx, uint64(deploymentID.(int)))
+		dl, err := nodeClient.DeploymentGet(ctx, uint64(deploymentID.(int)))
 		if err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "error getting deployment"))
 		}
-
+		oldDeployments[nodeID] = dl
+		for _, w := range dl.Workloads {
+			hash := md5.New()
+			if err := w.Challenge(hash); err != nil {
+				return diag.FromErr(errors.Wrap(err, "couldn't create challenge"))
+			}
+			wKey := fmt.Sprintf("%d-%s", nodeID, w.Name)
+			oldWorkloadHashes[wKey] = string(hash.Sum(nil))
+			oldWorkloadVersion[wKey] = w.Version
+		}
 	}
 	masterList := d.Get("master").([]interface{})
 	master := masterList[0].(map[string]interface{})
@@ -689,19 +697,38 @@ func resourceK8sUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		workloadsNodesMap[nodeID] = append(workloadsNodesMap[nodeID], workerWorkloads...)
 
 	}
+	nodeDeploymentID = make(map[string]interface{})
+	pubIP := make(map[string]string)
 	for nodeID, workloads := range workloadsNodesMap {
 		createDeployment := true
-		deploymentID, ok := nodeDeploymentID[fmt.Sprintf("%d", nodeID)]
+		oldDeployment, ok := oldDeployments[int(nodeID)]
 		if ok {
 			createDeployment = false
 		}
 		version := 0
 		if !createDeployment {
-			version = oldDeployments[int(nodeID)].Version + 1
+			version = oldDeployment.Version + 1
 		}
-		for idx, _ := range workloads {
-			workloads[idx].Version = version
+		for idx := range workloads {
+			if createDeployment {
+				workloads[idx].Version = 0
+				continue
+			}
+			name := workloads[idx].Name
+			wKey := fmt.Sprintf("%d-%s", nodeID, name)
+			oldHash, exists := oldWorkloadHashes[wKey]
+			newHashObj := md5.New()
+			if err := workloads[idx].Challenge(newHashObj); err != nil {
+				return diag.FromErr(errors.Wrap(err, "couldn't get new workload hash"))
+			}
+			newHash := string(newHashObj.Sum(nil))
+			if !exists || oldHash != newHash {
+				workloads[idx].Version = version
+			} else {
+				workloads[idx].Version = oldWorkloadVersion[wKey]
+			}
 		}
+		log.Printf("Creating? %t, id? %d, version: %d\n", createDeployment, oldDeployment.ContractID, version)
 		publicIPCount := 0
 		for _, wl := range workloads {
 			if wl.Type == zos.PublicIPType {
@@ -723,13 +750,16 @@ func resourceK8sUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 				},
 			},
 		}
-
+		log.Printf("prepared deployment\n")
+		enc := json.NewEncoder(log.Writer())
+		enc.SetIndent("", "  ")
+		enc.Encode(dl)
 		if err := dl.Valid(); err != nil {
 			return diag.FromErr(errors.New("invalid: " + err.Error()))
 		}
 		//return
 		if err := dl.Sign(apiClient.twin_id, userSK); err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "error signing deployment"))
 		}
 
 		hash, err := dl.ChallengeHash()
@@ -744,11 +774,11 @@ func resourceK8sUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		// create contract
 		sub, err := substrate.NewSubstrate(apiClient.substrate_url)
 		if err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "error getting substrate client"))
 		}
 		nodeInfo, err := sub.GetNode(nodeID)
 		if err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "error getting node info"))
 		}
 
 		node := client.NewNodeClient(uint32(nodeInfo.TwinID), cl)
@@ -762,10 +792,10 @@ func resourceK8sUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		if createDeployment {
 			contractID, err = sub.CreateContract(&identity, nodeID, nil, hashHex, uint32(publicIPCount))
 			if err != nil {
-				return diag.FromErr(err)
+				return diag.FromErr(errors.Wrap(err, "error creating contract"))
 			}
 		} else {
-			contractID, err = sub.UpdateContract(&identity, uint64(deploymentID.(int)), nil, hashHex)
+			contractID, err = sub.UpdateContract(&identity, oldDeployment.ContractID, nil, hashHex)
 			if err != nil {
 				return diag.FromErr(errors.Wrap(err, "failed to update contract"))
 			}
@@ -783,19 +813,32 @@ func resourceK8sUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 			}
 
 		}
-		err = waitDeployment(ctx, node, dl.ContractID)
+		err = waitDeployment(ctx, node, dl.ContractID, version)
 		if err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "error waiting deployment"))
 		}
 		got, err := node.DeploymentGet(ctx, dl.ContractID)
 		if err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "error getting deployment"))
 		}
 		nodeDeploymentID[fmt.Sprintf("%d", nodeID)] = contractID
-		enc := json.NewEncoder(log.Writer())
+		enc = json.NewEncoder(log.Writer())
 		enc.SetIndent("", "  ")
 		enc.Encode(got)
 		// resourceDiskRead(ctx, d, meta)
+
+		for _, wl := range got.Workloads {
+			if wl.Type != zos.PublicIPType {
+				continue
+			}
+			d := PubIPData{}
+			if err := json.Unmarshal(wl.Result.Data, &d); err != nil {
+				return diag.FromErr(errors.Wrap(err, "error unmarshalling pubip data"))
+			}
+			pubIP[string(wl.Name)] = d.IP
+
+		}
+
 	}
 	for nodeID, deployment := range oldDeployments {
 		if _, ok := workloadsNodesMap[uint32(nodeID)]; ok {
@@ -803,9 +846,20 @@ func resourceK8sUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		}
 		nodeClient, err := getNodClient(uint32(nodeID))
 		if err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "error getting node client"))
 		}
 		cancelDeployment(ctx, nodeClient, sub, identity, deployment.ContractID)
+	}
+	if master["publicip"].(bool) {
+		ipName := fmt.Sprintf("%sip", master["name"].(string))
+		master["computedip"] = pubIP[ipName]
+	}
+	for idx := range updatedWorkers {
+		if !updatedWorkers[idx].(map[string]interface{})["publicip"].(bool) {
+			continue
+		}
+		ipName := fmt.Sprintf("%sip", updatedWorkers[idx].(map[string]interface{})["name"].(string))
+		updatedWorkers[idx].(map[string]interface{})["computedip"] = pubIP[ipName]
 	}
 	d.Set("workers", updatedWorkers)
 	d.Set("master", master)
@@ -824,7 +878,7 @@ func resourceK8sRead(ctx context.Context, d *schema.ResourceData, meta interface
 	var diags diag.Diagnostics
 	sub, err := substrate.NewSubstrate(apiClient.substrate_url)
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error getting substrate client"))
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
@@ -840,18 +894,18 @@ func resourceK8sRead(ctx context.Context, d *schema.ResourceData, meta interface
 		nodeID, err := strconv.Atoi(nodeID)
 
 		if err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "error parsing node id"))
 		}
 
 		nodeInfo, err := sub.GetNode(uint32(nodeID))
 		if err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "error getting node info"))
 		}
 
 		node := client.NewNodeClient(uint32(nodeInfo.TwinID), cl)
 		deployment, err := node.DeploymentGet(ctx, uint64(deploymentID.(int)))
 		if err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "error getting deployment"))
 		}
 
 		for _, wl := range deployment.Workloads {
@@ -860,7 +914,7 @@ func resourceK8sRead(ctx context.Context, d *schema.ResourceData, meta interface
 			}
 			data, err := wl.WorkloadData()
 			if err != nil {
-				return diag.FromErr(err)
+				return diag.FromErr(errors.Wrap(err, "error getting workload data"))
 			}
 			machine := data.(*zos.ZMachine)
 			if string(wl.Name) == masterName {
@@ -899,11 +953,11 @@ func resourceK8sRead(ctx context.Context, d *schema.ResourceData, meta interface
 func cancelDeployment(ctx context.Context, nc *client.NodeClient, sc *substrate.Substrate, identity substrate.Identity, id uint64) error {
 	err := sc.CancelContract(&identity, id)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error cancelling contract")
 	}
 
 	if err := nc.DeploymentDelete(ctx, id); err != nil {
-		return err
+		return errors.Wrap(err, "error deleting deployment")
 	}
 	return nil
 }
@@ -914,14 +968,14 @@ func resourceK8sDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 	nodeDeplomentID := d.Get("node_deployment_id").(map[string]interface{})
 	identity, err := substrate.IdentityFromPhrase(string(apiClient.mnemonics))
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error getting identity"))
 	}
 
 	cl := apiClient.client
 
 	sub, err := substrate.NewSubstrate(apiClient.substrate_url)
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "error getting substrate client"))
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
@@ -931,17 +985,17 @@ func resourceK8sDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 		nodeID, err := strconv.Atoi(nodeID)
 
 		if err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "error parsing node id"))
 		}
 		nodeInfo, err := sub.GetNode(uint32(nodeID))
 		if err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "error getting node info"))
 		}
 
 		nodeClient := client.NewNodeClient(uint32(nodeInfo.TwinID), cl)
 		err = cancelDeployment(ctx, nodeClient, sub, identity, uint64(deploymentID.(int)))
 		if err != nil {
-			return diag.FromErr(err)
+			return diag.FromErr(errors.Wrap(err, "error cancelling deployment"))
 		}
 	}
 	d.Set("node_deployment_id", nil)
