@@ -159,7 +159,7 @@ func getNodClient(nodeId uint32) (*client.NodeClient, error) {
 	log.Printf("fre node port, node id: %d\n", nodeId)
 	nodeInfo, err := sub.GetNode(nodeId)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create node client")
+		return nil, errors.Wrap(err, "failed to get node")
 	}
 
 	node := client.NewNodeClient(uint32(nodeInfo.TwinID), cl)

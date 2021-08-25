@@ -207,10 +207,6 @@ func resourceDeployment() *schema.Resource {
 	}
 }
 
-// func deploy(deployment []gridtypes.Workload, apiClient apiClient){
-
-// }
-
 func getFreeIP(ipRange gridtypes.IPNet, usedIPs []string) (string, error) {
 	i := 2
 	l := len(ipRange.IP)
