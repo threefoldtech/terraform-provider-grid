@@ -6,17 +6,16 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"net"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
+	"github.com/shurcooL/graphql"
 	"github.com/threefoldtech/zos/client"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -182,8 +181,37 @@ func getNodeFreeWGPort(ctx context.Context, nodeClient *client.NodeClient, nodeI
 	return int(p), nil
 }
 
-func getPublicNode() int {
-	return 2
+func getPublicNode(preferedNodes []int) (int, error) {
+
+	url := "https://explorer.devnet.grid.tf/graphql/"
+	client := graphql.NewClient(url, nil)
+	var q struct {
+		Nodes []struct {
+			NodeId       graphql.Int
+			PublicConfig struct {
+				Ipv4 graphql.String
+			}
+		}
+	}
+	err := client.Query(context.Background(), &q, nil)
+	if err != nil {
+		panic(err)
+	}
+	publicNode := 0
+	for _, node := range q.Nodes {
+		if node.PublicConfig.Ipv4 != "" {
+			if isInInt(preferedNodes, int(node.NodeId)) {
+				return int(node.NodeId), nil
+			} else {
+				publicNode = int(node.NodeId)
+			}
+		}
+	}
+	if publicNode == 0 {
+		return 0, errors.New("no nodes with public ipv4")
+	} else {
+		return publicNode, nil
+	}
 }
 
 func resourceNetwork() *schema.Resource {
@@ -496,6 +524,9 @@ func (nc *NetworkConfiguration) generateDeployments(ctx context.Context, userInf
 func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	diags := make([]diag.Diagnostic, 0)
 	apiClient := meta.(*apiClient)
+	rmbctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
 	networkName := d.Get("name").(string)
 	networkIPRange := d.Get("ip_range").(string)
 	networkIP, err := gridtypes.ParseIPNet(networkIPRange)
@@ -532,13 +563,16 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 	freePort := make(map[int]int)
 	ip := make(map[int]gridtypes.IPNet)
 	node_ids_ifs := d.Get("nodes").([]interface{})
-	public_node := getPublicNode()
 	node_ids := make([]int, len(node_ids_ifs))
 
 	for i := range node_ids_ifs {
 		node_ids[i] = node_ids_ifs[i].(int)
 	}
 
+	public_node, err := getPublicNode(node_ids)
+	if err != nil {
+		return diag.FromErr(errors.Wrap(err, "couldn't find public node"))
+	}
 	if !isInInt(node_ids, public_node) {
 		node_ids = append(node_ids, public_node)
 	}
@@ -703,28 +737,31 @@ func loadState(d *schema.ResourceData) []NodeDeploymentsInfo {
 }
 
 func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	// apiClient := meta.(*apiClient)
+	// rmbctx, cancel := context.WithCancel(ctx)
+	// defer cancel()
+	// go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
+	// // hack in progress
+	// FileContent, err := ioutil.ReadFile("main.tf") // just pass the file name
+	// if err != nil {
+	// 	fmt.Print(err)
+	// }
+	// var out interface{}
+	// FileContentString := string(FileContent) // convert content to a 'string'
+	// err = hcl.Decode(&out, FileContentString)
+	// if err != nil {
+	// 	return diag.FromErr(errors.Wrap(err, "decoding hcl"))
+	// }
+	// log.Println(out)
 
-	// hack in progress
-	FileContent, err := ioutil.ReadFile("main.tf") // just pass the file name
-	if err != nil {
-		fmt.Print(err)
-	}
-	var out interface{}
-	FileContentString := string(FileContent) // convert content to a 'string'
-	err = hcl.Decode(&out, FileContentString)
-	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "decoding hcl"))
-	}
-	log.Println(out)
+	// outData, err := json.Marshal(out)
+	// if err != nil {
+	// 	log.Println(err.Error())
 
-	outData, err := json.Marshal(out)
-	if err != nil {
-		log.Println(err.Error())
-
-	}
-	jsonStr := string(outData)
-	log.Println("The JSON data is:")
-	log.Println(jsonStr)
+	// }
+	// jsonStr := string(outData)
+	// log.Println("The JSON data is:")
+	// log.Println(jsonStr)
 	return diag.Diagnostics{}
 }
 
@@ -764,6 +801,9 @@ func loadNetworkConfig(d *schema.ResourceData, stateInfo []NodeDeploymentsInfo) 
 func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	diags := make([]diag.Diagnostic, 0)
 	apiClient := meta.(*apiClient)
+	rmbctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
 	networkName := d.Get("name").(string)
 	identity, err := substrate.IdentityFromPhrase(apiClient.mnemonics)
 
@@ -963,6 +1003,9 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 func resourceNetworkDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	apiClient := meta.(*apiClient)
 
+	rmbctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
 	stateInfo := loadState(d)
 	identity, err := substrate.IdentityFromPhrase(apiClient.mnemonics)
 

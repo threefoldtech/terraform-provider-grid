@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
+	gormb "github.com/threefoldtech/rmb"
 	"github.com/threefoldtech/zos/client"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -66,11 +67,6 @@ func resourceKubernetes() *schema.Resource {
 							Type:     schema.TypeString,
 							Required: true,
 						},
-						"version": {
-							Description: "Version",
-							Type:        schema.TypeInt,
-							Computed:    true,
-						},
 						"node": {
 							Description: "Node ID",
 							Type:        schema.TypeInt,
@@ -111,39 +107,6 @@ func resourceKubernetes() *schema.Resource {
 							Description: "Memory size",
 							Type:        schema.TypeInt,
 							Required:    true,
-						},
-						"mounts": {
-							Type:     schema.TypeList,
-							Optional: true,
-							Elem: &schema.Resource{
-								Schema: map[string]*schema.Schema{
-									"disk_name": {
-										Type:     schema.TypeString,
-										Required: true,
-									},
-									"mount_point": {
-										Type:     schema.TypeString,
-										Required: true,
-									},
-								},
-							},
-						},
-						"env_vars": {
-							Type:     schema.TypeList,
-							Optional: true,
-							Computed: true,
-							Elem: &schema.Resource{
-								Schema: map[string]*schema.Schema{
-									"key": {
-										Type:     schema.TypeString,
-										Required: true,
-									},
-									"value": {
-										Type:     schema.TypeString,
-										Required: true,
-									},
-								},
-							},
 						},
 					},
 				},
@@ -162,12 +125,6 @@ func resourceKubernetes() *schema.Resource {
 							Optional: true,
 							Default:  "https://hub.grid.tf/ahmed_hanafy_1/ahmedhanafy725-k3s-latest.flist",
 						},
-						"version": {
-							Description: "Version",
-							Type:        schema.TypeInt,
-							Optional:    true,
-							Computed:    true,
-						},
 						"disk_size": {
 							Description: "Data disk size",
 							Type:        schema.TypeInt,
@@ -204,39 +161,6 @@ func resourceKubernetes() *schema.Resource {
 							Type:        schema.TypeInt,
 							Required:    true,
 						},
-						"mounts": {
-							Type:     schema.TypeList,
-							Optional: true,
-							Elem: &schema.Resource{
-								Schema: map[string]*schema.Schema{
-									"disk_name": {
-										Type:     schema.TypeString,
-										Required: true,
-									},
-									"mount_point": {
-										Type:     schema.TypeString,
-										Required: true,
-									},
-								},
-							},
-						},
-						"env_vars": {
-							Type:     schema.TypeList,
-							Optional: true,
-							Computed: true,
-							Elem: &schema.Resource{
-								Schema: map[string]*schema.Schema{
-									"key": {
-										Type:     schema.TypeString,
-										Required: true,
-									},
-									"value": {
-										Type:     schema.TypeString,
-										Required: true,
-									},
-								},
-							},
-						},
 					},
 				},
 			},
@@ -248,7 +172,6 @@ func generateMasterWorkload(data map[string]interface{}, IP string, networkName 
 
 	workloads := make([]gridtypes.Workload, 0)
 	size := data["disk_size"].(int)
-	version := data["version"].(int)
 	masterName := data["name"].(string)
 	publicip := data["publicip"].(bool)
 	diskWorkload := gridtypes.Workload{
@@ -266,7 +189,6 @@ func generateMasterWorkload(data map[string]interface{}, IP string, networkName 
 		publicIPName = fmt.Sprintf("%sip", masterName)
 		workloads = append(workloads, constructPublicIPWorkload(publicIPName))
 	}
-	data["version"] = version
 	data["ip"] = IP
 	envVars := map[string]string{
 		"SSH_KEY":           SSHKey,
@@ -277,7 +199,7 @@ func generateMasterWorkload(data map[string]interface{}, IP string, networkName 
 		"K3S_URL":           "",
 	}
 	workload := gridtypes.Workload{
-		Version: Version,
+		Version: 0,
 		Name:    gridtypes.Name(data["name"].(string)),
 		Type:    zos.ZMachineType,
 		Data: gridtypes.MustMarshal(zos.ZMachine{
@@ -310,7 +232,6 @@ func generateMasterWorkload(data map[string]interface{}, IP string, networkName 
 func generateWorkerWorkload(data map[string]interface{}, IP string, masterIP string, networkName string, SSHKey string, token string) []gridtypes.Workload {
 	workloads := make([]gridtypes.Workload, 0)
 	size := data["disk_size"].(int)
-	version := data["version"].(int)
 	workerName := data["name"].(string)
 	diskName := gridtypes.Name(fmt.Sprintf("%sdisk", workerName))
 	publicip := data["publicip"].(bool)
@@ -330,7 +251,6 @@ func generateWorkerWorkload(data map[string]interface{}, IP string, masterIP str
 		publicIPName = fmt.Sprintf("%sip", workerName)
 		workloads = append(workloads, constructPublicIPWorkload(publicIPName))
 	}
-	data["version"] = version
 	data["ip"] = IP
 	envVars := map[string]string{
 		"SSH_KEY":           SSHKey,
@@ -341,7 +261,7 @@ func generateWorkerWorkload(data map[string]interface{}, IP string, masterIP str
 		"K3S_URL":           fmt.Sprintf("https://%s:6443", masterIP),
 	}
 	workload := gridtypes.Workload{
-		Version: Version,
+		Version: 0,
 		Name:    gridtypes.Name(data["name"].(string)),
 		Type:    zos.ZMachineType,
 		Data: gridtypes.MustMarshal(zos.ZMachine{
@@ -385,8 +305,22 @@ func getK8sFreeIP(ipRange gridtypes.IPNet, usedIPs []string) (string, error) {
 	return "", errors.New("all ips are used")
 }
 
+func startRmb(ctx context.Context, substrateURL string, twinID int) {
+	rmbClient, err := gormb.NewServer(true, substrateURL, "127.0.0.1:6379", twinID)
+	if err != nil {
+		log.Fatalf("couldn't start server %s\n", err)
+	}
+	if err := rmbClient.Serve(ctx); err != nil {
+		log.Printf("error serving rmb %s\n", err)
+	}
+}
+
 func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+
 	apiClient := meta.(*apiClient)
+	rmbctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
 	identity, err := substrate.IdentityFromPhrase(string(apiClient.mnemonics))
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "error getting deployment"))
@@ -427,7 +361,6 @@ func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 
 	masterList := d.Get("master").([]interface{})
 	master := masterList[0].(map[string]interface{})
-	master["version"] = 0
 	masterNodeID := uint32(master["node"].(int))
 	masterIP, err := getK8sFreeIP(nodesIPRange[masterNodeID], usedIPs[masterNodeID])
 	if err != nil {
@@ -442,7 +375,6 @@ func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 	for _, vm := range workers {
 		data := vm.(map[string]interface{})
 		nodeID := uint32(data["node"].(int))
-		data["version"] = 0
 		freeIP, err := getK8sFreeIP(nodesIPRange[nodeID], usedIPs[nodeID])
 		if err != nil {
 			return diag.FromErr(errors.Wrap(err, "couldn't get worker free ip"))
@@ -600,6 +532,9 @@ func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 
 func resourceK8sUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	apiClient := meta.(*apiClient)
+	rmbctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
 	identity, err := substrate.IdentityFromPhrase(string(apiClient.mnemonics))
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "error getting identity from phrase"))
@@ -686,7 +621,6 @@ func resourceK8sUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 	for _, vm := range workers {
 		data := vm.(map[string]interface{})
 		nodeID := uint32(data["node"].(int))
-		data["version"] = 0
 		freeIP, err := getK8sFreeIP(nodesIPRange[nodeID], usedIPs[nodeID])
 		if err != nil {
 			return diag.FromErr(errors.Wrap(err, "couldn't get worker free ip"))
@@ -870,6 +804,9 @@ func resourceK8sUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 func resourceK8sRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	// use the meta valufreeIPe to retrieve your client from the provider configure method
 	apiClient := meta.(*apiClient)
+	rmbctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
 	cl := apiClient.client
 
 	nodeDeplomentID := d.Get("node_deployment_id").(map[string]interface{})
@@ -881,7 +818,7 @@ func resourceK8sRead(ctx context.Context, d *schema.ResourceData, meta interface
 		return diag.FromErr(errors.Wrap(err, "error getting substrate client"))
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
+	ctx, cancel = context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()
 	masterName := master["name"].(string)
 	workloadIdx := make(map[string]int)
@@ -925,7 +862,6 @@ func resourceK8sRead(ctx context.Context, d *schema.ResourceData, meta interface
 				master["ip"] = machine.Network.Interfaces[0].IP.String() // make sure this doesn't fail when public ip is deployed
 				master["node"] = nodeID
 				master["publicip"] = machine.Network.PublicIP != ""
-				master["version"] = wl.Version
 			}
 			idx, ok := workloadIdx[string(wl.Name)]
 			if !ok {
@@ -940,7 +876,6 @@ func resourceK8sRead(ctx context.Context, d *schema.ResourceData, meta interface
 			worker["ip"] = machine.Network.Interfaces[0].IP.String() // make sure this doesn't fail when public ip is deployed
 			worker["node"] = nodeID
 			worker["publicip"] = machine.Network.PublicIP != ""
-			worker["version"] = wl.Version
 			workers[idx] = worker
 		}
 	}
@@ -965,6 +900,9 @@ func cancelDeployment(ctx context.Context, nc *client.NodeClient, sc *substrate.
 func resourceK8sDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
+	rmbctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
 	nodeDeplomentID := d.Get("node_deployment_id").(map[string]interface{})
 	identity, err := substrate.IdentityFromPhrase(string(apiClient.mnemonics))
 	if err != nil {
@@ -978,7 +916,7 @@ func resourceK8sDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 		return diag.FromErr(errors.Wrap(err, "error getting substrate client"))
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
+	ctx, cancel = context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()
 
 	for nodeID, deploymentID := range nodeDeplomentID {

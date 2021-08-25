@@ -286,6 +286,9 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 	}
 	networkName := d.Get("network_name").(string)
 	apiClient := meta.(*apiClient)
+	rmbctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
 	identity, err := substrate.IdentityFromPhrase(string(apiClient.mnemonics))
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "error getting identity from phrase"))
@@ -452,7 +455,7 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 
 	node := client.NewNodeClient(uint32(nodeInfo.TwinID), cl)
 
-	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
+	ctx, cancel = context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()
 
 	log.Printf("[DEBUG] NodeId: %#v", nodeID)
@@ -560,6 +563,9 @@ func flattenVMData(workload gridtypes.Workload) (map[string]interface{}, error) 
 func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	// use the meta valufreeIPe to retrieve your client from the provider configure method
 	apiClient := meta.(*apiClient)
+	rmbctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
 	cl := apiClient.client
 	var diags diag.Diagnostics
 	sub, err := substrate.NewSubstrate(apiClient.substrate_url)
@@ -574,7 +580,7 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 
 	node := client.NewNodeClient(uint32(nodeInfo.TwinID), cl)
 
-	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
+	ctx, cancel = context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()
 	contractId, err := strconv.ParseUint(d.Id(), 10, 64)
 	if err != nil {
@@ -694,6 +700,9 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 	}
 
 	apiClient := meta.(*apiClient)
+	rmbctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
 	identity, err := substrate.IdentityFromPhrase(string(apiClient.mnemonics))
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "error getting identity"))
@@ -915,7 +924,7 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 
 	node := client.NewNodeClient(uint32(nodeInfo.TwinID), cl)
 
-	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
+	ctx, cancel = context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()
 
 	total, used, err := node.Counters(ctx)
@@ -954,12 +963,40 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 	d.SetId(strconv.FormatUint(contractID, 10))
 	// resourceDiskRead(ctx, d, meta)
 
+	pubIP := make(map[string]string)
+	for _, wl := range got.Workloads {
+		if wl.Type != zos.PublicIPType {
+			continue
+		}
+		d := PubIPData{}
+		if err := json.Unmarshal(wl.Result.Data, &d); err != nil {
+			return diag.FromErr(errors.Wrap(err, "error unmarshalling"))
+		}
+		pubIP[string(wl.Name)] = d.IP
+
+	}
+
+	updatedVms2 := make([]interface{}, 0)
+
+	for _, vm := range updatedVms {
+		data := vm.(map[string]interface{})
+		data["version"] = Version
+		ip, ok := pubIP[fmt.Sprintf("%sip", data["name"].(string))]
+		if ok {
+			data["computedip"] = ip
+		}
+		updatedVms2 = append(updatedVms2, data)
+	}
+	d.Set("vms", updatedVms2)
 	return diags
 }
 
 func resourceDeploymentDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
+	rmbctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
 	nodeID := uint32(d.Get("node").(int))
 	identity, err := substrate.IdentityFromPhrase(string(apiClient.mnemonics))
 	if err != nil {
@@ -978,7 +1015,7 @@ func resourceDeploymentDelete(ctx context.Context, d *schema.ResourceData, meta 
 
 	node := client.NewNodeClient(uint32(nodeInfo.TwinID), cl)
 
-	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
+	ctx, cancel = context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()
 	contractID, err := strconv.ParseUint(d.Id(), 10, 64)
 	if err != nil {
