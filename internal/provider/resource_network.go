@@ -6,17 +6,16 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"net"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
+	"github.com/shurcooL/graphql"
 	"github.com/threefoldtech/zos/client"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -160,7 +159,7 @@ func getNodClient(nodeId uint32) (*client.NodeClient, error) {
 	log.Printf("fre node port, node id: %d\n", nodeId)
 	nodeInfo, err := sub.GetNode(nodeId)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create node client")
+		return nil, errors.Wrap(err, "failed to get node")
 	}
 
 	node := client.NewNodeClient(uint32(nodeInfo.TwinID), cl)
@@ -182,12 +181,37 @@ func getNodeFreeWGPort(ctx context.Context, nodeClient *client.NodeClient, nodeI
 	return int(p), nil
 }
 
-func getNetworkFreeIp(fm string) string {
-	return fmt.Sprintf(fm, rand.Int31()%254+2)
-}
+func getPublicNode(preferedNodes []int) (int, error) {
 
-func getPublicNode() int {
-	return 2
+	url := "https://explorer.devnet.grid.tf/graphql/"
+	client := graphql.NewClient(url, nil)
+	var q struct {
+		Nodes []struct {
+			NodeId       graphql.Int
+			PublicConfig struct {
+				Ipv4 graphql.String
+			}
+		}
+	}
+	err := client.Query(context.Background(), &q, nil)
+	if err != nil {
+		panic(err)
+	}
+	publicNode := 0
+	for _, node := range q.Nodes {
+		if node.PublicConfig.Ipv4 != "" {
+			if isInInt(preferedNodes, int(node.NodeId)) {
+				return int(node.NodeId), nil
+			} else {
+				publicNode = int(node.NodeId)
+			}
+		}
+	}
+	if publicNode == 0 {
+		return 0, errors.New("no nodes with public ipv4")
+	} else {
+		return publicNode, nil
+	}
 }
 
 func resourceNetwork() *schema.Resource {
@@ -264,38 +288,38 @@ func resourceNetwork() *schema.Resource {
 				},
 				Elem: &schema.Schema{Type: schema.TypeString},
 			},
-			"deployment_info": &schema.Schema{
+			"deployment_info": {
 
 				Type:     schema.TypeList,
 				Required: false,
 				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"node_id": &schema.Schema{
+						"node_id": {
 							Type:     schema.TypeInt,
 							Required: true,
 						},
-						"version": &schema.Schema{
+						"version": {
 							Type:     schema.TypeInt,
 							Required: true,
 						},
-						"deployment_id": &schema.Schema{
+						"deployment_id": {
 							Type:     schema.TypeInt,
 							Required: true,
 						},
-						"wg_private_key": &schema.Schema{
+						"wg_private_key": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
-						"wg_public_key": &schema.Schema{
+						"wg_public_key": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
-						"wg_port": &schema.Schema{
+						"wg_port": {
 							Type:     schema.TypeInt,
 							Required: true,
 						},
-						"ip_range": &schema.Schema{
+						"ip_range": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
@@ -320,12 +344,6 @@ func wgIP(ip gridtypes.IPNet) gridtypes.IPNet {
 		IP:   net.IPv4(100, 64, a, b),
 		Mask: net.CIDRMask(32, 32),
 	})
-
-}
-
-func ipOnly(ip gridtypes.IPNet) string {
-	l := len(ip.IP)
-	return fmt.Sprintf("%d.%d.%d.%d", ip.IP[l-4], ip.IP[l-3], ip.IP[l-2], ip.IP[l-1])
 
 }
 
@@ -406,8 +424,8 @@ func (nc *NetworkConfiguration) generateDeployments(ctx context.Context, userInf
 			if node == neigh {
 				continue
 			}
-			neigh_ip_range, _ := nc.IPs[neigh]
-			neigh_port, _ := nc.WGPort[neigh]
+			neigh_ip_range := nc.IPs[neigh]
+			neigh_port := nc.WGPort[neigh]
 			neigh_pubkey := nc.Keys[neigh].PublicKey().String()
 			neighClient, err := getNodClient(uint32(neigh))
 			if err != nil {
@@ -445,7 +463,7 @@ func (nc *NetworkConfiguration) generateDeployments(ctx context.Context, userInf
 			externalNodeIPStr := fmt.Sprintf("100.64.%d.%d", ip.IP[l-2], ip.IP[l-1])
 			nodePubky := nc.Keys[node].PublicKey().String()
 			WGConfig := generateWGConfig(externalNodeIPStr, nc.ExternalNodeKey.String(), nodePubky, fmt.Sprintf("%s:%d", publicIPStr, nc.WGPort[nc.PublicNodeID]), nc.IPRange)
-			log.Printf(WGConfig)
+			log.Printf("%s\n", WGConfig)
 			deploymentInfotmation.WGAccessConfiguration = WGConfig
 			peers = append(peers, zos.Peer{
 				Subnet:      nc.ExternalNodeIP,
@@ -506,6 +524,9 @@ func (nc *NetworkConfiguration) generateDeployments(ctx context.Context, userInf
 func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	diags := make([]diag.Diagnostic, 0)
 	apiClient := meta.(*apiClient)
+	rmbctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
 	networkName := d.Get("name").(string)
 	networkIPRange := d.Get("ip_range").(string)
 	networkIP, err := gridtypes.ParseIPNet(networkIPRange)
@@ -542,13 +563,16 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 	freePort := make(map[int]int)
 	ip := make(map[int]gridtypes.IPNet)
 	node_ids_ifs := d.Get("nodes").([]interface{})
-	public_node := getPublicNode()
 	node_ids := make([]int, len(node_ids_ifs))
 
 	for i := range node_ids_ifs {
 		node_ids[i] = node_ids_ifs[i].(int)
 	}
 
+	public_node, err := getPublicNode(node_ids)
+	if err != nil {
+		return diag.FromErr(errors.Wrap(err, "couldn't find public node"))
+	}
 	if !isInInt(node_ids, public_node) {
 		node_ids = append(node_ids, public_node)
 	}
@@ -638,7 +662,7 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 			return diag.FromErr(errors.Wrap(err, "failed to create new node client"))
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 80*time.Second)
+		ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
 		defer cancel()
 		log.Printf("creating conract, node: %d, hash: %s\n", node, hashHex)
 		contractID, err := sub.CreateContract(&identity, uint32(node), nil, hashHex, 0)
@@ -655,7 +679,7 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 
 		log.Printf("node: %d, contract: %d", node, contractID)
 
-		err = waitDeployment(ctx, nodeClient, deployment.ContractID)
+		err = waitDeployment(ctx, nodeClient, deployment.ContractID, Version)
 		if err != nil {
 			revokeDeployments = true
 			diags = append(diags, diag.Diagnostic{
@@ -713,53 +737,31 @@ func loadState(d *schema.ResourceData) []NodeDeploymentsInfo {
 }
 
 func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	// d.Set()
-	// nodesIfs := d.Get("nodes").([]interface{})
-	// nodes := make([]int, 0)
-	// for _, nodeIf := range nodesIfs {
-	// 	nodes = append(nodes, nodeIf.(int))
+	// apiClient := meta.(*apiClient)
+	// rmbctx, cancel := context.WithCancel(ctx)
+	// defer cancel()
+	// go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
+	// // hack in progress
+	// FileContent, err := ioutil.ReadFile("main.tf") // just pass the file name
+	// if err != nil {
+	// 	fmt.Print(err)
 	// }
-	// log.Printf("Is Reading issued?\n")
-	// nodesIpRange := d.Get("nodes_ip_range").(map[string]interface{})
-	// log.Printf("nodes %v\n", nodes)
-	// log.Printf("Old ip range %v\n", nodesIpRange)
-
-	// for _, node := range nodes {
-	// 	nodeStr := fmt.Sprintf("%d", node)
-	// 	_, ok := nodesIpRange[nodeStr]
-	// 	if !ok {
-	// 		nodesIpRange[nodeStr] = ""
-	// 	}
+	// var out interface{}
+	// FileContentString := string(FileContent) // convert content to a 'string'
+	// err = hcl.Decode(&out, FileContentString)
+	// if err != nil {
+	// 	return diag.FromErr(errors.Wrap(err, "decoding hcl"))
 	// }
-	// for nodeStr, _ := range nodesIpRange {
-	// 	node, err := strconv.Atoi(nodeStr)
-	// 	if err != nil {
-	// 		return diag.FromErr(err)
-	// 	}
-	// 	if !isInInt(nodes, node) {
-	// 		delete(nodesIpRange, nodeStr)
-	// 	}
+	// log.Println(out)
+
+	// outData, err := json.Marshal(out)
+	// if err != nil {
+	// 	log.Println(err.Error())
+
 	// }
-	// log.Printf("New ip range %v\n", nodesIpRange)
-	// d.Set("nodes_ip_range", nil)
-	// d.SetNewComputed()
-	FileContent, err := ioutil.ReadFile("main.tf") // just pass the file name
-	if err != nil {
-		fmt.Print(err)
-	}
-	var out interface{}
-	FileContentString := string(FileContent) // convert content to a 'string'
-	err = hcl.Decode(&out, FileContentString)
-	log.Println(out)
-
-	outData, err := json.Marshal(out)
-	if err != nil {
-		log.Println(err.Error())
-
-	}
-	jsonStr := string(outData)
-	log.Println("The JSON data is:")
-	log.Println(jsonStr)
+	// jsonStr := string(outData)
+	// log.Println("The JSON data is:")
+	// log.Println(jsonStr)
 	return diag.Diagnostics{}
 }
 
@@ -799,6 +801,9 @@ func loadNetworkConfig(d *schema.ResourceData, stateInfo []NodeDeploymentsInfo) 
 func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	diags := make([]diag.Diagnostic, 0)
 	apiClient := meta.(*apiClient)
+	rmbctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
 	networkName := d.Get("name").(string)
 	identity, err := substrate.IdentityFromPhrase(apiClient.mnemonics)
 
@@ -894,7 +899,7 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 			return diag.FromErr(errors.Wrap(err, "failed to create new substrate client"))
 		}
 		node := node_ids[idx]
-		ver, _ := networkConfig.Versions[node]
+		ver := networkConfig.Versions[node]
 		deployment.Version = ver + 1
 		deployment.Workloads[0].Version = ver + 1
 		newStateInfo[idx].Version = ver + 1
@@ -921,7 +926,7 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 			}
 		} else {
 
-			deploymentID, _ := networkConfig.DeplotmentIDs[node]
+			deploymentID := networkConfig.DeplotmentIDs[node]
 			log.Printf("Updating contract %d\n", deploymentID)
 			contractID, err = sub.UpdateContract(&identity, uint64(deploymentID), nil, hashHex)
 			if err != nil {
@@ -953,7 +958,7 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 
 		log.Printf("node: %d, contract: %d", node, contractID)
 
-		err = waitDeployment(ctx, nodeClient, deployment.ContractID)
+		err = waitDeployment(ctx, nodeClient, deployment.ContractID, deployment.Version)
 		if err != nil {
 			diags = append(diags, diag.Diagnostic{
 				Severity: diag.Error,
@@ -998,6 +1003,9 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 func resourceNetworkDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	apiClient := meta.(*apiClient)
 
+	rmbctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
 	stateInfo := loadState(d)
 	identity, err := substrate.IdentityFromPhrase(apiClient.mnemonics)
 
