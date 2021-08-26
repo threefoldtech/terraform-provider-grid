@@ -23,13 +23,12 @@ mv terraform-provider-grid ~/.terraform.d/plugins/threefoldtech.com/providers/gr
 
 ## Using the provider
 ```bash
-./msgbusd --twin <TWIN_ID> #run message bus with your twin id
-cd examples/resources
+cd examples/resources/singlenode
 export MNEMONICS="<mnemonics workds>"
 export TWIN_ID="<your twin id>"
 terraform init && terraform apply -parallelism=1
 ```
 ## Destroying deployment
 ```bash
-terraform destroy
+terraform destroy -parallelism=1
 ```
