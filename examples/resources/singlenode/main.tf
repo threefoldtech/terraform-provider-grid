@@ -1,14 +1,15 @@
-
 terraform {
   required_providers {
     grid = {
-      version = "0.1"
-      source  = "threefoldtech.com/providers/grid"
+      source = "threefoldtech/grid"
+      version = "0.1.0"
     }
   }
 }
-provider "grid" {    
+
+provider "grid" {
 }
+
 resource "grid_network" "net1" {
     nodes = [2, 4]
     ip_range = "10.1.0.0/16"
