@@ -5,6 +5,7 @@
 
 -	[Terraform](https://www.terraform.io/downloads.html) >= 0.13.x
 -	[Go](https://golang.org/doc/install) >= 1.15
+-   A registered twin on the grid (make sure yggdrasil is running) [steps](https://github.com/threefoldtech/TFGRID/blob/development/wiki/tfgrid_substrate/substrate/grid_substrate_getting_started.md)
 
 ## Building The Provider
 

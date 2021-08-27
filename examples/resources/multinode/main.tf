@@ -12,16 +12,16 @@ provider "grid" {
 
 
 resource "grid_network" "net1" {
-    nodes = [1, 2]
+    nodes = [2, 4]
     ip_range = "172.20.0.0/16"
     name = "net1"
     description = "new network"
 }
 
 resource "grid_deployment" "d1" {
-  node = 1
+  node = 4
   network_name = grid_network.net1.name
-  ip_range = grid_network.net1.deployment_info[0].ip_range
+  ip_range = grid_network.net1.nodes_ip_range["4"]
   vms {
     name = "vm1"
     flist = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
@@ -40,7 +40,7 @@ resource "grid_deployment" "d1" {
 resource "grid_deployment" "d2" {
   node = 2
   network_name = grid_network.net1.name
-  ip_range = grid_network.net1.deployment_info[1].ip_range
+  ip_range = grid_network.net1.nodes_ip_range["2"]
   vms {
     name = "vm3"
     flist = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
