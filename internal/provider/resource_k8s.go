@@ -15,7 +15,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
-	gormb "github.com/threefoldtech/rmb"
 	"github.com/threefoldtech/zos/client"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -168,6 +167,288 @@ func resourceKubernetes() *schema.Resource {
 	}
 }
 
+type K8sNodeData struct {
+	Name       string
+	Node       uint32
+	DiskSize   int
+	PublicIP   bool
+	Flist      string
+	ComputedIP string
+	IP         string
+	Cpu        int
+	Memory     int
+}
+
+type K8sDeployer struct {
+	Master           K8sNodeData
+	Workers          []K8sNodeData
+	NodesIPRange     map[uint32]gridtypes.IPNet
+	Token            string
+	SSHKey           string
+	NetworkName      string
+	NodeDeploymentID map[uint32]uint64
+
+	APIClient *apiClient
+
+	UsedIPs     map[uint32][]string
+	nodeClients map[uint32]*client.NodeClient
+}
+
+func NewK8sNodeData(m map[string]interface{}) K8sNodeData {
+	return K8sNodeData{
+		Name:       m["name"].(string),
+		Node:       uint32(m["node"].(int)),
+		DiskSize:   m["disk_size"].(int),
+		PublicIP:   m["publicip"].(bool),
+		Flist:      m["flist"].(string),
+		ComputedIP: m["computedip"].(string),
+		IP:         m["ip"].(string),
+		Cpu:        m["cpu"].(int),
+		Memory:     m["memory"].(int),
+	}
+}
+
+func NewK8sDeployer(d *schema.ResourceData, apiClient *apiClient) (K8sDeployer, error) {
+	master := NewK8sNodeData(d.Get("master").([]interface{})[0].(map[string]interface{}))
+	workers := make([]K8sNodeData, 0)
+	usedIPs := make(map[uint32][]string)
+	nodesIPRange := make(map[uint32]gridtypes.IPNet)
+	nodesIPRangeIf := d.Get("nodes_ip_range").(map[string]interface{})
+	for node, r := range nodesIPRangeIf {
+		nodeInt, err := strconv.ParseUint(node, 10, 32)
+		if err != nil {
+			return K8sDeployer{}, errors.Wrap(err, "couldn't parse node id")
+		}
+		nodesIPRange[uint32(nodeInt)], err = gridtypes.ParseIPNet(r.(string))
+		if err != nil {
+			return K8sDeployer{}, errors.Wrap(err, "couldn't parse node ip range")
+		}
+	}
+	if master.IP != "" {
+		usedIPs[master.Node] = append(usedIPs[master.Node], master.IP)
+	}
+	for _, w := range d.Get("workers").([]interface{}) {
+		data := NewK8sNodeData(w.(map[string]interface{}))
+		workers = append(workers, data)
+		if data.IP != "" {
+			usedIPs[data.Node] = append(usedIPs[data.Node], data.IP)
+		}
+	}
+	nodeDeploymentIDIf := d.Get("node_deployment_id").(map[string]interface{})
+	nodeDeploymentID := make(map[uint32]uint64)
+	for node, id := range nodeDeploymentIDIf {
+		nodeInt, err := strconv.ParseUint(node, 10, 32)
+		if err != nil {
+			return K8sDeployer{}, errors.Wrap(err, "couldn't parse node id")
+		}
+		deploymentID := uint64(id.(int))
+		nodeDeploymentID[uint32(nodeInt)] = deploymentID
+	}
+
+	deployer := K8sDeployer{
+		Master:           master,
+		Workers:          workers,
+		Token:            d.Get("token").(string),
+		SSHKey:           d.Get("ssh_key").(string),
+		NetworkName:      d.Get("network_name").(string),
+		NodeDeploymentID: nodeDeploymentID,
+		UsedIPs:          usedIPs,
+		NodesIPRange:     nodesIPRange,
+		APIClient:        apiClient,
+	}
+	return deployer, nil
+}
+
+func (k *K8sNodeData) Dictify() map[string]interface{} {
+	res := make(map[string]interface{})
+	res["name"] = k.Name
+	res["node"] = int(k.Node)
+	res["disk_size"] = k.DiskSize
+	res["publicip"] = k.PublicIP
+	res["flist"] = k.Flist
+	res["computedip"] = k.ComputedIP
+	res["ip"] = k.IP
+	res["cpu"] = k.Cpu
+	res["Memory"] = k.Memory
+	return res
+}
+
+func (k *K8sDeployer) storeState(d *schema.ResourceData) {
+	workers := make([]interface{}, 0)
+	for _, w := range k.Workers {
+		workers = append(workers, w.Dictify())
+	}
+	nodeDeploymentID := make(map[string]interface{})
+	for node, id := range k.NodeDeploymentID {
+		nodeDeploymentID[fmt.Sprintf("%d", node)] = int(id)
+	}
+	d.Set("master", []interface{}{k.Master.Dictify()})
+	d.Set("workers", workers)
+	d.Set("token", k.Token)
+	d.Set("ssh_key", k.SSHKey)
+	d.Set("network_name", k.NetworkName)
+	d.Set("node_deployment_id", nodeDeploymentID)
+}
+
+func (k *K8sDeployer) assignNodesIPs() error {
+	// TODO: when a k8s node changes its zos node, remove its ip from the used ones
+	masterNodeRange := k.NodesIPRange[k.Master.Node]
+	if k.Master.IP == "" || !masterNodeRange.Contains(net.ParseIP(k.Master.IP)) {
+		ip, err := getK8sFreeIP(masterNodeRange, k.UsedIPs[k.Master.Node])
+		if err != nil {
+			return errors.Wrap(err, "failed to find free ip for master")
+		}
+		k.Master.IP = ip
+		k.UsedIPs[k.Master.Node] = append(k.UsedIPs[k.Master.Node], ip)
+	}
+	for idx, w := range k.Workers {
+		workerNodeRange := k.NodesIPRange[w.Node]
+		if k.Master.IP != "" && !workerNodeRange.Contains(net.ParseIP(k.Master.IP)) {
+			continue
+		}
+		ip, err := getK8sFreeIP(workerNodeRange, k.UsedIPs[w.Node])
+		if err != nil {
+			return errors.Wrap(err, "failed to find free ip for master")
+		}
+		k.Workers[idx].IP = ip
+		k.UsedIPs[w.Node] = append(k.UsedIPs[w.Node], ip)
+	}
+	return nil
+}
+func (k *K8sDeployer) getNodeClient(nodeID uint32) (*client.NodeClient, error) {
+	cl, ok := k.nodeClients[nodeID]
+	if ok {
+		return cl, nil
+	}
+	nodeInfo, err := k.APIClient.sub.GetNode(nodeID)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get node")
+	}
+
+	cl = client.NewNodeClient(uint32(nodeInfo.TwinID), k.APIClient.rmb)
+	k.nodeClients[nodeID] = cl
+	return cl, nil
+}
+func (k *K8sDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
+	err := k.assignNodesIPs()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to assign node ips")
+	}
+	deployments := make(map[uint32]gridtypes.Deployment)
+	nodeWorkloads := make(map[uint32][]gridtypes.Workload)
+	masterWorkloads := k.Master.GenerateK8sWorkload(k, "")
+	nodeWorkloads[k.Master.Node] = append(nodeWorkloads[k.Master.Node], masterWorkloads...)
+	for _, w := range k.Workers {
+		workerWorkloads := w.GenerateK8sWorkload(k, k.Master.IP)
+		nodeWorkloads[w.Node] = append(nodeWorkloads[w.Node], workerWorkloads...)
+	}
+
+	for node, ws := range nodeWorkloads {
+		dl := gridtypes.Deployment{
+			Version: 0,
+			TwinID:  uint32(k.APIClient.twin_id), //LocalTwin,
+			// this contract id must match the one on substrate
+			Workloads: ws,
+			SignatureRequirement: gridtypes.SignatureRequirement{
+				WeightRequired: 1,
+				Requests: []gridtypes.SignatureRequest{
+					{
+						TwinID: k.APIClient.twin_id,
+						Weight: 1,
+					},
+				},
+			},
+		}
+		deployments[node] = dl
+	}
+	return deployments, nil
+}
+func (k *K8sDeployer) GetOldDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
+
+	deployments := make(map[uint32]gridtypes.Deployment)
+	for node, id := range k.NodeDeploymentID {
+		client, err := k.getNodeClient(node)
+		if err != nil {
+			return nil, errors.Wrap(err, "couldn't get node client")
+		}
+		dl, err := client.DeploymentGet(ctx, id)
+		if err != nil {
+			return nil, errors.Wrap(err, "couldn't fetch deployment")
+		}
+		deployments[node] = dl
+	}
+	return deployments, nil
+}
+
+func (k *K8sDeployer) Deploy(ctx context.Context) error {
+	newDeployments, err := k.GenerateVersionlessDeployments(ctx)
+	if err != nil {
+		return errors.Wrap(err, "couldn't generate deployments data")
+	}
+	oldDeployments, err := k.GetOldDeployments(ctx)
+
+}
+
+func (k *K8sNodeData) GenerateK8sWorkload(deployer *K8sDeployer, masterIP string) []gridtypes.Workload {
+	diskName := fmt.Sprintf("%sdist", k.Name)
+	workloads := make([]gridtypes.Workload, 0)
+	diskWorkload := gridtypes.Workload{
+		Name:        gridtypes.Name(diskName),
+		Version:     0,
+		Type:        zos.ZMountType,
+		Description: "",
+		Data: gridtypes.MustMarshal(zos.ZMount{
+			Size: gridtypes.Unit(k.DiskSize) * gridtypes.Gigabyte,
+		}),
+	}
+	workloads = append(workloads, diskWorkload)
+	publicIPName := ""
+	if k.PublicIP {
+		publicIPName = fmt.Sprintf("%sip", k.Name)
+		workloads = append(workloads, constructPublicIPWorkload(publicIPName))
+	}
+	envVars := map[string]string{
+		"SSH_KEY":           deployer.SSHKey,
+		"K3S_TOKEN":         deployer.Token,
+		"K3S_DATA_DIR":      "/mydisk",
+		"K3S_FLANNEL_IFACE": "eth0",
+		"K3S_NODE_NAME":     k.Name,
+		"K3S_URL":           "",
+	}
+	if masterIP != "" {
+		envVars["K3S_URL"] = masterIP
+	}
+	workload := gridtypes.Workload{
+		Version: 0,
+		Name:    gridtypes.Name(k.Name),
+		Type:    zos.ZMachineType,
+		Data: gridtypes.MustMarshal(zos.ZMachine{
+			FList: k.Flist,
+			Network: zos.MachineNetwork{
+				Interfaces: []zos.MachineInterface{
+					{
+						Network: gridtypes.Name(deployer.NetworkName),
+						IP:      net.ParseIP(k.IP),
+					},
+				},
+				PublicIP: gridtypes.Name(publicIPName),
+			},
+			ComputeCapacity: zos.MachineCapacity{
+				CPU:    uint8(k.Cpu),
+				Memory: gridtypes.Unit(uint(k.Memory)) * gridtypes.Megabyte,
+			},
+			Entrypoint: "/sbin/zinit init",
+			Mounts: []zos.MachineMount{
+				{Name: gridtypes.Name("masterdisk"), Mountpoint: "/mydisk"},
+			},
+			Env: envVars,
+		}),
+	}
+	workloads = append(workloads, workload)
+
+	return workloads
+}
+
 func generateMasterWorkload(data map[string]interface{}, IP string, networkName string, SSHKey string, token string) []gridtypes.Workload {
 
 	workloads := make([]gridtypes.Workload, 0)
@@ -303,16 +584,6 @@ func getK8sFreeIP(ipRange gridtypes.IPNet, usedIPs []string) (string, error) {
 		i -= 1
 	}
 	return "", errors.New("all ips are used")
-}
-
-func startRmb(ctx context.Context, substrateURL string, twinID int) {
-	rmbClient, err := gormb.NewServer(true, substrateURL, "127.0.0.1:6379", twinID)
-	if err != nil {
-		log.Fatalf("couldn't start server %s\n", err)
-	}
-	if err := rmbClient.Serve(ctx); err != nil {
-		log.Printf("error serving rmb %s\n", err)
-	}
 }
 
 func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
