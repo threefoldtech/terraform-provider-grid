@@ -421,7 +421,6 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 			},
 		},
 	}
-
 	if err := dl.Valid(); err != nil {
 		return diag.FromErr(errors.New("invalid: " + err.Error()))
 	}
@@ -465,7 +464,7 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 	err = node.DeploymentDeploy(ctx, dl)
 	if err != nil {
 		cancelDeployment(ctx, node, sub, identity, contractID)
-		return diag.FromErr(errors.Wrap(err, "error cancelling deployment"))
+		return diag.FromErr(errors.Wrap(err, "error deploying deployment"))
 	}
 	err = waitDeployment(ctx, node, dl.ContractID, Version)
 	if err != nil {
@@ -826,12 +825,18 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 		}
 
 		data["version"] = version
+		data["computedip"] = ""
 		mount_points := data["mounts"].([]interface{})
 		mounts := []zos.MachineMount{}
 		for _, mount_point := range mount_points {
 			point := mount_point.(map[string]interface{})
 			mount := zos.MachineMount{Name: gridtypes.Name(point["disk_name"].(string)), Mountpoint: point["mount_point"].(string)}
 			mounts = append(mounts, mount)
+		}
+
+		if data["publicip"].(bool) {
+			publicIPName := fmt.Sprintf("%sip", data["name"].(string))
+			workloads = append(workloads, constructPublicIPWorkload(publicIPName))
 		}
 
 		env_vars := data["env_vars"].([]interface{})
@@ -841,30 +846,33 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 			envVar := env_var.(map[string]interface{})
 			envVars[envVar["key"].(string)] = envVar["value"].(string)
 		}
+		workloadData := zos.ZMachine{
+			FList: data["flist"].(string),
+			Network: zos.MachineNetwork{
+				Interfaces: []zos.MachineInterface{
+					{
+						Network: gridtypes.Name(networkName),
+						IP:      net.ParseIP(ip),
+					},
+				},
+				Planetary: true,
+			},
+			ComputeCapacity: zos.MachineCapacity{
+				CPU:    uint8(data["cpu"].(int)),
+				Memory: gridtypes.Unit(uint(data["memory"].(int))) * gridtypes.Megabyte,
+			},
+			Entrypoint: data["entrypoint"].(string),
+			Mounts:     mounts,
+			Env:        envVars,
+		}
+		if data["publicip"].(bool) {
+			workloadData.Network.PublicIP = gridtypes.Name(fmt.Sprintf("%sip", data["name"].(string)))
+		}
 		workload := gridtypes.Workload{
 			Version: version,
 			Name:    gridtypes.Name(data["name"].(string)),
 			Type:    zos.ZMachineType,
-			Data: gridtypes.MustMarshal(zos.ZMachine{
-				FList: data["flist"].(string),
-				Network: zos.MachineNetwork{
-					Interfaces: []zos.MachineInterface{
-						{
-							Network: gridtypes.Name(networkName),
-							IP:      net.ParseIP(ip),
-						},
-					},
-					Planetary: true,
-					PublicIP:  gridtypes.Name(fmt.Sprintf("%sip", data["name"].(string))),
-				},
-				ComputeCapacity: zos.MachineCapacity{
-					CPU:    uint8(data["cpu"].(int)),
-					Memory: gridtypes.Unit(uint(data["memory"].(int))) * gridtypes.Megabyte,
-				},
-				Entrypoint: data["entrypoint"].(string),
-				Mounts:     mounts,
-				Env:        envVars,
-			}),
+			Data:    gridtypes.MustMarshal(workloadData),
 		}
 		workloads = append(workloads, workload)
 		updatedVms = append(updatedVms, data)
