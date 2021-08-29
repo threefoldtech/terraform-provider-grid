@@ -5,7 +5,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/pkg/errors"
 	"github.com/threefoldtech/zos/pkg/rmb"
+	"github.com/threefoldtech/zos/pkg/substrate"
 )
 
 func init() {
@@ -71,7 +73,8 @@ type apiClient struct {
 	mnemonics     string
 	substrate_url string
 	rmb_url       string
-	client        rmb.Client
+	rmb           rmb.Client
+	sub           *substrate.Substrate
 }
 
 func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
@@ -84,9 +87,13 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	cl, err := rmb.NewClient(apiClient.rmb_url)
 
 	if err != nil {
-		panic(err)
+		return nil, diag.FromErr(errors.Wrap(err, "couldn't create rmb client"))
 	}
-	apiClient.client = cl
+	apiClient.rmb = cl
+	apiClient.sub, err = substrate.NewSubstrate(apiClient.substrate_url)
+	if err != nil {
+		return nil, diag.FromErr(errors.Wrap(err, "couldn't create substrate client"))
+	}
 
 	return &apiClient, nil
 }
