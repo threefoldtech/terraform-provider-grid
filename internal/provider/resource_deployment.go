@@ -222,33 +222,6 @@ func getFreeIP(ipRange gridtypes.IPNet, usedIPs []string) (string, error) {
 	return "", errors.New("all ips are used")
 }
 
-func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deploymentID uint64, version int) error {
-	done := false
-	for start := time.Now(); time.Since(start) < 4*time.Minute; time.Sleep(1 * time.Second) {
-		done = true
-		dl, err := nodeClient.DeploymentGet(ctx, deploymentID)
-		if err != nil {
-			return err
-		}
-		if dl.Version != version {
-			continue
-		}
-		for idx, wl := range dl.Workloads {
-			if wl.Result.State == "" {
-				done = false
-				continue
-			}
-			if wl.Result.State != gridtypes.StateOk {
-				return errors.New(fmt.Sprintf("workload %d failed within deployment %d with error %s", idx, deploymentID, wl.Result.Error))
-			}
-		}
-		if done {
-			return nil
-		}
-	}
-	return errors.New(fmt.Sprintf("waiting for deployment %d timedout", deploymentID))
-}
-
 func constructPublicIPWorkload(workloadName string) gridtypes.Workload {
 	return gridtypes.Workload{
 		Version: 0,
@@ -294,7 +267,7 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 		return diag.FromErr(errors.Wrap(err, "error getting identity's secret key"))
 	}
 
-	cl := apiClient.client
+	cl := apiClient.rmb
 
 	var diags diag.Diagnostics
 	// twinID := d.Get("twinid").(string)
@@ -561,7 +534,7 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
-	cl := apiClient.client
+	cl := apiClient.rmb
 	var diags diag.Diagnostics
 	sub, err := substrate.NewSubstrate(apiClient.substrate_url)
 	if err != nil {
@@ -706,7 +679,7 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "error getting user sk"))
 	}
-	cl := apiClient.client
+	cl := apiClient.rmb
 
 	var diags diag.Diagnostics
 	// twinID := d.Get("twinid").(string)
@@ -1007,7 +980,7 @@ func resourceDeploymentDelete(ctx context.Context, d *schema.ResourceData, meta 
 		return diag.FromErr(errors.Wrap(err, "error getting identity"))
 	}
 
-	cl := apiClient.client
+	cl := apiClient.rmb
 	sub, err := substrate.NewSubstrate(apiClient.substrate_url)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "error getting substrate client"))

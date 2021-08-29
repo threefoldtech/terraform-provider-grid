@@ -551,7 +551,7 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 		return diag.FromErr(errors.Wrap(err, "failed to create new substrate client"))
 	}
 
-	cl := apiClient.client
+	cl := apiClient.rmb
 	userInfo := &UserIdentityInfo{
 		TwinID:   apiClient.twin_id,
 		Identity: identity,
@@ -816,7 +816,7 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 		return diag.FromErr(errors.Wrap(err, "failed to get identity secret key"))
 	}
 
-	cl := apiClient.client
+	cl := apiClient.rmb
 	userInfo := &UserIdentityInfo{
 		TwinID:   apiClient.twin_id,
 		Identity: identity,
