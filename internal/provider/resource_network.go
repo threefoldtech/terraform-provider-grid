@@ -167,6 +167,7 @@ func getNodClient(nodeId uint32) (*client.NodeClient, error) {
 }
 
 func getNodeFreeWGPort(ctx context.Context, nodeClient *client.NodeClient, nodeId uint32) (int, error) {
+	rand.Seed(time.Now().UnixNano())
 	freeports, err := nodeClient.NetworkListWGPorts(ctx)
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to list wg ports")
@@ -624,10 +625,18 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 		for _, ndi := range stateInfo {
 			nodeID := uint32(ndi.NodeID)
 			deploymentID := ndi.DeploymentID
+			if deploymentID == 0 {
+				continue
+			}
 			nodeClient, err := getNodClient(nodeID)
 			if err != nil {
 				log.Printf("couldn't get node client to delete non-successful deployments\n")
 				continue
+			}
+			err = sub.CancelContract(&identity, uint64(deploymentID))
+
+			if err != nil {
+				log.Printf("couldn't cancel contract %d because of %s\n", deploymentID, err)
 			}
 			log.Printf("deleting deployment %d", deploymentID)
 			err = cancelDeployment(ctx, nodeClient, sub, identity, uint64(deploymentID))
@@ -670,6 +679,7 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 			revokeDeployments = true
 			return diag.FromErr(errors.Wrap(err, "failed to create contract"))
 		}
+		stateInfo[idx].DeploymentID = int(contractID)
 		deployment.ContractID = contractID // from substrate
 		err = nodeClient.DeploymentDeploy(ctx, deployment)
 		if err != nil {
@@ -693,7 +703,6 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 		enc := json.NewEncoder(log.Writer())
 		enc.SetIndent("", "  ")
 		enc.Encode(deployment)
-		stateInfo[idx].DeploymentID = int(contractID)
 	}
 	StoreState(d, stateInfo)
 	d.Set("public_node_id", public_node)
@@ -1001,6 +1010,8 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 }
 
 func resourceNetworkDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
+	defer cancel()
 	apiClient := meta.(*apiClient)
 
 	rmbctx, cancel := context.WithCancel(ctx)
