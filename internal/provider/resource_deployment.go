@@ -207,6 +207,46 @@ func resourceDeployment() *schema.Resource {
 	}
 }
 
+type Disk struct {
+	Name        string
+	Size        int
+	Description string
+}
+
+type ZDB struct {
+	Name        string
+	Password    string
+	Size        int
+	Description string
+	Mode        string
+}
+
+type VM struct {
+	Name       string
+	Flist      string
+	PublicIP   bool
+	ComputedIP string
+	IP         string
+	Cpu        int
+	Memory     int
+	Entrypoint string
+	Mounts     []Mount
+	EnvVars    map[string]string
+}
+
+type Mount struct {
+	DiskName   string
+	MountPoint string
+}
+type DeploymentDeployer struct {
+	Node        uint32
+	Disks       []Disk
+	ZDBs        []ZDB
+	VMs         []VM
+	IPRange     string
+	NetworkName string
+}
+
 func getFreeIP(ipRange gridtypes.IPNet, usedIPs []string) (string, error) {
 	i := 2
 	l := len(ipRange.IP)
