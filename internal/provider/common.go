@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log"
-	"os"
 	"time"
 
 	"github.com/pkg/errors"
@@ -172,16 +171,11 @@ func deployConsistentDeployments(ctx context.Context, oldDeployments map[uint32]
 		return currentDeployments, errors.Wrap(err, "couldn't calculate new workloads hashes")
 	}
 	oldWorkloadsVersions := constructWorkloadVersions(oldDeployments)
-	cnt := 0
 
 	// deletions
 	for node, dl := range oldDeployments {
-		cnt += 1
 		if _, ok := newDeployments[node]; !ok {
 			client, err := nc.getNodeClient(node)
-			if cnt == 2 && os.Getenv("FAIL") == "yes" {
-				err = errors.New("another another error")
-			}
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "failed to get node client")
 			}
