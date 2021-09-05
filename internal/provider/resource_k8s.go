@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/zos/client"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
@@ -186,9 +185,9 @@ type K8sDeployer struct {
 
 	APIClient *apiClient
 
-	UsedIPs     map[uint32][]string
-	nodeClients map[uint32]*client.NodeClient
-	d           *schema.ResourceData
+	UsedIPs map[uint32][]string
+	ncPool  *NodeClientPool
+	d       *schema.ResourceData
 }
 
 func NewK8sNodeData(m map[string]interface{}) K8sNodeData {
@@ -273,7 +272,7 @@ func NewK8sDeployer(d *schema.ResourceData, apiClient *apiClient) (K8sDeployer, 
 		UsedIPs:          usedIPs,
 		NodesIPRange:     nodesIPRange,
 		APIClient:        apiClient,
-		nodeClients:      make(map[uint32]*client.NodeClient),
+		ncPool:           NewNodeClient(apiClient.sub, apiClient.rmb),
 		d:                d,
 	}
 	return deployer, nil
@@ -345,20 +344,6 @@ func (k *K8sDeployer) assignNodesIPs() error {
 	}
 	return nil
 }
-func (k *K8sDeployer) getNodeClient(nodeID uint32) (*client.NodeClient, error) {
-	cl, ok := k.nodeClients[nodeID]
-	if ok {
-		return cl, nil
-	}
-	nodeInfo, err := k.APIClient.sub.GetNode(nodeID)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get node")
-	}
-
-	cl = client.NewNodeClient(uint32(nodeInfo.TwinID), k.APIClient.rmb)
-	k.nodeClients[nodeID] = cl
-	return cl, nil
-}
 func (k *K8sDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
 	err := k.assignNodesIPs()
 	if err != nil {
@@ -397,7 +382,7 @@ func (k *K8sDeployer) GetOldDeployments(ctx context.Context) (map[uint32]gridtyp
 
 	deployments := make(map[uint32]gridtypes.Deployment)
 	for node, id := range k.NodeDeploymentID {
-		client, err := k.getNodeClient(node)
+		client, err := k.ncPool.getNodeClient(node)
 		if err != nil {
 			return nil, errors.Wrap(err, "couldn't get node client")
 		}
@@ -419,7 +404,7 @@ func (k *K8sDeployer) Deploy(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "couldn't get old deployments data")
 	}
-	currentDeployments, err := deployDeployments(ctx, oldDeployments, newDeployments, k, k.APIClient, true)
+	currentDeployments, err := deployDeployments(ctx, oldDeployments, newDeployments, k.ncPool, k.APIClient, true)
 	if err := k.updateState(ctx, currentDeployments); err != nil {
 		log.Printf("error updating state: %s\n", err)
 	}
@@ -432,7 +417,7 @@ func (k *K8sDeployer) Cancel(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "couldn't get old deployments data")
 	}
-	currentDeployments, err := deployDeployments(ctx, oldDeployments, newDeployments, k, k.APIClient, false)
+	currentDeployments, err := deployDeployments(ctx, oldDeployments, newDeployments, k.ncPool, k.APIClient, false)
 	if err := k.updateState(ctx, currentDeployments); err != nil {
 		log.Printf("error updating state: %s\n", err)
 	}
@@ -451,7 +436,7 @@ func printDeployments(dls map[uint32]gridtypes.Deployment) {
 func (k *K8sDeployer) updateState(ctx context.Context, currentDeploymentIDs map[uint32]uint64) error {
 	log.Printf("current deployments\n")
 	k.NodeDeploymentID = currentDeploymentIDs
-	currentDeployments, err := getDeploymentObjects(ctx, currentDeploymentIDs, k)
+	currentDeployments, err := getDeploymentObjects(ctx, currentDeploymentIDs, k.ncPool)
 	if err != nil {
 		return errors.Wrap(err, "failed to get deployments to update local state")
 	}
@@ -529,7 +514,7 @@ func (k *K8sDeployer) updateFromRemote(ctx context.Context) error {
 	if err := k.removeDeletedContracts(ctx); err != nil {
 		return errors.Wrap(err, "failed to remove deleted contracts")
 	}
-	currentDeployments, err := getDeploymentObjects(ctx, k.NodeDeploymentID, k)
+	currentDeployments, err := getDeploymentObjects(ctx, k.NodeDeploymentID, k.ncPool)
 	if err != nil {
 		return errors.Wrap(err, "failed to fetch remote deployments")
 	}
