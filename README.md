@@ -7,11 +7,15 @@
 -	[Go](https://golang.org/doc/install) >= 1.15
 -   A registered twin on the grid (make sure yggdrasil is running) [steps](https://github.com/threefoldtech/TFGRID/blob/development/wiki/tfgrid_substrate/substrate/grid_substrate_getting_started.md)
 
-## Building The Provider
+-   Redis running on localhost with port 6379
+
+## Building The Provider (for development only)
 
 Note: please clone all of the following repos in the same directory
 - clone github.com/threefoldtech/zos  (switch to master-3 branch)
-- Clone github.com/threefoldtech/tf_terraform_provider (deployment_resource branch)
+- clone github.com/threefoldtech/rmb-go  (switch to testing branch)
+- make sure in rmb-go and this project's go.mod file, zos package and rmb-go package is replace with the pulled ones
+- Clone github.com/threefoldtech/tf_terraform_provider (development branch)
 - Enter the repository directory
 
 ```bash
