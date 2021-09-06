@@ -8,7 +8,6 @@ import (
 )
 
 func TestSingleNodeDeployment(t *testing.T) {
-	t.Parallel()
 	// retryable errors in terraform testing.
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./",
