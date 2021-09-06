@@ -36,3 +36,9 @@ terraform init && terraform apply -parallelism=1
 ```bash
 terraform destroy -parallelism=1
 ```
+
+## Run tests
+To run the tests, run the following command
+```bash
+go test ./...
+```

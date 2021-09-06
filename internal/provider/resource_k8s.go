@@ -306,7 +306,7 @@ func getK8sFreeIP(ipRange gridtypes.IPNet, usedIPs []string) (string, error) {
 }
 
 func startRmb(ctx context.Context, substrateURL string, twinID int) {
-	rmbClient, err := gormb.NewServer(true, substrateURL, "127.0.0.1:6379", twinID)
+	rmbClient, err := gormb.NewServer(substrateURL, "127.0.0.1:6379", twinID)
 	if err != nil {
 		log.Fatalf("couldn't start server %s\n", err)
 	}
