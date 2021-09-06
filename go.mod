@@ -16,6 +16,3 @@ require (
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20210803171230-4253848d036c
 )
 
-replace github.com/threefoldtech/zos => ../zos
-
-replace github.com/threefoldtech/rmb => ../rmb-go
