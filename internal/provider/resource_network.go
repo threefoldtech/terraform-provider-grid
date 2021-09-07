@@ -239,18 +239,35 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 		APIClient:               apiClient,
 		PublicNodeForceblyAdded: publicNodeForceblyAdded,
 	}
-	if len(nodeDeploymentID) != 0 {
-		deployments, err := getDeploymentObjects(ctx, nodeDeploymentID, deployer.ncPool)
-		if err != nil {
-			return NetworkDeployer{}, errors.Wrap(err, "couldn't fetch deployments data")
-		}
-		deployer.NodeDeployments = deployments
+	return deployer, nil
+}
 
-		if err := deployer.readNodesConfig(); err != nil {
-			return NetworkDeployer{}, errors.Wrap(err, "couldn't read nodes config")
+func (k *NetworkDeployer) fetchDeploymentsInfo(ctx context.Context) error {
+	if len(k.NodeDeploymentID) != 0 {
+		deployments, err := getDeploymentObjects(ctx, k.NodeDeploymentID, k.ncPool)
+		if err != nil {
+			return errors.Wrap(err, "couldn't fetch deployments data")
+		}
+		k.NodeDeployments = deployments
+
+		if err := k.readNodesConfig(); err != nil {
+			return errors.Wrap(err, "couldn't read nodes config")
 		}
 	}
-	return deployer, nil
+	return nil
+}
+
+func (k *NetworkDeployer) Valid(ctx context.Context) error {
+	for _, node := range k.Nodes {
+		cl, err := k.ncPool.getNodeClient(node)
+		if err != nil {
+			return errors.Wrap(err, "couldn't get node client")
+		}
+		if err := isNodeUp(ctx, cl); err != nil {
+			return fmt.Errorf("couldn't reach node %d: %w", node, err)
+		}
+	}
+	return nil
 }
 
 func (k *NetworkDeployer) storeState(d *schema.ResourceData) {
@@ -511,20 +528,7 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context) (m
 }
 
 func (k *NetworkDeployer) GetOldDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
-
-	deployments := make(map[uint32]gridtypes.Deployment)
-	for node, id := range k.NodeDeploymentID {
-		client, err := k.ncPool.getNodeClient(node)
-		if err != nil {
-			return nil, errors.Wrap(err, "couldn't get node client")
-		}
-		dl, err := client.DeploymentGet(ctx, id)
-		if err != nil {
-			return nil, errors.Wrap(err, "couldn't fetch deployment")
-		}
-		deployments[node] = dl
-	}
-	return deployments, nil
+	return getDeploymentObjects(ctx, k.NodeDeploymentID, k.ncPool)
 }
 
 func (k *NetworkDeployer) Deploy(ctx context.Context) error {
@@ -593,6 +597,7 @@ func (k *NetworkDeployer) Cancel(ctx context.Context) error {
 
 func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 
+	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -601,8 +606,14 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
-
-	var diags diag.Diagnostics
+	if err := deployer.Valid(ctx); err != nil {
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Error happened while doing initial check (check https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)",
+			Detail:   err.Error(),
+		})
+		return diags
+	}
 	err = deployer.Deploy(ctx)
 	if err != nil {
 		if len(deployer.NodeDeploymentID) != 0 {
@@ -619,6 +630,7 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 
 func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 
+	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -628,7 +640,18 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	var diags diag.Diagnostics
+	if err := deployer.Valid(ctx); err != nil {
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Error happened while doing initial check (check https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)",
+			Detail:   err.Error(),
+		})
+		return diags
+	}
+	if err := deployer.fetchDeploymentsInfo(ctx); err != nil {
+		return diag.FromErr(errors.Wrap(err, "couldn't fetch deployments info"))
+	}
+
 	err = deployer.Deploy(ctx)
 	if err != nil {
 		diags = diag.FromErr(err)
@@ -639,6 +662,7 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 
 func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 
+	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -648,7 +672,18 @@ func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta inter
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	var diags diag.Diagnostics
+	if err := deployer.Valid(ctx); err != nil {
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Error happened while doing initial check (check https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)",
+			Detail:   err.Error(),
+		})
+		return diags
+	}
+	if err := deployer.fetchDeploymentsInfo(ctx); err != nil {
+		return diag.FromErr(errors.Wrap(err, "couldn't fetch deployments info"))
+	}
+
 	err = deployer.updateFromRemote(ctx)
 	log.Printf("read updateFromRemote err: %s\n", err)
 	if err != nil {
@@ -659,7 +694,7 @@ func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta inter
 }
 
 func resourceNetworkDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-
+	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -669,7 +704,17 @@ func resourceNetworkDelete(ctx context.Context, d *schema.ResourceData, meta int
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	var diags diag.Diagnostics
+	if err := deployer.Valid(ctx); err != nil {
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Error happened while doing initial check (check https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)",
+			Detail:   err.Error(),
+		})
+		return diags
+	}
+	if err := deployer.fetchDeploymentsInfo(ctx); err != nil {
+		return diag.FromErr(errors.Wrap(err, "couldn't fetch deployments info"))
+	}
 	err = deployer.Cancel(ctx)
 	if err != nil {
 		diags = diag.FromErr(err)
