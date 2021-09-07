@@ -24,7 +24,9 @@ func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deployme
 	done := false
 	for start := time.Now(); time.Since(start) < 4*time.Minute; time.Sleep(1 * time.Second) {
 		done = true
-		dl, err := nodeClient.DeploymentGet(ctx, deploymentID)
+		sub, cancel := context.WithTimeout(ctx, 30*time.Second)
+		defer cancel()
+		dl, err := nodeClient.DeploymentGet(sub, deploymentID)
 		if err != nil {
 			return err
 		}
@@ -52,7 +54,8 @@ func cancelDeployment(ctx context.Context, nc *client.NodeClient, sc *substrate.
 	if err != nil {
 		return errors.Wrap(err, "error cancelling contract")
 	}
-
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
+	defer cancel()
 	if err := nc.DeploymentDelete(ctx, id); err != nil {
 		return errors.Wrap(err, "error deleting deployment")
 	}
@@ -60,7 +63,7 @@ func cancelDeployment(ctx context.Context, nc *client.NodeClient, sc *substrate.
 }
 
 func startRmb(ctx context.Context, substrateURL string, twinID int) {
-	rmbClient, err := gormb.NewServer(true, substrateURL, "127.0.0.1:6379", twinID)
+	rmbClient, err := gormb.NewServer(substrateURL, "127.0.0.1:6379", twinID)
 	if err != nil {
 		log.Fatalf("couldn't start server %s\n", err)
 	}
@@ -129,13 +132,27 @@ func getDeploymentObjects(ctx context.Context, dls map[uint32]uint64, nc NodeCli
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to get node client")
 		}
-		dl, err := nc.DeploymentGet(ctx, dlID)
+		sub, cancel := context.WithTimeout(ctx, 30*time.Second)
+		defer cancel()
+		dl, err := nc.DeploymentGet(sub, dlID)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to get deployment")
 		}
 		res[nodeID] = dl
 	}
 	return res, nil
+}
+
+func isNodeUp(ctx context.Context, nc *client.NodeClient) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	_, err := nc.NetworkListInterfaces(ctx)
+	if err != nil {
+		return errors.New("couldn't list node interfaces")
+	}
+
+	return nil
 }
 
 // deployDeployments transforms oldDeployment to match newDeployment. In case of error,
@@ -185,7 +202,9 @@ func deployConsistentDeployments(ctx context.Context, oldDeployments map[uint32]
 				return currentDeployments, errors.Wrap(err, "failed to delete deployment")
 			}
 			delete(currentDeployments, node)
-			err = client.DeploymentDelete(ctx, dl.ContractID)
+			sub, cancel := context.WithTimeout(ctx, 1*time.Minute)
+			defer cancel()
+			err = client.DeploymentDelete(sub, dl.ContractID)
 			if err != nil {
 				log.Printf("failed to send deployment delete request to node %s", err)
 			}
@@ -222,7 +241,9 @@ func deployConsistentDeployments(ctx context.Context, oldDeployments map[uint32]
 				return currentDeployments, errors.Wrap(err, "failed to create deployment")
 			}
 			dl.ContractID = contractID
-			err = client.DeploymentDeploy(ctx, dl)
+			sub, cancel := context.WithTimeout(ctx, 4*time.Minute)
+			defer cancel()
+			err = client.DeploymentDeploy(sub, dl)
 
 			if err != nil {
 				rerr := api.sub.CancelContract(api.identity, contractID)
@@ -297,7 +318,9 @@ func deployConsistentDeployments(ctx context.Context, oldDeployments map[uint32]
 				return currentDeployments, errors.Wrap(err, "failed to update deployment")
 			}
 			dl.ContractID = contractID
-			err = client.DeploymentUpdate(ctx, dl)
+			sub, cancel := context.WithTimeout(ctx, 4*time.Minute)
+			defer cancel()
+			err = client.DeploymentUpdate(sub, dl)
 			if err != nil {
 				// cancel previous contract
 				log.Printf("failed to send deployment update request to node %s", err)
