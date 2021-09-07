@@ -33,12 +33,6 @@ func resourceDeployment() *schema.Resource {
 		DeleteContext: resourceDeploymentDelete,
 
 		Schema: map[string]*schema.Schema{
-			"version": {
-				Description: "Version",
-				Type:        schema.TypeInt,
-				Optional:    true,
-				Computed:    true,
-			},
 
 			"node": {
 				Description: "Node id to place deployment on",
@@ -61,12 +55,6 @@ func resourceDeployment() *schema.Resource {
 						"description": {
 							Type:     schema.TypeString,
 							Required: true,
-						},
-						"version": {
-							Description: "Version",
-							Type:        schema.TypeInt,
-							Optional:    true,
-							Computed:    true,
 						},
 					},
 				},
@@ -92,12 +80,6 @@ func resourceDeployment() *schema.Resource {
 							Type:     schema.TypeString,
 							Required: true,
 						},
-						"version": {
-							Description: "Version",
-							Type:        schema.TypeInt,
-							Optional:    true,
-							Computed:    true,
-						},
 						"mode": {
 							Description: "Mode of the zdb",
 							Type:        schema.TypeString,
@@ -120,12 +102,6 @@ func resourceDeployment() *schema.Resource {
 							Type:     schema.TypeString,
 							Required: true,
 						},
-						"version": {
-							Description: "Version",
-							Type:        schema.TypeInt,
-							Optional:    true,
-							Computed:    true,
-						},
 						"publicip": {
 							Description: "If you want to enable public ip or not",
 							Type:        schema.TypeBool,
@@ -145,6 +121,11 @@ func resourceDeployment() *schema.Resource {
 						"cpu": {
 							Description: "CPU size",
 							Type:        schema.TypeInt,
+							Optional:    true,
+						},
+						"description": {
+							Description: "Machine Description",
+							Type:        schema.TypeString,
 							Optional:    true,
 						},
 						"memory": {
@@ -219,16 +200,17 @@ type ZDB struct {
 }
 
 type VM struct {
-	Name       string
-	Flist      string
-	PublicIP   bool
-	ComputedIP string
-	IP         string
-	Cpu        int
-	Memory     int
-	Entrypoint string
-	Mounts     []Mount
-	EnvVars    map[string]string
+	Name        string
+	Flist       string
+	PublicIP    bool
+	ComputedIP  string
+	IP          string
+	Description string
+	Cpu         int
+	Memory      int
+	Entrypoint  string
+	Mounts      []Mount
+	EnvVars     map[string]string
 }
 
 type Mount struct {
@@ -292,18 +274,18 @@ func GetVMData(vm map[string]interface{}) VM {
 		envVar := env.(map[string]interface{})
 		envVars[envVar["key"].(string)] = envVar["value"].(string)
 	}
-
 	return VM{
-		Name:       vm["name"].(string),
-		PublicIP:   vm["publicip"].(bool),
-		Flist:      vm["flist"].(string),
-		ComputedIP: vm["computedip"].(string),
-		IP:         vm["ip"].(string),
-		Cpu:        vm["cpu"].(int),
-		Memory:     vm["memory"].(int),
-		Entrypoint: vm["entrypoint"].(string),
-		Mounts:     mounts,
-		EnvVars:    envVars,
+		Name:        vm["name"].(string),
+		PublicIP:    vm["publicip"].(bool),
+		Flist:       vm["flist"].(string),
+		ComputedIP:  vm["computedip"].(string),
+		IP:          vm["ip"].(string),
+		Cpu:         vm["cpu"].(int),
+		Memory:      vm["memory"].(int),
+		Entrypoint:  vm["entrypoint"].(string),
+		Mounts:      mounts,
+		EnvVars:     envVars,
+		Description: vm["description"].(string),
 	}
 }
 
@@ -351,12 +333,8 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 			usedIPs = append(usedIPs, data.IP)
 		}
 	}
-	deploymentID := ""
-	if d.Get("id") != nil {
-		deploymentID = d.Get("id").(string)
-	}
 	deploymentDeployer := DeploymentDeployer{
-		Id:          deploymentID,
+		Id:          d.Id(),
 		Node:        uint32(d.Get("node").(int)),
 		Disks:       disks,
 		VMs:         vms,
@@ -520,7 +498,6 @@ func (d *DeploymentDeployer) GetOldDeployments(ctx context.Context) (map[uint32]
 }
 func (d *DeploymentDeployer) updateState(ctx context.Context, currentDeploymentIDs map[uint32]uint64) error {
 	log.Printf("current deployments\n")
-	// d.NodeDeploymentID = currentDeploymentIDs
 	currentDeployments, err := getDeploymentObjects(ctx, currentDeploymentIDs, d)
 	if err != nil {
 		return errors.Wrap(err, "failed to get deployments to update local state")
@@ -551,8 +528,10 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, currentDeploymentI
 		vmIPName := fmt.Sprintf("%sip", vm.Name)
 		if ip, ok := publicIPs[vmIPName]; ok {
 			d.VMs[idx].ComputedIP = ip
+			d.VMs[idx].PublicIP = true
 		} else {
 			d.VMs[idx].ComputedIP = ""
+			d.VMs[idx].PublicIP = false
 		}
 		private, ok := privateIPs[string(vm.Name)]
 		if ok {
@@ -582,16 +561,31 @@ func (d *DeploymentDeployer) Deploy(ctx context.Context) (uint32, error) {
 }
 
 func (vm *VM) Dictify() map[string]interface{} {
+	envVars := make([]interface{}, 0)
+	for key, value := range vm.EnvVars {
+		envVar := map[string]interface{}{
+			"key": key, "value": value,
+		}
+		envVars = append(envVars, envVar)
+	}
+	mounts := make([]map[string]interface{}, 0)
+	for _, mountPoint := range vm.Mounts {
+		mount := map[string]interface{}{
+			"disk_name": mountPoint.DiskName, "mount_point": mountPoint.MountPoint,
+		}
+		mounts = append(mounts, mount)
+	}
 	res := make(map[string]interface{})
 	res["name"] = vm.Name
 	res["publicip"] = vm.PublicIP
 	res["flist"] = vm.Flist
 	res["computedip"] = vm.ComputedIP
 	res["ip"] = vm.IP
-	res["mounts"] = vm.Mounts
+	res["mounts"] = mounts
 	res["cpu"] = vm.Cpu
 	res["memory"] = vm.Memory
-	res["env_vars"] = vm.EnvVars
+	res["env_vars"] = envVars
+	res["entrypoint"] = vm.Entrypoint
 	return res
 }
 func (d *Disk) Dictify() map[string]interface{} {
@@ -628,7 +622,7 @@ func (dep *DeploymentDeployer) storeState(d *schema.ResourceData) {
 	d.Set("disks", disks)
 	d.Set("node", dep.Node)
 	d.Set("network_name", dep.NetworkName)
-	d.Set("iprange", dep.IPRange)
+	d.Set("ip_range", dep.IPRange.String())
 }
 func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	err := validate(d)
@@ -664,7 +658,6 @@ func flattenDiskData(workload gridtypes.Workload) (map[string]interface{}, error
 		wl["name"] = workload.Name
 		wl["size"] = data.(*zos.ZMount).Size / gridtypes.Gigabyte
 		wl["description"] = workload.Description
-		wl["version"] = workload.Version
 		return wl, nil
 	}
 
@@ -682,7 +675,6 @@ func flattenZDBData(workload gridtypes.Workload) (map[string]interface{}, error)
 		wl["mode"] = data.(*zos.ZDB).Mode
 		wl["password"] = data.(*zos.ZDB).Password
 		wl["description"] = workload.Description
-		wl["version"] = workload.Version
 		return wl, nil
 	}
 
@@ -699,9 +691,9 @@ func flattenVMData(workload gridtypes.Workload) (map[string]interface{}, error) 
 		data := workloadData.(*zos.ZMachine)
 
 		mounts := make([]map[string]interface{}, 0)
-		for diskName, mountPoint := range data.Mounts {
+		for _, mountPoint := range data.Mounts {
 			mount := map[string]interface{}{
-				"disk_name": diskName, "mount_point": mountPoint,
+				"disk_name": string(mountPoint.Name), "mount_point": mountPoint.Mountpoint,
 			}
 			mounts = append(mounts, mount)
 		}
@@ -720,7 +712,7 @@ func flattenVMData(workload gridtypes.Workload) (map[string]interface{}, error) 
 		wl["mounts"] = mounts
 		wl["name"] = workload.Name
 		wl["flist"] = data.FList
-		wl["version"] = workload.Version
+		wl["entrypoint"] = data.Entrypoint
 		wl["description"] = workload.Description
 		wl["env_vars"] = envVars
 		wl["ip"] = machineData.(*zos.ZMachine).Network.Interfaces[0].IP.String()
@@ -790,7 +782,7 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 			vms = append(vms, flattened)
 		} else if workload.Type == zos.PublicIPType {
 			ipData := PubIPData{}
-			if err := json.Unmarshal(workload.Result.Data, &d); err != nil {
+			if err := json.Unmarshal(workload.Result.Data, &ipData); err != nil {
 				log.Printf("error unmarshalling json: %s\n", err)
 				continue
 			}
@@ -802,14 +794,15 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 		vmIPName := fmt.Sprintf("%sip", vm["name"])
 		if ip, ok := publicIPs[vmIPName]; ok {
 			vm["computedip"] = ip
+			vm["publicip"] = true
 		} else {
 			vm["computedip"] = ""
+			vm["publicip"] = false
 		}
 	}
 	d.Set("vms", vms)
 	d.Set("disks", disks)
 	d.Set("zdbs", zdbs)
-	d.Set("version", deployment.Version)
 	return diags
 }
 
