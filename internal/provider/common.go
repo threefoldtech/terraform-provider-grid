@@ -155,6 +155,20 @@ func isNodeUp(ctx context.Context, nc *client.NodeClient) error {
 	return nil
 }
 
+func isNodesUp(ctx context.Context, nodes []uint32, nc NodeClientCollection) error {
+	for _, node := range nodes {
+		cl, err := nc.getNodeClient(node)
+		if err != nil {
+			return fmt.Errorf("couldn't get node %d client: %w", node, err)
+		}
+		if err := isNodeUp(ctx, cl); err != nil {
+			return fmt.Errorf("couldn't reach node %d: %w", node, err)
+		}
+	}
+
+	return nil
+}
+
 // deployDeployments transforms oldDeployment to match newDeployment. In case of error,
 //                   it tries to revert to the old state. Whatever is done the current state is returned
 func deployDeployments(ctx context.Context, oldDeployments map[uint32]gridtypes.Deployment, newDeployments map[uint32]gridtypes.Deployment, nc NodeClientCollection, api *apiClient, revertOnFailure bool) (map[uint32]uint64, error) {
@@ -238,7 +252,7 @@ func deployConsistentDeployments(ctx context.Context, oldDeployments map[uint32]
 			contractID, err := api.sub.CreateContract(api.identity, node, nil, hashHex, publicIPCount)
 			log.Printf("CreateContract returned id: %d\n", contractID)
 			if err != nil {
-				return currentDeployments, errors.Wrap(err, "failed to create deployment")
+				return currentDeployments, errors.Wrap(err, "failed to create contract")
 			}
 			dl.ContractID = contractID
 			sub, cancel := context.WithTimeout(ctx, 4*time.Minute)
