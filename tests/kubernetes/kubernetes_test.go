@@ -2,6 +2,7 @@ package test
 
 import (
 	"testing"
+	
 	"github.com/ashraffouda/grid-provider/tests"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
@@ -42,9 +43,8 @@ func TestKubernetesDeployment(t *testing.T) {
 	out, _ := exec.Command("ping", master_public_ip, "-c 5", "-i 3", "-w 10").Output()
 	assert.NotContains(t, string(out), "Destination Host Unreachable")
 
-	// ssh to container
+	// ssh to master node
 	res, errors := tests.RemoteRun("root", master_public_ip, "kubectl get node")
 	assert.Empty(t, errors)
 	assert.NotEmpty(t, res)
-
 }
