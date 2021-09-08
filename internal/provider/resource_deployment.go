@@ -238,6 +238,7 @@ type Mount struct {
 	DiskName   string
 	MountPoint string
 }
+type DeploymentDeployer struct {
 	Id           string
 	Node         uint32
 	Disks        []Disk
@@ -517,9 +518,9 @@ func (d *DeploymentDeployer) GetOldDeployments(ctx context.Context) (map[uint32]
 		if err != nil {
 			return nil, errors.Wrap(err, "couldn't get node client")
 		}
-		deployments[k.Node] = deploymentID	
+		deployments[k.Node] = deploymentID
 	}
-	
+
 	return getDeploymentObjects(ctx, deployments, k.ncPool)
 }
 func (d *DeploymentDeployer) updateState(ctx context.Context, currentDeploymentIDs map[uint32]uint64) error {
@@ -810,7 +811,7 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "error parsing contract id"))
 	}
-	sub, cancel := context.WithTimeout(ctx, 30 * time.Second)
+	sub, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	deployment, err := node.DeploymentGet(sub, contractId)
 	if err != nil {
