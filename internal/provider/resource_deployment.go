@@ -518,10 +518,10 @@ func (d *DeploymentDeployer) GetOldDeployments(ctx context.Context) (map[uint32]
 		if err != nil {
 			return nil, errors.Wrap(err, "couldn't get node client")
 		}
-		deployments[k.Node] = deploymentID
+		deployments[d.Node] = deploymentID
 	}
 
-	return getDeploymentObjects(ctx, deployments, k.ncPool)
+	return getDeploymentObjects(ctx, deployments, d)
 }
 func (d *DeploymentDeployer) updateState(ctx context.Context, currentDeploymentIDs map[uint32]uint64) error {
 	log.Printf("current deployments\n")
@@ -811,9 +811,9 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "error parsing contract id"))
 	}
-	sub, cancel := context.WithTimeout(ctx, 30*time.Second)
+	subctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	deployment, err := node.DeploymentGet(sub, contractId)
+	deployment, err := node.DeploymentGet(subctx, contractId)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "error getting deployment"))
 	}
