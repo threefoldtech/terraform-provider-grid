@@ -86,6 +86,24 @@ func resourceDeployment() *schema.Resource {
 							Optional:    true,
 							Computed:    true,
 						},
+						"ips": {
+							Description: "IPs of the zdb",
+							Type:        schema.TypeList,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+							Computed: true,
+						},
+						"namespace": {
+							Description: "Namespace of the zdb",
+							Type:        schema.TypeString,
+							Computed:    true,
+						},
+						"port": {
+							Description: "Port of the zdb",
+							Type:        schema.TypeInt,
+							Computed:    true,
+						},
 					},
 				},
 			},
@@ -197,6 +215,9 @@ type ZDB struct {
 	Size        int
 	Description string
 	Mode        string
+	IPs         []string
+	Port        uint32
+	Namespace   string
 }
 
 type VM struct {
@@ -217,13 +238,12 @@ type Mount struct {
 	DiskName   string
 	MountPoint string
 }
-type DeploymentDeployer struct {
 	Id           string
 	Node         uint32
 	Disks        []Disk
 	ZDBs         []ZDB
 	VMs          []VM
-	IPRange      gridtypes.IPNet
+	IPRange      *gridtypes.IPNet
 	UsedIPs      []string
 	NetworkName  string
 	NodesIPRange map[uint32]gridtypes.IPNet
@@ -297,19 +317,34 @@ func GetDiskData(disk map[string]interface{}) Disk {
 	}
 }
 func GetZdbData(zdb map[string]interface{}) ZDB {
+	ipsIf := zdb["ips"].([]interface{})
+	ips := make([]string, len(ipsIf))
+	for idx, ip := range ipsIf {
+		ips[idx] = ip.(string)
+	}
+
 	return ZDB{
 		Name:        zdb["name"].(string),
 		Size:        zdb["size"].(int),
 		Description: zdb["description"].(string),
 		Password:    zdb["password"].(string),
 		Mode:        zdb["mode"].(string),
+		IPs:         ips,
+		Port:        uint32(zdb["port"].(int)),
+		Namespace:   zdb["namespace"].(string),
 	}
 }
 func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (DeploymentDeployer, error) {
 	ipRangeStr := d.Get("ip_range").(string)
-	ipRange, err := gridtypes.ParseIPNet(ipRangeStr)
-	if err != nil {
-		return DeploymentDeployer{}, err
+	var ipRange *gridtypes.IPNet
+	if ipRangeStr == "" {
+		ipRange = nil
+	} else {
+		r, err := gridtypes.ParseIPNet(ipRangeStr)
+		if err != nil {
+			return DeploymentDeployer{}, err
+		}
+		ipRange = &r
 	}
 	usedIPs := make([]string, 0)
 
@@ -352,7 +387,7 @@ func (d *DeploymentDeployer) assignNodesIPs() error {
 		if vm.IP != "" && d.IPRange.Contains(net.ParseIP(vm.IP)) {
 			continue
 		}
-		ip, err := getFreeIP(d.IPRange, d.UsedIPs)
+		ip, err := getFreeIP(*d.IPRange, d.UsedIPs)
 		if err != nil {
 			return errors.Wrap(err, "failed to find free ip for VM")
 		}
@@ -475,26 +510,17 @@ func (d *DeploymentDeployer) getNodeClient(nodeID uint32) (*client.NodeClient, e
 	return cl, nil
 }
 func (d *DeploymentDeployer) GetOldDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
-	deployments := make(map[uint32]gridtypes.Deployment)
-	if d.Id == "" {
-		return deployments, nil
-	}
-	client, err := d.getNodeClient(d.Node)
-	if err != nil {
-		return nil, errors.Wrap(err, "couldn't get node client")
-	}
+	deployments := make(map[uint32]uint64)
+	if d.Id != "" {
 
-	deploymentID, err := strconv.ParseUint(d.Id, 10, 64)
-	if err != nil {
-		return nil, errors.Wrap(err, "couldn't get node client")
+		deploymentID, err := strconv.ParseUint(d.Id, 10, 64)
+		if err != nil {
+			return nil, errors.Wrap(err, "couldn't get node client")
+		}
+		deployments[k.Node] = deploymentID	
 	}
-	log.Printf("DEPLOYMENT_ID %s", d.Id)
-	deployment, err := client.DeploymentGet(ctx, deploymentID)
-	if err != nil {
-		return nil, errors.Wrap(err, "couldn't fetch deployment")
-	}
-	deployments[d.Node] = deployment
-	return deployments, nil
+	
+	return getDeploymentObjects(ctx, deployments, k.ncPool)
 }
 func (d *DeploymentDeployer) updateState(ctx context.Context, currentDeploymentIDs map[uint32]uint64) error {
 	log.Printf("current deployments\n")
@@ -505,6 +531,10 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, currentDeploymentI
 	printDeployments(currentDeployments)
 	publicIPs := make(map[string]string)
 	privateIPs := make(map[string]string)
+	zdbIPs := make(map[string][]string)
+	zdbPort := make(map[string]uint)
+	zdbNamespace := make(map[string]string)
+
 	for _, dl := range currentDeployments {
 		for _, w := range dl.Workloads {
 			if w.Type == zos.PublicIPType {
@@ -521,6 +551,15 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, currentDeploymentI
 					continue
 				}
 				privateIPs[string(w.Name)] = d.(*zos.ZMachine).Network.Interfaces[0].IP.String()
+			} else if w.Type == zos.ZDBType {
+				d := zos.ZDBResult{}
+				if err := json.Unmarshal(w.Result.Data, &d); err != nil {
+					log.Printf("error unmarshalling json: %s\n", err)
+					continue
+				}
+				zdbIPs[string(w.Name)] = d.IPs
+				zdbPort[string(w.Name)] = d.Port
+				zdbNamespace[string(w.Name)] = d.Namespace
 			}
 		}
 	}
@@ -538,6 +577,17 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, currentDeploymentI
 			d.VMs[idx].IP = private
 		} else {
 			d.VMs[idx].IP = ""
+		}
+	}
+	for idx, zdb := range d.ZDBs {
+		if ips, ok := zdbIPs[zdb.Name]; ok {
+			d.ZDBs[idx].IPs = ips
+			d.ZDBs[idx].Port = uint32(zdbPort[zdb.Name])
+			d.ZDBs[idx].Namespace = zdbNamespace[zdb.Name]
+		} else {
+			d.ZDBs[idx].IPs = make([]string, 0)
+			d.ZDBs[idx].Port = 0
+			d.ZDBs[idx].Namespace = ""
 		}
 	}
 	log.Printf("Current state after updatestate %v\n", d)
@@ -601,6 +651,9 @@ func (z *ZDB) Dictify() map[string]interface{} {
 	res["description"] = z.Description
 	res["size"] = z.Size
 	res["mode"] = z.Mode
+	res["ips"] = z.IPs
+	res["namespace"] = z.Namespace
+	res["port"] = int(z.Port)
 	res["password"] = z.Password
 	return res
 }
@@ -615,14 +668,16 @@ func (dep *DeploymentDeployer) storeState(d *schema.ResourceData) {
 	}
 	zdbs := make([]interface{}, 0)
 	for _, zdb := range dep.ZDBs {
-		vms = append(zdbs, zdb.Dictify())
+		zdbs = append(zdbs, zdb.Dictify())
 	}
 	d.Set("vms", vms)
 	d.Set("zdbs", zdbs)
 	d.Set("disks", disks)
 	d.Set("node", dep.Node)
 	d.Set("network_name", dep.NetworkName)
-	d.Set("ip_range", dep.IPRange.String())
+	if dep.IPRange != nil {
+		d.Set("ip_range", dep.IPRange.String())
+	}
 }
 func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	err := validate(d)
@@ -670,9 +725,16 @@ func flattenZDBData(workload gridtypes.Workload) (map[string]interface{}, error)
 		if err != nil {
 			return nil, err
 		}
+		var result zos.ZDBResult
+		if err := workload.Result.Unmarshal(&result); err != nil {
+			return nil, errors.Wrap(err, "couldn't decode zdb result")
+		}
 		wl["name"] = workload.Name
 		wl["size"] = data.(*zos.ZDB).Size
 		wl["mode"] = data.(*zos.ZDB).Mode
+		wl["ips"] = result.IPs
+		wl["namespace"] = result.Namespace
+		wl["port"] = result.Port
 		wl["password"] = data.(*zos.ZDB).Password
 		wl["description"] = workload.Description
 		return wl, nil
@@ -748,8 +810,9 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "error parsing contract id"))
 	}
-
-	deployment, err := node.DeploymentGet(ctx, contractId)
+	sub, cancel := context.WithTimeout(ctx, 30 * time.Second)
+	defer cancel()
+	deployment, err := node.DeploymentGet(sub, contractId)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "error getting deployment"))
 	}

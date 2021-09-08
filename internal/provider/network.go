@@ -64,6 +64,14 @@ func getPublicNode(preferedNodes []uint32) (uint32, error) {
 	publicNode := uint32(0)
 	for _, node := range q.Nodes {
 		if node.PublicConfig.Ipv4 != "" {
+			ip, err := gridtypes.ParseIPNet(string(node.PublicConfig.Ipv4))
+			if err != nil {
+				log.Printf("couldn't parse ip %s: %s", node.PublicConfig.Ipv4, err)
+				continue
+			}
+			if ip.IP.To4().IsPrivate() {
+				continue
+			}
 			if isInUint32(preferedNodes, uint32(node.NodeId)) {
 				return uint32(node.NodeId), nil
 			} else {
@@ -146,25 +154,26 @@ func getNodeEndpoint(ctx context.Context, nodeClient *client.NodeClient) (string
 	}
 
 	ifs, err := nodeClient.NetworkListInterfaces(ctx)
+	if err != nil {
+		return "", errors.Wrap(err, "couldn't list node interfaces")
+	}
 	log.Printf("if: %v\n", ifs)
-	if err == nil {
-		for name, iface := range ifs {
-			if name == "ygg0" {
-				// don't use yggdrasil, why?
-				continue
-			}
-			for _, ip := range iface {
-				log.Printf("ip: %s, globalunicast: %t, privateIP: %t\n", ip.String(), ip.IsGlobalUnicast(), isPrivateIP(ip))
-				if !ip.IsGlobalUnicast() || isPrivateIP(ip) {
-					continue
-				}
-				if ip.To4() != nil {
-					return ip.String(), nil
-				} else {
-					return fmt.Sprintf("[%s]", ip.String()), nil
-				}
-			}
+
+	zosIf, ok := ifs["zos"]
+	if !ok {
+		return "", errors.New("node doesn't contain zos interface or public config")
+	}
+	for _, ip := range zosIf {
+		log.Printf("ip: %s, globalunicast: %t, privateIP: %t\n", ip.String(), ip.IsGlobalUnicast(), isPrivateIP(ip))
+		if !ip.IsGlobalUnicast() || isPrivateIP(ip) {
+			continue
+		}
+
+		if ip.To4() != nil {
+			return ip.String(), nil
+		} else {
+			return fmt.Sprintf("[%s]", ip.String()), nil
 		}
 	}
-	return "", errors.New("can't find an interface with public ipv4 or ipv6")
+	return "", errors.New("no public config found, and no public ipv4 or ipv6 on zos interface found")
 }

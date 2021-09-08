@@ -383,7 +383,7 @@ func (k *K8sDeployer) GetOldDeployments(ctx context.Context) (map[uint32]gridtyp
 	return getDeploymentObjects(ctx, k.NodeDeploymentID, k.ncPool)
 }
 
-func (k *K8sDeployer) Valid(ctx context.Context) error {
+func (k *K8sDeployer) ValidateNames(ctx context.Context) error {
 
 	names := make(map[string]bool)
 	names[k.Master.Name] = true
@@ -393,23 +393,46 @@ func (k *K8sDeployer) Valid(ctx context.Context) error {
 		}
 		names[w.Name] = true
 	}
-	machines := k.Workers
-	if k.Master != nil {
-		machines = append(machines, *k.Master)
-	}
-
-	for _, w := range machines {
-		cl, err := k.ncPool.getNodeClient(w.Node)
-		if err != nil {
-			return errors.Wrap(err, "couldn't get node client")
-		}
-		if err := isNodeUp(ctx, cl); err != nil {
-			return fmt.Errorf("couldn't reach node %d: %w", w.Node, err)
-		}
-	}
 	return nil
 }
 
+func (k *K8sDeployer) ValidateCreate(ctx context.Context) error {
+	if err := k.ValidateNames(ctx); err != nil {
+		return err
+	}
+	nodes := make([]uint32, 0)
+	nodes = append(nodes, k.Master.Node)
+	for _, w := range k.Workers {
+		nodes = append(nodes, w.Node)
+
+	}
+	return isNodesUp(ctx, nodes, k.ncPool)
+}
+
+func (k *K8sDeployer) ValidateUpdate(ctx context.Context) error {
+	if err := k.ValidateNames(ctx); err != nil {
+		return err
+	}
+	nodes := make([]uint32, 0)
+	for node, _ := range k.NodeDeploymentID {
+		nodes = append(nodes, node)
+	}
+	nodes = append(nodes, k.Master.Node)
+	for _, w := range k.Workers {
+		nodes = append(nodes, w.Node)
+
+	}
+
+	return isNodesUp(ctx, nodes, k.ncPool)
+}
+
+func (k *K8sDeployer) ValidateRead(ctx context.Context) error {
+	nodes := make([]uint32, 0)
+	for node, _ := range k.NodeDeploymentID {
+		nodes = append(nodes, node)
+	}
+	return isNodesUp(ctx, nodes, k.ncPool)
+}
 func (k *K8sDeployer) Deploy(ctx context.Context) error {
 	newDeployments, err := k.GenerateVersionlessDeployments(ctx)
 	if err != nil {
@@ -428,10 +451,14 @@ func (k *K8sDeployer) Deploy(ctx context.Context) error {
 
 func (k *K8sDeployer) Cancel(ctx context.Context) error {
 	newDeployments := make(map[uint32]gridtypes.Deployment)
-	oldDeployments, err := k.GetOldDeployments(ctx)
-	if err != nil {
-		return errors.Wrap(err, "couldn't get old deployments data")
+
+	oldDeployments := make(map[uint32]gridtypes.Deployment)
+	for node, deploymentID := range k.NodeDeploymentID {
+		oldDeployments[node] = gridtypes.Deployment{
+			ContractID: deploymentID,
+		}
 	}
+
 	currentDeployments, err := deployDeployments(ctx, oldDeployments, newDeployments, k.ncPool, k.APIClient, false)
 	if err := k.updateState(ctx, currentDeployments); err != nil {
 		log.Printf("error updating state: %s\n", err)
@@ -765,7 +792,7 @@ func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	if err := deployer.Valid(ctx); err != nil {
+	if err := deployer.ValidateCreate(ctx); err != nil {
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Error,
 			Summary:  "Error happened while doing initial check (check https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)",
@@ -800,7 +827,7 @@ func resourceK8sUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	if err := deployer.Valid(ctx); err != nil {
+	if err := deployer.ValidateUpdate(ctx); err != nil {
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Error,
 			Summary:  "Error happened while doing initial check (check https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)",
@@ -829,7 +856,7 @@ func resourceK8sRead(ctx context.Context, d *schema.ResourceData, meta interface
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	if err := deployer.Valid(ctx); err != nil {
+	if err := deployer.ValidateRead(ctx); err != nil {
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Error,
 			Summary:  "Error happened while doing initial check (check https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)",
@@ -857,15 +884,6 @@ func resourceK8sDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 	deployer, err := NewK8sDeployer(d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
-	}
-
-	if err := deployer.Valid(ctx); err != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Error happened while doing initial check (check https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)",
-			Detail:   err.Error(),
-		})
-		return diags
 	}
 
 	err = deployer.Cancel(ctx)
