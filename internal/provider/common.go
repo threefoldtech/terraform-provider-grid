@@ -169,6 +169,24 @@ func isNodesUp(ctx context.Context, nodes []uint32, nc NodeClientCollection) err
 	return nil
 }
 
+func sameWorkloadsNames(d1 gridtypes.Deployment, d2 gridtypes.Deployment) bool {
+	if len(d1.Workloads) != len(d2.Workloads) {
+		return false
+	}
+
+	names := make(map[string]bool)
+	for _, w := range d1.Workloads {
+		names[string(w.Name)] = true
+	}
+
+	for _, w := range d2.Workloads {
+		if _, ok := names[string(w.Name)]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
 // deployDeployments transforms oldDeployment to match newDeployment. In case of error,
 //                   it tries to revert to the old state. Whatever is done the current state is returned
 func deployDeployments(ctx context.Context, oldDeployments map[uint32]gridtypes.Deployment, newDeployments map[uint32]gridtypes.Deployment, nc NodeClientCollection, api *apiClient, revertOnFailure bool) (map[uint32]uint64, error) {
@@ -289,7 +307,7 @@ func deployConsistentDeployments(ctx context.Context, oldDeployments map[uint32]
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "couldn't get deployment hash")
 			}
-			if oldDeploymentHash == newDeploymentHash {
+			if oldDeploymentHash == newDeploymentHash && sameWorkloadsNames(dl, oldDl) {
 				continue
 			}
 			dl.Version = oldDl.Version + 1
