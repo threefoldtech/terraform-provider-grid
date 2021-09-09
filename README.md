@@ -49,7 +49,12 @@ terraform destroy -parallelism=1
 see [steps](https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)
 
 ## Run tests
-To run the tests, run the following command
+To run the tests, export ssh PUBLICKEY and PRIVATKEY
+```
+export PUBLICKEY=$(cat ~/.ssh/id_rsa.pub)
+export PRIVATEKEY=$(cat ~/.ssh/id_rsa)
+```
+run the following command
 ```bash
-go test ./...
+go test ./... -p 1
 ```
