@@ -2,7 +2,7 @@ terraform {
   required_providers {
     grid = {
       source = "threefoldtech/grid"
-      version = "0.1.0"
+      version = "0.1.1"
     }
   }
 }
@@ -23,7 +23,7 @@ resource "grid_deployment" "d1" {
   vms {
     name = "vm1"
     flist = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
-    cpu = 1
+    cpu = 2 
     publicip = true
     memory = 1024
     entrypoint = "/sbin/zinit init"

@@ -8,6 +8,8 @@
 -   A registered twin on the grid (make sure yggdrasil is running) [steps](https://github.com/threefoldtech/TFGRID/blob/development/wiki/tfgrid_substrate/substrate/grid_substrate_getting_started.md)
 -   Redis running on localhost with port 6379
 
+-   Redis running on localhost with port 6379
+
 ## Building The Provider (for development only)
 
 Note: please clone all of the following repos in the same directory
@@ -36,6 +38,17 @@ terraform init && terraform apply -parallelism=1
 ```bash
 terraform destroy -parallelism=1
 ```
+## Current limitation
+
+- [parallism=1](https://github.com/threefoldtech/terraform-provider-grid/issues/12)
+- [windows  support](https://github.com/threefoldtech/terraform-provider-grid/issues/9)
+- [increasing IPs in active deployment](https://github.com/threefoldtech/terraform-provider-grid/issues/15)
+- [introducing new nodes to kuberentes deployment](https://github.com/threefoldtech/terraform-provider-grid/issues/13)
+- [multiple deployments on the same node](https://github.com/threefoldtech/terraform-provider-grid/issues/11)
+
+## Troubleshooting
+
+see [steps](https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)
 
 ## Run tests
 To run the tests, run the following command
