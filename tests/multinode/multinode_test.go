@@ -12,48 +12,48 @@ import (
 
 func TestMultiNodeDeployment(t *testing.T) {
 	/* Test case for deployeng a multinode.
-        **Test Scenario**
-        - Deploy a multinode.
-        - Check that the outputs not empty.
-        - Up wireguard.
-        - Check that containers is reachable
-        - Destroy the deployment
-    */
+	   **Test Scenario**
+	   - Deploy a multinode.
+	   - Check that the outputs not empty.
+	   - Up wireguard.
+	   - Check that containers is reachable
+	   - Destroy the deployment
+	*/
 
 	// retryable errors in terraform testing.
-	public_key := os.Getenv("PUBLICKEY")
+	publicKey := os.Getenv("PUBLICKEY")
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./",
 		Vars: map[string]interface{}{
-			"public_key": public_key,
-		  },
+			"public_key": publicKey,
+		},
 		Parallelism: 1,
 	})
 
 	terraform.InitAndApply(t, terraformOptions)
 	defer terraform.Destroy(t, terraformOptions)
-	defer tests.DownWG()
 
 	// Check that the outputs not empty
-	node1_container1_ip := terraform.Output(t, terraformOptions, "node1_container1_ip")
-	assert.NotEmpty(t, node1_container2_ip)
+	node1Container1IP := terraform.Output(t, terraformOptions, "node1_container1_ip")
+	assert.NotEmpty(t, node1Container1IP)
 
-	node2_container1_ip := terraform.Output(t, terraformOptions, "node2_container1_ip")
-	assert.NotEmpty(t, node2_container1_ip)
+	node2Container1IP := terraform.Output(t, terraformOptions, "node2_container1_ip")
+	assert.NotEmpty(t, node2Container1IP)
 
 	// Up wireguard
 	wgConfig := terraform.Output(t, terraformOptions, "wg_config")
 	assert.NotEmpty(t, wgConfig)
 	tests.UpWg(wgConfig)
+	defer tests.DownWG()
 
 	// Check that containers is reachable
-	out1, _ := exec.Command("ping", node1_container1_ip, "-c 5", "-i 3", "-w 10").Output()
+	out1, _ := exec.Command("ping", node1Container1IP, "-c 5", "-i 3", "-w 10").Output()
 	assert.NotContains(t, string(out1), "Destination Host Unreachable")
 
-	out2, _ := exec.Command("ping", node2_container1_ip, "-c 5", "-i 3", "-w 10").Output()
+	out2, _ := exec.Command("ping", node2Container1IP, "-c 5", "-i 3", "-w 10").Output()
 	assert.NotContains(t, string(out2), "Destination Host Unreachable")
 
-    // ssh to container
-	_, errors := tests.RemoteRun("root", node1_container1_ip, "ls")
+	// ssh to container
+	_, errors := tests.RemoteRun("root", node1Container1IP, "ls")
 	assert.Empty(t, errors)
 }
