@@ -24,7 +24,12 @@ resource "grid_network" "net1" {
 resource "grid_deployment" "d1" {
   node = 2
   network_name = grid_network.net1.name
-  ip_range = grid_network.net1.nodes_ip_range["2"]
+  ip_range = grid_network.net1.nodes_ip_range[2]
+  disks {
+    name = "data"
+    size = 10
+    description = "volume holding app data"
+  }
   vms {
     name = "vm1"
     flist = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
@@ -32,6 +37,10 @@ resource "grid_deployment" "d1" {
     publicip = true
     memory = 1024
     entrypoint = "/sbin/zinit init"
+    mounts {
+        disk_name = "data"
+        mount_point = "/app"
+    }
     env_vars {
       key = "SSH_KEY"
       value = var.public_key

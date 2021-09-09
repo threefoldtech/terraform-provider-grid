@@ -2,22 +2,24 @@ package test
 
 import (
 	"testing"
-
-	"github.com/ashraffouda/grid-provider/tests"
+    "github.com/ashraffouda/grid-provider/tests"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"os/exec"
 )
 
-func TestMultiNodeDeployment(t *testing.T) {
-	/* Test case for deployeng a multinode.
+func TestSingleMountDeployment(t *testing.T) {
+    /* Test case for deployeng a disk and mount it.
+
         **Test Scenario**
-        - Deploy a multinode.
+
+        - Deploy a disk.
         - Check that the outputs not empty.
         - Up wireguard.
         - Check that containers is reachable
         - Destroy the deployment
+
     */
 
 	// retryable errors in terraform testing.
@@ -28,27 +30,26 @@ func TestMultiNodeDeployment(t *testing.T) {
 			"public_key": public_key,
 		  },
 	})
-	})
 
 	terraform.InitAndApply(t, terraformOptions)
 	defer terraform.Destroy(t, terraformOptions)
 	defer tests.DownWG()
 
-	// Check that the outputs not empty
+    // Check that the outputs not empty
 	public_ip := terraform.Output(t, terraformOptions, "public_ip")
 	assert.NotEmpty(t, public_ip)
 
-	node1_container2_ip := terraform.Output(t, terraformOptions, "node1_container2_ip")
-	assert.NotEmpty(t, node1_container2_ip)
-
-	node1_container1_ip := terraform.Output(t, terraformOptions, "node1_container1_ip")
+    node1_container1_ip := terraform.Output(t, terraformOptions, "node1_container1_ip")
 	assert.NotEmpty(t, node1_container1_ip)
+
+    node1_container2_ip := terraform.Output(t, terraformOptions, "node1_container2_ip")
+	assert.NotEmpty(t, node1_container2_ip)
 
 	// Up wireguard
 	wgConfig := terraform.Output(t, terraformOptions, "wg_config")
 	assert.NotEmpty(t, wgConfig)
 	tests.UpWg(wgConfig)
-
+	
 	// Check that containers is reachable
 	out, _ := exec.Command("ping", public_ip, "-c 5", "-i 3", "-w 10").Output()
 	assert.NotContains(t, string(out), "Destination Host Unreachable")

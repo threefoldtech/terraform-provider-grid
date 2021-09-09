@@ -5,7 +5,7 @@ import (
     "github.com/ashraffouda/grid-provider/tests"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
-
+	"os"
 	"os/exec"
 )
 
@@ -23,12 +23,17 @@ func TestSingleNodeDeployment(t *testing.T) {
     */
 
 	// retryable errors in terraform testing.
+	public_key := os.Getenv("PUBLICKEY")
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./",
+		Vars: map[string]interface{}{
+			"public_key": public_key,
+		  },
 	})
 
 	terraform.InitAndApply(t, terraformOptions)
 	defer terraform.Destroy(t, terraformOptions)
+	defer tests.DownWG()
 
     // Check that the outputs not empty
 	public_ip := terraform.Output(t, terraformOptions, "public_ip")
@@ -56,6 +61,6 @@ func TestSingleNodeDeployment(t *testing.T) {
 	assert.NotContains(t, string(out2), "Destination Host Unreachable")
 
     // ssh to container
-	_, errors := tests.RemoteRun("root", node1_container2_ip, "ls")
+	_, errors := tests.RemoteRun("root", node1_container1_ip, "ls")
 	assert.Empty(t, errors)
 }

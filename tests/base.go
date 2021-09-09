@@ -39,6 +39,17 @@ func UpWg(wgConfig string) {
     fmt.Println(string(stdout))
 }
 
+func DownWG(){
+    cmd := exec.Command("sudo", "wg-quick", "down", "/tmp/test.conf")
+    stdout, err := cmd.Output()
+
+    if err != nil {
+        fmt.Println(err)
+        return
+    }
+    fmt.Println(string(stdout))
+}
+
 func RemoteRun(user string, addr string, cmd string) (string, error) {
     privateKey := os.Getenv("PRIVATEKEY")
     key, err := ssh.ParsePrivateKey([]byte(privateKey))

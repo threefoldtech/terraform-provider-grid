@@ -2,11 +2,12 @@ package test
 
 import (
 	"testing"
-	
+
 	"github.com/ashraffouda/grid-provider/tests"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
-
+	"strings"
+	"os"
 	"os/exec"
 )
 
@@ -23,12 +24,17 @@ func TestKubernetesDeployment(t *testing.T) {
 	*/
 
 	// retryable errors in terraform testing.
+	public_key := os.Getenv("PUBLICKEY")
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./",
+		Vars: map[string]interface{}{
+			"public_key": public_key,
+		  },
 	})
 
 	terraform.InitAndApply(t, terraformOptions)
 	defer terraform.Destroy(t, terraformOptions)
+	defer tests.DownWG()
 
 	// Check that the outputs not empty
 	master_public_ip := terraform.Output(t, terraformOptions, "master_public_ip")
@@ -44,7 +50,8 @@ func TestKubernetesDeployment(t *testing.T) {
 	assert.NotContains(t, string(out), "Destination Host Unreachable")
 
 	// ssh to master node
-	res, errors := tests.RemoteRun("root", master_public_ip, "kubectl get node")
+	master_ip := strings.Split(master_public_ip, "/")[0]
+	res, errors := tests.RemoteRun("root", master_ip, "kubectl get node")
 	assert.Empty(t, errors)
 	assert.NotEmpty(t, res)
 }
