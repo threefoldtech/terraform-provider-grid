@@ -7,7 +7,7 @@ terraform {
   required_providers {
     grid = {
       source = "threefoldtech/grid"
-      version = "0.1.0"
+      version = "0.1.1"
     }
   }
 }
@@ -30,7 +30,7 @@ resource "grid_deployment" "d1" {
   vms {
     name = "vm1"
     flist = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
-    cpu = 1
+    cpu = 2 
     memory = 1024
     entrypoint = "/sbin/zinit init"
     env_vars {
@@ -64,13 +64,11 @@ output "wg_config" {
     value = grid_network.net1.access_wg_config
 }
 
-output "noed1_container1_ip" {
+output "node1_container1_ip" {
     value = grid_deployment.d1.vms[0].ip
 }
 
 
-output "noed2_container1_ip" {
+output "node2_container1_ip" {
     value = grid_deployment.d2.vms[0].ip
 }
-
-

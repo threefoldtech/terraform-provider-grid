@@ -29,6 +29,7 @@ func TestSingleMountDeployment(t *testing.T) {
 		Vars: map[string]interface{}{
 			"public_key": public_key,
 		  },
+		Parallelism: 1,
 	})
 
 	terraform.InitAndApply(t, terraformOptions)

@@ -10,6 +10,7 @@ func TestSingleNodeWithSmallMemDeployment(t *testing.T) {
 	// retryable errors in terraform testing.
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./",
+		Parallelism: 1,
 	})
 
 	_, err := terraform.InitAndApplyE(t, terraformOptions)

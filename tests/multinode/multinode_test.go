@@ -27,7 +27,7 @@ func TestMultiNodeDeployment(t *testing.T) {
 		Vars: map[string]interface{}{
 			"public_key": public_key,
 		  },
-	})
+		Parallelism: 1,
 	})
 
 	terraform.InitAndApply(t, terraformOptions)
@@ -35,14 +35,11 @@ func TestMultiNodeDeployment(t *testing.T) {
 	defer tests.DownWG()
 
 	// Check that the outputs not empty
-	public_ip := terraform.Output(t, terraformOptions, "public_ip")
-	assert.NotEmpty(t, public_ip)
-
-	node1_container2_ip := terraform.Output(t, terraformOptions, "node1_container2_ip")
+	node1_container1_ip := terraform.Output(t, terraformOptions, "node1_container1_ip")
 	assert.NotEmpty(t, node1_container2_ip)
 
-	node1_container1_ip := terraform.Output(t, terraformOptions, "node1_container1_ip")
-	assert.NotEmpty(t, node1_container1_ip)
+	node2_container1_ip := terraform.Output(t, terraformOptions, "node2_container1_ip")
+	assert.NotEmpty(t, node2_container1_ip)
 
 	// Up wireguard
 	wgConfig := terraform.Output(t, terraformOptions, "wg_config")
@@ -50,13 +47,10 @@ func TestMultiNodeDeployment(t *testing.T) {
 	tests.UpWg(wgConfig)
 
 	// Check that containers is reachable
-	out, _ := exec.Command("ping", public_ip, "-c 5", "-i 3", "-w 10").Output()
-	assert.NotContains(t, string(out), "Destination Host Unreachable")
-	
-	out1, _ := exec.Command("ping", node1_container2_ip, "-c 5", "-i 3", "-w 10").Output()
+	out1, _ := exec.Command("ping", node1_container1_ip, "-c 5", "-i 3", "-w 10").Output()
 	assert.NotContains(t, string(out1), "Destination Host Unreachable")
 
-	out2, _ := exec.Command("ping", node1_container1_ip, "-c 5", "-i 3", "-w 10").Output()
+	out2, _ := exec.Command("ping", node2_container1_ip, "-c 5", "-i 3", "-w 10").Output()
 	assert.NotContains(t, string(out2), "Destination Host Unreachable")
 
     // ssh to container

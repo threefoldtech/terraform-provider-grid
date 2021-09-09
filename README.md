@@ -8,8 +8,6 @@
 -   A registered twin on the grid (make sure yggdrasil is running) [steps](https://github.com/threefoldtech/TFGRID/blob/development/wiki/tfgrid_substrate/substrate/grid_substrate_getting_started.md)
 -   Redis running on localhost with port 6379
 
--   Redis running on localhost with port 6379
-
 ## Building The Provider (for development only)
 
 Note: please clone all of the following repos in the same directory
