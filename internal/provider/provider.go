@@ -60,6 +60,7 @@ func New(version string) func() *schema.Provider {
 				"grid_deployment": resourceDeployment(),
 				"grid_network":    resourceNetwork(),
 				"grid_kubernetes": resourceKubernetes(),
+				"grid_proxy":      resourceGateway(),
 			},
 		}
 
