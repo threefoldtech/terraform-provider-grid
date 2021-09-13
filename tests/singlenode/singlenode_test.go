@@ -18,6 +18,8 @@ func TestSingleNodeDeployment(t *testing.T) {
 	   - Check that the outputs not empty.
 	   - Up wireguard.
 	   - Check that containers is reachable
+	   - Verify the VMs ips
+	   - Check that env variables set successfully.
 	   - Destroy the deployment
 
 	*/
@@ -31,9 +33,9 @@ func TestSingleNodeDeployment(t *testing.T) {
 		},
 		Parallelism: 1,
 	})
+	defer terraform.Destroy(t, terraformOptions)
 
 	terraform.InitAndApply(t, terraformOptions)
-	defer terraform.Destroy(t, terraformOptions)
 
 	// Check that the outputs not empty
 	publicIP := terraform.Output(t, terraformOptions, "public_ip")
@@ -62,6 +64,20 @@ func TestSingleNodeDeployment(t *testing.T) {
 	assert.NotContains(t, string(out2), "Destination Host Unreachable")
 
 	// ssh to container
-	_, errors := tests.RemoteRun("root", node1Container1IP, "ls")
+	_, errors1 := tests.RemoteRun("root", node1Container1IP, "ls")
 	assert.Empty(t, errors)
+
+	_, errors2 := tests.RemoteRun("root", node1Container2IP, "ls")
+	assert.Empty(t, errors)
+
+	// Verify the VMs ips
+	res_ip, _ := tests.RemoteRun("root", node1Container1IP, "ifconfig")
+	assert.Contains(t, string(res_ip), node1Container1IP)
+
+	res1_ip, _ := tests.RemoteRun("root", node1Container2IP, "ifconfig")
+	assert.Contains(t, string(res1_ip), node1Container2IP)
+
+	// Check that env variables set successfully
+	res, _ := tests.RemoteRun("root", node1Container1IP, "printenv")
+	assert.Contains(t, string(res, "TEST_VAR=this value for test")
 }

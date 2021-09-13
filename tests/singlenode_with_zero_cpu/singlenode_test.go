@@ -12,9 +12,9 @@ func TestSingleNodeWithZeroCPUDeployment(t *testing.T) {
 		TerraformDir: "./",
 		Parallelism:  1,
 	})
+	defer terraform.Destroy(t, terraformOptions)
 
 	_, err := terraform.InitAndApplyE(t, terraformOptions)
-	defer terraform.Destroy(t, terraformOptions)
 
 	if err == nil {
 		t.Errorf("Should fail with can't deploy with 0 cpu but err is null")

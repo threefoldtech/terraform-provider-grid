@@ -43,7 +43,11 @@ resource "grid_deployment" "d1" {
     }
     env_vars {
       key = "SSH_KEY"
-      value = var.public_key
+      value = "${var.public_key}"
+    }
+    env_vars {
+      key = "TEST_VAR"
+      value = "this value for test"
     }
   }
   vms {
@@ -54,7 +58,11 @@ resource "grid_deployment" "d1" {
     entrypoint = "/sbin/zinit init"
     env_vars {
       key = "SSH_KEY"
-      value = var.public_key
+      value = "${var.public_key}"
+    }
+    env_vars {
+      key = "TEST_VAR"
+      value = "this value for test"
     }
   }
 }

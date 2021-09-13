@@ -12,9 +12,9 @@ func TestSingleNodeWithSmallMemDeployment(t *testing.T) {
 		TerraformDir: "./",
 		Parallelism:  1,
 	})
+	defer terraform.Destroy(t, terraformOptions)
 
 	_, err := terraform.InitAndApplyE(t, terraformOptions)
-	defer terraform.Destroy(t, terraformOptions)
 
 	if err == nil {
 		t.Errorf("Should fail with mem capacity can't be less that 250M but err is null")

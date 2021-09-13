@@ -35,11 +35,13 @@ resource "grid_deployment" "d1" {
     entrypoint = "/sbin/zinit init"
     env_vars {
       key = "SSH_KEY"
-      value = var.public_key
+      value = "${var.public_key}"
     }
-
+    env_vars {
+      key = "TEST_VAR"
+      value = "this value for test"
+    }
   }
-
 }
 
 resource "grid_deployment" "d2" {
@@ -54,9 +56,8 @@ resource "grid_deployment" "d2" {
     entrypoint = "/sbin/zinit init"
     env_vars {
       key = "SSH_KEY"
-      value = var.public_key
+      value = "${var.public_key}"
     }
-
   }
 }
 
@@ -67,7 +68,6 @@ output "wg_config" {
 output "node1_container1_ip" {
     value = grid_deployment.d1.vms[0].ip
 }
-
 
 output "node2_container1_ip" {
     value = grid_deployment.d2.vms[0].ip

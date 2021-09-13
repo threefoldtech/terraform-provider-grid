@@ -12,9 +12,9 @@ func TestKubernetesWithNonExistNetworkDeployment(t *testing.T) {
 		TerraformDir: "./",
 		Parallelism:  1,
 	})
+	defer terraform.Destroy(t, terraformOptions)
 
 	_, err := terraform.InitAndApplyE(t, terraformOptions)
-	defer terraform.Destroy(t, terraformOptions)
 
 	if err == nil {
 		t.Errorf("The deployment should fail but err is null")
