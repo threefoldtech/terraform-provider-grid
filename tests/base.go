@@ -8,7 +8,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	// "strings"
+	"strings"
 )
 
 // UpWg used for up wireguard
@@ -81,4 +81,23 @@ func RemoteRun(user string, addr string, cmd string) (string, error) {
 	session.Stdout = &b // get output
 	err = session.Run(cmd)
 	return b.String(), err
+}
+
+func VerifyIPs (wgConfig string, pingIPs []string, verifyIPs []string){
+	UpWg(wgConfig)
+
+	for i, ip in range pingIPs {
+		out, _ := exec.Command("ping", ip, "-c 5", "-i 3", "-w 10").Output()
+		if strings.Contains(string(out), "Destination Host Unreachable"){
+			return false
+		}
+	}
+
+	for i, ip in range verifyIPs{
+		res, _ := RemoteRun("root", ip, "ifconfig")
+		if strings.NotContains(string(res), ip){
+			return false
+		}
+	}
+	return true
 }

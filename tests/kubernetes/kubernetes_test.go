@@ -56,14 +56,14 @@ func TestKubernetesDeployment(t *testing.T) {
 	masterIP := strings.Split(masterPublicIP, "/")[0]
 	res, errors := tests.RemoteRun("root", masterIP, "kubectl get node")
 	assert.Empty(t, errors)
-	
+
 	// Check worker deployed number
-	nodes := strings.Split(res, "\n")
+	nodes := strings.Split(string(res), "\n")
 	workers := nodes[1:] // remove header
-	assert.Equal(t, len(workers), 4) // assert that there are 3 workers and master
+	assert.Equal(t, len(workers) - 1, 2) // assert that there are 1 worker and master
 
 	// Check that worker is ready
-	for i :=0; i < len(workers); i++ {
+	for i :=0; i < len(workers) - 1; i++ {
 		assert.Contains(t, workers[i], "Ready")
 	}
 }

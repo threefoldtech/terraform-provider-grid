@@ -66,24 +66,24 @@ func TestSingleMountDeployment(t *testing.T) {
 
 	// ssh to containers
 	_, errors1 := tests.RemoteRun("root", node1Container1IP, "ls")
-	assert.Empty(t, errors)
+	assert.Empty(t, errors1)
 
 	_, errors2 := tests.RemoteRun("root", node1Container2IP, "ls")
-	assert.Empty(t, errors)
+	assert.Empty(t, errors2)
 
 	// Verify the VMs ips
-	res_ip, err_ip := tests.RemoteRun("root", node1Container2IP, "ifconfig")
+	res_ip, _ := tests.RemoteRun("root", node1Container2IP, "ifconfig")
 	assert.Contains(t, string(res_ip), node1Container2IP)
 
-	res_ip, err_ip := tests.RemoteRun("root", node1Container1IP, "ifconfig")
-	assert.Contains(t, string(res_ip), node1Container1IP)
+	res_ip1, _ := tests.RemoteRun("root", node1Container1IP, "ifconfig")
+	assert.Contains(t, string(res_ip1), node1Container1IP)
 
 	// Check that env variables set successfully
 	res, _ := tests.RemoteRun("root", node1Container1IP, "printenv")
-	assert.Contains(t, string(res, "TEST_VAR=this value for test")
+	assert.Contains(t, string(res), "TEST_VAR=this value for test")
 
 	// Check that disk has been mounted successfully with 10G
-	res, errors3 := tests.RemoteRun("root", node1Container2IP, "df -h | grep -w /app")
+	res1, errors3 := tests.RemoteRun("root", node1Container2IP, "df -h | grep -w /app")
 	assert.Empty(t, errors3)
-	assert.Contains(t, string(res), "10.0G")
+	assert.Contains(t, string(res1), "10.0G")
 }

@@ -57,10 +57,10 @@ func TestMultiNodeDeployment(t *testing.T) {
 
 	// ssh to container
 	_, errors1 := tests.RemoteRun("root", node1Container1IP, "ls")
-	assert.Empty(t, errors)
+	assert.Empty(t, errors1)
 
 	_, errors2 := tests.RemoteRun("root", node2Container1IP, "ls")
-	assert.Empty(t, errors)
+	assert.Empty(t, errors2)
 
 	// Verify the VMs ips
 	res_ip, _ := tests.RemoteRun("root", node2Container1IP, "ifconfig")
@@ -71,5 +71,5 @@ func TestMultiNodeDeployment(t *testing.T) {
 
 	// Check that env variables set successfully
 	res, _ := tests.RemoteRun("root", node1Container1IP, "printenv")
-	assert.Contains(t, string(res, "TEST_VAR=this value for test")
+	assert.Contains(t, string(res), "TEST_VAR=this value for test")
 }
