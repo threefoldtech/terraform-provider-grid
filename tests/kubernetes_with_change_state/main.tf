@@ -48,7 +48,6 @@ resource "grid_kubernetes" "k8s1" {
     memory = 2048
   }
   workers = var.worker
-
 }
 
 

@@ -3,11 +3,11 @@ package test
 import (
 	"testing"
 
-	"github.com/ashraffouda/grid-provider/tests"
+	"os"
+
+	"github.com/grid-provider/tests"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
-	"os"
-	"os/exec"
 )
 
 func TestMultiNodeDeployment(t *testing.T) {
@@ -45,29 +45,10 @@ func TestMultiNodeDeployment(t *testing.T) {
 	// Up wireguard
 	wgConfig := terraform.Output(t, terraformOptions, "wg_config")
 	assert.NotEmpty(t, wgConfig)
-	tests.UpWg(wgConfig)
+
+	verifyIPs := []string{node1Container1IP, node1Container1IP}
+	tests.VerifyIPs(wgConfig, verifyIPs)
 	defer tests.DownWG()
-
-	// Check that containers is reachable
-	out1, _ := exec.Command("ping", node1Container1IP, "-c 5", "-i 3", "-w 10").Output()
-	assert.NotContains(t, string(out1), "Destination Host Unreachable")
-
-	out2, _ := exec.Command("ping", node2Container1IP, "-c 5", "-i 3", "-w 10").Output()
-	assert.NotContains(t, string(out2), "Destination Host Unreachable")
-
-	// ssh to container
-	_, errors1 := tests.RemoteRun("root", node1Container1IP, "ls")
-	assert.Empty(t, errors1)
-
-	_, errors2 := tests.RemoteRun("root", node2Container1IP, "ls")
-	assert.Empty(t, errors2)
-
-	// Verify the VMs ips
-	res_ip, _ := tests.RemoteRun("root", node2Container1IP, "ifconfig")
-	assert.Contains(t, string(res_ip), node2Container1IP)
-
-	res1_ip, _ := tests.RemoteRun("root", node1Container1IP, "ifconfig")
-	assert.Contains(t, string(res1_ip), node1Container1IP)
 
 	// Check that env variables set successfully
 	res, _ := tests.RemoteRun("root", node1Container1IP, "printenv")

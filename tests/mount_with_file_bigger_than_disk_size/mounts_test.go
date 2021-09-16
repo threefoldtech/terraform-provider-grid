@@ -1,15 +1,16 @@
 package test
 
 import (
-	"github.com/ashraffouda/grid-provider/tests"
-	"github.com/gruntwork-io/terratest/modules/terraform"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/grid-provider/tests"
+	"github.com/gruntwork-io/terratest/modules/terraform"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestSingleMountDeployment(t *testing.T) {
+func TestMountWithBiggerFileDeployment(t *testing.T) {
 	/* Test case for deployeng a mount disk and try to create a file bigger than disk size.
 
 	   **Test Scenario**
@@ -28,7 +29,7 @@ func TestSingleMountDeployment(t *testing.T) {
 		Vars: map[string]interface{}{
 			"public_key": publicKey,
 		},
-		Parallelism:  1,
+		Parallelism: 1,
 	})
 	defer terraform.Destroy(t, terraformOptions)
 
@@ -43,6 +44,7 @@ func TestSingleMountDeployment(t *testing.T) {
 	tests.UpWg(wgConfig)
 	defer tests.DownWG()
 
+	// ssh to VM and try to create a file with size 1G.
 	pIP := strings.Split(publicIP, "/")[0]
 	res, err := tests.RemoteRun("root", pIP, "cd /app/ && dd if=/dev/vda bs=1G count=1 of=test.txt")
 	assert.Empty(t, err)

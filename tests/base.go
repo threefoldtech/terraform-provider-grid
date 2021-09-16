@@ -3,12 +3,13 @@ package tests
 import (
 	"bytes"
 	"fmt"
-	"golang.org/x/crypto/ssh"
 	"log"
 	"net"
 	"os"
 	"os/exec"
 	"strings"
+
+	"golang.org/x/crypto/ssh"
 )
 
 // UpWg used for up wireguard
@@ -83,19 +84,19 @@ func RemoteRun(user string, addr string, cmd string) (string, error) {
 	return b.String(), err
 }
 
-func VerifyIPs (wgConfig string, pingIPs []string, verifyIPs []string){
+func VerifyIPs(wgConfig string, verifyIPs []string) bool {
 	UpWg(wgConfig)
 
-	for i, ip in range pingIPs {
-		out, _ := exec.Command("ping", ip, "-c 5", "-i 3", "-w 10").Output()
-		if strings.Contains(string(out), "Destination Host Unreachable"){
+	for i := 0; i < len(verifyIPs); i++ {
+		out, _ := exec.Command("ping", verifyIPs[i], "-c 5", "-i 3", "-w 10").Output()
+		if strings.Contains(string(out), "Destination Host Unreachable") {
 			return false
 		}
 	}
 
-	for i, ip in range verifyIPs{
-		res, _ := RemoteRun("root", ip, "ifconfig")
-		if strings.NotContains(string(res), ip){
+	for i := 0; i < len(verifyIPs); i++ {
+		res, _ := RemoteRun("root", verifyIPs[i], "ifconfig")
+		if !strings.Contains(string(res), verifyIPs[i]) {
 			return false
 		}
 	}

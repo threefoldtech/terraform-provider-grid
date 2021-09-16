@@ -3,12 +3,13 @@ package test
 import (
 	"testing"
 
-	"github.com/ashraffouda/grid-provider/tests"
-	"github.com/gruntwork-io/terratest/modules/terraform"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/grid-provider/tests"
+	"github.com/gruntwork-io/terratest/modules/terraform"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestKubernetesDeployment(t *testing.T) {
@@ -47,7 +48,7 @@ func TestKubernetesDeployment(t *testing.T) {
 	assert.NotEmpty(t, wgConfig)
 	tests.UpWg(wgConfig)
 	defer tests.DownWG()
-	
+
 	// Check that master is reachable
 	out, _ := exec.Command("ping", masterPublicIP, "-c 5", "-i 3", "-w 10").Output()
 	assert.NotContains(t, string(out), "Destination Host Unreachable")
@@ -59,11 +60,11 @@ func TestKubernetesDeployment(t *testing.T) {
 
 	// Check worker deployed number
 	nodes := strings.Split(string(res), "\n")
-	workers := nodes[1:] // remove header
-	assert.Equal(t, len(workers) - 1, 2) // assert that there are 1 worker and master
+	workers := nodes[1:]               // remove header
+	assert.Equal(t, len(workers)-1, 2) // assert that there are 1 worker and master
 
 	// Check that worker is ready
-	for i :=0; i < len(workers) - 1; i++ {
+	for i := 0; i < len(workers)-1; i++ {
 		assert.Contains(t, workers[i], "Ready")
 	}
 }

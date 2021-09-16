@@ -1,12 +1,12 @@
 package test
 
 import (
-	"github.com/ashraffouda/grid-provider/tests"
+	"os"
+	"testing"
+
+	"github.com/grid-provider/tests"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
-	"os"
-	"os/exec"
-	"testing"
 )
 
 func TestSingleMountDeployment(t *testing.T) {
@@ -51,32 +51,11 @@ func TestSingleMountDeployment(t *testing.T) {
 	// Up wireguard
 	wgConfig := terraform.Output(t, terraformOptions, "wg_config")
 	assert.NotEmpty(t, wgConfig)
-	tests.UpWg(wgConfig)
-	defer tests.DownWG()
 
 	// Check that containers is reachable
-	out, _ := exec.Command("ping", publicIP, "-c 5", "-i 3", "-w 10").Output()
-	assert.NotContains(t, string(out), "Destination Host Unreachable")
-
-	out1, _ := exec.Command("ping", node1Container2IP, "-c 5", "-i 3", "-w 10").Output()
-	assert.NotContains(t, string(out1), "Destination Host Unreachable")
-
-	out2, _ := exec.Command("ping", node1Container1IP, "-c 5", "-i 3", "-w 10").Output()
-	assert.NotContains(t, string(out2), "Destination Host Unreachable")
-
-	// ssh to containers
-	_, errors1 := tests.RemoteRun("root", node1Container1IP, "ls")
-	assert.Empty(t, errors1)
-
-	_, errors2 := tests.RemoteRun("root", node1Container2IP, "ls")
-	assert.Empty(t, errors2)
-
-	// Verify the VMs ips
-	res_ip, _ := tests.RemoteRun("root", node1Container2IP, "ifconfig")
-	assert.Contains(t, string(res_ip), node1Container2IP)
-
-	res_ip1, _ := tests.RemoteRun("root", node1Container1IP, "ifconfig")
-	assert.Contains(t, string(res_ip1), node1Container1IP)
+	verifyIPs := []string{publicIP, node1Container2IP, node1Container1IP}
+	tests.VerifyIPs(wgConfig, verifyIPs)
+	defer tests.DownWG()
 
 	// Check that env variables set successfully
 	res, _ := tests.RemoteRun("root", node1Container1IP, "printenv")
