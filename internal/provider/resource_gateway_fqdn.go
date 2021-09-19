@@ -15,15 +15,15 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
-func resourceGateway() *schema.Resource {
+func resourceGatewayFQDNProxy() *schema.Resource {
 	return &schema.Resource{
 		// This description is used by the documentation generator and the language server.
 		Description: "Resource for deploying gateway domains.",
 
-		CreateContext: resourceGatewayCreate,
-		ReadContext:   resourceGatewayRead,
-		UpdateContext: resourceGatewayUpdate,
-		DeleteContext: resourceGatewayDelete,
+		CreateContext: resourceGatewayFQDNCreate,
+		ReadContext:   resourceGatewayFQDNRead,
+		UpdateContext: resourceGatewayFQDNUpdate,
+		DeleteContext: resourceGatewayFQDNDelete,
 
 		Schema: map[string]*schema.Schema{
 			"name": {
@@ -45,7 +45,13 @@ func resourceGateway() *schema.Resource {
 			"fqdn": {
 				Description: "The fully quallified domain name of the deployed workload.",
 				Type:        schema.TypeString,
-				Computed:    true,
+				Required:    true,
+			},
+			"tls_passthrough": {
+				Description: "true to pass the tls as is to the backends.",
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     false,
 			},
 			"backends": {
 				Description: "The backends of the gateway proxy",
@@ -64,11 +70,12 @@ func resourceGateway() *schema.Resource {
 	}
 }
 
-type GatewayDeployer struct {
-	Name        string
-	Description string
-	Node        uint32
-	Backends    []zos.Backend
+type GatewayFQDNDeployer struct {
+	Name           string
+	Description    string
+	Node           uint32
+	TLSPassthrough bool
+	Backends       []zos.Backend
 
 	FQDN             string
 	NodeDeploymentID map[uint32]uint64
@@ -77,7 +84,7 @@ type GatewayDeployer struct {
 	ncPool    *NodeClientPool
 }
 
-func NewGatewayDeployer(ctx context.Context, d *schema.ResourceData, apiClient *apiClient) (GatewayDeployer, error) {
+func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClient *apiClient) (GatewayFQDNDeployer, error) {
 	backendsIf := d.Get("backends").([]interface{})
 	backends := make([]zos.Backend, len(backendsIf))
 	for idx, n := range backendsIf {
@@ -88,18 +95,19 @@ func NewGatewayDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 	for node, id := range nodeDeploymentIDIf {
 		nodeInt, err := strconv.ParseUint(node, 10, 32)
 		if err != nil {
-			return GatewayDeployer{}, errors.Wrap(err, "couldn't parse node id")
+			return GatewayFQDNDeployer{}, errors.Wrap(err, "couldn't parse node id")
 		}
 		deploymentID := uint64(id.(int))
 		nodeDeploymentID[uint32(nodeInt)] = deploymentID
 	}
 
-	deployer := GatewayDeployer{
+	deployer := GatewayFQDNDeployer{
 		Name:             d.Get("name").(string),
 		Description:      d.Get("description").(string),
 		Node:             uint32(d.Get("node").(int)),
 		Backends:         backends,
 		FQDN:             d.Get("fqdn").(string),
+		TLSPassthrough:   d.Get("tls_passthrough").(bool),
 		NodeDeploymentID: nodeDeploymentID,
 		APIClient:        apiClient,
 		ncPool:           NewNodeClient(apiClient.sub, apiClient.rmb),
@@ -107,11 +115,11 @@ func NewGatewayDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 	return deployer, nil
 }
 
-func (k *GatewayDeployer) ValidateCreate(ctx context.Context) error {
+func (k *GatewayFQDNDeployer) ValidateCreate(ctx context.Context) error {
 	return isNodesUp(ctx, []uint32{k.Node}, k.ncPool)
 }
 
-func (k *GatewayDeployer) ValidateUpdate(ctx context.Context) error {
+func (k *GatewayFQDNDeployer) ValidateUpdate(ctx context.Context) error {
 	nodes := make([]uint32, 0)
 	nodes = append(nodes, k.Node)
 	for node := range k.NodeDeploymentID {
@@ -120,7 +128,7 @@ func (k *GatewayDeployer) ValidateUpdate(ctx context.Context) error {
 	return isNodesUp(ctx, nodes, k.ncPool)
 }
 
-func (k *GatewayDeployer) ValidateRead(ctx context.Context) error {
+func (k *GatewayFQDNDeployer) ValidateRead(ctx context.Context) error {
 	nodes := make([]uint32, 0)
 	for node := range k.NodeDeploymentID {
 		nodes = append(nodes, node)
@@ -128,11 +136,11 @@ func (k *GatewayDeployer) ValidateRead(ctx context.Context) error {
 	return isNodesUp(ctx, nodes, k.ncPool)
 }
 
-func (k *GatewayDeployer) ValidateDelete(ctx context.Context) error {
+func (k *GatewayFQDNDeployer) ValidateDelete(ctx context.Context) error {
 	return nil
 }
 
-func (k *GatewayDeployer) storeState(d *schema.ResourceData) {
+func (k *GatewayFQDNDeployer) storeState(d *schema.ResourceData) {
 
 	nodeDeploymentID := make(map[string]interface{})
 	for node, id := range k.NodeDeploymentID {
@@ -140,20 +148,22 @@ func (k *GatewayDeployer) storeState(d *schema.ResourceData) {
 	}
 
 	d.Set("node", k.Node)
+	d.Set("tls_passthrough", k.TLSPassthrough)
 	d.Set("backends", k.Backends)
 	d.Set("fqdn", k.FQDN)
 	d.Set("node_deployment_id", nodeDeploymentID)
 }
-func (k *GatewayDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
+func (k *GatewayFQDNDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
 	deployments := make(map[uint32]gridtypes.Deployment)
 	workload := gridtypes.Workload{
 		Version:     0,
-		Type:        zos.GatewayNameProxyType,
+		Type:        zos.GatewayFQDNProxyType,
 		Description: k.Description,
 		Name:        gridtypes.Name(k.Name),
-		Data: gridtypes.MustMarshal(zos.GatewayNameProxy{
-			Name:     k.Name,
-			Backends: k.Backends,
+		Data: gridtypes.MustMarshal(zos.GatewayFQDNProxy{
+			FQDN:           k.FQDN,
+			TLSPassthrough: k.TLSPassthrough,
+			Backends:       k.Backends,
 		}),
 	}
 
@@ -178,11 +188,11 @@ func (k *GatewayDeployer) GenerateVersionlessDeployments(ctx context.Context) (m
 	return deployments, nil
 }
 
-func (k *GatewayDeployer) GetOldDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
+func (k *GatewayFQDNDeployer) GetOldDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
 	return getDeploymentObjects(ctx, k.NodeDeploymentID, k.ncPool)
 }
 
-func (k *GatewayDeployer) Deploy(ctx context.Context) error {
+func (k *GatewayFQDNDeployer) Deploy(ctx context.Context) error {
 	newDeployments, err := k.GenerateVersionlessDeployments(ctx)
 	if err != nil {
 		return errors.Wrap(err, "couldn't generate deployments data")
@@ -197,7 +207,7 @@ func (k *GatewayDeployer) Deploy(ctx context.Context) error {
 	}
 	return err
 }
-func (k *GatewayDeployer) updateState(ctx context.Context, currentDeploymentIDs map[uint32]uint64) error {
+func (k *GatewayFQDNDeployer) updateState(ctx context.Context, currentDeploymentIDs map[uint32]uint64) error {
 	k.NodeDeploymentID = currentDeploymentIDs
 	dls, err := getDeploymentObjects(ctx, currentDeploymentIDs, k.ncPool)
 	if err != nil {
@@ -216,11 +226,11 @@ func (k *GatewayDeployer) updateState(ctx context.Context, currentDeploymentIDs 
 	return nil
 }
 
-func (k *GatewayDeployer) updateFromRemote(ctx context.Context) error {
+func (k *GatewayFQDNDeployer) updateFromRemote(ctx context.Context) error {
 	return k.updateState(ctx, k.NodeDeploymentID)
 }
 
-func (k *GatewayDeployer) Cancel(ctx context.Context) error {
+func (k *GatewayFQDNDeployer) Cancel(ctx context.Context) error {
 	newDeployments := make(map[uint32]gridtypes.Deployment)
 	oldDeployments := make(map[uint32]gridtypes.Deployment)
 	for node, deploymentID := range k.NodeDeploymentID {
@@ -236,14 +246,14 @@ func (k *GatewayDeployer) Cancel(ctx context.Context) error {
 	return err
 }
 
-func resourceGatewayCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceGatewayFQDNCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
-	deployer, err := NewGatewayDeployer(ctx, d, apiClient)
+	deployer, err := NewGatewayFQDNDeployer(ctx, d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
@@ -269,14 +279,14 @@ func resourceGatewayCreate(ctx context.Context, d *schema.ResourceData, meta int
 	return diags
 }
 
-func resourceGatewayUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceGatewayFQDNUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
-	deployer, err := NewGatewayDeployer(ctx, d, apiClient)
+	deployer, err := NewGatewayFQDNDeployer(ctx, d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
@@ -298,14 +308,14 @@ func resourceGatewayUpdate(ctx context.Context, d *schema.ResourceData, meta int
 	return diags
 }
 
-func resourceGatewayRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceGatewayFQDNRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
-	deployer, err := NewGatewayDeployer(ctx, d, apiClient)
+	deployer, err := NewGatewayFQDNDeployer(ctx, d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
@@ -327,13 +337,13 @@ func resourceGatewayRead(ctx context.Context, d *schema.ResourceData, meta inter
 	return diags
 }
 
-func resourceGatewayDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceGatewayFQDNDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
-	deployer, err := NewGatewayDeployer(ctx, d, apiClient)
+	deployer, err := NewGatewayFQDNDeployer(ctx, d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
