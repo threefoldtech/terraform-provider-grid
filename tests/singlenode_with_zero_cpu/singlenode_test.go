@@ -1,6 +1,7 @@
 package test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
@@ -8,9 +9,13 @@ import (
 
 func TestSingleNodeWithZeroCPUDeployment(t *testing.T) {
 	// retryable errors in terraform testing.
+	publicKey := os.Getenv("PUBLICKEY")
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./",
-		Parallelism:  1,
+		Vars: map[string]interface{}{
+			"public_key": publicKey,
+		},
+		Parallelism: 1,
 	})
 	defer terraform.Destroy(t, terraformOptions)
 

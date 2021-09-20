@@ -16,15 +16,15 @@ provider "grid" {
 }
 
 resource "grid_network" "net1" {
-    nodes = [2, 4, 3]
+    nodes = [2, 4]
     ip_range = "10.1.0.0/16"
     name = "network"
     description = "newer network"
 }
 resource "grid_deployment" "d1" {
-  node = 3
+  node = 4
   network_name = grid_network.net1.name
-  ip_range = grid_network.net1.nodes_ip_range[3]
+  ip_range = grid_network.net1.nodes_ip_range[4]
   disks {
     name = "data"
     size = 1
@@ -53,7 +53,6 @@ output "wg_config" {
 output "node1_container1_ip" {
     value = grid_deployment.d1.vms[0].ip
 }
-
 output "public_ip" {
     value = grid_deployment.d1.vms[0].computedip
 }

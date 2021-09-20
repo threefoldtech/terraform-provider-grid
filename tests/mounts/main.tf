@@ -22,9 +22,9 @@ resource "grid_network" "net1" {
     description = "newer network"
 }
 resource "grid_deployment" "d1" {
-  node = 2
+  node = 4
   network_name = grid_network.net1.name
-  ip_range = grid_network.net1.nodes_ip_range[2]
+  ip_range = grid_network.net1.nodes_ip_range[4]
   disks {
     name = "data"
     size = 10
@@ -69,7 +69,7 @@ resource "grid_deployment" "d1" {
 output "wg_config" {
     value = grid_network.net1.access_wg_config
 }
-output "node1_container1_ip" {
+output "noed1_container1_ip" {
     value = grid_deployment.d1.vms[0].ip
 }
 output "node1_container2_ip" {
