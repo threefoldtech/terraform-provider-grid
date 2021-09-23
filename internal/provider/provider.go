@@ -54,12 +54,14 @@ func New(version string) func() *schema.Provider {
 				},
 			},
 			DataSourcesMap: map[string]*schema.Resource{
-				"scaffolding_data_source": dataSourceDisk(),
+				"grid_gateway_domain": dataSourceGatewayDomain(),
 			},
 			ResourcesMap: map[string]*schema.Resource{
 				"grid_deployment": resourceDeployment(),
 				"grid_network":    resourceNetwork(),
 				"grid_kubernetes": resourceKubernetes(),
+				"grid_name_proxy": resourceGatewayNameProxy(),
+				"grid_fqdn_proxy": resourceGatewayFQDNProxy(),
 			},
 		}
 
