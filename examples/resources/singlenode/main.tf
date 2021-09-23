@@ -48,7 +48,3 @@ output "fqdn" {
 output "ygg_ip" {
     value = grid_deployment.d1.vms[0].ygg_ip
 }
-
-output "ygg_ip" {
-    value = grid_deployment.d1.vms[0].ygg_ip
-}
