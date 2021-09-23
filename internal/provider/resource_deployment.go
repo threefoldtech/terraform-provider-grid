@@ -199,6 +199,15 @@ func resourceDeployment() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"planetary": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+			},
+			"ygg_ip": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 		},
 	}
 }
@@ -224,7 +233,9 @@ type VM struct {
 	Name        string
 	Flist       string
 	PublicIP    bool
+	Planetary   bool
 	ComputedIP  string
+	YggIP       string
 	IP          string
 	Description string
 	Cpu         int
@@ -300,6 +311,7 @@ func GetVMData(vm map[string]interface{}) VM {
 		PublicIP:    vm["publicip"].(bool),
 		Flist:       vm["flist"].(string),
 		ComputedIP:  vm["computedip"].(string),
+		YggIP:       vm["ygg_ip"].(string),
 		IP:          vm["ip"].(string),
 		Cpu:         vm["cpu"].(int),
 		Memory:      vm["memory"].(int),
@@ -448,7 +460,8 @@ func (vm *VM) GenerateVMWorkload(deployer *DeploymentDeployer) []gridtypes.Workl
 						IP:      net.ParseIP(vm.IP),
 					},
 				},
-				PublicIP: gridtypes.Name(publicIPName),
+				PublicIP:  gridtypes.Name(publicIPName),
+				Planetary: vm.Planetary,
 			},
 			ComputeCapacity: zos.MachineCapacity{
 				CPU:    uint8(vm.Cpu),
@@ -629,8 +642,10 @@ func (vm *VM) Dictify() map[string]interface{} {
 	res := make(map[string]interface{})
 	res["name"] = vm.Name
 	res["publicip"] = vm.PublicIP
+	res["planetary"] = vm.Planetary
 	res["flist"] = vm.Flist
 	res["computedip"] = vm.ComputedIP
+	res["ygg_ip"] = vm.YggIP
 	res["ip"] = vm.IP
 	res["mounts"] = mounts
 	res["cpu"] = vm.Cpu
