@@ -59,5 +59,5 @@ output "public_ip" {
 }
 
 output "ygg_ip" {
-    value = grid_deployment.d1.vms[1].ygg_ip
+    value = grid_deployment.d1.vms[0].ygg_ip
 }
