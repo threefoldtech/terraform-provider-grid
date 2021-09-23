@@ -208,15 +208,6 @@ func resourceDeployment() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"planetary": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Default:  false,
-			},
-			"ygg_ip": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
 		},
 	}
 }
