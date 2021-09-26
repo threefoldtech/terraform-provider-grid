@@ -1,4 +1,4 @@
-module github.com/ashraffouda/grid-provider
+module github.com/threefoldtech/terraform-provider-grid
 
 go 1.15
 
