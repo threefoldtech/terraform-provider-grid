@@ -188,6 +188,15 @@ func resourceDeployment() *schema.Resource {
 								},
 							},
 						},
+						"planetary": {
+							Type:     schema.TypeBool,
+							Optional: true,
+							Default:  false,
+						},
+						"ygg_ip": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
 					},
 				},
 			},
@@ -224,7 +233,9 @@ type VM struct {
 	Name        string
 	Flist       string
 	PublicIP    bool
+	Planetary   bool
 	ComputedIP  string
+	YggIP       string
 	IP          string
 	Description string
 	Cpu         int
@@ -300,6 +311,8 @@ func GetVMData(vm map[string]interface{}) VM {
 		PublicIP:    vm["publicip"].(bool),
 		Flist:       vm["flist"].(string),
 		ComputedIP:  vm["computedip"].(string),
+		YggIP:       vm["ygg_ip"].(string),
+		Planetary:   vm["planetary"].(bool),
 		IP:          vm["ip"].(string),
 		Cpu:         vm["cpu"].(int),
 		Memory:      vm["memory"].(int),
@@ -448,7 +461,8 @@ func (vm *VM) GenerateVMWorkload(deployer *DeploymentDeployer) []gridtypes.Workl
 						IP:      net.ParseIP(vm.IP),
 					},
 				},
-				PublicIP: gridtypes.Name(publicIPName),
+				PublicIP:  gridtypes.Name(publicIPName),
+				Planetary: vm.Planetary,
 			},
 			ComputeCapacity: zos.MachineCapacity{
 				CPU:    uint8(vm.Cpu),
@@ -532,6 +546,7 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, currentDeploymentI
 	}
 	printDeployments(currentDeployments)
 	publicIPs := make(map[string]string)
+	yggIPs := make(map[string]string)
 	privateIPs := make(map[string]string)
 	zdbIPs := make(map[string][]string)
 	zdbPort := make(map[string]uint)
@@ -552,7 +567,13 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, currentDeploymentI
 					log.Printf("error loading machine data: %s\n", err)
 					continue
 				}
+				res := zos.ZMachineResult{}
+				if err := json.Unmarshal(w.Result.Data, &res); err != nil {
+					log.Printf("error unmarshalling json: %s\n", err)
+					continue
+				}
 				privateIPs[string(w.Name)] = d.(*zos.ZMachine).Network.Interfaces[0].IP.String()
+				yggIPs[string(w.Name)] = res.YggIP
 			} else if w.Type == zos.ZDBType {
 				d := zos.ZDBResult{}
 				if err := json.Unmarshal(w.Result.Data, &d); err != nil {
@@ -579,6 +600,12 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, currentDeploymentI
 			d.VMs[idx].IP = private
 		} else {
 			d.VMs[idx].IP = ""
+		}
+		ygg, ok := yggIPs[string(vm.Name)]
+		if ok {
+			d.VMs[idx].YggIP = ygg
+		} else {
+			d.VMs[idx].YggIP = ""
 		}
 	}
 	for idx, zdb := range d.ZDBs {
@@ -630,8 +657,10 @@ func (vm *VM) Dictify() map[string]interface{} {
 	res := make(map[string]interface{})
 	res["name"] = vm.Name
 	res["publicip"] = vm.PublicIP
+	res["planetary"] = vm.Planetary
 	res["flist"] = vm.Flist
 	res["computedip"] = vm.ComputedIP
+	res["ygg_ip"] = vm.YggIP
 	res["ip"] = vm.IP
 	res["mounts"] = mounts
 	res["cpu"] = vm.Cpu
@@ -771,6 +800,11 @@ func flattenVMData(workload gridtypes.Workload) (map[string]interface{}, error) 
 		if err != nil {
 			return nil, err
 		}
+		var result zos.ZMachineResult
+		if err := workload.Result.Unmarshal(&result); err != nil {
+			return nil, errors.Wrap(err, "couldn't decode zdb result")
+		}
+
 		wl["cpu"] = data.ComputeCapacity.CPU
 		wl["memory"] = uint64(data.ComputeCapacity.Memory) / uint64(gridtypes.Megabyte)
 		wl["mounts"] = mounts
@@ -780,6 +814,7 @@ func flattenVMData(workload gridtypes.Workload) (map[string]interface{}, error) 
 		wl["description"] = workload.Description
 		wl["env_vars"] = envVars
 		wl["ip"] = machineData.(*zos.ZMachine).Network.Interfaces[0].IP.String()
+		wl["ygg_ip"] = result.YggIP
 		return wl, nil
 	}
 
