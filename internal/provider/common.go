@@ -267,8 +267,8 @@ func deployConsistentDeployments(ctx context.Context, oldDeployments map[uint32]
 			hashHex := hex.EncodeToString(hash)
 
 			publicIPCount := countDeploymentPublicIPs(dl)
-			contractID, err := api.sub.CreateContract(api.identity, node, nil, hashHex, publicIPCount)
-			log.Printf("CreateContract returned id: %d\n", contractID)
+			contractID, err := api.sub.CreateNodeContract(api.identity, node, nil, hashHex, publicIPCount)
+			log.Printf("CreateNodeContract returned id: %d\n", contractID)
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "failed to create contract")
 			}
@@ -345,7 +345,7 @@ func deployConsistentDeployments(ctx context.Context, oldDeployments map[uint32]
 			log.Printf("[DEBUG] HASH: %s", hashHex)
 			// TODO: Destroy and create if publicIPCount is changed
 			// publicIPCount := countDeploymentPublicIPs(dl)
-			contractID, err := api.sub.UpdateContract(api.identity, dl.ContractID, nil, hashHex)
+			contractID, err := api.sub.UpdateNodeContract(api.identity, dl.ContractID, nil, hashHex)
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "failed to update deployment")
 			}

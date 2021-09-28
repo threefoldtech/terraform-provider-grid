@@ -603,8 +603,10 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, currentDeploymentI
 		ygg, ok := yggIPs[string(vm.Name)]
 		if ok {
 			d.VMs[idx].YggIP = ygg
+			d.VMs[idx].Planetary = true
 		} else {
 			d.VMs[idx].YggIP = ""
+			d.VMs[idx].Planetary = false
 		}
 	}
 	for idx, zdb := range d.ZDBs {
