@@ -1,4 +1,4 @@
-module github.com/ashraffouda/grid-provider
+module github.com/threefoldtech/terraform-provider-grid
 
 go 1.16
 
@@ -14,3 +14,5 @@ require (
 	golang.org/x/net v0.0.0-20210813160813-60bc85c4be6d // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20210803171230-4253848d036c
 )
+
+replace github.com/threefoldtech/zos => ../zos
