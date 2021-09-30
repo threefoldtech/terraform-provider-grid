@@ -45,10 +45,9 @@ Endpoint = %s
 	`, Address, AccessPrivatekey, NodePublicKey, NetworkIPRange, NodeEndpoint)
 }
 
-func getPublicNode(preferedNodes []uint32) (uint32, error) {
+func getPublicNode(graphqlURL string, preferedNodes []uint32) (uint32, error) {
 
-	url := "https://explorer.devnet.grid.tf/graphql/"
-	client := graphql.NewClient(url, nil)
+	client := graphql.NewClient(graphqlURL, nil)
 	var q struct {
 		Nodes []struct {
 			NodeId       graphql.Int
