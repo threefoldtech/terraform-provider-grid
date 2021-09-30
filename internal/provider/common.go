@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	gormb "github.com/threefoldtech/rmb"
+	gormb "github.com/threefoldtech/go-rmb"
+	substrate "github.com/threefoldtech/substrate-client"
 	"github.com/threefoldtech/zos/client"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
-	"github.com/threefoldtech/zos/pkg/substrate"
 )
 
 type NodeClientCollection interface {
@@ -267,6 +267,7 @@ func deployConsistentDeployments(ctx context.Context, oldDeployments map[uint32]
 			hashHex := hex.EncodeToString(hash)
 
 			publicIPCount := countDeploymentPublicIPs(dl)
+			log.Printf("Number of public ips: %d\n", publicIPCount)
 			contractID, err := api.sub.CreateNodeContract(api.identity, node, nil, hashHex, publicIPCount)
 			log.Printf("CreateNodeContract returned id: %d\n", contractID)
 			if err != nil {
