@@ -2,9 +2,9 @@ package provider
 
 import (
 	"github.com/pkg/errors"
+	substrate "github.com/threefoldtech/substrate-client"
 	"github.com/threefoldtech/zos/client"
 	"github.com/threefoldtech/zos/pkg/rmb"
-	"github.com/threefoldtech/zos/pkg/substrate"
 )
 
 type NodeClientPool struct {
