@@ -468,7 +468,7 @@ func (vm *VM) GenerateVMWorkload(deployer *DeploymentDeployer) []gridtypes.Workl
 				CPU:    uint8(vm.Cpu),
 				Memory: gridtypes.Unit(uint(vm.Memory)) * gridtypes.Megabyte,
 			},
-			Entrypoint: "/sbin/zinit init",
+			Entrypoint: vm.Entrypoint,
 			Mounts:     mounts,
 			Env:        vm.EnvVars,
 		}),
