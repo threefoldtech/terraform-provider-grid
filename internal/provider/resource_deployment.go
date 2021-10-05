@@ -12,10 +12,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
+	substrate "github.com/threefoldtech/substrate-client"
 	"github.com/threefoldtech/zos/client"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
-	"github.com/threefoldtech/zos/pkg/substrate"
 )
 
 const (
@@ -468,7 +468,7 @@ func (vm *VM) GenerateVMWorkload(deployer *DeploymentDeployer) []gridtypes.Workl
 				CPU:    uint8(vm.Cpu),
 				Memory: gridtypes.Unit(uint(vm.Memory)) * gridtypes.Megabyte,
 			},
-			Entrypoint: "/sbin/zinit init",
+			Entrypoint: vm.Entrypoint,
 			Mounts:     mounts,
 			Env:        vm.EnvVars,
 		}),
@@ -604,8 +604,10 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, currentDeploymentI
 		ygg, ok := yggIPs[string(vm.Name)]
 		if ok {
 			d.VMs[idx].YggIP = ygg
+			d.VMs[idx].Planetary = true
 		} else {
 			d.VMs[idx].YggIP = ""
+			d.VMs[idx].Planetary = false
 		}
 	}
 	for idx, zdb := range d.ZDBs {

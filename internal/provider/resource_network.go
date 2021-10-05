@@ -186,7 +186,7 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 
 	publicNodeID := uint32(d.Get("public_node_id").(int))
 	if publicNodeID == 0 {
-		nd, err := getPublicNode(nodes)
+		nd, err := getPublicNode(apiClient.graphql_url, nodes)
 		if err != nil {
 			return NetworkDeployer{}, errors.Wrap(err, "couldn't find node id")
 		}
