@@ -8,7 +8,9 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
+	"github.com/goombaio/namegenerator"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -101,4 +103,13 @@ func VerifyIPs(wgConfig string, verifyIPs []string) bool {
 		}
 	}
 	return true
+}
+
+func RandomName() string {
+	seed := time.Now().UTC().UnixNano()
+	nameGenerator := namegenerator.NewNameGenerator(seed)
+
+	name := nameGenerator.Generate()
+
+	return name
 }
