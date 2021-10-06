@@ -816,6 +816,7 @@ func flattenVMData(workload gridtypes.Workload) (map[string]interface{}, error) 
 		wl["env_vars"] = envVars
 		wl["ip"] = machineData.(*zos.ZMachine).Network.Interfaces[0].IP.String()
 		wl["ygg_ip"] = result.YggIP
+		wl["planetary"] = result.YggIP != ""
 		return wl, nil
 	}
 
