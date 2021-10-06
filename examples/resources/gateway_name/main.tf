@@ -2,7 +2,7 @@ terraform {
   required_providers {
     grid = {
       source = "threefoldtech/grid"
-      version = "0.1.2"
+      version = "0.1.7"
     }
   }
 }
@@ -21,7 +21,7 @@ data "grid_gateway_domain" "domain" {
 }
 
 resource "grid_name_proxy" "p1" {
-  node = 2
+  node = 40
   name = "example2"
   backends = [format("http://137.184.106.152")]
   tls_passthrough = false
