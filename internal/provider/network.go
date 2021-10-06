@@ -45,7 +45,7 @@ Endpoint = %s
 	`, Address, AccessPrivatekey, NodePublicKey, NetworkIPRange, NodeEndpoint)
 }
 
-func getPublicNode(graphqlURL string, preferedNodes []uint32) (uint32, error) {
+func getPublicNode(ctx context.Context, ncPool NodeClientCollection, graphqlURL string, preferedNodes []uint32) (uint32, error) {
 
 	client := graphql.NewClient(graphqlURL, nil)
 	var q struct {
@@ -56,19 +56,16 @@ func getPublicNode(graphqlURL string, preferedNodes []uint32) (uint32, error) {
 			}
 		}
 	}
-	err := client.Query(context.Background(), &q, nil)
+	err := client.Query(ctx, &q, nil)
 	if err != nil {
-		panic(err)
+		return 0, err
 	}
 	publicNode := uint32(0)
 	for _, node := range q.Nodes {
 		if node.PublicConfig.Ipv4 != "" {
-			ip, err := gridtypes.ParseIPNet(string(node.PublicConfig.Ipv4))
-			if err != nil {
-				log.Printf("couldn't parse ip %s: %s", node.PublicConfig.Ipv4, err)
-				continue
-			}
-			if ip.IP.To4().IsPrivate() {
+			log.Printf("found a node with ipv4 public config: %d %s\n", node.NodeId, node.PublicConfig.Ipv4)
+			if err := validatePublicNode(ctx, uint32(node.NodeId), ncPool); err != nil {
+				log.Printf("error checking public node %d: %s", node.NodeId, err.Error())
 				continue
 			}
 			if isInUint32(preferedNodes, uint32(node.NodeId)) {
@@ -84,7 +81,25 @@ func getPublicNode(graphqlURL string, preferedNodes []uint32) (uint32, error) {
 		return publicNode, nil
 	}
 }
-
+func validatePublicNode(ctx context.Context, nodeID uint32, ncPool NodeClientCollection) error {
+	sub, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
+	nodeClient, err := ncPool.getNodeClient(nodeID)
+	if err != nil {
+		return errors.Wrap(err, "couldn't get node client")
+	}
+	publicConfig, err := nodeClient.NetworkGetPublicConfig(sub)
+	if err != nil {
+		return errors.Wrap(err, "couldn't get node public config")
+	}
+	if publicConfig.IPv4.IP == nil {
+		return errors.New("node doesn't have a public ip in its config")
+	}
+	if publicConfig.IPv4.IP.IsPrivate() {
+		return errors.New("node has a private ip in its public ip")
+	}
+	return nil
+}
 func getNodeFreeWGPort(ctx context.Context, nodeClient *client.NodeClient, nodeId uint32) (int, error) {
 	rand.Seed(time.Now().UnixNano())
 	freeports, err := nodeClient.NetworkListWGPorts(ctx)

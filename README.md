@@ -13,9 +13,7 @@
 ## Building The Provider (for development only)
 
 Note: please clone all of the following repos in the same directory
-- clone github.com/threefoldtech/zos  (switch to master-3 branch)
-- clone github.com/threefoldtech/rmb-go  (switch to testing branch)
-- make sure in rmb-go and this project's go.mod file, zos package and rmb-go package is replace with the pulled ones
+- clone github.com/threefoldtech/zos  (switch to main branch)
 - Clone github.com/threefoldtech/tf_terraform_provider (development branch)
 - Enter the repository directory
 
@@ -24,6 +22,18 @@ go get
 mkdir -p  ~/.terraform.d/plugins/threefoldtech.com/providers/grid/0.1/linux_amd64
 go build -o terraform-provider-grid 
 mv terraform-provider-grid ~/.terraform.d/plugins/threefoldtech.com/providers/grid/0.1/linux_amd64
+```
+
+- to use the built plugin in a terraform file, use the following provider config:
+```
+terraform {
+  required_providers {
+    grid = {
+      source = "threefoldtech.com/providers/grid"
+      version = "0.1"
+    }
+  }
+}
 ```
 
 
