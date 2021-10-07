@@ -149,7 +149,7 @@ func isNodeUp(ctx context.Context, nc *client.NodeClient) error {
 
 	_, err := nc.NetworkListInterfaces(ctx)
 	if err != nil {
-		return errors.New("couldn't list node interfaces")
+		return errors.Wrap(err, "couldn't list node interfaces")
 	}
 
 	return nil
