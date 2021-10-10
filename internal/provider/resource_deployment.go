@@ -200,6 +200,143 @@ func resourceDeployment() *schema.Resource {
 					},
 				},
 			},
+			"qsfs": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"name": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"description": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"cache": {
+							Type:     schema.TypeInt,
+							Required: true,
+						},
+						"minimal_shards": {
+							Type:     schema.TypeInt,
+							Required: true,
+						},
+						"expected_shards": {
+							Type:     schema.TypeInt,
+							Required: true,
+						},
+						"redundant_groups": {
+							Type:     schema.TypeInt,
+							Required: true,
+						},
+						"redundant_nodes": {
+							Type:     schema.TypeInt,
+							Required: true,
+						},
+						"max_zdb_data_dir_size": {
+							Type:     schema.TypeInt,
+							Required: true,
+						},
+						"encryption_algorithm": {
+							Type:     schema.TypeString,
+							Optional: true,
+							Default:  "AES",
+						},
+						"encryption_key": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"compression_algorithm": {
+							Type:     schema.TypeString,
+							Optional: true,
+							Default:  "snappy",
+						},
+						"metadata": {
+							Type:     schema.TypeList,
+							Required: true,
+							MaxItems: 1,
+							MinItems: 1,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"type": {
+										Type:     schema.TypeString,
+										Optional: true,
+										Default:  "zdb",
+									},
+									"prefix": {
+										Type:     schema.TypeString,
+										Required: true,
+									},
+									"encryption_algorithm": {
+										Type:     schema.TypeString,
+										Optional: true,
+										Default:  "AES",
+									},
+									"encryption_key": {
+										Type:     schema.TypeString,
+										Required: true,
+									},
+									"backends": {
+										Type:     schema.TypeList,
+										Optional: true,
+										Elem: &schema.Resource{
+											Schema: map[string]*schema.Schema{
+												"address": {
+													Type:     schema.TypeString,
+													Required: true,
+												},
+												"namespace": {
+													Type:     schema.TypeString,
+													Required: true,
+												},
+												"password": {
+													Type:     schema.TypeString,
+													Required: true,
+												},
+											},
+										},
+									}},
+							},
+						},
+						"groups": {
+							Type:     schema.TypeList,
+							Required: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"backends": {
+										Type:     schema.TypeList,
+										Optional: true,
+										Elem: &schema.Resource{
+											Schema: map[string]*schema.Schema{
+												"address": {
+													Type:     schema.TypeString,
+													Required: true,
+												},
+												"namespace": {
+													Type:     schema.TypeString,
+													Required: true,
+												},
+												"password": {
+													Type:     schema.TypeString,
+													Required: true,
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+						"metrics_endpoint": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"metrics_port": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+					},
+				},
+			},
 			"ip_range": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -244,7 +381,6 @@ type VM struct {
 	Mounts      []Mount
 	EnvVars     map[string]string
 }
-
 type Mount struct {
 	DiskName   string
 	MountPoint string
@@ -255,6 +391,7 @@ type DeploymentDeployer struct {
 	Disks        []Disk
 	ZDBs         []ZDB
 	VMs          []VM
+	QSFSs        []QSFS
 	IPRange      *gridtypes.IPNet
 	UsedIPs      []string
 	NetworkName  string
@@ -348,6 +485,7 @@ func GetZdbData(zdb map[string]interface{}) ZDB {
 		Namespace:   zdb["namespace"].(string),
 	}
 }
+
 func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (DeploymentDeployer, error) {
 	ipRangeStr := d.Get("ip_range").(string)
 	var ipRange *gridtypes.IPNet
@@ -382,11 +520,17 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 			usedIPs = append(usedIPs, data.IP)
 		}
 	}
+	qsfs := make([]QSFS, 0)
+	for _, q := range d.Get("qsfs").([]interface{}) {
+		data := NewQSFSFromSchema(q.(map[string]interface{}))
+		qsfs = append(qsfs, data)
+	}
 	deploymentDeployer := DeploymentDeployer{
 		Id:          d.Id(),
 		Node:        uint32(d.Get("node").(int)),
 		Disks:       disks,
 		VMs:         vms,
+		QSFSs:       qsfs,
 		ZDBs:        zdbs,
 		IPRange:     ipRange,
 		UsedIPs:     usedIPs,
@@ -497,6 +641,11 @@ func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context)
 		workloads = append(workloads, vmWorkloads...)
 	}
 
+	for _, q := range d.QSFSs {
+		qsfsWorkload := q.GenerateWorkload(d)
+		workloads = append(workloads, qsfsWorkload)
+	}
+
 	deployment := gridtypes.Deployment{
 		Version: 0,
 		TwinID:  uint32(d.APIClient.twin_id), //LocalTwin,
@@ -550,6 +699,7 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, currentDeploymentI
 	zdbIPs := make(map[string][]string)
 	zdbPort := make(map[string]uint)
 	zdbNamespace := make(map[string]string)
+	workloads := make(map[string]*gridtypes.Workload)
 
 	for _, dl := range currentDeployments {
 		for _, w := range dl.Workloads {
@@ -582,6 +732,8 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, currentDeploymentI
 				zdbIPs[string(w.Name)] = d.IPs
 				zdbPort[string(w.Name)] = d.Port
 				zdbNamespace[string(w.Name)] = d.Namespace
+			} else if w.Type == zos.QuantumSafeFSType {
+				workloads[string(w.Name)] = &w
 			}
 		}
 	}
@@ -618,6 +770,12 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, currentDeploymentI
 			d.ZDBs[idx].IPs = make([]string, 0)
 			d.ZDBs[idx].Port = 0
 			d.ZDBs[idx].Namespace = ""
+		}
+	}
+	for idx := range d.QSFSs {
+		name := string(d.QSFSs[idx].Name)
+		if err := d.QSFSs[idx].updateFromWorkload(workloads[name]); err != nil {
+			log.Printf("couldn't update qsfs from workload: %s\n", err)
 		}
 	}
 	log.Printf("Current state after updatestate %v\n", d)
@@ -702,9 +860,14 @@ func (dep *DeploymentDeployer) storeState(d *schema.ResourceData) {
 	for _, zdb := range dep.ZDBs {
 		zdbs = append(zdbs, zdb.Dictify())
 	}
+	qsfs := make([]interface{}, 0)
+	for _, q := range dep.QSFSs {
+		qsfs = append(zdbs, q.Dictify())
+	}
 	d.Set("vms", vms)
 	d.Set("zdbs", zdbs)
 	d.Set("disks", disks)
+	d.Set("qsfs", qsfs)
 	d.Set("node", dep.Node)
 	d.Set("network_name", dep.NetworkName)
 	if dep.IPRange != nil {
@@ -855,7 +1018,7 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "error getting deployment"))
 	}
-
+	qsfs := make([]map[string]interface{}, 0)
 	disks := make([]map[string]interface{}, 0)
 	zdbs := make([]map[string]interface{}, 0)
 	vms := make([]map[string]interface{}, 0)
@@ -889,6 +1052,13 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 				continue
 			}
 			publicIPs[string(workload.Name)] = ipData.IP
+		} else if workload.Type == zos.QuantumSafeFSType {
+			q, err := NewQSFSFromWorkload(&workload)
+			if err != nil {
+				log.Printf("error getting qsfs from workload: %s\n", err)
+				continue
+			}
+			qsfs = append(qsfs, q.Dictify())
 		}
 	}
 
@@ -902,9 +1072,11 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 			vm["publicip"] = false
 		}
 	}
+
 	d.Set("vms", vms)
 	d.Set("disks", disks)
 	d.Set("zdbs", zdbs)
+	d.Set("qsfs", qsfs)
 	return diags
 }
 
