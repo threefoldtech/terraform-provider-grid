@@ -11,7 +11,7 @@
 ## Building The Provider (for development only)
 
 ```bash
-make build
+make
 ```
 
 - to use the built plugin in a terraform file, use the following provider config:
