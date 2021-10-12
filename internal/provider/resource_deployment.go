@@ -330,10 +330,6 @@ func resourceDeployment() *schema.Resource {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
-						"metrics_port": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
 					},
 				},
 			},
@@ -641,8 +637,11 @@ func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context)
 		workloads = append(workloads, vmWorkloads...)
 	}
 
-	for _, q := range d.QSFSs {
-		qsfsWorkload := q.GenerateWorkload(d)
+	for idx, q := range d.QSFSs {
+		qsfsWorkload, err := q.GenerateWorkload(d)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to generate qsfs %d", idx)
+		}
 		workloads = append(workloads, qsfsWorkload)
 	}
 

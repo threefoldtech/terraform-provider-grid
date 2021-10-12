@@ -1,6 +1,9 @@
 package provider
 
 import (
+	"encoding/hex"
+	"log"
+
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -22,7 +25,6 @@ type QSFS struct {
 	Groups               Groups
 
 	MetricsEndpoint string
-	MetricsPort     int
 }
 type Metadata struct {
 	Type                string
@@ -131,7 +133,7 @@ func NewQSFSFromSchema(qsfs map[string]interface{}) QSFS {
 		Prefix:              metadataMap["prefix"].(string),
 		EncryptionAlgorithm: metadataMap["encryption_algorithm"].(string),
 		EncryptionKey:       metadataMap["encryption_key"].(string),
-		Backends:            getBackends(metadataMap["type"].([]interface{})),
+		Backends:            getBackends(metadataMap["backends"].([]interface{})),
 	}
 	groupsIf := qsfs["groups"].([]interface{})
 	groups := make([]Group, 0, len(groupsIf))
@@ -160,33 +162,40 @@ func NewQSFSFromSchema(qsfs map[string]interface{}) QSFS {
 
 func NewQSFSFromWorkload(wl *gridtypes.Workload) (QSFS, error) {
 
-	var data zos.QuantumSafeFS
+	var data *zos.QuantumSafeFS
 	wd, err := wl.WorkloadData()
 	if err != nil {
 		return QSFS{}, err
 	}
 	var res zos.QuatumSafeFSResult
+	// BTODO: remove
+	x, err := wl.Result.Bytes()
+	if err != nil {
+		panic(err)
+	}
+	log.Printf("wl.Result: %s\n", string(x))
 	if err := wl.Result.Unmarshal(&res); err != nil {
 		return QSFS{}, err
 	}
-	data = wd.(zos.QuantumSafeFS)
+	log.Printf("wl.Result.unm: %s %s\n", res.MetricsEndpoint, res.Path)
+	data = wd.(*zos.QuantumSafeFS)
 	return QSFS{
 		Name:                 string(wl.Name),
 		Description:          string(wl.Description),
-		Cache:                int(data.Cache),
+		Cache:                int(data.Cache) / int(gridtypes.Gigabyte),
 		MinimalShards:        data.Config.MinimalShards,
 		ExpectedShards:       data.Config.ExpectedShards,
 		RedundantGroups:      data.Config.RedundantGroups,
 		RedundantNodes:       data.Config.RedundantNodes,
 		MaxZDBDataDirSize:    data.Config.MaxZDBDataDirSize,
 		EncryptionAlgorithm:  string(data.Config.Encryption.Algorithm),
-		EncryptionKey:        string(data.Config.Encryption.Key),
+		EncryptionKey:        hex.EncodeToString(data.Config.Encryption.Key),
 		CompressionAlgorithm: data.Config.Compression.Algorithm,
 		Metadata: Metadata{
 			Type:                data.Config.Meta.Type,
 			Prefix:              data.Config.Meta.Config.Prefix,
 			EncryptionAlgorithm: string(data.Config.Meta.Config.Encryption.Algorithm),
-			EncryptionKey:       string(data.Config.Meta.Config.Encryption.Key),
+			EncryptionKey:       hex.EncodeToString(data.Config.Meta.Config.Encryption.Key),
 			Backends:            BackendsFromZos(data.Config.Meta.Config.Backends),
 		},
 		Groups:          GroupsFromZos(data.Config.Groups),
@@ -207,11 +216,20 @@ func getBackends(backendsIf []interface{}) []Backend {
 	return backends
 }
 
-func (q *QSFS) GenerateWorkload(deployer *DeploymentDeployer) gridtypes.Workload {
+func (q *QSFS) GenerateWorkload(deployer *DeploymentDeployer) (gridtypes.Workload, error) {
+	k, err := hex.DecodeString(q.EncryptionKey)
+	if err != nil {
+		return gridtypes.Workload{}, err
+	}
+	mk, err := hex.DecodeString(q.EncryptionKey)
+	if err != nil {
+		return gridtypes.Workload{}, err
+	}
 	workload := gridtypes.Workload{
-		Version: 0,
-		Name:    gridtypes.Name(q.Name),
-		Type:    zos.QuantumSafeFSType,
+		Version:     0,
+		Name:        gridtypes.Name(q.Name),
+		Type:        zos.QuantumSafeFSType,
+		Description: q.Description,
 		Data: gridtypes.MustMarshal(zos.QuantumSafeFS{
 			Cache: gridtypes.Unit(uint64(q.Cache) * uint64(gridtypes.Gigabyte)),
 			Config: zos.QuantumSafeFSConfig{
@@ -222,7 +240,7 @@ func (q *QSFS) GenerateWorkload(deployer *DeploymentDeployer) gridtypes.Workload
 				MaxZDBDataDirSize: q.MaxZDBDataDirSize,
 				Encryption: zos.Encryption{
 					Algorithm: zos.EncryptionAlgorithm(q.EncryptionAlgorithm),
-					Key:       zos.EncryptionKey(q.EncryptionKey),
+					Key:       zos.EncryptionKey(k),
 				},
 				Meta: zos.QuantumSafeMeta{
 					Type: q.Metadata.Type,
@@ -230,7 +248,7 @@ func (q *QSFS) GenerateWorkload(deployer *DeploymentDeployer) gridtypes.Workload
 						Prefix: q.Metadata.Prefix,
 						Encryption: zos.Encryption{
 							Algorithm: zos.EncryptionAlgorithm(q.EncryptionAlgorithm),
-							Key:       zos.EncryptionKey(q.Metadata.EncryptionKey),
+							Key:       zos.EncryptionKey(mk),
 						},
 						Backends: q.Metadata.Backends.zosBackends(),
 					},
@@ -243,13 +261,12 @@ func (q *QSFS) GenerateWorkload(deployer *DeploymentDeployer) gridtypes.Workload
 		}),
 	}
 
-	return workload
+	return workload, nil
 }
 
 func (q *QSFS) updateFromWorkload(wl *gridtypes.Workload) error {
 	if wl == nil {
 		q.MetricsEndpoint = ""
-		q.MetricsPort = 0
 		return nil
 	}
 	var res zos.QuatumSafeFSResult
@@ -269,11 +286,12 @@ func (q *QSFS) Dictify() map[string]interface{} {
 	res["minimal_shards"] = q.MinimalShards
 	res["expected_shards"] = q.ExpectedShards
 	res["redundant_groups"] = q.RedundantGroups
-	res["redundant_nodes"] = q.RedundantGroups
-	res["max_zdb_data_dir_size"] = q.RedundantGroups
-	res["encryption_algorithm"] = q.RedundantGroups
-	res["encryption_key"] = q.RedundantGroups
-	res["compression_algorithm"] = q.RedundantGroups
+	res["redundant_nodes"] = q.RedundantNodes
+	res["max_zdb_data_dir_size"] = q.MaxZDBDataDirSize
+	res["encryption_algorithm"] = q.EncryptionAlgorithm
+	res["encryption_key"] = q.EncryptionKey
+	res["compression_algorithm"] = q.CompressionAlgorithm
+	res["metrics_endpoint"] = q.MetricsEndpoint
 	res["metadata"] = []interface{}{q.Metadata.Dictify()}
 	res["groups"] = q.Groups.Listify()
 	return res
