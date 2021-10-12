@@ -10,7 +10,7 @@ require (
 	github.com/shurcooL/graphql v0.0.0-20200928012149-18c5c3165e3a
 	github.com/threefoldtech/go-rmb v0.1.4
 	github.com/threefoldtech/substrate-client v0.0.0-20211012091516-a95c7817db5c
-	github.com/threefoldtech/zos v0.4.10-0.20210930143237-31899c4a55e2
+	github.com/threefoldtech/zos v0.4.10-0.20211012115845-ed1f15d4c90e
 	golang.org/x/net v0.0.0-20210813160813-60bc85c4be6d // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20210803171230-4253848d036c
 )
@@ -35,7 +35,6 @@ require (
 	github.com/centrifuge/go-substrate-rpc-client/v3 v3.0.2 // indirect
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
 	github.com/cosmos/go-bip39 v1.0.0 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/deckarep/golang-set v1.7.1 // indirect
 	github.com/decred/base58 v1.0.3 // indirect
 	github.com/decred/dcrd/crypto/blake256 v1.0.0 // indirect
@@ -67,7 +66,6 @@ require (
 	github.com/hashicorp/go-uuid v1.0.1 // indirect
 	github.com/hashicorp/go-version v1.3.0 // indirect
 	github.com/hashicorp/hcl/v2 v2.3.0 // indirect
-	github.com/hashicorp/logutils v1.0.0 // indirect
 	github.com/hashicorp/terraform-exec v0.13.3 // indirect
 	github.com/hashicorp/terraform-json v0.10.0 // indirect
 	github.com/hashicorp/terraform-plugin-go v0.3.0 // indirect

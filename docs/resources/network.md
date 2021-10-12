@@ -24,6 +24,7 @@ Sample resource in the Terraform provider scaffolding.
 
 ### Optional
 
+- **add_wg_access** (Boolean) whether to add a public node to network and use it to generate a wg config
 - **id** (String) The ID of this resource.
 - **nodes_ip_range** (Map of String) Computed values of nodes' ip ranges after deployment
 
