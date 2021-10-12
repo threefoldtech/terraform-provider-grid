@@ -68,7 +68,6 @@ import (
 	"context"
 	"net"
 
-	"github.com/threefoldtech/zos/pkg"
 	"github.com/threefoldtech/zos/pkg/capacity/dmi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/rmb"
@@ -212,7 +211,7 @@ func (n *NodeClient) NetworkListIPs(ctx context.Context) ([]string, error) {
 
 // NetworkGetPublicConfig returns the current public node network configuration. A node with a
 // public config can be used as an access node for wireguard.
-func (n *NodeClient) NetworkGetPublicConfig(ctx context.Context) (cfg pkg.PublicConfig, err error) {
+func (n *NodeClient) NetworkGetPublicConfig(ctx context.Context) (cfg PublicConfig, err error) {
 	const cmd = "zos.network.public_config_get"
 
 	if err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &cfg); err != nil {
@@ -224,7 +223,7 @@ func (n *NodeClient) NetworkGetPublicConfig(ctx context.Context) (cfg pkg.Public
 
 // NetworkGetPublicConfig returns the current public node network configuration. A node with a
 // public config can be used as an access node for wireguard.
-func (n *NodeClient) NetworkSetPublicConfig(ctx context.Context, cfg pkg.PublicConfig) error {
+func (n *NodeClient) NetworkSetPublicConfig(ctx context.Context, cfg PublicConfig) error {
 	const cmd = "zos.network.public_config_set"
 
 	if err := n.bus.Call(ctx, n.nodeTwin, cmd, cfg, nil); err != nil {
