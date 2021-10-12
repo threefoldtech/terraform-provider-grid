@@ -14,6 +14,8 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
+var ErrNoAccessibleInterfaceFound = fmt.Errorf("couldn't find a publicly accessible ipv4 or ipv6")
+
 func ipNet(a, b, c, d, msk byte) gridtypes.IPNet {
 	return gridtypes.NewIPNet(net.IPNet{
 		IP:   net.IPv4(a, b, c, d),
@@ -146,7 +148,7 @@ func isPrivateIP(ip net.IP) bool {
 	return false
 }
 
-func getNodeEndpoint(ctx context.Context, nodeClient *client.NodeClient) (string, error) {
+func getNodeEndpoint(ctx context.Context, nodeClient *client.NodeClient) (net.IP, error) {
 	publicConfig, err := nodeClient.NetworkGetPublicConfig(ctx)
 	log.Printf("publicConfig: %v\n", publicConfig)
 	log.Printf("publicConfig.IPv4: %v\n", publicConfig.IPv4)
@@ -157,25 +159,25 @@ func getNodeEndpoint(ctx context.Context, nodeClient *client.NodeClient) (string
 		ip := publicConfig.IPv4.IP
 		log.Printf("ip: %s, globalunicast: %t, privateIP: %t\n", ip.String(), ip.IsGlobalUnicast(), isPrivateIP(ip))
 		if ip.IsGlobalUnicast() && !isPrivateIP(ip) {
-			return ip.String(), nil
+			return ip, nil
 		}
 	} else if err == nil && publicConfig.IPv6.IP != nil {
 		ip := publicConfig.IPv6.IP
 		log.Printf("ip: %s, globalunicast: %t, privateIP: %t\n", ip.String(), ip.IsGlobalUnicast(), isPrivateIP(ip))
 		if ip.IsGlobalUnicast() && !isPrivateIP(ip) {
-			return fmt.Sprintf("[%s]", ip.String()), nil
+			return ip, nil
 		}
 	}
 
 	ifs, err := nodeClient.NetworkListInterfaces(ctx)
 	if err != nil {
-		return "", errors.Wrap(err, "couldn't list node interfaces")
+		return nil, errors.Wrap(err, "couldn't list node interfaces")
 	}
 	log.Printf("if: %v\n", ifs)
 
 	zosIf, ok := ifs["zos"]
 	if !ok {
-		return "", errors.New("node doesn't contain zos interface or public config")
+		return nil, errors.Wrap(ErrNoAccessibleInterfaceFound, "no zos interface")
 	}
 	for _, ip := range zosIf {
 		log.Printf("ip: %s, globalunicast: %t, privateIP: %t\n", ip.String(), ip.IsGlobalUnicast(), isPrivateIP(ip))
@@ -183,11 +185,7 @@ func getNodeEndpoint(ctx context.Context, nodeClient *client.NodeClient) (string
 			continue
 		}
 
-		if ip.To4() != nil {
-			return ip.String(), nil
-		} else {
-			return fmt.Sprintf("[%s]", ip.String()), nil
-		}
+		return ip, nil
 	}
-	return "", errors.New("no public config found, and no public ipv4 or ipv6 on zos interface found")
+	return nil, errors.Wrap(ErrNoAccessibleInterfaceFound, "no public ipv4 or ipv6 on zos interface found")
 }
