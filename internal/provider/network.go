@@ -10,7 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/shurcooL/graphql"
-	"github.com/threefoldtech/zos/client"
+	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 

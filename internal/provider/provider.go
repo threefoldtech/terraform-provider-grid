@@ -34,7 +34,7 @@ func New(version string) func() *schema.Provider {
 				"twin_id": {
 					Type:        schema.TypeInt,
 					Required:    true,
-					DefaultFunc: schema.EnvDefaultFunc("TWIN_ID", 0),
+					DefaultFunc: schema.EnvDefaultFunc("TWIN_ID", nil),
 				},
 				"mnemonics": {
 					Type:        schema.TypeString,
