@@ -9,6 +9,11 @@ terraform {
 provider "grid" {
 }
 
+locals {
+  metas = ["meta1", "meta2", "meta3", "meta4"]
+  datas = ["data1", "data2", "data3", "data4", "data5", "data6", "data7", "data8"]
+}
+
 resource "grid_network" "net1" {
     nodes = [5]
     ip_range = "10.1.0.0/16"
@@ -18,89 +23,25 @@ resource "grid_network" "net1" {
 
 resource "grid_deployment" "d1" {
     node = 5
-    zdbs {
-        name = "meta1"
-        size = 10
-        description = "zdb1 description"
-        password = "password"
-        mode = "user"
+    dynamic "zdbs" {
+        for_each = local.metas
+        content {
+            name = zdbs.value
+            description = "description"
+            password = "password"
+            size = 10
+            mode = "user"
+        }
     }
-    zdbs {
-        name = "meta2"
-        size = 10
-        description = "zdb1 description"
-        password = "password"
-        mode = "user"
-    }
-    zdbs {
-        name = "meta3"
-        size = 10
-        description = "zdb1 description"
-        password = "password"
-        mode = "user"
-    }
-    zdbs {
-        name = "meta4"
-        size = 10
-        description = "zdb1 description"
-        password = "password"
-        mode = "user"
-    }
-    zdbs {
-        name = "data1"
-        size = 10
-        description = "zdb1 description"
-        password = "password"
-        mode = "seq"
-    }
-    zdbs {
-        name = "data2"
-        size = 10
-        description = "zdb1 description"
-        password = "password"
-        mode = "seq"
-    }
-    zdbs {
-        name = "data3"
-        size = 10
-        description = "zdb1 description"
-        password = "password"
-        mode = "seq"
-    }
-    zdbs {
-        name = "data4"
-        size = 10
-        description = "zdb1 description"
-        password = "password"
-        mode = "seq"
-    }
-    zdbs {
-        name = "data5"
-        size = 10
-        description = "zdb1 description"
-        password = "password"
-        mode = "seq"
-    }
-    zdbs {
-        name = "data6"
-        size = 10
-        description = "zdb1 description"
-        password = "password"
-        mode = "seq"
-    }
-    zdbs {
-        name = "data7"
-        size = 10
-        description = "zdb1 description"
-        password = "password"
-        mode = "seq"
-    }
-    zdbs {
-        name = "data8"
-        size = 10
-        description = "zdb1 description"
-        password = "password"
-        mode = "seq"
+    dynamic "zdbs" {
+        for_each = local.datas
+        content {
+            name = zdbs.value
+            description = "description"
+            password = "password"
+            size = 10
+            mode = "seq"
+        }
     }
 }
 
@@ -125,67 +66,23 @@ resource "grid_deployment" "qsfs" {
       prefix = "hamada"
       encryption_algorithm = "AES"
       encryption_key = "4d778ba3216e4da4231540c92a55f06157cabba802f9b68fb0f78375d2e825af"
-      backends {
-        address = format("[%s]:%d", grid_deployment.d1.zdbs[0].ips[1], grid_deployment.d1.zdbs[0].port)
-        namespace = grid_deployment.d1.zdbs[0].namespace
-        password = grid_deployment.d1.zdbs[0].password
-      }
-      backends {
-        address = format("[%s]:%d", grid_deployment.d1.zdbs[1].ips[1], grid_deployment.d1.zdbs[1].port)
-        namespace = grid_deployment.d1.zdbs[1].namespace
-        password = grid_deployment.d1.zdbs[1].password
-      }
-      backends {
-        address = format("[%s]:%d", grid_deployment.d1.zdbs[2].ips[1], grid_deployment.d1.zdbs[2].port)
-        namespace = grid_deployment.d1.zdbs[2].namespace
-        password = grid_deployment.d1.zdbs[2].password
-      }
-      backends {
-        address = format("[%s]:%d", grid_deployment.d1.zdbs[3].ips[1], grid_deployment.d1.zdbs[3].port)
-        namespace = grid_deployment.d1.zdbs[3].namespace
-        password = grid_deployment.d1.zdbs[3].password
+      dynamic "backends" {
+          for_each = [for zdb in grid_deployment.d1.zdbs : zdb if zdb.mode != "seq"]
+          content {
+              address = format("[%s]:%d", backends.value.ips[1], backends.value.port)
+              namespace = backends.value.namespace
+              password = backends.value.password
+          }
       }
     }
     groups {
-      backends {
-        address = format("[%s]:%d", grid_deployment.d1.zdbs[4].ips[1], grid_deployment.d1.zdbs[4].port)
-        namespace = grid_deployment.d1.zdbs[4].namespace
-        password = grid_deployment.d1.zdbs[4].password
-      }
-      backends {
-        address = format("[%s]:%d", grid_deployment.d1.zdbs[5].ips[1], grid_deployment.d1.zdbs[5].port)
-        namespace = grid_deployment.d1.zdbs[5].namespace
-        password = grid_deployment.d1.zdbs[5].password
-      }
-      backends {
-        address = format("[%s]:%d", grid_deployment.d1.zdbs[6].ips[1], grid_deployment.d1.zdbs[6].port)
-        namespace = grid_deployment.d1.zdbs[6].namespace
-        password = grid_deployment.d1.zdbs[6].password
-      }
-      backends {
-        address = format("[%s]:%d", grid_deployment.d1.zdbs[7].ips[1], grid_deployment.d1.zdbs[7].port)
-        namespace = grid_deployment.d1.zdbs[7].namespace
-        password = grid_deployment.d1.zdbs[7].password
-      }
-      backends {
-        address = format("[%s]:%d", grid_deployment.d1.zdbs[8].ips[1], grid_deployment.d1.zdbs[8].port)
-        namespace = grid_deployment.d1.zdbs[8].namespace
-        password = grid_deployment.d1.zdbs[8].password
-      }
-      backends {
-        address = format("[%s]:%d", grid_deployment.d1.zdbs[9].ips[1], grid_deployment.d1.zdbs[9].port)
-        namespace = grid_deployment.d1.zdbs[9].namespace
-        password = grid_deployment.d1.zdbs[9].password
-      }
-      backends {
-        address = format("[%s]:%d", grid_deployment.d1.zdbs[10].ips[1], grid_deployment.d1.zdbs[10].port)
-        namespace = grid_deployment.d1.zdbs[10].namespace
-        password = grid_deployment.d1.zdbs[10].password
-      }
-      backends {
-        address = format("[%s]:%d", grid_deployment.d1.zdbs[11].ips[1], grid_deployment.d1.zdbs[11].port)
-        namespace = grid_deployment.d1.zdbs[11].namespace
-        password = grid_deployment.d1.zdbs[11].password
+      dynamic "backends" {
+          for_each = [for zdb in grid_deployment.d1.zdbs : zdb if zdb.mode == "seq"]
+          content {
+              address = format("[%s]:%d", backends.value.ips[1], backends.value.port)
+              namespace = backends.value.namespace
+              password = backends.value.password
+          }
       }
     }
   }
