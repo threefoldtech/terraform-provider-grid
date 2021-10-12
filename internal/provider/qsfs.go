@@ -182,7 +182,7 @@ func NewQSFSFromWorkload(wl *gridtypes.Workload) (QSFS, error) {
 	return QSFS{
 		Name:                 string(wl.Name),
 		Description:          string(wl.Description),
-		Cache:                int(data.Cache) / int(gridtypes.Gigabyte),
+		Cache:                int(data.Cache) / int(gridtypes.Megabyte),
 		MinimalShards:        data.Config.MinimalShards,
 		ExpectedShards:       data.Config.ExpectedShards,
 		RedundantGroups:      data.Config.RedundantGroups,
@@ -231,7 +231,7 @@ func (q *QSFS) GenerateWorkload(deployer *DeploymentDeployer) (gridtypes.Workloa
 		Type:        zos.QuantumSafeFSType,
 		Description: q.Description,
 		Data: gridtypes.MustMarshal(zos.QuantumSafeFS{
-			Cache: gridtypes.Unit(uint64(q.Cache) * uint64(gridtypes.Gigabyte)),
+			Cache: gridtypes.Unit(uint64(q.Cache) * uint64(gridtypes.Megabyte)),
 			Config: zos.QuantumSafeFSConfig{
 				MinimalShards:     q.MinimalShards,
 				ExpectedShards:    q.ExpectedShards,

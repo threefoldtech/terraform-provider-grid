@@ -51,13 +51,13 @@ resource "grid_deployment" "qsfs" {
   ip_range = grid_network.net1.nodes_ip_range[5]
   qsfs {
     name = "qsfs"
-    description = "description2"
-    cache = 1
+    description = "description6"
+    cache = 1024 # 1 GB
     minimal_shards = 2
     expected_shards = 3
     redundant_groups = 0
     redundant_nodes = 0
-    max_zdb_data_dir_size = 256000000
+    max_zdb_data_dir_size = 2048 # 2 GB
     encryption_algorithm = "AES"
     encryption_key = "4d778ba3216e4da4231540c92a55f06157cabba802f9b68fb0f78375d2e825af"
     compression_algorithm = "snappy"
@@ -89,8 +89,7 @@ resource "grid_deployment" "qsfs" {
   vms {
     name = "vm"
     flist = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
-    cpu = 1
-    description = "omar"
+    cpu = 2
     memory = 1024
     entrypoint = "/sbin/zinit init"
     planetary = true

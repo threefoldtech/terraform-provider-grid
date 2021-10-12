@@ -210,46 +210,54 @@ func resourceDeployment() *schema.Resource {
 							Required: true,
 						},
 						"description": {
-							Type:     schema.TypeString,
-							Required: true,
+							Type:        schema.TypeString,
+							Required:    true,
+							Description: "The minimum amount of shards which are needed to recover the original data.",
 						},
 						"cache": {
-							Type:     schema.TypeInt,
-							Required: true,
+							Type:        schema.TypeInt,
+							Required:    true,
+							Description: "The size of the fuse mountpoint on the node in MBs (holds qsfs local data before pushing)",
 						},
 						"minimal_shards": {
 							Type:     schema.TypeInt,
 							Required: true,
 						},
 						"expected_shards": {
-							Type:     schema.TypeInt,
-							Required: true,
+							Type:        schema.TypeInt,
+							Required:    true,
+							Description: "The amount of shards which are generated when the data is encoded. Essentially, this is the amount of shards which is needed to be able to recover the data, and some disposable shards which could be lost. The amount of disposable shards can be calculated as expected_shards - minimal_shards.",
 						},
 						"redundant_groups": {
-							Type:     schema.TypeInt,
-							Required: true,
+							Type:        schema.TypeInt,
+							Required:    true,
+							Description: "The amount of groups which one should be able to loose while still being able to recover the original data.",
 						},
 						"redundant_nodes": {
-							Type:     schema.TypeInt,
-							Required: true,
+							Type:        schema.TypeInt,
+							Required:    true,
+							Description: "The amount of nodes that can be lost in every group while still being able to recover the original data.",
 						},
 						"max_zdb_data_dir_size": {
-							Type:     schema.TypeInt,
-							Required: true,
+							Type:        schema.TypeInt,
+							Required:    true,
+							Description: "Maximum size of the data dir in MiB, if this is set and the sum of the file sizes in the data dir gets higher than this value, the least used, already encoded file will be removed.",
 						},
 						"encryption_algorithm": {
-							Type:     schema.TypeString,
-							Optional: true,
-							Default:  "AES",
+							Type:        schema.TypeString,
+							Optional:    true,
+							Default:     "AES",
+							Description: "configuration to use for the encryption stage. Currently only AES is supported.",
 						},
 						"encryption_key": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
 						"compression_algorithm": {
-							Type:     schema.TypeString,
-							Optional: true,
-							Default:  "snappy",
+							Type:        schema.TypeString,
+							Optional:    true,
+							Default:     "snappy",
+							Description: "configuration to use for the compression stage. Currently only snappy is supported",
 						},
 						"metadata": {
 							Type:     schema.TypeList,
@@ -259,9 +267,10 @@ func resourceDeployment() *schema.Resource {
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
 									"type": {
-										Type:     schema.TypeString,
-										Optional: true,
-										Default:  "zdb",
+										Type:        schema.TypeString,
+										Optional:    true,
+										Default:     "zdb",
+										Description: "configuration for the metadata store to use, currently only zdb is supported",
 									},
 									"prefix": {
 										Type:     schema.TypeString,
@@ -299,8 +308,9 @@ func resourceDeployment() *schema.Resource {
 							},
 						},
 						"groups": {
-							Type:     schema.TypeList,
-							Required: true,
+							Type:        schema.TypeList,
+							Required:    true,
+							Description: "The backend groups to write the data to.",
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
 									"backends": {
@@ -814,6 +824,7 @@ func (vm *VM) Dictify() map[string]interface{} {
 	}
 	res := make(map[string]interface{})
 	res["name"] = vm.Name
+	res["description"] = vm.Description
 	res["publicip"] = vm.PublicIP
 	res["planetary"] = vm.Planetary
 	res["flist"] = vm.Flist
