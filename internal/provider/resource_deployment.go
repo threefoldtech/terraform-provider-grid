@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
 	substrate "github.com/threefoldtech/substrate-client"
-	"github.com/threefoldtech/zos/client"
+	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
