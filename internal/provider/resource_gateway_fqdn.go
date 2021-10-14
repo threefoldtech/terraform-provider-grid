@@ -252,7 +252,7 @@ func resourceGatewayFQDNCreate(ctx context.Context, d *schema.ResourceData, meta
 	apiClient := meta.(*apiClient)
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
+	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := NewGatewayFQDNDeployer(ctx, d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
@@ -285,7 +285,7 @@ func resourceGatewayFQDNUpdate(ctx context.Context, d *schema.ResourceData, meta
 	apiClient := meta.(*apiClient)
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
+	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := NewGatewayFQDNDeployer(ctx, d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
@@ -314,7 +314,7 @@ func resourceGatewayFQDNRead(ctx context.Context, d *schema.ResourceData, meta i
 	apiClient := meta.(*apiClient)
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
+	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := NewGatewayFQDNDeployer(ctx, d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
@@ -342,7 +342,7 @@ func resourceGatewayFQDNDelete(ctx context.Context, d *schema.ResourceData, meta
 	apiClient := meta.(*apiClient)
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
+	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := NewGatewayFQDNDeployer(ctx, d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
