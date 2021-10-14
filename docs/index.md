@@ -18,9 +18,10 @@ description: |-
 ### Required
 
 - **mnemonics** (String, Sensitive)
+- **twin_id** (Number)
 
 ### Optional
 
+- **graphql_url** (String)
 - **rmb_url** (String)
 - **substrate_url** (String)
-- **twin_id** (Number)

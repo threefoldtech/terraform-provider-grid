@@ -2,7 +2,6 @@ terraform {
   required_providers {
     grid = {
       source = "threefoldtech/grid"
-      version = "0.1.8"
     }
   }
 }
@@ -16,7 +15,7 @@ provider "grid" {
 # - the fqdn can be computed from grid_gateway_domain for the vm
 # - the backend can reference the vm ip directly 
 data "grid_gateway_domain" "domain" {
-  node = 2
+  node = 40 
   name = "example2"
 }
 

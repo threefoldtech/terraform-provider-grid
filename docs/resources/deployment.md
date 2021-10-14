@@ -25,6 +25,7 @@ Sample resource in the Terraform provider scaffolding.
 - **id** (String) The ID of this resource.
 - **ip_range** (String)
 - **network_name** (String)
+- **qsfs** (Block List) (see [below for nested schema](#nestedblock--qsfs))
 - **vms** (Block List) (see [below for nested schema](#nestedblock--vms))
 - **zdbs** (Block List) (see [below for nested schema](#nestedblock--zdbs))
 
@@ -36,6 +37,76 @@ Required:
 - **description** (String)
 - **name** (String)
 - **size** (Number)
+
+
+<a id="nestedblock--qsfs"></a>
+### Nested Schema for `qsfs`
+
+Required:
+
+- **cache** (Number) The size of the fuse mountpoint on the node in MBs (holds qsfs local data before pushing)
+- **description** (String) The minimum amount of shards which are needed to recover the original data.
+- **encryption_key** (String)
+- **expected_shards** (Number) The amount of shards which are generated when the data is encoded. Essentially, this is the amount of shards which is needed to be able to recover the data, and some disposable shards which could be lost. The amount of disposable shards can be calculated as expected_shards - minimal_shards.
+- **groups** (Block List, Min: 1) The backend groups to write the data to. (see [below for nested schema](#nestedblock--qsfs--groups))
+- **max_zdb_data_dir_size** (Number) Maximum size of the data dir in MiB, if this is set and the sum of the file sizes in the data dir gets higher than this value, the least used, already encoded file will be removed.
+- **metadata** (Block List, Min: 1, Max: 1) (see [below for nested schema](#nestedblock--qsfs--metadata))
+- **minimal_shards** (Number)
+- **name** (String)
+- **redundant_groups** (Number) The amount of groups which one should be able to loose while still being able to recover the original data.
+- **redundant_nodes** (Number) The amount of nodes that can be lost in every group while still being able to recover the original data.
+
+Optional:
+
+- **compression_algorithm** (String) configuration to use for the compression stage. Currently only snappy is supported
+- **encryption_algorithm** (String) configuration to use for the encryption stage. Currently only AES is supported.
+
+Read-Only:
+
+- **metrics_endpoint** (String)
+
+<a id="nestedblock--qsfs--groups"></a>
+### Nested Schema for `qsfs.groups`
+
+Optional:
+
+- **backends** (Block List) (see [below for nested schema](#nestedblock--qsfs--groups--backends))
+
+<a id="nestedblock--qsfs--groups--backends"></a>
+### Nested Schema for `qsfs.groups.backends`
+
+Required:
+
+- **address** (String)
+- **namespace** (String)
+- **password** (String)
+
+
+
+<a id="nestedblock--qsfs--metadata"></a>
+### Nested Schema for `qsfs.metadata`
+
+Required:
+
+- **encryption_key** (String)
+- **prefix** (String)
+
+Optional:
+
+- **backends** (Block List) (see [below for nested schema](#nestedblock--qsfs--metadata--backends))
+- **encryption_algorithm** (String)
+- **type** (String) configuration for the metadata store to use, currently only zdb is supported
+
+<a id="nestedblock--qsfs--metadata--backends"></a>
+### Nested Schema for `qsfs.metadata.backends`
+
+Required:
+
+- **address** (String)
+- **namespace** (String)
+- **password** (String)
+
+
 
 
 <a id="nestedblock--vms"></a>
@@ -55,11 +126,13 @@ Optional:
 - **ip** (String) IP
 - **memory** (Number) Memory size
 - **mounts** (Block List) (see [below for nested schema](#nestedblock--vms--mounts))
+- **planetary** (Boolean)
 - **publicip** (Boolean) If you want to enable public ip or not
 
 Read-Only:
 
 - **computedip** (String) The public ip
+- **ygg_ip** (String)
 
 <a id="nestedblock--vms--env_vars"></a>
 ### Nested Schema for `vms.env_vars`
