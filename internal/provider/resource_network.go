@@ -49,6 +49,12 @@ func resourceNetwork() *schema.Resource {
 				Type:        schema.TypeString,
 				Required:    true,
 			},
+			"add_wg_access": {
+				Description: "whether to add a public node to network and use it to generate a wg config",
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     false,
+			},
 			"access_wg_config": {
 				Description: "wg config for access",
 				Type:        schema.TypeString,
@@ -134,6 +140,7 @@ type NetworkDeployer struct {
 	Description string
 	Nodes       []uint32
 	IPRange     gridtypes.IPNet
+	AddWGAccess bool
 
 	AccessWGConfig   string
 	ExternalIP       *gridtypes.IPNet
@@ -182,25 +189,30 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 	}
 
 	// external node related data
+	ncPool := NewNodeClient(apiClient.sub, apiClient.rmb)
+	addWGAccess := d.Get("add_wg_access").(bool)
 	publicNodeForceblyAdded := false
 
 	publicNodeID := uint32(d.Get("public_node_id").(int))
-	if publicNodeID == 0 {
-		nd, err := getPublicNode(nodes)
+	if publicNodeID == 0 && addWGAccess {
+		nd, err := getPublicNode(ctx, ncPool, apiClient.graphql_url, nodes)
+		log.Printf("picked public node: %d\n", nd)
 		if err != nil {
 			return NetworkDeployer{}, errors.Wrap(err, "couldn't find node id")
 		}
 
 		publicNodeID = nd
 	}
-	if !isInUint32(nodes, publicNodeID) {
+	if addWGAccess && !isInUint32(nodes, publicNodeID) {
 		publicNodeForceblyAdded = true
 		nodes = append(nodes, publicNodeID)
 	}
-
+	if !addWGAccess {
+		publicNodeID = 0
+	}
 	var externalIP *gridtypes.IPNet
 	externalIPStr := d.Get("external_ip").(string)
-	if externalIPStr != "" {
+	if addWGAccess && externalIPStr != "" {
 		ip, err := gridtypes.ParseIPNet(externalIPStr)
 		externalIP = &ip
 		nodesIPRange[publicNodeID] = *externalIP
@@ -227,6 +239,7 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 		Description:             d.Get("description").(string),
 		Nodes:                   nodes,
 		IPRange:                 ipRange,
+		AddWGAccess:             addWGAccess,
 		AccessWGConfig:          d.Get("access_wg_config").(string),
 		ExternalIP:              externalIP,
 		ExternalSK:              externalSK,
@@ -235,7 +248,7 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 		NodeDeploymentID:        nodeDeploymentID,
 		Keys:                    make(map[uint32]wgtypes.Key),
 		WGPort:                  make(map[uint32]int),
-		ncPool:                  NewNodeClient(apiClient.sub, apiClient.rmb),
+		ncPool:                  ncPool,
 		APIClient:               apiClient,
 		PublicNodeForceblyAdded: publicNodeForceblyAdded,
 	}
@@ -319,7 +332,12 @@ func (k *NetworkDeployer) storeState(d *schema.ResourceData) {
 	d.Set("nodes", nodes)
 	d.Set("ip_range", k.IPRange.String())
 	d.Set("access_wg_config", k.AccessWGConfig)
-	d.Set("external_ip", k.ExternalIP.String())
+	if k.ExternalIP == nil {
+		d.Set("external_ip", nil)
+	} else {
+
+		d.Set("external_ip", k.ExternalIP.String())
+	}
 	d.Set("external_sk", k.ExternalSK.String())
 	d.Set("public_node_id", k.PublicNodeID)
 	// plural or singular?
@@ -401,7 +419,7 @@ func (k *NetworkDeployer) readNodesConfig() error {
 	nodesIPRange := make(map[uint32]gridtypes.IPNet)
 	log.Printf("reading node config")
 	printDeployments(k.NodeDeployments)
-
+	WGAccess := false
 	for node, dl := range k.NodeDeployments {
 		for _, wl := range dl.Workloads {
 			if wl.Type != zos.NetworkType {
@@ -419,11 +437,21 @@ func (k *NetworkDeployer) readNodesConfig() error {
 				return errors.Wrap(err, "couldn't parse wg private key from workload object")
 			}
 			nodesIPRange[node] = d.Subnet
+			// this will fail when hidden node is supported
+			for _, peer := range d.Peers {
+				if peer.Endpoint == "" {
+					WGAccess = true
+				}
+			}
 		}
 	}
 	k.Keys = keys
 	k.WGPort = WGPort
 	k.NodesIPRange = nodesIPRange
+	k.AddWGAccess = WGAccess
+	if !WGAccess {
+		k.AccessWGConfig = ""
+	}
 	return nil
 }
 

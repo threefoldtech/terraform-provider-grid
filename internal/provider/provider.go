@@ -7,8 +7,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
+	substrate "github.com/threefoldtech/substrate-client"
 	"github.com/threefoldtech/zos/pkg/rmb"
-	"github.com/threefoldtech/zos/pkg/substrate"
 )
 
 func init() {
@@ -34,7 +34,7 @@ func New(version string) func() *schema.Provider {
 				"twin_id": {
 					Type:        schema.TypeInt,
 					Required:    true,
-					DefaultFunc: schema.EnvDefaultFunc("TWIN_ID", 0),
+					DefaultFunc: schema.EnvDefaultFunc("TWIN_ID", nil),
 				},
 				"mnemonics": {
 					Type:        schema.TypeString,
@@ -45,7 +45,12 @@ func New(version string) func() *schema.Provider {
 				"substrate_url": {
 					Type:        schema.TypeString,
 					Required:    true,
-					DefaultFunc: schema.EnvDefaultFunc("SUBSTRATE_URL", "wss://explorer.devnet.grid.tf/ws"),
+					DefaultFunc: schema.EnvDefaultFunc("SUBSTRATE_URL", "wss://tfchain.dev.threefold.io/ws"),
+				},
+				"graphql_url": {
+					Type:        schema.TypeString,
+					Required:    true,
+					DefaultFunc: schema.EnvDefaultFunc("SUBSTRATE_URL", "https://tfchain.dev.threefold.io/graphql/graphql/"),
 				},
 				"rmb_url": {
 					Type:        schema.TypeString,
@@ -74,6 +79,7 @@ func New(version string) func() *schema.Provider {
 type apiClient struct {
 	twin_id       uint32
 	mnemonics     string
+	graphql_url   string
 	substrate_url string
 	rmb_url       string
 	userSK        ed25519.PrivateKey
@@ -88,6 +94,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	apiClient.mnemonics = d.Get("mnemonics").(string)
 	apiClient.twin_id = uint32(d.Get("twin_id").(int))
 	apiClient.substrate_url = d.Get("substrate_url").(string)
+	apiClient.graphql_url = d.Get("graphql_url").(string)
 	apiClient.rmb_url = d.Get("rmb_url").(string)
 	cl, err := rmb.NewClient(apiClient.rmb_url)
 

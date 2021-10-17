@@ -2,9 +2,9 @@ package provider
 
 import (
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/zos/client"
+	substrate "github.com/threefoldtech/substrate-client"
+	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/zos/pkg/rmb"
-	"github.com/threefoldtech/zos/pkg/substrate"
 )
 
 type NodeClientPool struct {
