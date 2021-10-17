@@ -151,6 +151,11 @@ func resourceDeployment() *schema.Resource {
 							Type:        schema.TypeInt,
 							Optional:    true,
 						},
+						"rootfs_size": {
+							Description: "Rootfs size in MB",
+							Type:        schema.TypeInt,
+							Optional:    true,
+						},
 						"entrypoint": {
 							Description: "VM entry point",
 							Type:        schema.TypeString,
@@ -383,6 +388,7 @@ type VM struct {
 	Description string
 	Cpu         int
 	Memory      int
+	RootfsSize  int
 	Entrypoint  string
 	Mounts      []Mount
 	EnvVars     map[string]string
@@ -459,6 +465,7 @@ func GetVMData(vm map[string]interface{}) VM {
 		IP:          vm["ip"].(string),
 		Cpu:         vm["cpu"].(int),
 		Memory:      vm["memory"].(int),
+		RootfsSize:  vm["rootfs_size"].(int),
 		Entrypoint:  vm["entrypoint"].(string),
 		Mounts:      mounts,
 		EnvVars:     envVars,
@@ -618,6 +625,7 @@ func (vm *VM) GenerateVMWorkload(deployer *DeploymentDeployer) []gridtypes.Workl
 				CPU:    uint8(vm.Cpu),
 				Memory: gridtypes.Unit(uint(vm.Memory)) * gridtypes.Megabyte,
 			},
+			Size:       gridtypes.Unit(vm.RootfsSize) * gridtypes.Megabyte,
 			Entrypoint: vm.Entrypoint,
 			Mounts:     mounts,
 			Env:        vm.EnvVars,
@@ -835,6 +843,7 @@ func (vm *VM) Dictify() map[string]interface{} {
 	res["mounts"] = mounts
 	res["cpu"] = vm.Cpu
 	res["memory"] = vm.Memory
+	res["rootfs_size"] = vm.RootfsSize
 	res["env_vars"] = envVars
 	res["entrypoint"] = vm.Entrypoint
 	return res
@@ -982,6 +991,7 @@ func flattenVMData(workload gridtypes.Workload) (map[string]interface{}, error) 
 
 		wl["cpu"] = data.ComputeCapacity.CPU
 		wl["memory"] = uint64(data.ComputeCapacity.Memory) / uint64(gridtypes.Megabyte)
+		wl["rootfs_size"] = uint64(data.Size) / uint64(gridtypes.Megabyte)
 		wl["mounts"] = mounts
 		wl["name"] = workload.Name
 		wl["flist"] = data.FList
