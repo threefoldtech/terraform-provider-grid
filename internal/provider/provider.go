@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
 	substrate "github.com/threefoldtech/substrate-client"
+	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/zos/pkg/rmb"
 )
 
@@ -54,8 +55,18 @@ func New(version string) func() *schema.Provider {
 				},
 				"rmb_url": {
 					Type:        schema.TypeString,
-					Required:    true,
+					Optional:    true,
 					DefaultFunc: schema.EnvDefaultFunc("RMB_URL", "tcp://127.0.0.1:6379"),
+				},
+				"rmb_proxy_url": {
+					Type:        schema.TypeString,
+					Optional:    true,
+					DefaultFunc: schema.EnvDefaultFunc("RMB_PROXY_URL", "https://rmbproxy1.devnet.grid.tf/"),
+				},
+				"use_rmb_proxy": {
+					Type:        schema.TypeBool,
+					Optional:    true,
+					DefaultFunc: schema.EnvDefaultFunc("USE_RMB_PROXY", true),
 				},
 			},
 			DataSourcesMap: map[string]*schema.Resource{
@@ -82,6 +93,8 @@ type apiClient struct {
 	graphql_url   string
 	substrate_url string
 	rmb_url       string
+	use_rmb_proxy bool
+	rmb_proxy_url string
 	userSK        ed25519.PrivateKey
 	rmb           rmb.Client
 	sub           *substrate.Substrate
@@ -95,9 +108,16 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	apiClient.twin_id = uint32(d.Get("twin_id").(int))
 	apiClient.substrate_url = d.Get("substrate_url").(string)
 	apiClient.graphql_url = d.Get("graphql_url").(string)
+	apiClient.rmb_proxy_url = d.Get("rmb_proxy_url").(string)
+	apiClient.use_rmb_proxy = d.Get("use_rmb_proxy").(bool)
 	apiClient.rmb_url = d.Get("rmb_url").(string)
-	cl, err := rmb.NewClient(apiClient.rmb_url)
-
+	var cl rmb.Client
+	var err error
+	if apiClient.use_rmb_proxy {
+		cl = client.NewProxyBus(apiClient.rmb_proxy_url, apiClient.twin_id)
+	} else {
+		cl, err = rmb.NewClient(apiClient.rmb_url)
+	}
 	if err != nil {
 		return nil, diag.FromErr(errors.Wrap(err, "couldn't create rmb client"))
 	}

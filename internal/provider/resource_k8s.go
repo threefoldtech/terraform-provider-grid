@@ -786,7 +786,7 @@ func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 	apiClient := meta.(*apiClient)
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
+	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := NewK8sDeployer(d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
@@ -821,7 +821,7 @@ func resourceK8sUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 	apiClient := meta.(*apiClient)
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
+	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := NewK8sDeployer(d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
@@ -850,7 +850,7 @@ func resourceK8sRead(ctx context.Context, d *schema.ResourceData, meta interface
 	apiClient := meta.(*apiClient)
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
+	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := NewK8sDeployer(d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
@@ -880,7 +880,7 @@ func resourceK8sDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 	apiClient := meta.(*apiClient)
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
+	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := NewK8sDeployer(d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))

@@ -30,6 +30,7 @@ Resource for deploying gateway domains.
 ### Read-Only
 
 - **fqdn** (String) The fully quallified domain name of the deployed workload.
+- **name_contract_id** (Number)
 - **node_deployment_id** (Map of Number)
 
 
