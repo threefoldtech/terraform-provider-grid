@@ -296,11 +296,13 @@ func nextFreeOctet(used []byte, start *byte) error {
 }
 
 func (k *NetworkDeployer) assignNodesIPs(nodes []uint32) error {
+	ips := make(map[uint32]gridtypes.IPNet)
 	l := len(k.IPRange.IP)
 	usedIPs := make([]byte, 0) // the third octet
 	for node, ip := range k.NodesIPRange {
-		if isInUint32(nodes, node) {
+		if isInUint32(nodes, node) && k.IPRange.Contains(ip.IP) {
 			usedIPs = append(usedIPs, ip.IP[l-2])
+			ips[node] = ip
 		}
 	}
 	var cur byte = 2
@@ -320,15 +322,16 @@ func (k *NetworkDeployer) assignNodesIPs(nodes []uint32) error {
 		k.ExternalIP = nil
 	}
 	for _, node := range nodes {
-		if _, ok := k.NodesIPRange[node]; !ok {
+		if _, ok := ips[node]; !ok {
 			err := nextFreeOctet(usedIPs, &cur)
 			if err != nil {
 				return err
 			}
 			usedIPs = append(usedIPs, cur)
-			k.NodesIPRange[node] = ipNet(k.IPRange.IP[l-4], k.IPRange.IP[l-3], cur, k.IPRange.IP[l-2], 24)
+			ips[node] = ipNet(k.IPRange.IP[l-4], k.IPRange.IP[l-3], cur, k.IPRange.IP[l-2], 24)
 		}
 	}
+	k.NodesIPRange = ips
 	return nil
 }
 func (k *NetworkDeployer) assignNodesWGPort(ctx context.Context, nodes []uint32) error {
