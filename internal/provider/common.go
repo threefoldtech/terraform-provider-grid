@@ -62,8 +62,11 @@ func cancelDeployment(ctx context.Context, nc *client.NodeClient, sc *substrate.
 	return nil
 }
 
-func startRmb(ctx context.Context, substrateURL string, twinID int) {
-	rmbClient, err := gormb.NewServer(substrateURL, "127.0.0.1:6379", twinID)
+func startRmbIfNeeded(ctx context.Context, api *apiClient) {
+	if api.use_rmb_proxy {
+		return
+	}
+	rmbClient, err := gormb.NewServer(api.substrate_url, "127.0.0.1:6379", int(api.twin_id))
 	if err != nil {
 		log.Fatalf("couldn't start server %s\n", err)
 	}
