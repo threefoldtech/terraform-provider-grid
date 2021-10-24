@@ -126,29 +126,8 @@ func NewGatewayNameDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 	return deployer, nil
 }
 
-func (k *GatewayNameDeployer) ValidateCreate(ctx context.Context) error {
+func (k *GatewayNameDeployer) Validate(ctx context.Context) error {
 	return isNodesUp(ctx, []uint32{k.Node}, k.ncPool)
-}
-
-func (k *GatewayNameDeployer) ValidateUpdate(ctx context.Context) error {
-	nodes := make([]uint32, 0)
-	nodes = append(nodes, k.Node)
-	for node := range k.NodeDeploymentID {
-		nodes = append(nodes, node)
-	}
-	return isNodesUp(ctx, nodes, k.ncPool)
-}
-
-func (k *GatewayNameDeployer) ValidateRead(ctx context.Context) error {
-	nodes := make([]uint32, 0)
-	for node := range k.NodeDeploymentID {
-		nodes = append(nodes, node)
-	}
-	return isNodesUp(ctx, nodes, k.ncPool)
-}
-
-func (k *GatewayNameDeployer) ValidateDelete(ctx context.Context) error {
-	return nil
 }
 
 func (k *GatewayNameDeployer) storeState(d *schema.ResourceData) {
@@ -235,16 +214,12 @@ func (k *GatewayNameDeployer) Deploy(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "couldn't generate deployments data")
 	}
-	oldDeployments, err := k.GetOldDeployments(ctx)
-	if err != nil {
-		return errors.Wrap(err, "couldn't get old deployments data")
-	}
 	cid, err := k.ensureNameContract(ctx, k.Name)
 	if err != nil {
 		return err
 	}
 	k.NameContractID = cid
-	currentDeployments, err := deployDeployments(ctx, oldDeployments, newDeployments, k.ncPool, k.APIClient, true)
+	currentDeployments, err := deployDeployments(ctx, k.NodeDeploymentID, newDeployments, k.ncPool, k.APIClient, true)
 	if err := k.updateState(ctx, currentDeployments); err != nil {
 		log.Printf("error updating state: %s\n", err)
 	}
@@ -275,14 +250,7 @@ func (k *GatewayNameDeployer) updateFromRemote(ctx context.Context) error {
 
 func (k *GatewayNameDeployer) Cancel(ctx context.Context) error {
 	newDeployments := make(map[uint32]gridtypes.Deployment)
-	oldDeployments := make(map[uint32]gridtypes.Deployment)
-	for node, deploymentID := range k.NodeDeploymentID {
-		oldDeployments[node] = gridtypes.Deployment{
-			ContractID: deploymentID,
-		}
-	}
-
-	currentDeployments, err := deployDeployments(ctx, oldDeployments, newDeployments, k.ncPool, k.APIClient, false)
+	currentDeployments, err := deployDeployments(ctx, k.NodeDeploymentID, newDeployments, k.ncPool, k.APIClient, false)
 	// update even in case of error, then return the error after
 	if err := k.updateState(ctx, currentDeployments); err != nil {
 		log.Printf("error updating state: %s\n", err)
@@ -307,7 +275,7 @@ func resourceGatewayNameCreate(ctx context.Context, d *schema.ResourceData, meta
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
-	if err := deployer.ValidateCreate(ctx); err != nil {
+	if err := deployer.Validate(ctx); err != nil {
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Error,
 			Summary:  "Error happened while doing initial check (check https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)",
@@ -341,7 +309,7 @@ func resourceGatewayNameUpdate(ctx context.Context, d *schema.ResourceData, meta
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	if err := deployer.ValidateUpdate(ctx); err != nil {
+	if err := deployer.Validate(ctx); err != nil {
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Error,
 			Summary:  "Error happened while doing initial check (check https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)",
@@ -370,18 +338,15 @@ func resourceGatewayNameRead(ctx context.Context, d *schema.ResourceData, meta i
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	if err := deployer.ValidateRead(ctx); err != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Error happened while doing initial check (check https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)",
-			Detail:   err.Error(),
-		})
-		return diags
-	}
 	err = deployer.updateFromRemote(ctx)
 	log.Printf("read updateFromRemote err: %s\n", err)
 	if err != nil {
-		return diag.FromErr(err)
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  "Error reading data from remote, terraform state might be out of sync with the remote state",
+			Detail:   err.Error(),
+		})
+		return diags
 	}
 	deployer.storeState(d)
 	return diags

@@ -51,7 +51,7 @@ func New(version string) func() *schema.Provider {
 				"graphql_url": {
 					Type:        schema.TypeString,
 					Required:    true,
-					DefaultFunc: schema.EnvDefaultFunc("SUBSTRATE_URL", "https://tfchain.dev.threefold.io/graphql/graphql/"),
+					DefaultFunc: schema.EnvDefaultFunc("GRAPHQL_URL", "https://tfchain.dev.threefold.io/graphql/graphql/"),
 				},
 				"rmb_url": {
 					Type:        schema.TypeString,

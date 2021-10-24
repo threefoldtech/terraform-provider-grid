@@ -84,7 +84,7 @@ func getPublicNode(ctx context.Context, ncPool NodeClientCollection, graphqlURL 
 	}
 }
 func validatePublicNode(ctx context.Context, nodeID uint32, ncPool NodeClientCollection) error {
-	sub, cancel := context.WithTimeout(ctx, 20*time.Second)
+	sub, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	nodeClient, err := ncPool.getNodeClient(nodeID)
 	if err != nil {
