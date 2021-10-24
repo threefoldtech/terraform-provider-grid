@@ -10,10 +10,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
+	substrate "github.com/threefoldtech/substrate-client"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
+
+const ExternalNodeID = -1
 
 func resourceNetwork() *schema.Resource {
 	return &schema.Resource{
@@ -93,44 +96,6 @@ func resourceNetwork() *schema.Resource {
 				Computed: true,
 				Elem:     &schema.Schema{Type: schema.TypeInt},
 			},
-			// "deployment_info": {
-
-			// 	Type:     schema.TypeList,
-			// 	Required: false,
-			// 	Computed: true,
-			// 	Elem: &schema.Resource{
-			// 		Schema: map[string]*schema.Schema{
-			// 			"node_id": {
-			// 				Type:     schema.TypeInt,
-			// 				Required: true,
-			// 			},
-			// 			"version": {
-			// 				Type:     schema.TypeInt,
-			// 				Required: true,
-			// 			},
-			// 			"deployment_id": {
-			// 				Type:     schema.TypeInt,
-			// 				Required: true,
-			// 			},
-			// 			"wg_private_key": {
-			// 				Type:     schema.TypeString,
-			// 				Required: true,
-			// 			},
-			// 			"wg_public_key": {
-			// 				Type:     schema.TypeString,
-			// 				Required: true,
-			// 			},
-			// 			"wg_port": {
-			// 				Type:     schema.TypeInt,
-			// 				Required: true,
-			// 			},
-			// 			"ip_range": {
-			// 				Type:     schema.TypeString,
-			// 				Required: true,
-			// 			},
-			// 		},
-			// 	},
-			// },
 		},
 	}
 }
@@ -149,12 +114,10 @@ type NetworkDeployer struct {
 	NodeDeploymentID map[uint32]uint64
 	NodesIPRange     map[uint32]gridtypes.IPNet
 
-	WGPort                  map[uint32]int
-	Keys                    map[uint32]wgtypes.Key
-	PublicNodeForceblyAdded bool
-	NodeDeployments         map[uint32]gridtypes.Deployment
-	APIClient               *apiClient
-	ncPool                  *NodeClientPool
+	WGPort    map[uint32]int
+	Keys      map[uint32]wgtypes.Key
+	APIClient *apiClient
+	ncPool    *NodeClientPool
 }
 
 func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *apiClient) (NetworkDeployer, error) {
@@ -191,34 +154,15 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 	// external node related data
 	ncPool := NewNodeClient(apiClient.sub, apiClient.rmb)
 	addWGAccess := d.Get("add_wg_access").(bool)
-	publicNodeForceblyAdded := false
 
-	publicNodeID := uint32(d.Get("public_node_id").(int))
-	if publicNodeID == 0 && addWGAccess {
-		nd, err := getPublicNode(ctx, ncPool, apiClient.graphql_url, nodes)
-		log.Printf("picked public node: %d\n", nd)
-		if err != nil {
-			return NetworkDeployer{}, errors.Wrap(err, "couldn't find node id")
-		}
-
-		publicNodeID = nd
-	}
-	if addWGAccess && !isInUint32(nodes, publicNodeID) {
-		publicNodeForceblyAdded = true
-		nodes = append(nodes, publicNodeID)
-	}
-	if !addWGAccess {
-		publicNodeID = 0
-	}
 	var externalIP *gridtypes.IPNet
 	externalIPStr := d.Get("external_ip").(string)
-	if addWGAccess && externalIPStr != "" {
+	if externalIPStr != "" {
 		ip, err := gridtypes.ParseIPNet(externalIPStr)
-		externalIP = &ip
-		nodesIPRange[publicNodeID] = *externalIP
-		if err != nil && externalIPStr != "" {
+		if err != nil {
 			return NetworkDeployer{}, errors.Wrap(err, "couldn't parse external ip")
 		}
+		externalIP = &ip
 	}
 	var externalSK wgtypes.Key
 	if d.Get("external_sk").(string) != "" {
@@ -231,64 +175,70 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 	}
 
 	ipRange, err := gridtypes.ParseIPNet(d.Get("ip_range").(string))
-	if err != nil && externalIPStr != "" {
+	if err != nil {
 		return NetworkDeployer{}, errors.Wrap(err, "couldn't parse network ip range")
 	}
 	deployer := NetworkDeployer{
-		Name:                    d.Get("name").(string),
-		Description:             d.Get("description").(string),
-		Nodes:                   nodes,
-		IPRange:                 ipRange,
-		AddWGAccess:             addWGAccess,
-		AccessWGConfig:          d.Get("access_wg_config").(string),
-		ExternalIP:              externalIP,
-		ExternalSK:              externalSK,
-		PublicNodeID:            publicNodeID,
-		NodesIPRange:            nodesIPRange,
-		NodeDeploymentID:        nodeDeploymentID,
-		Keys:                    make(map[uint32]wgtypes.Key),
-		WGPort:                  make(map[uint32]int),
-		ncPool:                  ncPool,
-		APIClient:               apiClient,
-		PublicNodeForceblyAdded: publicNodeForceblyAdded,
+		Name:             d.Get("name").(string),
+		Description:      d.Get("description").(string),
+		Nodes:            nodes,
+		IPRange:          ipRange,
+		AddWGAccess:      addWGAccess,
+		AccessWGConfig:   d.Get("access_wg_config").(string),
+		ExternalIP:       externalIP,
+		ExternalSK:       externalSK,
+		PublicNodeID:     uint32(d.Get("public_node_id").(int)),
+		NodesIPRange:     nodesIPRange,
+		NodeDeploymentID: nodeDeploymentID,
+		Keys:             make(map[uint32]wgtypes.Key),
+		WGPort:           make(map[uint32]int),
+		ncPool:           ncPool,
+		APIClient:        apiClient,
 	}
 	return deployer, nil
 }
 
-func (k *NetworkDeployer) fetchDeploymentsInfo(ctx context.Context) error {
-	if len(k.NodeDeploymentID) != 0 {
-		deployments, err := getDeploymentObjects(ctx, k.NodeDeploymentID, k.ncPool)
+// invalidateBrokenAttributes removes outdated attrs and deleted contracts
+func (k *NetworkDeployer) invalidateBrokenAttributes() error {
+	for node, contractID := range k.NodeDeploymentID {
+		contract, err := k.APIClient.sub.GetContract(contractID)
+		if (err != nil && !contract.State.IsCreated) || errors.Is(err, substrate.ErrNotFound) {
+			delete(k.NodeDeploymentID, node)
+			delete(k.NodesIPRange, node)
+			delete(k.Keys, node)
+			delete(k.WGPort, node)
+		}
 		if err != nil {
-			return errors.Wrap(err, "couldn't fetch deployments data")
+			return errors.Wrapf(err, "couldn't get node %d contract %d", node, contractID)
 		}
-		k.NodeDeployments = deployments
+	}
+	if k.ExternalIP != nil && !k.IPRange.Contains(k.ExternalIP.IP) {
+		k.ExternalIP = nil
+	}
+	for node, ip := range k.NodesIPRange {
+		if !k.IPRange.Contains(ip.IP) {
+			delete(k.NodesIPRange, node)
+		}
+	}
+	if k.PublicNodeID != 0 {
+		// TODO: add a check that the node is still public
+		cl, err := k.ncPool.getNodeClient(k.PublicNodeID)
+		if err != nil {
+			// whatever the error, delete it and it will get reassigned later
+			k.PublicNodeID = 0
+		}
+		if err := isNodeUp(context.Background(), cl); err != nil {
+			k.PublicNodeID = 0
+		}
+	}
 
-		if err := k.readNodesConfig(); err != nil {
-			return errors.Wrap(err, "couldn't read nodes config")
-		}
+	if !k.AddWGAccess {
+		k.ExternalIP = nil
 	}
 	return nil
 }
-
-func (k *NetworkDeployer) ValidateCreate(ctx context.Context) error {
+func (k *NetworkDeployer) Validate(ctx context.Context) error {
 	return isNodesUp(ctx, k.Nodes, k.ncPool)
-}
-
-func (k *NetworkDeployer) ValidateUpdate(ctx context.Context) error {
-	nodes := make([]uint32, 0)
-	nodes = append(nodes, k.Nodes...)
-	for node, _ := range k.NodeDeploymentID {
-		nodes = append(nodes, node)
-	}
-	return isNodesUp(ctx, nodes, k.ncPool)
-}
-
-func (k *NetworkDeployer) ValidateRead(ctx context.Context) error {
-	nodes := make([]uint32, 0)
-	for node, _ := range k.NodeDeploymentID {
-		nodes = append(nodes, node)
-	}
-	return isNodesUp(ctx, nodes, k.ncPool)
 }
 
 func (k *NetworkDeployer) ValidateDelete(ctx context.Context) error {
@@ -309,16 +259,13 @@ func (k *NetworkDeployer) storeState(d *schema.ResourceData) {
 
 	nodes := make([]uint32, 0)
 	for _, node := range k.Nodes {
-		if _, ok := k.NodeDeployments[node]; ok {
-			if k.PublicNodeID == node && k.PublicNodeForceblyAdded {
-				continue
-			}
+		if _, ok := k.NodeDeploymentID[node]; ok {
 			nodes = append(nodes, node)
 		}
 	}
-	for node := range k.NodeDeployments {
+	for node := range k.NodeDeploymentID {
 		if !isInUint32(nodes, node) {
-			if k.PublicNodeID == node && k.PublicNodeForceblyAdded {
+			if k.PublicNodeID == node {
 				continue
 			}
 			nodes = append(nodes, node)
@@ -345,45 +292,55 @@ func (k *NetworkDeployer) storeState(d *schema.ResourceData) {
 	d.Set("node_deployment_id", nodeDeploymentID)
 }
 
-func (k *NetworkDeployer) assignNodesIPs() error {
-	l := len(k.IPRange.IP)
-	usedIPs := make([]byte, 0) // the third octet
-	for _, ip := range k.NodesIPRange {
-		usedIPs = append(usedIPs, ip.IP[l-2])
+func nextFreeOctet(used []byte, start *byte) error {
+	for isInByte(used, *start) && *start <= 254 {
+		*start += 1
 	}
-	var cur byte = 2
-	if k.ExternalIP != nil {
-		usedIPs = append(usedIPs, k.ExternalIP.IP[l-2])
-	} else {
-		for isInByte(usedIPs, cur) && cur <= 254 {
-			cur += 1
-		}
-		if cur > 254 {
-			return errors.New("couldn't find a free ip to add node")
-		}
-		ip := ipNet(k.IPRange.IP[l-4], k.IPRange.IP[l-3], cur, k.IPRange.IP[l-2], 24)
-		k.ExternalIP = &ip
-		usedIPs = append(usedIPs, cur)
-		cur += 1
-	}
-
-	for _, node := range k.Nodes {
-		if _, ok := k.NodesIPRange[node]; !ok {
-			for isInByte(usedIPs, cur) && cur <= 254 {
-				cur += 1
-			}
-			if cur > 254 {
-				return errors.New("couldn't find a free ip to add node")
-			}
-			k.NodesIPRange[node] = ipNet(k.IPRange.IP[l-4], k.IPRange.IP[l-3], cur, k.IPRange.IP[l-2], 24)
-			usedIPs = append(usedIPs, cur)
-			cur += 1
-		}
+	if *start == 255 {
+		return errors.New("couldn't find a free ip to add node")
 	}
 	return nil
 }
-func (k *NetworkDeployer) assignNodesWGPort(ctx context.Context) error {
-	for _, node := range k.Nodes {
+
+func (k *NetworkDeployer) assignNodesIPs(nodes []uint32) error {
+	ips := make(map[uint32]gridtypes.IPNet)
+	l := len(k.IPRange.IP)
+	usedIPs := make([]byte, 0) // the third octet
+	for node, ip := range k.NodesIPRange {
+		if isInUint32(nodes, node) {
+			usedIPs = append(usedIPs, ip.IP[l-2])
+			ips[node] = ip
+		}
+	}
+	var cur byte = 2
+	if k.AddWGAccess {
+		if k.ExternalIP != nil {
+			usedIPs = append(usedIPs, k.ExternalIP.IP[l-2])
+		} else {
+			err := nextFreeOctet(usedIPs, &cur)
+			if err != nil {
+				return err
+			}
+			usedIPs = append(usedIPs, cur)
+			ip := ipNet(k.IPRange.IP[l-4], k.IPRange.IP[l-3], cur, k.IPRange.IP[l-1], 24)
+			k.ExternalIP = &ip
+		}
+	}
+	for _, node := range nodes {
+		if _, ok := ips[node]; !ok {
+			err := nextFreeOctet(usedIPs, &cur)
+			if err != nil {
+				return err
+			}
+			usedIPs = append(usedIPs, cur)
+			ips[node] = ipNet(k.IPRange.IP[l-4], k.IPRange.IP[l-3], cur, k.IPRange.IP[l-2], 24)
+		}
+	}
+	k.NodesIPRange = ips
+	return nil
+}
+func (k *NetworkDeployer) assignNodesWGPort(ctx context.Context, nodes []uint32) error {
+	for _, node := range nodes {
 		if _, ok := k.WGPort[node]; !ok {
 			cl, err := k.ncPool.getNodeClient(node)
 			if err != nil {
@@ -399,8 +356,8 @@ func (k *NetworkDeployer) assignNodesWGPort(ctx context.Context) error {
 
 	return nil
 }
-func (k *NetworkDeployer) assignNodesWGKey() error {
-	for _, node := range k.Nodes {
+func (k *NetworkDeployer) assignNodesWGKey(nodes []uint32) error {
+	for _, node := range nodes {
 		if _, ok := k.Keys[node]; !ok {
 
 			key, err := wgtypes.GenerateKey()
@@ -413,14 +370,18 @@ func (k *NetworkDeployer) assignNodesWGKey() error {
 
 	return nil
 }
-func (k *NetworkDeployer) readNodesConfig() error {
+func (k *NetworkDeployer) readNodesConfig(ctx context.Context) error {
 	keys := make(map[uint32]wgtypes.Key)
 	WGPort := make(map[uint32]int)
 	nodesIPRange := make(map[uint32]gridtypes.IPNet)
 	log.Printf("reading node config")
-	printDeployments(k.NodeDeployments)
+	nodeDeployments, err := getDeploymentObjects(ctx, k.NodeDeploymentID, k.ncPool)
+	if err != nil {
+		return errors.Wrap(err, "failed to get deployment objects")
+	}
+	printDeployments(nodeDeployments)
 	WGAccess := false
-	for node, dl := range k.NodeDeployments {
+	for node, dl := range nodeDeployments {
 		for _, wl := range dl.Workloads {
 			if wl.Type != zos.NetworkType {
 				continue
@@ -457,80 +418,177 @@ func (k *NetworkDeployer) readNodesConfig() error {
 
 func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
 	log.Printf("nodes: %v\n", k.Nodes)
-	if err := k.assignNodesIPs(); err != nil {
+	deployments := make(map[uint32]gridtypes.Deployment)
+	endpoints := make(map[uint32]string)
+	hiddenNodes := make([]uint32, 0)
+	var ipv4Node uint32
+	accessibleNodes := make([]uint32, 0)
+	for _, node := range k.Nodes {
+		cl, err := k.ncPool.getNodeClient(node)
+		if err != nil {
+			return nil, errors.Wrapf(err, "couldn't get node %d client", node)
+		}
+		endpoint, err := getNodeEndpoint(ctx, cl)
+		if errors.Is(err, ErrNoAccessibleInterfaceFound) {
+			hiddenNodes = append(hiddenNodes, node)
+		} else if err != nil {
+			return nil, errors.Wrapf(err, "failed to get node %d endpoint", node)
+		} else if endpoint.To4() != nil {
+			accessibleNodes = append(accessibleNodes, node)
+			ipv4Node = node
+			endpoints[node] = endpoint.String()
+		} else {
+			accessibleNodes = append(accessibleNodes, node)
+			endpoints[node] = fmt.Sprintf("[%s]", endpoint.String())
+		}
+	}
+	needsIPv4Access := k.AddWGAccess || (len(hiddenNodes) != 0 && len(hiddenNodes)+len(accessibleNodes) > 1)
+	if needsIPv4Access && ipv4Node == 0 { // we need an ipv4, add one forcibly
+		publicNode, err := getPublicNode(ctx, k.ncPool, k.APIClient.graphql_url, []uint32{})
+		if err != nil {
+			return nil, errors.Wrap(err, "public node needed because you requested adding wg access or a hidden node is added to the network")
+		}
+		ipv4Node = publicNode
+		accessibleNodes = append(accessibleNodes, publicNode)
+		cl, err := k.ncPool.getNodeClient(publicNode)
+		if err != nil {
+			return nil, errors.Wrapf(err, "couldn't get node %d client", publicNode)
+		}
+		endpoint, err := getNodeEndpoint(ctx, cl)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to get node %d endpoint", publicNode)
+		}
+		endpoints[publicNode] = endpoint.String()
+	}
+	if needsIPv4Access {
+		k.PublicNodeID = ipv4Node
+	}
+	all := append(hiddenNodes, accessibleNodes...)
+	if err := k.assignNodesIPs(all); err != nil {
 		return nil, errors.Wrap(err, "couldn't assign node ips")
 	}
-	if err := k.assignNodesWGKey(); err != nil {
+	if err := k.assignNodesWGKey(all); err != nil {
 		return nil, errors.Wrap(err, "couldn't assign node wg keys")
 	}
-	if err := k.assignNodesWGPort(ctx); err != nil {
+	if err := k.assignNodesWGPort(ctx, all); err != nil {
 		return nil, errors.Wrap(err, "couldn't assign node wg ports")
 	}
-	deployments := make(map[uint32]gridtypes.Deployment)
-	for _, node := range k.Nodes {
-		nodeClient, err := k.ncPool.getNodeClient(uint32(node))
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to get node client")
-		}
+	nonAccessibleIPRanges := []gridtypes.IPNet{}
+	for _, node := range hiddenNodes {
+		r := k.NodesIPRange[node]
+		nonAccessibleIPRanges = append(nonAccessibleIPRanges, r)
+		nonAccessibleIPRanges = append(nonAccessibleIPRanges, wgIP(r))
+	}
+	if k.AddWGAccess {
+		r := k.ExternalIP
+		nonAccessibleIPRanges = append(nonAccessibleIPRanges, *r)
+		nonAccessibleIPRanges = append(nonAccessibleIPRanges, wgIP(*r))
+	}
+	log.Printf("hidden nodes: %v\n", hiddenNodes)
+	log.Printf("public node: %v\n", ipv4Node)
+	log.Printf("accessible nodes: %v\n", accessibleNodes)
+	log.Printf("non accessible ip ranges: %v\n", nonAccessibleIPRanges)
+
+	if k.AddWGAccess {
+		k.AccessWGConfig = generateWGConfig(
+			wgIP(*k.ExternalIP).IP.String(),
+			k.ExternalSK.String(),
+			k.Keys[ipv4Node].PublicKey().String(),
+			fmt.Sprintf("%s:%d", endpoints[ipv4Node], k.WGPort[k.PublicNodeID]),
+			k.IPRange.String(),
+		)
+	}
+
+	for _, node := range accessibleNodes {
 		peers := make([]zos.Peer, 0, len(k.Nodes))
-		for _, neigh := range k.Nodes {
-			if node == neigh {
+		for _, neigh := range accessibleNodes {
+			if neigh == node {
 				continue
 			}
-			neigh_ip_range := k.NodesIPRange[neigh]
-			neigh_port := k.WGPort[neigh]
-			neigh_pubkey := k.Keys[neigh].PublicKey().String()
-			neighClient, err := k.ncPool.getNodeClient(uint32(neigh))
-			if err != nil {
-				return nil, errors.Wrap(err, "coudn't get neighnbor node client")
-			}
+			neighIPRange := k.NodesIPRange[neigh]
 			allowed_ips := []gridtypes.IPNet{
-				neigh_ip_range,
-				wgIP(neigh_ip_range),
+				neighIPRange,
+				wgIP(neighIPRange),
 			}
-			if neigh == k.PublicNodeID {
-				allowed_ips = append(allowed_ips, *k.ExternalIP)
-				allowed_ips = append(allowed_ips, wgIP(*k.ExternalIP))
-			}
-			log.Printf("%v\n", allowed_ips)
-			endpoint, err := getNodeEndpoint(ctx, neighClient)
-			if err != nil {
-				return nil, errors.Wrap(err, "couldn't get node endpoint")
+			if neigh == ipv4Node {
+				allowed_ips = append(allowed_ips, nonAccessibleIPRanges...)
 			}
 			peers = append(peers, zos.Peer{
-				Subnet:      neigh_ip_range,
-				WGPublicKey: neigh_pubkey,
-				Endpoint:    fmt.Sprintf("%s:%d", endpoint, neigh_port),
+				Subnet:      k.NodesIPRange[neigh],
+				WGPublicKey: k.Keys[neigh].PublicKey().String(),
+				Endpoint:    fmt.Sprintf("%s:%d", endpoints[neigh], k.WGPort[neigh]),
 				AllowedIPs:  allowed_ips,
 			})
 		}
-
-		if node == k.PublicNodeID {
-			publicConfig, err := nodeClient.NetworkGetPublicConfig(ctx)
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to get public config")
+		if node == ipv4Node {
+			// external node
+			if k.AddWGAccess {
+				peers = append(peers, zos.Peer{
+					Subnet:      *k.ExternalIP,
+					WGPublicKey: k.ExternalSK.PublicKey().String(),
+					AllowedIPs:  []gridtypes.IPNet{*k.ExternalIP, wgIP(*k.ExternalIP)},
+				})
 			}
-			l := len(publicConfig.IPv4.IP)
-			ip := wgIP(*k.ExternalIP)
-			publicIPStr := fmt.Sprintf("%d.%d.%d.%d", publicConfig.IPv4.IP[l-4], publicConfig.IPv4.IP[l-3], publicConfig.IPv4.IP[l-2], publicConfig.IPv4.IP[l-1])
-			externalNodeIPStr := fmt.Sprintf("100.64.%d.%d", ip.IP[l-2], ip.IP[l-1])
-			nodePubky := k.Keys[node].PublicKey().String()
-			WGConfig := generateWGConfig(externalNodeIPStr, k.ExternalSK.String(), nodePubky, fmt.Sprintf("%s:%d", publicIPStr, k.WGPort[k.PublicNodeID]), k.IPRange.String())
-			log.Printf("%s\n", WGConfig)
-			k.AccessWGConfig = WGConfig
+			// hidden nodes
+			for _, neigh := range hiddenNodes {
+				neighIPRange := k.NodesIPRange[neigh]
+				peers = append(peers, zos.Peer{
+					Subnet:      neighIPRange,
+					WGPublicKey: k.Keys[neigh].PublicKey().String(),
+					AllowedIPs: []gridtypes.IPNet{
+						neighIPRange,
+						wgIP(neighIPRange),
+					},
+				})
+			}
+		}
+
+		workload := gridtypes.Workload{
+			Version:     0,
+			Type:        zos.NetworkType,
+			Description: k.Description,
+			Name:        gridtypes.Name(k.Name),
+			Data: gridtypes.MustMarshal(zos.Network{
+				NetworkIPRange: gridtypes.MustParseIPNet(k.IPRange.String()),
+				Subnet:         k.NodesIPRange[node],
+				WGPrivateKey:   k.Keys[node].String(),
+				WGListenPort:   uint16(k.WGPort[node]),
+				Peers:          peers,
+			}),
+		}
+		deployment := gridtypes.Deployment{
+			Version: Version,
+			TwinID:  k.APIClient.twin_id, //LocalTwin,
+			// this contract id must match the one on substrate
+			Workloads: []gridtypes.Workload{
+				workload,
+			},
+			SignatureRequirement: gridtypes.SignatureRequirement{
+				WeightRequired: 1,
+				Requests: []gridtypes.SignatureRequest{
+					{
+						TwinID: k.APIClient.twin_id,
+						Weight: 1,
+					},
+				},
+			},
+		}
+		deployments[node] = deployment
+	}
+	// hidden nodes deployments
+	for _, node := range hiddenNodes {
+		nodeIPRange := k.NodesIPRange[node]
+		peers := make([]zos.Peer, 0)
+		if ipv4Node != 0 {
 			peers = append(peers, zos.Peer{
-				Subnet:      *k.ExternalIP,
-				WGPublicKey: k.ExternalSK.PublicKey().String(),
-				AllowedIPs:  []gridtypes.IPNet{*k.ExternalIP, wgIP(*k.ExternalIP)},
+				WGPublicKey: k.Keys[ipv4Node].PublicKey().String(),
+				Subnet:      nodeIPRange,
+				AllowedIPs: []gridtypes.IPNet{
+					k.IPRange,
+					ipNet(100, 64, 0, 0, 16),
+				},
+				Endpoint: fmt.Sprintf("%s:%d", endpoints[ipv4Node], k.WGPort[ipv4Node]),
 			})
-		}
-		node_ip_range, ok := k.NodesIPRange[node]
-		if !ok {
-			return nil, errors.New("couldn't find node ip range in a pre-computed dict of ips")
-		}
-		node_port, ok := k.WGPort[node]
-		if !ok {
-			return nil, errors.New("couldn't find node port in a pre-computed dict of wg ports")
 		}
 		workload := gridtypes.Workload{
 			Version:     0,
@@ -539,9 +597,9 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context) (m
 			Name:        gridtypes.Name(k.Name),
 			Data: gridtypes.MustMarshal(zos.Network{
 				NetworkIPRange: gridtypes.MustParseIPNet(k.IPRange.String()),
-				Subnet:         node_ip_range,
+				Subnet:         nodeIPRange,
 				WGPrivateKey:   k.Keys[node].String(),
-				WGListenPort:   uint16(node_port),
+				WGListenPort:   uint16(k.WGPort[node]),
 				Peers:          peers,
 			}),
 		}
@@ -566,21 +624,14 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context) (m
 	}
 	return deployments, nil
 }
-
-func (k *NetworkDeployer) GetOldDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
-	return getDeploymentObjects(ctx, k.NodeDeploymentID, k.ncPool)
-}
-
 func (k *NetworkDeployer) Deploy(ctx context.Context) error {
 	newDeployments, err := k.GenerateVersionlessDeployments(ctx)
 	if err != nil {
 		return errors.Wrap(err, "couldn't generate deployments data")
 	}
-	oldDeployments, err := k.GetOldDeployments(ctx)
-	if err != nil {
-		return errors.Wrap(err, "couldn't get old deployments data")
-	}
-	currentDeployments, err := deployDeployments(ctx, oldDeployments, newDeployments, k.ncPool, k.APIClient, true)
+	log.Printf("new deployments")
+	printDeployments(newDeployments)
+	currentDeployments, err := deployDeployments(ctx, k.NodeDeploymentID, newDeployments, k.ncPool, k.APIClient, true)
 	if err := k.updateState(ctx, currentDeployments); err != nil {
 		log.Printf("error updating state: %s\n", err)
 	}
@@ -588,50 +639,17 @@ func (k *NetworkDeployer) Deploy(ctx context.Context) error {
 }
 func (k *NetworkDeployer) updateState(ctx context.Context, currentDeploymentIDs map[uint32]uint64) error {
 	k.NodeDeploymentID = currentDeploymentIDs
-	dls, err := getDeploymentObjects(ctx, currentDeploymentIDs, k.ncPool)
-	k.NodeDeployments = dls
-	if err != nil {
-		return errors.Wrap(err, "couldn't read deployments data")
-	}
-	if err := k.readNodesConfig(); err != nil {
+	if err := k.readNodesConfig(ctx); err != nil {
 		return errors.Wrap(err, "couldn't read node's data")
 	}
 
 	return nil
 }
 
-func (k *NetworkDeployer) removeDeletedContracts(ctx context.Context) error {
-	nodeDeploymentID := make(map[uint32]uint64)
-	for nodeID, deploymentID := range k.NodeDeploymentID {
-		cont, err := k.APIClient.sub.GetContract(deploymentID)
-		if err != nil {
-			return errors.Wrap(err, "failed to get deployments")
-		}
-		if !cont.State.IsDeleted {
-			nodeDeploymentID[nodeID] = deploymentID
-		}
-	}
-	k.NodeDeploymentID = nodeDeploymentID
-	return nil
-}
-
-func (k *NetworkDeployer) updateFromRemote(ctx context.Context) error {
-	if err := k.removeDeletedContracts(ctx); err != nil {
-		return errors.Wrap(err, "failed to remove deleted contracts")
-	}
-	return k.readNodesConfig()
-}
-
 func (k *NetworkDeployer) Cancel(ctx context.Context) error {
 	newDeployments := make(map[uint32]gridtypes.Deployment)
-	oldDeployments := make(map[uint32]gridtypes.Deployment)
-	for node, deploymentID := range k.NodeDeploymentID {
-		oldDeployments[node] = gridtypes.Deployment{
-			ContractID: deploymentID,
-		}
-	}
 
-	currentDeployments, err := deployDeployments(ctx, oldDeployments, newDeployments, k.ncPool, k.APIClient, false)
+	currentDeployments, err := deployDeployments(ctx, k.NodeDeploymentID, newDeployments, k.ncPool, k.APIClient, false)
 	if err := k.updateState(ctx, currentDeployments); err != nil {
 		log.Printf("error updating state: %s\n", err)
 	}
@@ -649,7 +667,7 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
-	if err := deployer.ValidateCreate(ctx); err != nil {
+	if err := deployer.Validate(ctx); err != nil {
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Error,
 			Summary:  "Error happened while doing initial check (check https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)",
@@ -683,7 +701,7 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	if err := deployer.ValidateUpdate(ctx); err != nil {
+	if err := deployer.Validate(ctx); err != nil {
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Error,
 			Summary:  "Error happened while doing initial check (check https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)",
@@ -691,8 +709,8 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 		})
 		return diags
 	}
-	if err := deployer.fetchDeploymentsInfo(ctx); err != nil {
-		return diag.FromErr(errors.Wrap(err, "couldn't fetch deployments info"))
+	if err := deployer.invalidateBrokenAttributes(); err != nil {
+		return diag.FromErr(errors.Wrap(err, "couldn't invalidate broken attributes"))
 	}
 
 	err = deployer.Deploy(ctx)
@@ -715,22 +733,18 @@ func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta inter
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	if err := deployer.ValidateRead(ctx); err != nil {
+	if err := deployer.invalidateBrokenAttributes(); err != nil {
+		return diag.FromErr(errors.Wrap(err, "couldn't invalidate broken attributes"))
+	}
+
+	err = deployer.readNodesConfig(ctx)
+	if err != nil {
 		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Error happened while doing initial check (check https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)",
+			Severity: diag.Warning,
+			Summary:  "Error reading data from remote, terraform state might be out of sync with the remote state",
 			Detail:   err.Error(),
 		})
 		return diags
-	}
-	if err := deployer.fetchDeploymentsInfo(ctx); err != nil {
-		return diag.FromErr(errors.Wrap(err, "couldn't fetch deployments info"))
-	}
-
-	err = deployer.updateFromRemote(ctx)
-	log.Printf("read updateFromRemote err: %s\n", err)
-	if err != nil {
-		return diag.FromErr(err)
 	}
 	deployer.storeState(d)
 	return diags
