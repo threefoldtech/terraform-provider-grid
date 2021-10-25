@@ -168,12 +168,6 @@ func NewQSFSFromWorkload(wl *gridtypes.Workload) (QSFS, error) {
 		return QSFS{}, err
 	}
 	var res zos.QuatumSafeFSResult
-	// BTODO: remove
-	x, err := wl.Result.Bytes()
-	if err != nil {
-		panic(err)
-	}
-	log.Printf("wl.Result: %s\n", string(x))
 	if err := wl.Result.Unmarshal(&res); err != nil {
 		return QSFS{}, err
 	}

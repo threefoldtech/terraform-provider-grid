@@ -691,7 +691,7 @@ func (d *DeploymentDeployer) getNodeClient(nodeID uint32) (*client.NodeClient, e
 	cl := client.NewNodeClient(uint32(nodeInfo.TwinID), d.APIClient.rmb)
 	return cl, nil
 }
-func (d *DeploymentDeployer) GetOldDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
+func (d *DeploymentDeployer) GetOldDeployments(ctx context.Context) (map[uint32]uint64, error) {
 	deployments := make(map[uint32]uint64)
 	if d.Id != "" {
 
@@ -702,7 +702,7 @@ func (d *DeploymentDeployer) GetOldDeployments(ctx context.Context) (map[uint32]
 		deployments[d.Node] = deploymentID
 	}
 
-	return getDeploymentObjects(ctx, deployments, d)
+	return deployments, nil
 }
 func (d *DeploymentDeployer) updateState(ctx context.Context, currentDeploymentIDs map[uint32]uint64) error {
 	log.Printf("current deployments\n")
@@ -1022,7 +1022,12 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 	nodeID := uint32(d.Get("node").(int))
 	nodeInfo, err := sub.GetNode(nodeID)
 	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "error getting node client"))
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  "Error reading data from remote, terraform state might be out of sync with the remote state",
+			Detail:   errors.Wrap(err, "error getting node client").Error(),
+		})
+		return diags
 	}
 
 	node := client.NewNodeClient(uint32(nodeInfo.TwinID), cl)
@@ -1031,13 +1036,23 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 	defer cancel()
 	contractId, err := strconv.ParseUint(d.Id(), 10, 64)
 	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "error parsing contract id"))
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  "Error reading data from remote, terraform state might be out of sync with the remote state",
+			Detail:   errors.Wrap(err, "error parsing contract id").Error(),
+		})
+		return diags
 	}
 	subctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	deployment, err := node.DeploymentGet(subctx, contractId)
 	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "error getting deployment"))
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  "Error reading data from remote, terraform state might be out of sync with the remote state",
+			Detail:   errors.Wrap(err, "error getting deployment").Error(),
+		})
+		return diags
 	}
 	qsfs := make([]map[string]interface{}, 0)
 	disks := make([]map[string]interface{}, 0)
@@ -1048,7 +1063,12 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 		if workload.Type == zos.ZMountType {
 			flattened, err := flattenDiskData(workload)
 			if err != nil {
-				return diag.FromErr(errors.Wrap(err, "error flattening disk"))
+				diags = append(diags, diag.Diagnostic{
+					Severity: diag.Warning,
+					Summary:  "Error reading data from remote, terraform state might be out of sync with the remote state",
+					Detail:   errors.Wrap(err, "error flattening disk").Error(),
+				})
+				return diags
 			}
 			disks = append(disks, flattened)
 
@@ -1056,14 +1076,24 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 		if workload.Type == zos.ZDBType {
 			flattened, err := flattenZDBData(workload)
 			if err != nil {
-				return diag.FromErr(errors.Wrap(err, "error flattening zdb"))
+				diags = append(diags, diag.Diagnostic{
+					Severity: diag.Warning,
+					Summary:  "Error reading data from remote, terraform state might be out of sync with the remote state",
+					Detail:   errors.Wrap(err, "error flattening zdb").Error(),
+				})
+				return diags
 			}
 			zdbs = append(zdbs, flattened)
 
 		} else if workload.Type == zos.ZMachineType {
 			flattened, err := flattenVMData(workload)
 			if err != nil {
-				return diag.FromErr(errors.Wrap(err, "error flattening vm"))
+				diags = append(diags, diag.Diagnostic{
+					Severity: diag.Warning,
+					Summary:  "Error reading data from remote, terraform state might be out of sync with the remote state",
+					Detail:   errors.Wrap(err, "error flattening vm").Error(),
+				})
+				return diags
 			}
 			vms = append(vms, flattened)
 		} else if workload.Type == zos.PublicIPType {
