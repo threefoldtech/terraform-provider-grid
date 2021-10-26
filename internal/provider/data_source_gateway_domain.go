@@ -40,7 +40,7 @@ func dataSourceGatewayDomain() *schema.Resource {
 
 func dataSourceGatewayRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	apiClient := meta.(*apiClient)
-	go startRmb(ctx, apiClient.substrate_url, int(apiClient.twin_id))
+	go startRmbIfNeeded(ctx, apiClient)
 	nodeID := uint32(d.Get("node").(int))
 	name := d.Get("name").(string)
 	ncPool := NewNodeClient(apiClient.sub, apiClient.rmb)

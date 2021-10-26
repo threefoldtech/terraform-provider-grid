@@ -1155,12 +1155,11 @@ github.com/threefoldtech/0-fs v1.3.1-0.20201203163303-d963de9adea7/go.mod h1:OPP
 github.com/threefoldtech/go-rmb v0.1.4 h1:z7GRnuL3Xe/4wRjCOdUFX3Za5VCK2oUGVmWF+3HjKA0=
 github.com/threefoldtech/go-rmb v0.1.4/go.mod h1:+9ql1bqMqmBpudtafk5HG4WO0E7Y5AX9Q2njM8SAvnU=
 github.com/threefoldtech/substrate-client v0.0.0-20210930125201-9bd88e80762d/go.mod h1:t/85gAaltVbJmUnCVwu5lpNKn0HLn9Z9vu/NFJlJcrk=
+github.com/threefoldtech/substrate-client v0.0.0-20211007134519-74137b8f68ec h1:dGqu3OQmNJS/ikcGIMPGUBrizO0YeSsXxzNEjjx3Hhg=
 github.com/threefoldtech/substrate-client v0.0.0-20211007134519-74137b8f68ec/go.mod h1:t/85gAaltVbJmUnCVwu5lpNKn0HLn9Z9vu/NFJlJcrk=
-github.com/threefoldtech/substrate-client v0.0.0-20211012091516-a95c7817db5c h1:cjfmFfg29p29ZP9nHv1SxsNXmBqpXEW2nMWLLphXoRc=
-github.com/threefoldtech/substrate-client v0.0.0-20211012091516-a95c7817db5c/go.mod h1:t/85gAaltVbJmUnCVwu5lpNKn0HLn9Z9vu/NFJlJcrk=
 github.com/threefoldtech/zbus v0.1.5/go.mod h1:ZtiRpcqzEBJetVQDsEbw0p48h/AF3O1kf0tvd30I0BU=
-github.com/threefoldtech/zos v0.4.10-0.20211012115845-ed1f15d4c90e h1:dV90PW7iHRGrYxkIiaHQG52ZztQl50/czSJcAYpa8Ok=
-github.com/threefoldtech/zos v0.4.10-0.20211012115845-ed1f15d4c90e/go.mod h1:xKhENpoQzYzfFmkGf4J2mQlXHeGh4F+c90yCIsMJhLk=
+github.com/threefoldtech/zos v0.4.10-0.20211014140657-b0cf29ace4e2 h1:CUf0GR6lyhmBPYlrSJiAymk5/B1YsSo44Myxw8boJBw=
+github.com/threefoldtech/zos v0.4.10-0.20211014140657-b0cf29ace4e2/go.mod h1:xKhENpoQzYzfFmkGf4J2mQlXHeGh4F+c90yCIsMJhLk=
 github.com/tinylib/msgp v1.0.2/go.mod h1:+d+yLhGm8mzTaHzB+wgMYrodPfmZrzkirds8fDWklFE=
 github.com/tinylib/msgp v1.1.2/go.mod h1:+d+yLhGm8mzTaHzB+wgMYrodPfmZrzkirds8fDWklFE=
 github.com/tklauser/go-sysconf v0.3.5 h1:uu3Xl4nkLzQfXNsWn15rPc/HQCJKObbt1dKJeWp3vU4=
@@ -1511,8 +1510,9 @@ golang.org/x/sys v0.0.0-20210423082822-04245dca01da/go.mod h1:h1NjWce9XRLGQEsW7w
 golang.org/x/sys v0.0.0-20210503173754-0981d6026fa6/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20210510120138-977fb7262007/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20210611083646-a4fc73990273/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
-golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1 h1:SrN+KX8Art/Sf4HNj6Zcz06G7VEz+7w9tdXTPOZ7+l4=
 golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+golang.org/x/sys v0.0.0-20211015200801-69063c4bb744 h1:KzbpndAYEM+4oHRp9JmB2ewj0NHHxO3Z0g7Gus2O1kk=
+golang.org/x/sys v0.0.0-20211015200801-69063c4bb744/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/term v0.0.0-20201117132131-f5c789dd3221/go.mod h1:Nr5EML6q2oocZ2LXRh80K7BxOlk5/8JxuGnuhpl+muw=
 golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1/go.mod h1:bj7SfCRtBDWHUb9snDiAeCFNEtKQo2Wmx5Cou7ajbmo=
 golang.org/x/text v0.0.0-20170915032832-14c0d48ead0c/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=

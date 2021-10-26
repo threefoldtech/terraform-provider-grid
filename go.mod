@@ -3,14 +3,15 @@ module github.com/threefoldtech/terraform-provider-grid
 go 1.17
 
 require (
+	github.com/centrifuge/go-substrate-rpc-client/v3 v3.0.2
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/terraform-plugin-docs v0.4.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.6.1
 	github.com/pkg/errors v0.9.1
 	github.com/shurcooL/graphql v0.0.0-20200928012149-18c5c3165e3a
 	github.com/threefoldtech/go-rmb v0.1.4
-	github.com/threefoldtech/substrate-client v0.0.0-20211012091516-a95c7817db5c
-	github.com/threefoldtech/zos v0.4.10-0.20211012115845-ed1f15d4c90e
+	github.com/threefoldtech/substrate-client v0.0.0-20211007134519-74137b8f68ec
+	github.com/threefoldtech/zos v0.4.10-0.20211014140657-b0cf29ace4e2
 	golang.org/x/net v0.0.0-20210813160813-60bc85c4be6d // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20210803171230-4253848d036c
 )
@@ -30,7 +31,6 @@ require (
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d // indirect
 	github.com/bgentry/speakeasy v0.1.0 // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
-	github.com/centrifuge/go-substrate-rpc-client/v3 v3.0.2 // indirect
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
 	github.com/cosmos/go-bip39 v1.0.0 // indirect
 	github.com/deckarep/golang-set v1.7.1 // indirect
@@ -98,7 +98,7 @@ require (
 	golang.org/x/lint v0.0.0-20201208152925-83fdc39ff7b5 // indirect
 	golang.org/x/mod v0.4.2 // indirect
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d // indirect
-	golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1 // indirect
+	golang.org/x/sys v0.0.0-20211015200801-69063c4bb744 // indirect
 	golang.org/x/text v0.3.7-0.20210503195748-5c7c50ebbd4f // indirect
 	golang.org/x/tools v0.1.5 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect

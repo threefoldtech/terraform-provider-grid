@@ -7,10 +7,12 @@ import (
 	"log"
 	"strconv"
 
+	"github.com/centrifuge/go-substrate-rpc-client/v3/types"
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
+	"github.com/threefoldtech/substrate-client"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
@@ -66,6 +68,13 @@ func resourceGatewayNameProxy() *schema.Resource {
 				Computed: true,
 				Elem:     &schema.Schema{Type: schema.TypeInt},
 			},
+			"name_contract_id": {
+				Type:     schema.TypeInt,
+				Computed: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeInt,
+				},
+			},
 		},
 	}
 }
@@ -79,6 +88,7 @@ type GatewayNameDeployer struct {
 
 	FQDN             string
 	NodeDeploymentID map[uint32]uint64
+	NameContractID   uint64
 
 	APIClient *apiClient
 	ncPool    *NodeClientPool
@@ -111,33 +121,13 @@ func NewGatewayNameDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 		NodeDeploymentID: nodeDeploymentID,
 		APIClient:        apiClient,
 		ncPool:           NewNodeClient(apiClient.sub, apiClient.rmb),
+		NameContractID:   uint64(d.Get("name_contract_id").(int)),
 	}
 	return deployer, nil
 }
 
-func (k *GatewayNameDeployer) ValidateCreate(ctx context.Context) error {
+func (k *GatewayNameDeployer) Validate(ctx context.Context) error {
 	return isNodesUp(ctx, []uint32{k.Node}, k.ncPool)
-}
-
-func (k *GatewayNameDeployer) ValidateUpdate(ctx context.Context) error {
-	nodes := make([]uint32, 0)
-	nodes = append(nodes, k.Node)
-	for node := range k.NodeDeploymentID {
-		nodes = append(nodes, node)
-	}
-	return isNodesUp(ctx, nodes, k.ncPool)
-}
-
-func (k *GatewayNameDeployer) ValidateRead(ctx context.Context) error {
-	nodes := make([]uint32, 0)
-	for node := range k.NodeDeploymentID {
-		nodes = append(nodes, node)
-	}
-	return isNodesUp(ctx, nodes, k.ncPool)
-}
-
-func (k *GatewayNameDeployer) ValidateDelete(ctx context.Context) error {
-	return nil
 }
 
 func (k *GatewayNameDeployer) storeState(d *schema.ResourceData) {
@@ -152,6 +142,7 @@ func (k *GatewayNameDeployer) storeState(d *schema.ResourceData) {
 	d.Set("backends", k.Backends)
 	d.Set("fqdn", k.FQDN)
 	d.Set("node_deployment_id", nodeDeploymentID)
+	d.Set("name_contract_id", k.NameContractID)
 }
 func (k *GatewayNameDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
 	deployments := make(map[uint32]gridtypes.Deployment)
@@ -192,16 +183,43 @@ func (k *GatewayNameDeployer) GetOldDeployments(ctx context.Context) (map[uint32
 	return getDeploymentObjects(ctx, k.NodeDeploymentID, k.ncPool)
 }
 
+func (k *GatewayNameDeployer) ensureNameContract(ctx context.Context, name string) (uint64, error) {
+	contractID, err := k.APIClient.sub.GetContractIDByNameRegistration(name)
+	if errors.Is(err, substrate.ErrNotFound) {
+		if k.NameContractID != 0 { // the name changed, remove the old one
+			if err := k.APIClient.sub.CancelContract(k.APIClient.identity, k.NameContractID); err != nil {
+				return 0, errors.Wrap(err, "couldn't delete the old name contract")
+			}
+		}
+		contractID, err := k.APIClient.sub.CreateNameContract(k.APIClient.identity, name)
+		return contractID, errors.Wrap(err, "failed to create name contract")
+	} else if err != nil {
+		return 0, errors.Wrapf(err, "couldn't get the owning contract id of the name %s", name)
+	}
+	if contractID == k.NameContractID {
+		return contractID, nil
+	}
+	contract, err := k.APIClient.sub.GetContract(contractID)
+	if err != nil {
+		return 0, errors.Wrapf(err, "couldn't get the owning contract of the name %s", name)
+	}
+	if contract.TwinID != types.U32(k.APIClient.twin_id) {
+		return 0, errors.Wrapf(err, "name already registered by twin id %d with contract id %d", contract.TwinID, contractID)
+	}
+	return contractID, nil
+}
+
 func (k *GatewayNameDeployer) Deploy(ctx context.Context) error {
 	newDeployments, err := k.GenerateVersionlessDeployments(ctx)
 	if err != nil {
 		return errors.Wrap(err, "couldn't generate deployments data")
 	}
-	oldDeployments, err := k.GetOldDeployments(ctx)
+	cid, err := k.ensureNameContract(ctx, k.Name)
 	if err != nil {
-		return errors.Wrap(err, "couldn't get old deployments data")
+		return err
 	}
-	currentDeployments, err := deployDeployments(ctx, oldDeployments, newDeployments, k.ncPool, k.APIClient, true)
+	k.NameContractID = cid
+	currentDeployments, err := deployDeployments(ctx, k.NodeDeploymentID, newDeployments, k.ncPool, k.APIClient, true)
 	if err := k.updateState(ctx, currentDeployments); err != nil {
 		log.Printf("error updating state: %s\n", err)
 	}
@@ -232,18 +250,18 @@ func (k *GatewayNameDeployer) updateFromRemote(ctx context.Context) error {
 
 func (k *GatewayNameDeployer) Cancel(ctx context.Context) error {
 	newDeployments := make(map[uint32]gridtypes.Deployment)
-	oldDeployments := make(map[uint32]gridtypes.Deployment)
-	for node, deploymentID := range k.NodeDeploymentID {
-		oldDeployments[node] = gridtypes.Deployment{
-			ContractID: deploymentID,
-		}
-	}
-
-	currentDeployments, err := deployDeployments(ctx, oldDeployments, newDeployments, k.ncPool, k.APIClient, false)
+	currentDeployments, err := deployDeployments(ctx, k.NodeDeploymentID, newDeployments, k.ncPool, k.APIClient, false)
+	// update even in case of error, then return the error after
 	if err := k.updateState(ctx, currentDeployments); err != nil {
 		log.Printf("error updating state: %s\n", err)
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	if k.NameContractID != 0 {
+		return k.APIClient.sub.CancelContract(k.APIClient.identity, k.NameContractID)
+	}
+	return nil
 }
 
 func resourceGatewayNameCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -252,12 +270,12 @@ func resourceGatewayNameCreate(ctx context.Context, d *schema.ResourceData, meta
 	apiClient := meta.(*apiClient)
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
+	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := NewGatewayNameDeployer(ctx, d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
-	if err := deployer.ValidateCreate(ctx); err != nil {
+	if err := deployer.Validate(ctx); err != nil {
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Error,
 			Summary:  "Error happened while doing initial check (check https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)",
@@ -285,13 +303,13 @@ func resourceGatewayNameUpdate(ctx context.Context, d *schema.ResourceData, meta
 	apiClient := meta.(*apiClient)
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
+	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := NewGatewayNameDeployer(ctx, d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	if err := deployer.ValidateUpdate(ctx); err != nil {
+	if err := deployer.Validate(ctx); err != nil {
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Error,
 			Summary:  "Error happened while doing initial check (check https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)",
@@ -314,24 +332,21 @@ func resourceGatewayNameRead(ctx context.Context, d *schema.ResourceData, meta i
 	apiClient := meta.(*apiClient)
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
+	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := NewGatewayNameDeployer(ctx, d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	if err := deployer.ValidateRead(ctx); err != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Error happened while doing initial check (check https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)",
-			Detail:   err.Error(),
-		})
-		return diags
-	}
 	err = deployer.updateFromRemote(ctx)
 	log.Printf("read updateFromRemote err: %s\n", err)
 	if err != nil {
-		return diag.FromErr(err)
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  "Error reading data from remote, terraform state might be out of sync with the remote state",
+			Detail:   err.Error(),
+		})
+		return diags
 	}
 	deployer.storeState(d)
 	return diags
@@ -342,7 +357,7 @@ func resourceGatewayNameDelete(ctx context.Context, d *schema.ResourceData, meta
 	apiClient := meta.(*apiClient)
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
+	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := NewGatewayNameDeployer(ctx, d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
