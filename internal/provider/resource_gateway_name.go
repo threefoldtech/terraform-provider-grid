@@ -29,7 +29,7 @@ func resourceGatewayNameProxy() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"name": {
-				Description: "resource name",
+				Description: "Resource name",
 				Type:        schema.TypeString,
 				Required:    true,
 			},
@@ -50,7 +50,7 @@ func resourceGatewayNameProxy() *schema.Resource {
 				Computed:    true,
 			},
 			"tls_passthrough": {
-				Description: "true to pass the tls as is to the backends.",
+				Description: "True to pass the tls as is to the backends.",
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Default:     false,

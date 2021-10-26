@@ -88,13 +88,13 @@ func resourceKubernetes() *schema.Resource {
 							Computed:    true,
 						},
 						"ip": {
-							Description: "IP",
+							Description: "The private IP",
 							Type:        schema.TypeString,
 							Optional:    true,
 							Computed:    true,
 						},
 						"cpu": {
-							Description: "CPU size",
+							Description: "Number of VCPUs",
 							Type:        schema.TypeInt,
 							Required:    true,
 						},
@@ -141,13 +141,13 @@ func resourceKubernetes() *schema.Resource {
 							Computed:    true,
 						},
 						"ip": {
-							Description: "IP",
+							Description: "the private IP",
 							Type:        schema.TypeString,
 							Optional:    true,
 							Computed:    true,
 						},
 						"cpu": {
-							Description: "CPU size",
+							Description: "Number of VCPUs",
 							Type:        schema.TypeInt,
 							Required:    true,
 						},

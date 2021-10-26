@@ -33,7 +33,6 @@ func resourceDeployment() *schema.Resource {
 		DeleteContext: resourceDeploymentDelete,
 
 		Schema: map[string]*schema.Schema{
-
 			"node": {
 				Description: "Node id to place deployment on",
 				Type:        schema.TypeInt,
@@ -54,7 +53,8 @@ func resourceDeployment() *schema.Resource {
 						},
 						"description": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
+							Default:  "",
 						},
 					},
 				},
@@ -78,7 +78,8 @@ func resourceDeployment() *schema.Resource {
 						},
 						"description": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
+							Default:  "",
 						},
 						"mode": {
 							Description: "Mode of the zdb",
@@ -145,6 +146,7 @@ func resourceDeployment() *schema.Resource {
 							Description: "Machine Description",
 							Type:        schema.TypeString,
 							Optional:    true,
+							Default:     "",
 						},
 						"memory": {
 							Description: "Memory size",
@@ -216,7 +218,8 @@ func resourceDeployment() *schema.Resource {
 						},
 						"description": {
 							Type:        schema.TypeString,
-							Required:    true,
+							Optional:    true,
+							Default:     "",
 							Description: "The minimum amount of shards which are needed to recover the original data.",
 						},
 						"cache": {

@@ -25,7 +25,7 @@ func dataSourceGatewayDomain() *schema.Resource {
 				Required:    true,
 			},
 			"name": {
-				Description: "The name ",
+				Description: "The Name of the workload",
 				Type:        schema.TypeString,
 				Required:    true,
 			},
