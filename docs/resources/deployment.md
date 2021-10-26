@@ -128,6 +128,7 @@ Optional:
 - **mounts** (Block List) (see [below for nested schema](#nestedblock--vms--mounts))
 - **planetary** (Boolean)
 - **publicip** (Boolean) If you want to enable public ip or not
+- **rootfs_size** (Number) Rootfs size in MB
 
 Read-Only:
 
