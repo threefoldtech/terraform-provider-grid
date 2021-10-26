@@ -52,12 +52,12 @@ resource "grid_deployment" "qsfs" {
   qsfs {
     name = "qsfs"
     description = "description6"
-    cache = 1024 # 1 GB
+    cache = 10240 # 10 GB
     minimal_shards = 2
     expected_shards = 4
     redundant_groups = 0
     redundant_nodes = 0
-    max_zdb_data_dir_size = 2048 # 2 GB
+    max_zdb_data_dir_size = 512 # 512 MB
     encryption_algorithm = "AES"
     encryption_key = "4d778ba3216e4da4231540c92a55f06157cabba802f9b68fb0f78375d2e825af"
     compression_algorithm = "snappy"
