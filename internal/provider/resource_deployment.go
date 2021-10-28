@@ -902,6 +902,9 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 		return diag.FromErr(errors.Wrap(err, "error validating deployment"))
 	}
 	apiClient := meta.(*apiClient)
+	if err := validateAccountMoneyForExtrinsics(apiClient); err != nil {
+		return diag.FromErr(err)
+	}
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	go startRmbIfNeeded(rmbctx, apiClient)
@@ -1157,6 +1160,9 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 		return diag.FromErr(errors.New("changing node is not supported, you need to destroy the deployment and reapply it again but you will lost your old data"))
 	}
 	apiClient := meta.(*apiClient)
+	if err := validateAccountMoneyForExtrinsics(apiClient); err != nil {
+		return diag.FromErr(err)
+	}
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	go startRmbIfNeeded(rmbctx, apiClient)
@@ -1190,6 +1196,9 @@ func (d *DeploymentDeployer) Cancel(ctx context.Context) error {
 
 func resourceDeploymentDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	apiClient := meta.(*apiClient)
+	if err := validateAccountMoneyForExtrinsics(apiClient); err != nil {
+		return diag.FromErr(err)
+	}
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	go startRmbIfNeeded(rmbctx, apiClient)

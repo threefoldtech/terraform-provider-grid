@@ -5,8 +5,10 @@
 
 -	[Terraform](https://www.terraform.io/downloads.html) >= 0.13.x
 -	[Go](https://golang.org/doc/install) >= 1.15
--   A registered twin on the grid (make sure yggdrasil is running) [steps](https://github.com/threefoldtech/TFGRID/blob/development/wiki/tfgrid_substrate/substrate/grid_substrate_getting_started.md)
--   Redis running on localhost with port 6379
+-   A registered twin on the grid [steps](https://github.com/threefoldtech/TFGRID/blob/development/wiki/tfgrid_substrate/substrate/grid_substrate_getting_started.md)
+
+
+- Only if not using the rmb proxy (enabled by default): Redis running on localhost with port 6379 and yggdrasil
 
 ## Building The Provider (for development only)
 
@@ -30,6 +32,12 @@ make docs
 ```
 
 ## Using the provider
+environment specific variables:
+```bash
+export RMB_PROXY_URL="https://rmbproxy1.devnet.grid.tf/"
+export SUBSTRATE_URL="wss://tfchain.dev.threefold.io/ws"
+export GRAPHQL_URL="https://tfchain.dev.threefold.io/graphql/graphql/"
+```
 ```bash
 cd examples/resources/singlenode
 export MNEMONICS="<mnemonics workds>"
