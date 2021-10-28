@@ -164,7 +164,7 @@ Required:
 
 - **name** (String)
 - **password** (String)
-- **size** (Number)
+- **size** (Number) size of the zdb in GBs
 
 Optional:
 

@@ -78,8 +78,9 @@ func resourceDeployment() *schema.Resource {
 							Default:  false,
 						},
 						"size": {
-							Type:     schema.TypeInt,
-							Required: true,
+							Type:        schema.TypeInt,
+							Required:    true,
+							Description: "size of the zdb in GBs",
 						},
 						"description": {
 							Type:     schema.TypeString,
@@ -597,7 +598,7 @@ func (z *ZDB) GenerateZDBWorkload() gridtypes.Workload {
 		Description: z.Description,
 		Version:     Version,
 		Data: gridtypes.MustMarshal(zos.ZDB{
-			Size:     gridtypes.Unit(z.Size),
+			Size:     gridtypes.Unit(z.Size) * gridtypes.Gigabyte,
 			Mode:     zos.ZDBMode(z.Mode),
 			Password: z.Password,
 			Public:   z.Public,
@@ -959,7 +960,7 @@ func flattenZDBData(workload gridtypes.Workload) (map[string]interface{}, error)
 			return nil, errors.Wrap(err, "couldn't decode zdb result")
 		}
 		wl["name"] = workload.Name
-		wl["size"] = data.(*zos.ZDB).Size
+		wl["size"] = data.(*zos.ZDB).Size / gridtypes.Gigabyte
 		wl["mode"] = data.(*zos.ZDB).Mode
 		wl["ips"] = result.IPs
 		wl["namespace"] = result.Namespace
