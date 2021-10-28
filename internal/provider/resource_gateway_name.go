@@ -127,6 +127,9 @@ func NewGatewayNameDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 }
 
 func (k *GatewayNameDeployer) Validate(ctx context.Context) error {
+	if err := validateAccountMoneyForExtrinsics(k.APIClient); err != nil {
+		return err
+	}
 	return isNodesUp(ctx, []uint32{k.Node}, k.ncPool)
 }
 
@@ -276,12 +279,7 @@ func resourceGatewayNameCreate(ctx context.Context, d *schema.ResourceData, meta
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 	if err := deployer.Validate(ctx); err != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Error happened while doing initial check (check https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)",
-			Detail:   err.Error(),
-		})
-		return diags
+		return diag.FromErr(err)
 	}
 	err = deployer.Deploy(ctx)
 	if err != nil {
@@ -310,12 +308,7 @@ func resourceGatewayNameUpdate(ctx context.Context, d *schema.ResourceData, meta
 	}
 
 	if err := deployer.Validate(ctx); err != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Error happened while doing initial check (check https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)",
-			Detail:   err.Error(),
-		})
-		return diags
+		return diag.FromErr(err)
 	}
 
 	err = deployer.Deploy(ctx)

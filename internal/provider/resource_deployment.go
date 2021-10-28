@@ -72,6 +72,11 @@ func resourceDeployment() *schema.Resource {
 							Type:     schema.TypeString,
 							Required: true,
 						},
+						"public": {
+							Type:     schema.TypeBool,
+							Optional: true,
+							Default:  false,
+						},
 						"size": {
 							Type:     schema.TypeInt,
 							Required: true,
@@ -372,6 +377,7 @@ type Disk struct {
 type ZDB struct {
 	Name        string
 	Password    string
+	Public      bool
 	Size        int
 	Description string
 	Mode        string
@@ -495,6 +501,7 @@ func GetZdbData(zdb map[string]interface{}) ZDB {
 		Size:        zdb["size"].(int),
 		Description: zdb["description"].(string),
 		Password:    zdb["password"].(string),
+		Public:      zdb["public"].(bool),
 		Mode:        zdb["mode"].(string),
 		IPs:         ips,
 		Port:        uint32(zdb["port"].(int)),
@@ -593,6 +600,7 @@ func (z *ZDB) GenerateZDBWorkload() gridtypes.Workload {
 			Size:     gridtypes.Unit(z.Size),
 			Mode:     zos.ZDBMode(z.Mode),
 			Password: z.Password,
+			Public:   z.Public,
 		}),
 	}
 	return workload
@@ -867,6 +875,7 @@ func (z *ZDB) Dictify() map[string]interface{} {
 	res["namespace"] = z.Namespace
 	res["port"] = int(z.Port)
 	res["password"] = z.Password
+	res["public"] = z.Public
 	return res
 }
 func (dep *DeploymentDeployer) storeState(d *schema.ResourceData) {
@@ -902,6 +911,9 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 		return diag.FromErr(errors.Wrap(err, "error validating deployment"))
 	}
 	apiClient := meta.(*apiClient)
+	if err := validateAccountMoneyForExtrinsics(apiClient); err != nil {
+		return diag.FromErr(err)
+	}
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	go startRmbIfNeeded(rmbctx, apiClient)
@@ -953,6 +965,7 @@ func flattenZDBData(workload gridtypes.Workload) (map[string]interface{}, error)
 		wl["namespace"] = result.Namespace
 		wl["port"] = result.Port
 		wl["password"] = data.(*zos.ZDB).Password
+		wl["public"] = data.(*zos.ZDB).Public
 		wl["description"] = workload.Description
 		return wl, nil
 	}
@@ -1157,6 +1170,9 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 		return diag.FromErr(errors.New("changing node is not supported, you need to destroy the deployment and reapply it again but you will lost your old data"))
 	}
 	apiClient := meta.(*apiClient)
+	if err := validateAccountMoneyForExtrinsics(apiClient); err != nil {
+		return diag.FromErr(err)
+	}
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	go startRmbIfNeeded(rmbctx, apiClient)
@@ -1190,6 +1206,9 @@ func (d *DeploymentDeployer) Cancel(ctx context.Context) error {
 
 func resourceDeploymentDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	apiClient := meta.(*apiClient)
+	if err := validateAccountMoneyForExtrinsics(apiClient); err != nil {
+		return diag.FromErr(err)
+	}
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	go startRmbIfNeeded(rmbctx, apiClient)

@@ -18,14 +18,14 @@ Resource for deploying gateway domains.
 ### Required
 
 - **backends** (List of String) The backends of the gateway proxy
-- **name** (String) resource name
+- **name** (String) Resource name
 - **node** (Number) The gateway's node id
 
 ### Optional
 
 - **description** (String) Description field
 - **id** (String) The ID of this resource.
-- **tls_passthrough** (Boolean) true to pass the tls as is to the backends.
+- **tls_passthrough** (Boolean) True to pass the tls as is to the backends.
 
 ### Read-Only
 

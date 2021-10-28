@@ -11,7 +11,7 @@ provider "grid" {
 
 locals {
   metas = ["meta1", "meta2", "meta3", "meta4"]
-  datas = ["data1", "data2", "data3", "data4", "data5", "data6", "data7", "data8"]
+  datas = ["data1", "data2", "data3", "data4"]
 }
 
 resource "grid_network" "net1" {
