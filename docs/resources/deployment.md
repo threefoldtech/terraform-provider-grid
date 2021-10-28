@@ -34,9 +34,12 @@ Sample resource in the Terraform provider scaffolding.
 
 Required:
 
-- **description** (String)
 - **name** (String)
 - **size** (Number)
+
+Optional:
+
+- **description** (String)
 
 
 <a id="nestedblock--qsfs"></a>
@@ -45,7 +48,6 @@ Required:
 Required:
 
 - **cache** (Number) The size of the fuse mountpoint on the node in MBs (holds qsfs local data before pushing)
-- **description** (String) The minimum amount of shards which are needed to recover the original data.
 - **encryption_key** (String)
 - **expected_shards** (Number) The amount of shards which are generated when the data is encoded. Essentially, this is the amount of shards which is needed to be able to recover the data, and some disposable shards which could be lost. The amount of disposable shards can be calculated as expected_shards - minimal_shards.
 - **groups** (Block List, Min: 1) The backend groups to write the data to. (see [below for nested schema](#nestedblock--qsfs--groups))
@@ -59,6 +61,7 @@ Required:
 Optional:
 
 - **compression_algorithm** (String) configuration to use for the compression stage. Currently only snappy is supported
+- **description** (String) The minimum amount of shards which are needed to recover the original data.
 - **encryption_algorithm** (String) configuration to use for the encryption stage. Currently only AES is supported.
 
 Read-Only:
@@ -159,14 +162,15 @@ Required:
 
 Required:
 
-- **description** (String)
 - **name** (String)
 - **password** (String)
 - **size** (Number)
 
 Optional:
 
+- **description** (String)
 - **mode** (String) Mode of the zdb
+- **public** (Boolean)
 
 Read-Only:
 

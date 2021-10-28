@@ -18,12 +18,12 @@ description: |-
 ### Required
 
 - **mnemonics** (String, Sensitive)
-- **twin_id** (Number)
 
 ### Optional
 
 - **graphql_url** (String) graphql url, example: https://tfchain.dev.threefold.io/graphql/graphql/
+- **network** (String) grid network, one of: dev test
 - **rmb_proxy_url** (String) rmb proxy url, example: https://rmbproxy1.devnet.grid.tf/
-- **rmb_url** (String)
+- **rmb_redis_url** (String)
 - **substrate_url** (String) substrate url, example: wss://tfchain.dev.threefold.io/ws
 - **use_rmb_proxy** (Boolean) whether to use the rmb proxy or not
