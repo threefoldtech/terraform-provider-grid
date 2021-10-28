@@ -5,8 +5,7 @@
 
 -	[Terraform](https://www.terraform.io/downloads.html) >= 0.13.x
 -	[Go](https://golang.org/doc/install) >= 1.15
--   A registered twin on the grid [steps](https://github.com/threefoldtech/TFGRID/blob/development/wiki/tfgrid_substrate/substrate/grid_substrate_getting_started.md)
-
+-   A registered twin on the grid with a funed account [steps](https://library.threefold.me/info/threefold#/manual_tfgrid3/threefold__grid3_get_started)
 
 - Only if not using the rmb proxy (enabled by default): Redis running on localhost with port 6379 and yggdrasil
 
@@ -32,16 +31,10 @@ make docs
 ```
 
 ## Using the provider
-environment specific variables:
-```bash
-export RMB_PROXY_URL="https://rmbproxy1.devnet.grid.tf/"
-export SUBSTRATE_URL="wss://tfchain.dev.threefold.io/ws"
-export GRAPHQL_URL="https://tfchain.dev.threefold.io/graphql/graphql/"
-```
 ```bash
 cd examples/resources/singlenode
-export MNEMONICS="<mnemonics workds>"
-export TWIN_ID="<your twin id>"
+export MNEMONICS="<mnemonics words>"
+export NETWORK="<your twin id>" # dev or test
 terraform init && terraform apply -parallelism=1
 ```
 ## Destroying deployment
