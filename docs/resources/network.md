@@ -17,23 +17,23 @@ Sample resource in the Terraform provider scaffolding.
 
 ### Required
 
-- **description** (String) Description field
 - **ip_range** (String) Network ip range
 - **name** (String) Network Name
-- **nodes** (List of Number) Network size in Gigabytes
+- **nodes** (List of Number) List of nodes to add to the network
 
 ### Optional
 
-- **add_wg_access** (Boolean) whether to add a public node to network and use it to generate a wg config
+- **add_wg_access** (Boolean) Whether to add a public node to network and use it to generate a wg config
+- **description** (String) Description field
 - **id** (String) The ID of this resource.
 - **nodes_ip_range** (Map of String) Computed values of nodes' ip ranges after deployment
 
 ### Read-Only
 
-- **access_wg_config** (String) wg config for access
-- **external_ip** (String) ip of the access point
-- **external_sk** (String) access point private key
+- **access_wg_config** (String) WG config for access
+- **external_ip** (String) IP of the access point
+- **external_sk** (String) Access point private key
 - **node_deployment_id** (Map of Number)
-- **public_node_id** (Number) access point public key
+- **public_node_id** (Number) Public node id (in case it's added)
 
 

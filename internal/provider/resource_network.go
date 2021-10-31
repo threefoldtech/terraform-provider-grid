@@ -37,10 +37,11 @@ func resourceNetwork() *schema.Resource {
 			"description": {
 				Description: "Description field",
 				Type:        schema.TypeString,
-				Required:    true,
+				Optional:    true,
+				Default:     "",
 			},
 			"nodes": {
-				Description: "Network size in Gigabytes",
+				Description: "List of nodes to add to the network",
 				Type:        schema.TypeList,
 				Required:    true,
 				Elem: &schema.Schema{
@@ -53,33 +54,29 @@ func resourceNetwork() *schema.Resource {
 				Required:    true,
 			},
 			"add_wg_access": {
-				Description: "whether to add a public node to network and use it to generate a wg config",
+				Description: "Whether to add a public node to network and use it to generate a wg config",
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Default:     false,
 			},
 			"access_wg_config": {
-				Description: "wg config for access",
+				Description: "WG config for access",
 				Type:        schema.TypeString,
-				Required:    false,
 				Computed:    true,
 			},
 			"external_ip": {
-				Description: "ip of the access point",
+				Description: "IP of the access point",
 				Type:        schema.TypeString,
-				Required:    false,
 				Computed:    true,
 			},
 			"external_sk": {
-				Description: "access point private key",
+				Description: "Access point private key",
 				Type:        schema.TypeString,
-				Required:    false,
 				Computed:    true,
 			},
 			"public_node_id": {
-				Description: "access point public key",
+				Description: "Public node id (in case it's added)",
 				Type:        schema.TypeInt,
-				Required:    false,
 				Computed:    true,
 			},
 			"nodes_ip_range": {
@@ -87,7 +84,6 @@ func resourceNetwork() *schema.Resource {
 				Type:        schema.TypeMap,
 				Computed:    true,
 				Optional:    true,
-				Required:    false,
 				Elem:        &schema.Schema{Type: schema.TypeString},
 			},
 
@@ -238,6 +234,9 @@ func (k *NetworkDeployer) invalidateBrokenAttributes() error {
 	return nil
 }
 func (k *NetworkDeployer) Validate(ctx context.Context) error {
+	if err := validateAccountMoneyForExtrinsics(k.APIClient); err != nil {
+		return err
+	}
 	return isNodesUp(ctx, k.Nodes, k.ncPool)
 }
 
@@ -668,12 +667,7 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 	if err := deployer.Validate(ctx); err != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Error happened while doing initial check (check https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)",
-			Detail:   err.Error(),
-		})
-		return diags
+		return diag.FromErr(err)
 	}
 	err = deployer.Deploy(ctx)
 	if err != nil {
@@ -702,12 +696,7 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 	}
 
 	if err := deployer.Validate(ctx); err != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Error happened while doing initial check (check https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)",
-			Detail:   err.Error(),
-		})
-		return diags
+		return diag.FromErr(err)
 	}
 	if err := deployer.invalidateBrokenAttributes(); err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't invalidate broken attributes"))

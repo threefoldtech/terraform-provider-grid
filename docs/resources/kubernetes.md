@@ -37,7 +37,7 @@ Sample resource in the Terraform provider scaffolding.
 
 Required:
 
-- **cpu** (Number) CPU size
+- **cpu** (Number) Number of VCPUs
 - **disk_size** (Number) Data disk size
 - **memory** (Number) Memory size
 - **name** (String)
@@ -46,7 +46,7 @@ Required:
 Optional:
 
 - **flist** (String)
-- **ip** (String) IP
+- **ip** (String) The private IP
 - **publicip** (Boolean) If you want to enable public ip or not
 
 Read-Only:
@@ -59,7 +59,7 @@ Read-Only:
 
 Required:
 
-- **cpu** (Number) CPU size
+- **cpu** (Number) Number of VCPUs
 - **disk_size** (Number) Data disk size
 - **memory** (Number) Memory size
 - **name** (String)
@@ -68,7 +68,7 @@ Required:
 Optional:
 
 - **flist** (String)
-- **ip** (String) IP
+- **ip** (String) the private IP
 - **publicip** (Boolean) If you want to enable public ip or not
 
 Read-Only:

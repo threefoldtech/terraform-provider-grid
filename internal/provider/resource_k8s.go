@@ -88,13 +88,13 @@ func resourceKubernetes() *schema.Resource {
 							Computed:    true,
 						},
 						"ip": {
-							Description: "IP",
+							Description: "The private IP",
 							Type:        schema.TypeString,
 							Optional:    true,
 							Computed:    true,
 						},
 						"cpu": {
-							Description: "CPU size",
+							Description: "Number of VCPUs",
 							Type:        schema.TypeInt,
 							Required:    true,
 						},
@@ -141,13 +141,13 @@ func resourceKubernetes() *schema.Resource {
 							Computed:    true,
 						},
 						"ip": {
-							Description: "IP",
+							Description: "the private IP",
 							Type:        schema.TypeString,
 							Optional:    true,
 							Computed:    true,
 						},
 						"cpu": {
-							Description: "CPU size",
+							Description: "Number of VCPUs",
 							Type:        schema.TypeInt,
 							Required:    true,
 						},
@@ -425,6 +425,9 @@ func (k *K8sDeployer) ValidateNames(ctx context.Context) error {
 }
 
 func (k *K8sDeployer) Validate(ctx context.Context) error {
+	if err := validateAccountMoneyForExtrinsics(k.APIClient); err != nil {
+		return err
+	}
 	if err := k.ValidateNames(ctx); err != nil {
 		return err
 	}
@@ -785,12 +788,7 @@ func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 	}
 
 	if err := deployer.Validate(ctx); err != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Error happened while doing initial check (check https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)",
-			Detail:   err.Error(),
-		})
-		return diags
+		return diag.FromErr(err)
 	}
 
 	err = deployer.Deploy(ctx)
@@ -819,12 +817,7 @@ func resourceK8sUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 	}
 
 	if err := deployer.Validate(ctx); err != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Error happened while doing initial check (check https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)",
-			Detail:   err.Error(),
-		})
-		return diags
+		return diag.FromErr(err)
 	}
 
 	if err := deployer.invalidateBrokenAttributes(); err != nil {
@@ -851,12 +844,7 @@ func resourceK8sRead(ctx context.Context, d *schema.ResourceData, meta interface
 	}
 
 	if err := deployer.Validate(ctx); err != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Warning,
-			Summary:  "Error happened while doing initial check (check https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)",
-			Detail:   err.Error(),
-		})
-		return diags
+		return diag.FromErr(err)
 	}
 
 	if err := deployer.invalidateBrokenAttributes(); err != nil {
