@@ -34,7 +34,7 @@ make docs
 ```bash
 cd examples/resources/singlenode
 export MNEMONICS="<mnemonics words>"
-export NETWORK="<your twin id>" # dev or test
+export NETWORK="<network>" # dev or test
 terraform init && terraform apply -parallelism=1
 ```
 ## Destroying deployment
