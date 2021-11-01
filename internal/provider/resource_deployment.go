@@ -1151,7 +1151,7 @@ func validate(d *schema.ResourceData) error {
 	ipRangeStr := d.Get("ip_range").(string)
 	networkName := d.Get("network_name").(string)
 	vms := d.Get("vms").([]interface{})
-	_, err := gridtypes.ParseIPNet(ipRangeStr)
+	_, _, err := net.ParseCIDR(ipRangeStr)
 	if len(vms) != 0 && err != nil {
 		return errors.Wrap(err, "If you pass a vm, ip_range must be set to a valid ip range (e.g. 10.1.3.0/16)")
 	}
