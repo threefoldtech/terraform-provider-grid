@@ -44,7 +44,6 @@ terraform destroy -parallelism=1
 ## Current limitation
 
 - [parallism=1](https://github.com/threefoldtech/terraform-provider-grid/issues/12)
-- [windows  support](https://github.com/threefoldtech/terraform-provider-grid/issues/9)
 - [increasing IPs in active deployment](https://github.com/threefoldtech/terraform-provider-grid/issues/15)
 - [introducing new nodes to kuberentes deployment](https://github.com/threefoldtech/terraform-provider-grid/issues/13)
 - [multiple deployments on the same node](https://github.com/threefoldtech/terraform-provider-grid/issues/11)
