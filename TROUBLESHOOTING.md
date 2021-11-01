@@ -3,6 +3,7 @@
 ## First time running terraform
 
 You can skip redis and yggdrasil steps if you opt in to using the rmb proxy (USE_RMB_PROXY is true which is the default starting from v0.1.10)
+also `twin_id` was removed from provide inputs and no more used starting from v0.1.12
 
 1. make sure you have redis running.
 2. check if yggdrasil is up and running with some peers added, and you can reach services listed [here](https://yggdrasil-network.github.io/services.html).
