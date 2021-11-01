@@ -17,14 +17,14 @@ Sample resource in the Terraform provider scaffolding.
 
 ### Required
 
-- **node** (Number) Node id to place deployment on
+- **node** (Number) Node id to place the deployment on
 
 ### Optional
 
 - **disks** (Block List) (see [below for nested schema](#nestedblock--disks))
 - **id** (String) The ID of this resource.
-- **ip_range** (String)
-- **network_name** (String)
+- **ip_range** (String) IP range of the node (e.g. 10.1.2.0/24)
+- **network_name** (String) Network to use for Zmachines
 - **qsfs** (Block List) (see [below for nested schema](#nestedblock--qsfs))
 - **vms** (Block List) (see [below for nested schema](#nestedblock--vms))
 - **zdbs** (Block List) (see [below for nested schema](#nestedblock--zdbs))
@@ -34,8 +34,8 @@ Sample resource in the Terraform provider scaffolding.
 
 Required:
 
-- **name** (String)
-- **size** (Number)
+- **name** (String) the disk name, used to reference it in zmachine mounts
+- **size** (Number) the disk size in GBs
 
 Optional:
 
@@ -48,12 +48,12 @@ Optional:
 Required:
 
 - **cache** (Number) The size of the fuse mountpoint on the node in MBs (holds qsfs local data before pushing)
-- **encryption_key** (String)
+- **encryption_key** (String) 64 long hex encoded encryption key (e.g. 0000000000000000000000000000000000000000000000000000000000000000)
 - **expected_shards** (Number) The amount of shards which are generated when the data is encoded. Essentially, this is the amount of shards which is needed to be able to recover the data, and some disposable shards which could be lost. The amount of disposable shards can be calculated as expected_shards - minimal_shards.
 - **groups** (Block List, Min: 1) The backend groups to write the data to. (see [below for nested schema](#nestedblock--qsfs--groups))
 - **max_zdb_data_dir_size** (Number) Maximum size of the data dir in MiB, if this is set and the sum of the file sizes in the data dir gets higher than this value, the least used, already encoded file will be removed.
 - **metadata** (Block List, Min: 1, Max: 1) (see [below for nested schema](#nestedblock--qsfs--metadata))
-- **minimal_shards** (Number)
+- **minimal_shards** (Number) The minimum amount of shards which are needed to recover the original data.
 - **name** (String)
 - **redundant_groups** (Number) The amount of groups which one should be able to loose while still being able to recover the original data.
 - **redundant_nodes** (Number) The amount of nodes that can be lost in every group while still being able to recover the original data.
@@ -61,12 +61,12 @@ Required:
 Optional:
 
 - **compression_algorithm** (String) configuration to use for the compression stage. Currently only snappy is supported
-- **description** (String) The minimum amount of shards which are needed to recover the original data.
+- **description** (String)
 - **encryption_algorithm** (String) configuration to use for the encryption stage. Currently only AES is supported.
 
 Read-Only:
 
-- **metrics_endpoint** (String)
+- **metrics_endpoint** (String) QSFS exposed metrics
 
 <a id="nestedblock--qsfs--groups"></a>
 ### Nested Schema for `qsfs.groups`
@@ -80,9 +80,9 @@ Optional:
 
 Required:
 
-- **address** (String)
-- **namespace** (String)
-- **password** (String)
+- **address** (String) Address of backend zdb (e.g. [300:a582:c60c:df75:f6da:8a92:d5ed:71ad]:9900 or 60.60.60.60:9900)
+- **namespace** (String) ZDB namespace
+- **password** (String) Namespace password
 
 
 
@@ -91,13 +91,13 @@ Required:
 
 Required:
 
-- **encryption_key** (String)
-- **prefix** (String)
+- **encryption_key** (String) 64 long hex encoded encryption key (e.g. 0000000000000000000000000000000000000000000000000000000000000000)
+- **prefix** (String) Data stored on the remote metadata is prefixed with
 
 Optional:
 
 - **backends** (Block List) (see [below for nested schema](#nestedblock--qsfs--metadata--backends))
-- **encryption_algorithm** (String)
+- **encryption_algorithm** (String) configuration to use for the encryption stage. Currently only AES is supported.
 - **type** (String) configuration for the metadata store to use, currently only zdb is supported
 
 <a id="nestedblock--qsfs--metadata--backends"></a>
@@ -105,9 +105,9 @@ Optional:
 
 Required:
 
-- **address** (String)
-- **namespace** (String)
-- **password** (String)
+- **address** (String) Address of backend zdb (e.g. [300:a582:c60c:df75:f6da:8a92:d5ed:71ad]:9900 or 60.60.60.60:9900)
+- **namespace** (String) ZDB namespace
+- **password** (String) Namespace password
 
 
 
@@ -117,26 +117,26 @@ Required:
 
 Required:
 
-- **flist** (String)
+- **flist** (String) e.g. https://hub.grid.tf/omar0.3bot/omarelawady-ubuntu-20.04.flist
 - **name** (String)
 
 Optional:
 
-- **cpu** (Number) CPU size
-- **description** (String) Machine Description
-- **entrypoint** (String) VM entry point
+- **cpu** (Number) Number of VCPUs
+- **description** (String)
+- **entrypoint** (String) command to execute as the Zmachine init
 - **env_vars** (Block List) (see [below for nested schema](#nestedblock--vms--env_vars))
-- **ip** (String) IP
+- **ip** (String) The private wg IP of the Zmachine
 - **memory** (Number) Memory size
-- **mounts** (Block List) (see [below for nested schema](#nestedblock--vms--mounts))
-- **planetary** (Boolean)
-- **publicip** (Boolean) If you want to enable public ip or not
+- **mounts** (Block List) Zmachine mounts, can reference QSFSs and Disks (see [below for nested schema](#nestedblock--vms--mounts))
+- **planetary** (Boolean) Enable Yggdrasil allocation
+- **publicip** (Boolean) true to enable public ip reservation
 - **rootfs_size** (Number) Rootfs size in MB
 
 Read-Only:
 
-- **computedip** (String) The public ip
-- **ygg_ip** (String)
+- **computedip** (String) The reserved public ip
+- **ygg_ip** (String) Allocated Yggdrasil IP
 
 <a id="nestedblock--vms--env_vars"></a>
 ### Nested Schema for `vms.env_vars`
@@ -152,8 +152,8 @@ Required:
 
 Required:
 
-- **disk_name** (String)
-- **mount_point** (String)
+- **disk_name** (String) Name of QSFS or Disk to mount
+- **mount_point** (String) Directory to mount the disk on inside the Zmachine
 
 
 
@@ -164,13 +164,13 @@ Required:
 
 - **name** (String)
 - **password** (String)
-- **size** (Number) size of the zdb in GBs
+- **size** (Number) Size of the zdb in GBs
 
 Optional:
 
 - **description** (String)
-- **mode** (String) Mode of the zdb
-- **public** (Boolean)
+- **mode** (String) Mode of the zdb, user or seq
+- **public** (Boolean) Makes it read-only if password is set, writable if no password set
 
 Read-Only:
 

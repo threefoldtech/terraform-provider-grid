@@ -29,28 +29,32 @@ func resourceKubernetes() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"node_deployment_id": {
-				Type:     schema.TypeMap,
-				Computed: true,
-				Elem:     &schema.Schema{Type: schema.TypeInt},
+				Type:        schema.TypeMap,
+				Computed:    true,
+				Elem:        &schema.Schema{Type: schema.TypeInt},
+				Description: "Mapping from each node to its deployment id",
 			},
 			"network_name": {
-				Type:     schema.TypeString,
-				Optional: true,
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "The network name to deploy the cluster on",
 			},
 			"ssh_key": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Default:  "",
+				Type:        schema.TypeString,
+				Optional:    true,
+				Default:     "",
+				Description: "SSH key to access the cluster nodes",
 			},
 			"token": {
-				Description: "The cluster secret token",
 				Type:        schema.TypeString,
 				Required:    true,
+				Description: "The cluster secret token",
 			},
 			"nodes_ip_range": {
-				Type:     schema.TypeMap,
-				Required: true,
-				Elem:     &schema.Schema{Type: schema.TypeString},
+				Type:        schema.TypeMap,
+				Required:    true,
+				Elem:        &schema.Schema{Type: schema.TypeString},
+				Description: "Network IP ranges of nodes in the cluster (usually assigned from grid_network.<network-resource-name>.nodes_ip_range)",
 			},
 			"master": {
 				MaxItems: 1,
@@ -59,23 +63,24 @@ func resourceKubernetes() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
-							Type:     schema.TypeString,
-							Required: true,
+							Type:        schema.TypeString,
+							Required:    true,
+							Description: "Master name",
 						},
 						"node": {
-							Description: "Node ID",
 							Type:        schema.TypeInt,
 							Required:    true,
+							Description: "Node ID",
 						},
 						"disk_size": {
-							Description: "Data disk size",
 							Type:        schema.TypeInt,
 							Required:    true,
+							Description: "Data disk size in GBs",
 						},
 						"publicip": {
-							Description: "If you want to enable public ip or not",
 							Type:        schema.TypeBool,
 							Optional:    true,
+							Description: "true to enable public ip reservation",
 						},
 						"flist": {
 							Type:     schema.TypeString,
@@ -83,25 +88,24 @@ func resourceKubernetes() *schema.Resource {
 							Default:  "https://hub.grid.tf/ahmed_hanafy_1/ahmedhanafy725-k3s-latest.flist",
 						},
 						"computedip": {
-							Description: "The public ip",
 							Type:        schema.TypeString,
 							Computed:    true,
+							Description: "The reserved public IP",
 						},
 						"ip": {
-							Description: "The private IP",
 							Type:        schema.TypeString,
-							Optional:    true,
 							Computed:    true,
+							Description: "The private IP (computed from nodes_ip_range)",
 						},
 						"cpu": {
-							Description: "Number of VCPUs",
 							Type:        schema.TypeInt,
 							Required:    true,
+							Description: "Number of VCPUs",
 						},
 						"memory": {
-							Description: "Memory size",
 							Type:        schema.TypeInt,
 							Required:    true,
+							Description: "Memory size",
 						},
 					},
 				},
@@ -121,40 +125,39 @@ func resourceKubernetes() *schema.Resource {
 							Default:  "https://hub.grid.tf/ahmed_hanafy_1/ahmedhanafy725-k3s-latest.flist",
 						},
 						"disk_size": {
-							Description: "Data disk size",
 							Type:        schema.TypeInt,
 							Required:    true,
+							Description: "Data disk size in GBs",
 						},
 						"node": {
-							Description: "Node ID",
 							Type:        schema.TypeInt,
 							Required:    true,
+							Description: "Node ID",
 						},
 						"publicip": {
-							Description: "If you want to enable public ip or not",
 							Type:        schema.TypeBool,
 							Optional:    true,
+							Description: "true to enable public ip reservation",
 						},
 						"computedip": {
-							Description: "The public ip",
 							Type:        schema.TypeString,
 							Computed:    true,
+							Description: "The reserved public ip",
 						},
 						"ip": {
-							Description: "the private IP",
 							Type:        schema.TypeString,
-							Optional:    true,
 							Computed:    true,
+							Description: "The private IP (computed from nodes_ip_range)",
 						},
 						"cpu": {
-							Description: "Number of VCPUs",
 							Type:        schema.TypeInt,
 							Required:    true,
+							Description: "Number of VCPUs",
 						},
 						"memory": {
-							Description: "Memory size",
 							Type:        schema.TypeInt,
 							Required:    true,
+							Description: "Memory size",
 						},
 					},
 				},
