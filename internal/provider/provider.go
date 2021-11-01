@@ -87,7 +87,7 @@ func New(version string) func() *schema.Provider {
 					Type:        schema.TypeBool,
 					Optional:    true,
 					Description: "whether to use the rmb proxy or not",
-					DefaultFunc: schema.EnvDefaultFunc("USE_RMB_PROXY", nil),
+					DefaultFunc: schema.EnvDefaultFunc("USE_RMB_PROXY", true),
 				},
 			},
 			DataSourcesMap: map[string]*schema.Resource{
