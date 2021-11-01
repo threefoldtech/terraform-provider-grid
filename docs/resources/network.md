@@ -24,16 +24,16 @@ Sample resource in the Terraform provider scaffolding.
 ### Optional
 
 - **add_wg_access** (Boolean) Whether to add a public node to network and use it to generate a wg config
-- **description** (String) Description field
+- **description** (String)
 - **id** (String) The ID of this resource.
 - **nodes_ip_range** (Map of String) Computed values of nodes' ip ranges after deployment
 
 ### Read-Only
 
 - **access_wg_config** (String) WG config for access
-- **external_ip** (String) IP of the access point
-- **external_sk** (String) Access point private key
-- **node_deployment_id** (Map of Number)
-- **public_node_id** (Number) Public node id (in case it's added)
+- **external_ip** (String) IP of the access point (the IP to use in local wireguard config)
+- **external_sk** (String) Access point private key (the one to use in the local wireguard config to access the network)
+- **node_deployment_id** (Map of Number) Mapping from each node to its deployment id
+- **public_node_id** (Number) Public node id (in case it's added). Used for wireguard access and supporting hidden nodes.
 
 
