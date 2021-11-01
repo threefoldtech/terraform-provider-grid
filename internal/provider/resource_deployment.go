@@ -34,9 +34,19 @@ func resourceDeployment() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"node": {
-				Description: "Node id to place deployment on",
 				Type:        schema.TypeInt,
 				Required:    true,
+				Description: "Node id to place the deployment on",
+			},
+			"ip_range": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "IP range of the node (e.g. 10.1.2.0/24)",
+			},
+			"network_name": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "Network to use for Zmachines",
 			},
 			"disks": {
 				Type:     schema.TypeList,
@@ -44,12 +54,14 @@ func resourceDeployment() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
-							Type:     schema.TypeString,
-							Required: true,
+							Type:        schema.TypeString,
+							Required:    true,
+							Description: "the disk name, used to reference it in zmachine mounts",
 						},
 						"size": {
-							Type:     schema.TypeInt,
-							Required: true,
+							Type:        schema.TypeInt,
+							Required:    true,
+							Description: "the disk size in GBs",
 						},
 						"description": {
 							Type:     schema.TypeString,
@@ -73,14 +85,15 @@ func resourceDeployment() *schema.Resource {
 							Required: true,
 						},
 						"public": {
-							Type:     schema.TypeBool,
-							Optional: true,
-							Default:  false,
+							Type:        schema.TypeBool,
+							Optional:    true,
+							Default:     false,
+							Description: "Makes it read-only if password is set, writable if no password set",
 						},
 						"size": {
 							Type:        schema.TypeInt,
 							Required:    true,
-							Description: "size of the zdb in GBs",
+							Description: "Size of the zdb in GBs",
 						},
 						"description": {
 							Type:     schema.TypeString,
@@ -88,28 +101,28 @@ func resourceDeployment() *schema.Resource {
 							Default:  "",
 						},
 						"mode": {
-							Description: "Mode of the zdb",
 							Type:        schema.TypeString,
 							Optional:    true,
 							Computed:    true,
+							Description: "Mode of the zdb, user or seq",
 						},
 						"ips": {
-							Description: "IPs of the zdb",
-							Type:        schema.TypeList,
+							Type: schema.TypeList,
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
 							},
-							Computed: true,
+							Computed:    true,
+							Description: "IPs of the zdb",
 						},
 						"namespace": {
-							Description: "Namespace of the zdb",
 							Type:        schema.TypeString,
 							Computed:    true,
+							Description: "Namespace of the zdb",
 						},
 						"port": {
-							Description: "Port of the zdb",
 							Type:        schema.TypeInt,
 							Computed:    true,
+							Description: "Port of the zdb",
 						},
 					},
 				},
@@ -124,50 +137,51 @@ func resourceDeployment() *schema.Resource {
 							Required: true,
 						},
 						"flist": {
-							Type:     schema.TypeString,
-							Required: true,
+							Type:        schema.TypeString,
+							Required:    true,
+							Description: "e.g. https://hub.grid.tf/omar0.3bot/omarelawady-ubuntu-20.04.flist",
 						},
 						"publicip": {
-							Description: "If you want to enable public ip or not",
 							Type:        schema.TypeBool,
 							Optional:    true,
+							Description: "true to enable public ip reservation",
 						},
 						"computedip": {
-							Description: "The public ip",
 							Type:        schema.TypeString,
 							Computed:    true,
+							Description: "The reserved public ip",
 						},
 						"ip": {
-							Description: "IP",
 							Type:        schema.TypeString,
 							Optional:    true,
 							Computed:    true,
+							Description: "The private wg IP of the Zmachine",
 						},
 						"cpu": {
-							Description: "CPU size",
 							Type:        schema.TypeInt,
 							Optional:    true,
+							Default:     1,
+							Description: "Number of VCPUs",
 						},
 						"description": {
-							Description: "Machine Description",
-							Type:        schema.TypeString,
-							Optional:    true,
-							Default:     "",
+							Type:     schema.TypeString,
+							Optional: true,
+							Default:  "",
 						},
 						"memory": {
-							Description: "Memory size",
 							Type:        schema.TypeInt,
 							Optional:    true,
+							Description: "Memory size",
 						},
 						"rootfs_size": {
-							Description: "Rootfs size in MB",
 							Type:        schema.TypeInt,
 							Optional:    true,
+							Description: "Rootfs size in MB",
 						},
 						"entrypoint": {
-							Description: "VM entry point",
 							Type:        schema.TypeString,
 							Optional:    true,
+							Description: "command to execute as the Zmachine init",
 						},
 						"mounts": {
 							Type:     schema.TypeList,
@@ -175,15 +189,18 @@ func resourceDeployment() *schema.Resource {
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
 									"disk_name": {
-										Type:     schema.TypeString,
-										Required: true,
+										Type:        schema.TypeString,
+										Required:    true,
+										Description: "Name of QSFS or Disk to mount",
 									},
 									"mount_point": {
-										Type:     schema.TypeString,
-										Required: true,
+										Type:        schema.TypeString,
+										Required:    true,
+										Description: "Directory to mount the disk on inside the Zmachine",
 									},
 								},
 							},
+							Description: "Zmachine mounts, can reference QSFSs and Disks",
 						},
 						"env_vars": {
 							Type:     schema.TypeList,
@@ -202,13 +219,15 @@ func resourceDeployment() *schema.Resource {
 							},
 						},
 						"planetary": {
-							Type:     schema.TypeBool,
-							Optional: true,
-							Default:  false,
+							Type:        schema.TypeBool,
+							Optional:    true,
+							Default:     false,
+							Description: "Enable Yggdrasil allocation",
 						},
 						"ygg_ip": {
-							Type:     schema.TypeString,
-							Computed: true,
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Allocated Yggdrasil IP",
 						},
 					},
 				},
@@ -223,10 +242,9 @@ func resourceDeployment() *schema.Resource {
 							Required: true,
 						},
 						"description": {
-							Type:        schema.TypeString,
-							Optional:    true,
-							Default:     "",
-							Description: "The minimum amount of shards which are needed to recover the original data.",
+							Type:     schema.TypeString,
+							Optional: true,
+							Default:  "",
 						},
 						"cache": {
 							Type:        schema.TypeInt,
@@ -234,8 +252,9 @@ func resourceDeployment() *schema.Resource {
 							Description: "The size of the fuse mountpoint on the node in MBs (holds qsfs local data before pushing)",
 						},
 						"minimal_shards": {
-							Type:     schema.TypeInt,
-							Required: true,
+							Type:        schema.TypeInt,
+							Required:    true,
+							Description: "The minimum amount of shards which are needed to recover the original data.",
 						},
 						"expected_shards": {
 							Type:        schema.TypeInt,
@@ -264,8 +283,9 @@ func resourceDeployment() *schema.Resource {
 							Description: "configuration to use for the encryption stage. Currently only AES is supported.",
 						},
 						"encryption_key": {
-							Type:     schema.TypeString,
-							Required: true,
+							Type:        schema.TypeString,
+							Required:    true,
+							Description: "64 long hex encoded encryption key (e.g. 0000000000000000000000000000000000000000000000000000000000000000)",
 						},
 						"compression_algorithm": {
 							Type:        schema.TypeString,
@@ -287,17 +307,20 @@ func resourceDeployment() *schema.Resource {
 										Description: "configuration for the metadata store to use, currently only zdb is supported",
 									},
 									"prefix": {
-										Type:     schema.TypeString,
-										Required: true,
+										Type:        schema.TypeString,
+										Required:    true,
+										Description: "Data stored on the remote metadata is prefixed with",
 									},
 									"encryption_algorithm": {
-										Type:     schema.TypeString,
-										Optional: true,
-										Default:  "AES",
+										Type:        schema.TypeString,
+										Optional:    true,
+										Default:     "AES",
+										Description: "configuration to use for the encryption stage. Currently only AES is supported.",
 									},
 									"encryption_key": {
-										Type:     schema.TypeString,
-										Required: true,
+										Type:        schema.TypeString,
+										Required:    true,
+										Description: "64 long hex encoded encryption key (e.g. 0000000000000000000000000000000000000000000000000000000000000000)",
 									},
 									"backends": {
 										Type:     schema.TypeList,
@@ -305,16 +328,19 @@ func resourceDeployment() *schema.Resource {
 										Elem: &schema.Resource{
 											Schema: map[string]*schema.Schema{
 												"address": {
-													Type:     schema.TypeString,
-													Required: true,
+													Type:        schema.TypeString,
+													Required:    true,
+													Description: "Address of backend zdb (e.g. [300:a582:c60c:df75:f6da:8a92:d5ed:71ad]:9900 or 60.60.60.60:9900)",
 												},
 												"namespace": {
-													Type:     schema.TypeString,
-													Required: true,
+													Type:        schema.TypeString,
+													Required:    true,
+													Description: "ZDB namespace",
 												},
 												"password": {
-													Type:     schema.TypeString,
-													Required: true,
+													Type:        schema.TypeString,
+													Required:    true,
+													Description: "Namespace password",
 												},
 											},
 										},
@@ -333,16 +359,19 @@ func resourceDeployment() *schema.Resource {
 										Elem: &schema.Resource{
 											Schema: map[string]*schema.Schema{
 												"address": {
-													Type:     schema.TypeString,
-													Required: true,
+													Type:        schema.TypeString,
+													Required:    true,
+													Description: "Address of backend zdb (e.g. [300:a582:c60c:df75:f6da:8a92:d5ed:71ad]:9900 or 60.60.60.60:9900)",
 												},
 												"namespace": {
-													Type:     schema.TypeString,
-													Required: true,
+													Type:        schema.TypeString,
+													Required:    true,
+													Description: "ZDB namespace",
 												},
 												"password": {
-													Type:     schema.TypeString,
-													Required: true,
+													Type:        schema.TypeString,
+													Required:    true,
+													Description: "Namespace password",
 												},
 											},
 										},
@@ -351,19 +380,12 @@ func resourceDeployment() *schema.Resource {
 							},
 						},
 						"metrics_endpoint": {
-							Type:     schema.TypeString,
-							Computed: true,
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "QSFS exposed metrics",
 						},
 					},
 				},
-			},
-			"ip_range": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-			"network_name": {
-				Type:     schema.TypeString,
-				Optional: true,
 			},
 		},
 	}
