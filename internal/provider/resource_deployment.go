@@ -1168,7 +1168,7 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 		return diag.FromErr(errors.Wrap(err, "error validating deployment"))
 	}
 	if d.HasChange("node") {
-		return diag.FromErr(errors.New("changing node is not supported, you need to destroy the deployment and reapply it again but you will lost your old data"))
+		return diag.FromErr(errors.New("changing node is not supported, you need to destroy the deployment and reapply it again but you will lose your old data"))
 	}
 	apiClient := meta.(*apiClient)
 	if err := validateAccountMoneyForExtrinsics(apiClient); err != nil {
