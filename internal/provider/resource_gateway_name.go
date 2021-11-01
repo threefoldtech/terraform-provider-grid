@@ -29,51 +29,49 @@ func resourceGatewayNameProxy() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"name": {
-				Description: "Resource name",
 				Type:        schema.TypeString,
 				Required:    true,
+				Description: "Gateway name (the fqdn will be <name>.<gateway-domain>)",
 			},
 			"description": {
-				Description: "Description field",
-				Type:        schema.TypeString,
-				Optional:    true,
-				Default:     "",
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "",
 			},
 			"node": {
-				Description: "The gateway's node id",
 				Type:        schema.TypeInt,
 				Required:    true,
+				Description: "The gateway's node id",
 			},
 			"fqdn": {
-				Description: "The fully quallified domain name of the deployed workload.",
 				Type:        schema.TypeString,
 				Computed:    true,
+				Description: "The computed fully quallified domain name of the deployed workload.",
 			},
 			"tls_passthrough": {
-				Description: "True to pass the tls as is to the backends.",
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Default:     false,
+				Description: "True to pass the tls as is to the backends.",
 			},
 			"backends": {
-				Description: "The backends of the gateway proxy",
-				Type:        schema.TypeList,
-				Required:    true,
+				Type:     schema.TypeList,
+				Required: true,
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
+				Description: "The backends of the gateway proxy (in the format (http|https)://ip:port), with tls_passthrough the scheme must be https",
 			},
 			"node_deployment_id": {
-				Type:     schema.TypeMap,
-				Computed: true,
-				Elem:     &schema.Schema{Type: schema.TypeInt},
+				Type:        schema.TypeMap,
+				Computed:    true,
+				Elem:        &schema.Schema{Type: schema.TypeInt},
+				Description: "Mapping from each node to its deployment id",
 			},
 			"name_contract_id": {
-				Type:     schema.TypeInt,
-				Computed: true,
-				Elem: &schema.Schema{
-					Type: schema.TypeInt,
-				},
+				Type:        schema.TypeInt,
+				Computed:    true,
+				Description: "The id of the name contract",
 			},
 		},
 	}

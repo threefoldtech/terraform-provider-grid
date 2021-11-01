@@ -87,7 +87,7 @@ func New(version string) func() *schema.Provider {
 					Type:        schema.TypeBool,
 					Optional:    true,
 					Description: "whether to use the rmb proxy or not",
-					DefaultFunc: schema.EnvDefaultFunc("USE_RMB_PROXY", nil),
+					DefaultFunc: schema.EnvDefaultFunc("USE_RMB_PROXY", true),
 				},
 			},
 			DataSourcesMap: map[string]*schema.Resource{
@@ -165,16 +165,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	apiClient.use_rmb_proxy = d.Get("use_rmb_proxy").(bool)
 
 	apiClient.rmb_redis_url = d.Get("rmb_redis_url").(string)
-	var cl rmb.Client
-	if apiClient.use_rmb_proxy {
-		cl = client.NewProxyBus(apiClient.rmb_proxy_url, apiClient.twin_id)
-	} else {
-		cl, err = rmb.NewClient(apiClient.rmb_redis_url)
-	}
-	if err != nil {
-		return nil, diag.FromErr(errors.Wrap(err, "couldn't create rmb client"))
-	}
-	apiClient.rmb = cl
+
 	if err := validateAccount(&apiClient); err != nil {
 		return nil, diag.FromErr(err)
 	}
@@ -187,7 +178,16 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 		return nil, diag.FromErr(errors.Wrap(err, "failed to get twin for the given mnemonics"))
 	}
 	apiClient.twin_id = twin
-
+	var cl rmb.Client
+	if apiClient.use_rmb_proxy {
+		cl = client.NewProxyBus(apiClient.rmb_proxy_url, apiClient.twin_id)
+	} else {
+		cl, err = rmb.NewClient(apiClient.rmb_redis_url)
+	}
+	if err != nil {
+		return nil, diag.FromErr(errors.Wrap(err, "couldn't create rmb client"))
+	}
+	apiClient.rmb = cl
 	if err := preValidate(&apiClient); err != nil {
 		return nil, diag.FromErr(err)
 	}
