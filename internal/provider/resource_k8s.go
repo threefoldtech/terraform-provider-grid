@@ -302,7 +302,7 @@ func (k *K8sDeployer) invalidateBrokenAttributes() error {
 	validNodes := make(map[uint32]struct{})
 	for node, contractID := range k.NodeDeploymentID {
 		contract, err := k.APIClient.sub.GetContract(contractID)
-		if (err != nil && !contract.State.IsCreated) || errors.Is(err, substrate.ErrNotFound) {
+		if (err == nil && !contract.State.IsCreated) || errors.Is(err, substrate.ErrNotFound) {
 			delete(k.NodeDeploymentID, node)
 			delete(k.NodesIPRange, node)
 		} else {
