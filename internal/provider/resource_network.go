@@ -30,71 +30,66 @@ func resourceNetwork() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"name": {
-				Description: "Network Name",
 				Type:        schema.TypeString,
 				Required:    true,
+				Description: "Network Name",
 			},
 			"description": {
-				Description: "Description field",
-				Type:        schema.TypeString,
-				Required:    true,
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "",
 			},
 			"nodes": {
-				Description: "Network size in Gigabytes",
-				Type:        schema.TypeList,
-				Required:    true,
+				Type:     schema.TypeList,
+				Required: true,
 				Elem: &schema.Schema{
 					Type: schema.TypeInt,
 				},
+				Description: "List of nodes to add to the network",
 			},
 			"ip_range": {
-				Description: "Network ip range",
 				Type:        schema.TypeString,
 				Required:    true,
+				Description: "Network ip range",
 			},
 			"add_wg_access": {
-				Description: "whether to add a public node to network and use it to generate a wg config",
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Default:     false,
+				Description: "Whether to add a public node to network and use it to generate a wg config",
 			},
 			"access_wg_config": {
-				Description: "wg config for access",
 				Type:        schema.TypeString,
-				Required:    false,
 				Computed:    true,
+				Description: "WG config for access",
 			},
 			"external_ip": {
-				Description: "ip of the access point",
 				Type:        schema.TypeString,
-				Required:    false,
 				Computed:    true,
+				Description: "IP of the access point (the IP to use in local wireguard config)",
 			},
 			"external_sk": {
-				Description: "access point private key",
 				Type:        schema.TypeString,
-				Required:    false,
 				Computed:    true,
+				Description: "Access point private key (the one to use in the local wireguard config to access the network)",
 			},
 			"public_node_id": {
-				Description: "access point public key",
 				Type:        schema.TypeInt,
-				Required:    false,
 				Computed:    true,
+				Description: "Public node id (in case it's added). Used for wireguard access and supporting hidden nodes.",
 			},
 			"nodes_ip_range": {
-				Description: "Computed values of nodes' ip ranges after deployment",
 				Type:        schema.TypeMap,
 				Computed:    true,
 				Optional:    true,
-				Required:    false,
 				Elem:        &schema.Schema{Type: schema.TypeString},
+				Description: "Computed values of nodes' ip ranges after deployment",
 			},
-
 			"node_deployment_id": {
-				Type:     schema.TypeMap,
-				Computed: true,
-				Elem:     &schema.Schema{Type: schema.TypeInt},
+				Type:        schema.TypeMap,
+				Computed:    true,
+				Elem:        &schema.Schema{Type: schema.TypeInt},
+				Description: "Mapping from each node to its deployment id",
 			},
 		},
 	}
@@ -202,7 +197,7 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 func (k *NetworkDeployer) invalidateBrokenAttributes() error {
 	for node, contractID := range k.NodeDeploymentID {
 		contract, err := k.APIClient.sub.GetContract(contractID)
-		if (err != nil && !contract.State.IsCreated) || errors.Is(err, substrate.ErrNotFound) {
+		if (err == nil && !contract.State.IsCreated) || errors.Is(err, substrate.ErrNotFound) {
 			delete(k.NodeDeploymentID, node)
 			delete(k.NodesIPRange, node)
 			delete(k.Keys, node)
@@ -238,6 +233,9 @@ func (k *NetworkDeployer) invalidateBrokenAttributes() error {
 	return nil
 }
 func (k *NetworkDeployer) Validate(ctx context.Context) error {
+	if err := validateAccountMoneyForExtrinsics(k.APIClient); err != nil {
+		return err
+	}
 	return isNodesUp(ctx, k.Nodes, k.ncPool)
 }
 
@@ -668,12 +666,7 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 	if err := deployer.Validate(ctx); err != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Error happened while doing initial check (check https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)",
-			Detail:   err.Error(),
-		})
-		return diags
+		return diag.FromErr(err)
 	}
 	err = deployer.Deploy(ctx)
 	if err != nil {
@@ -702,12 +695,7 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 	}
 
 	if err := deployer.Validate(ctx); err != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Error happened while doing initial check (check https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)",
-			Detail:   err.Error(),
-		})
-		return diags
+		return diag.FromErr(err)
 	}
 	if err := deployer.invalidateBrokenAttributes(); err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't invalidate broken attributes"))

@@ -69,7 +69,7 @@ func (r *ProxyBus) Call(ctx context.Context, twin uint32, fn string, data interf
 		if err != nil {
 			log.Printf("error parsing response body: %s", err.Error())
 		}
-		return errors.Wrapf(err, "non ok return code: %d, body: %s", resp.StatusCode, string(bs))
+		return fmt.Errorf("non ok return code: %d, body: %s", resp.StatusCode, string(bs))
 	}
 	var res ProxyResponse
 	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
@@ -79,7 +79,6 @@ func (r *ProxyBus) Call(ctx context.Context, twin uint32, fn string, data interf
 	if err != nil {
 		return errors.Wrap(err, "couldn't poll response")
 	}
-
 	// errorred ?
 	if len(msg.Err) != 0 {
 		return errors.New(msg.Err)
@@ -115,6 +114,7 @@ func (r *ProxyBus) pollResponse(ctx context.Context, twin uint32, retqueue strin
 				log.Printf("failed to send result-fetching request: %s", err.Error())
 				errCount += 1
 				err = lerr
+				continue
 			}
 			if resp.StatusCode == 404 {
 				// message not there yet
@@ -128,11 +128,13 @@ func (r *ProxyBus) pollResponse(ctx context.Context, twin uint32, retqueue strin
 				log.Printf("non ok status code: %d, body: %s", resp.StatusCode, bs)
 				err = fmt.Errorf("non ok return code: %d, body: %s", resp.StatusCode, bs)
 				errCount += 1
+				continue
 			}
 			var msgs []rmb.Message
 			if lerr := json.NewDecoder(resp.Body).Decode(&msgs); lerr != nil {
 				err = lerr
 				errCount += 1
+				continue
 			}
 			if len(msgs) == 0 {
 				// nothing there yet

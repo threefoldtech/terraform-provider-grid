@@ -20,19 +20,19 @@ func dataSourceGatewayDomain() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"node": {
-				Description: "Node ID of the gateway",
 				Type:        schema.TypeInt,
 				Required:    true,
+				Description: "Node ID of the gateway",
 			},
 			"name": {
-				Description: "The name ",
 				Type:        schema.TypeString,
 				Required:    true,
+				Description: "Name of the gateway name workload",
 			},
 			"fqdn": {
-				Description: "Full domain name",
 				Type:        schema.TypeString,
 				Computed:    true,
+				Description: "Fullly qualified domain name",
 			},
 		},
 	}

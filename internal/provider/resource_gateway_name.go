@@ -29,51 +29,49 @@ func resourceGatewayNameProxy() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"name": {
-				Description: "resource name",
 				Type:        schema.TypeString,
 				Required:    true,
+				Description: "Gateway name (the fqdn will be <name>.<gateway-domain>)",
 			},
 			"description": {
-				Description: "Description field",
-				Type:        schema.TypeString,
-				Optional:    true,
-				Default:     "",
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "",
 			},
 			"node": {
-				Description: "The gateway's node id",
 				Type:        schema.TypeInt,
 				Required:    true,
+				Description: "The gateway's node id",
 			},
 			"fqdn": {
-				Description: "The fully quallified domain name of the deployed workload.",
 				Type:        schema.TypeString,
 				Computed:    true,
+				Description: "The computed fully quallified domain name of the deployed workload.",
 			},
 			"tls_passthrough": {
-				Description: "true to pass the tls as is to the backends.",
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Default:     false,
+				Description: "True to pass the tls as is to the backends.",
 			},
 			"backends": {
-				Description: "The backends of the gateway proxy",
-				Type:        schema.TypeList,
-				Required:    true,
+				Type:     schema.TypeList,
+				Required: true,
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
+				Description: "The backends of the gateway proxy (in the format (http|https)://ip:port), with tls_passthrough the scheme must be https",
 			},
 			"node_deployment_id": {
-				Type:     schema.TypeMap,
-				Computed: true,
-				Elem:     &schema.Schema{Type: schema.TypeInt},
+				Type:        schema.TypeMap,
+				Computed:    true,
+				Elem:        &schema.Schema{Type: schema.TypeInt},
+				Description: "Mapping from each node to its deployment id",
 			},
 			"name_contract_id": {
-				Type:     schema.TypeInt,
-				Computed: true,
-				Elem: &schema.Schema{
-					Type: schema.TypeInt,
-				},
+				Type:        schema.TypeInt,
+				Computed:    true,
+				Description: "The id of the name contract",
 			},
 		},
 	}
@@ -127,6 +125,9 @@ func NewGatewayNameDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 }
 
 func (k *GatewayNameDeployer) Validate(ctx context.Context) error {
+	if err := validateAccountMoneyForExtrinsics(k.APIClient); err != nil {
+		return err
+	}
 	return isNodesUp(ctx, []uint32{k.Node}, k.ncPool)
 }
 
@@ -276,12 +277,7 @@ func resourceGatewayNameCreate(ctx context.Context, d *schema.ResourceData, meta
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 	if err := deployer.Validate(ctx); err != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Error happened while doing initial check (check https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)",
-			Detail:   err.Error(),
-		})
-		return diags
+		return diag.FromErr(err)
 	}
 	err = deployer.Deploy(ctx)
 	if err != nil {
@@ -310,12 +306,7 @@ func resourceGatewayNameUpdate(ctx context.Context, d *schema.ResourceData, meta
 	}
 
 	if err := deployer.Validate(ctx); err != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Error happened while doing initial check (check https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)",
-			Detail:   err.Error(),
-		})
-		return diags
+		return diag.FromErr(err)
 	}
 
 	err = deployer.Deploy(ctx)

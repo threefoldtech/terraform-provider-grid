@@ -18,40 +18,40 @@ Sample resource in the Terraform provider scaffolding.
 ### Required
 
 - **master** (Block List, Min: 1, Max: 1) (see [below for nested schema](#nestedblock--master))
-- **nodes_ip_range** (Map of String)
+- **nodes_ip_range** (Map of String) Network IP ranges of nodes in the cluster (usually assigned from grid_network.<network-resource-name>.nodes_ip_range)
 - **token** (String) The cluster secret token
 
 ### Optional
 
 - **id** (String) The ID of this resource.
-- **network_name** (String)
-- **ssh_key** (String)
+- **network_name** (String) The network name to deploy the cluster on
+- **ssh_key** (String) SSH key to access the cluster nodes
 - **workers** (Block List) (see [below for nested schema](#nestedblock--workers))
 
 ### Read-Only
 
-- **node_deployment_id** (Map of Number)
+- **node_deployment_id** (Map of Number) Mapping from each node to its deployment id
 
 <a id="nestedblock--master"></a>
 ### Nested Schema for `master`
 
 Required:
 
-- **cpu** (Number) CPU size
-- **disk_size** (Number) Data disk size
+- **cpu** (Number) Number of VCPUs
+- **disk_size** (Number) Data disk size in GBs
 - **memory** (Number) Memory size
-- **name** (String)
+- **name** (String) Master name
 - **node** (Number) Node ID
 
 Optional:
 
 - **flist** (String)
-- **ip** (String) IP
-- **publicip** (Boolean) If you want to enable public ip or not
+- **publicip** (Boolean) true to enable public ip reservation
 
 Read-Only:
 
-- **computedip** (String) The public ip
+- **computedip** (String) The reserved public IP
+- **ip** (String) The private IP (computed from nodes_ip_range)
 
 
 <a id="nestedblock--workers"></a>
@@ -59,8 +59,8 @@ Read-Only:
 
 Required:
 
-- **cpu** (Number) CPU size
-- **disk_size** (Number) Data disk size
+- **cpu** (Number) Number of VCPUs
+- **disk_size** (Number) Data disk size in GBs
 - **memory** (Number) Memory size
 - **name** (String)
 - **node** (Number) Node ID
@@ -68,11 +68,11 @@ Required:
 Optional:
 
 - **flist** (String)
-- **ip** (String) IP
-- **publicip** (Boolean) If you want to enable public ip or not
+- **publicip** (Boolean) true to enable public ip reservation
 
 Read-Only:
 
-- **computedip** (String) The public ip
+- **computedip** (String) The reserved public ip
+- **ip** (String) The private IP (computed from nodes_ip_range)
 
 
