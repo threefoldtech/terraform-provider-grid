@@ -197,7 +197,7 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 func (k *NetworkDeployer) invalidateBrokenAttributes() error {
 	for node, contractID := range k.NodeDeploymentID {
 		contract, err := k.APIClient.sub.GetContract(contractID)
-		if (err != nil && !contract.State.IsCreated) || errors.Is(err, substrate.ErrNotFound) {
+		if (err == nil && !contract.State.IsCreated) || errors.Is(err, substrate.ErrNotFound) {
 			delete(k.NodeDeploymentID, node)
 			delete(k.NodesIPRange, node)
 			delete(k.Keys, node)
