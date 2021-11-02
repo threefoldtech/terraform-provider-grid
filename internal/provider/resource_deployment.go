@@ -33,11 +33,20 @@ func resourceDeployment() *schema.Resource {
 		DeleteContext: resourceDeploymentDelete,
 
 		Schema: map[string]*schema.Schema{
-
 			"node": {
-				Description: "Node id to place deployment on",
 				Type:        schema.TypeInt,
 				Required:    true,
+				Description: "Node id to place the deployment on",
+			},
+			"ip_range": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "IP range of the node (e.g. 10.1.2.0/24)",
+			},
+			"network_name": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "Network to use for Zmachines",
 			},
 			"disks": {
 				Type:     schema.TypeList,
@@ -45,16 +54,19 @@ func resourceDeployment() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
-							Type:     schema.TypeString,
-							Required: true,
+							Type:        schema.TypeString,
+							Required:    true,
+							Description: "the disk name, used to reference it in zmachine mounts",
 						},
 						"size": {
-							Type:     schema.TypeInt,
-							Required: true,
+							Type:        schema.TypeInt,
+							Required:    true,
+							Description: "the disk size in GBs",
 						},
 						"description": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
+							Default:  "",
 						},
 					},
 				},
@@ -72,37 +84,45 @@ func resourceDeployment() *schema.Resource {
 							Type:     schema.TypeString,
 							Required: true,
 						},
+						"public": {
+							Type:        schema.TypeBool,
+							Optional:    true,
+							Default:     false,
+							Description: "Makes it read-only if password is set, writable if no password set",
+						},
 						"size": {
-							Type:     schema.TypeInt,
-							Required: true,
+							Type:        schema.TypeInt,
+							Required:    true,
+							Description: "Size of the zdb in GBs",
 						},
 						"description": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
+							Default:  "",
 						},
 						"mode": {
-							Description: "Mode of the zdb",
 							Type:        schema.TypeString,
 							Optional:    true,
 							Computed:    true,
+							Description: "Mode of the zdb, user or seq",
 						},
 						"ips": {
-							Description: "IPs of the zdb",
-							Type:        schema.TypeList,
+							Type: schema.TypeList,
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
 							},
-							Computed: true,
+							Computed:    true,
+							Description: "IPs of the zdb",
 						},
 						"namespace": {
-							Description: "Namespace of the zdb",
 							Type:        schema.TypeString,
 							Computed:    true,
+							Description: "Namespace of the zdb",
 						},
 						"port": {
-							Description: "Port of the zdb",
 							Type:        schema.TypeInt,
 							Computed:    true,
+							Description: "Port of the zdb",
 						},
 					},
 				},
@@ -117,49 +137,51 @@ func resourceDeployment() *schema.Resource {
 							Required: true,
 						},
 						"flist": {
-							Type:     schema.TypeString,
-							Required: true,
+							Type:        schema.TypeString,
+							Required:    true,
+							Description: "e.g. https://hub.grid.tf/omar0.3bot/omarelawady-ubuntu-20.04.flist",
 						},
 						"publicip": {
-							Description: "If you want to enable public ip or not",
 							Type:        schema.TypeBool,
 							Optional:    true,
+							Description: "true to enable public ip reservation",
 						},
 						"computedip": {
-							Description: "The public ip",
 							Type:        schema.TypeString,
 							Computed:    true,
+							Description: "The reserved public ip",
 						},
 						"ip": {
-							Description: "IP",
 							Type:        schema.TypeString,
 							Optional:    true,
 							Computed:    true,
+							Description: "The private wg IP of the Zmachine",
 						},
 						"cpu": {
-							Description: "CPU size",
 							Type:        schema.TypeInt,
 							Optional:    true,
+							Default:     1,
+							Description: "Number of VCPUs",
 						},
 						"description": {
-							Description: "Machine Description",
-							Type:        schema.TypeString,
-							Optional:    true,
+							Type:     schema.TypeString,
+							Optional: true,
+							Default:  "",
 						},
 						"memory": {
-							Description: "Memory size",
 							Type:        schema.TypeInt,
 							Optional:    true,
+							Description: "Memory size",
 						},
 						"rootfs_size": {
-							Description: "Rootfs size in MB",
 							Type:        schema.TypeInt,
 							Optional:    true,
+							Description: "Rootfs size in MB",
 						},
 						"entrypoint": {
-							Description: "VM entry point",
 							Type:        schema.TypeString,
 							Optional:    true,
+							Description: "command to execute as the Zmachine init",
 						},
 						"mounts": {
 							Type:     schema.TypeList,
@@ -167,15 +189,18 @@ func resourceDeployment() *schema.Resource {
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
 									"disk_name": {
-										Type:     schema.TypeString,
-										Required: true,
+										Type:        schema.TypeString,
+										Required:    true,
+										Description: "Name of QSFS or Disk to mount",
 									},
 									"mount_point": {
-										Type:     schema.TypeString,
-										Required: true,
+										Type:        schema.TypeString,
+										Required:    true,
+										Description: "Directory to mount the disk on inside the Zmachine",
 									},
 								},
 							},
+							Description: "Zmachine mounts, can reference QSFSs and Disks",
 						},
 						"env_vars": {
 							Type:     schema.TypeList,
@@ -194,13 +219,15 @@ func resourceDeployment() *schema.Resource {
 							},
 						},
 						"planetary": {
-							Type:     schema.TypeBool,
-							Optional: true,
-							Default:  false,
+							Type:        schema.TypeBool,
+							Optional:    true,
+							Default:     false,
+							Description: "Enable Yggdrasil allocation",
 						},
 						"ygg_ip": {
-							Type:     schema.TypeString,
-							Computed: true,
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Allocated Yggdrasil IP",
 						},
 					},
 				},
@@ -215,9 +242,9 @@ func resourceDeployment() *schema.Resource {
 							Required: true,
 						},
 						"description": {
-							Type:        schema.TypeString,
-							Required:    true,
-							Description: "The minimum amount of shards which are needed to recover the original data.",
+							Type:     schema.TypeString,
+							Optional: true,
+							Default:  "",
 						},
 						"cache": {
 							Type:        schema.TypeInt,
@@ -225,8 +252,9 @@ func resourceDeployment() *schema.Resource {
 							Description: "The size of the fuse mountpoint on the node in MBs (holds qsfs local data before pushing)",
 						},
 						"minimal_shards": {
-							Type:     schema.TypeInt,
-							Required: true,
+							Type:        schema.TypeInt,
+							Required:    true,
+							Description: "The minimum amount of shards which are needed to recover the original data.",
 						},
 						"expected_shards": {
 							Type:        schema.TypeInt,
@@ -255,8 +283,9 @@ func resourceDeployment() *schema.Resource {
 							Description: "configuration to use for the encryption stage. Currently only AES is supported.",
 						},
 						"encryption_key": {
-							Type:     schema.TypeString,
-							Required: true,
+							Type:        schema.TypeString,
+							Required:    true,
+							Description: "64 long hex encoded encryption key (e.g. 0000000000000000000000000000000000000000000000000000000000000000)",
 						},
 						"compression_algorithm": {
 							Type:        schema.TypeString,
@@ -278,17 +307,20 @@ func resourceDeployment() *schema.Resource {
 										Description: "configuration for the metadata store to use, currently only zdb is supported",
 									},
 									"prefix": {
-										Type:     schema.TypeString,
-										Required: true,
+										Type:        schema.TypeString,
+										Required:    true,
+										Description: "Data stored on the remote metadata is prefixed with",
 									},
 									"encryption_algorithm": {
-										Type:     schema.TypeString,
-										Optional: true,
-										Default:  "AES",
+										Type:        schema.TypeString,
+										Optional:    true,
+										Default:     "AES",
+										Description: "configuration to use for the encryption stage. Currently only AES is supported.",
 									},
 									"encryption_key": {
-										Type:     schema.TypeString,
-										Required: true,
+										Type:        schema.TypeString,
+										Required:    true,
+										Description: "64 long hex encoded encryption key (e.g. 0000000000000000000000000000000000000000000000000000000000000000)",
 									},
 									"backends": {
 										Type:     schema.TypeList,
@@ -296,16 +328,19 @@ func resourceDeployment() *schema.Resource {
 										Elem: &schema.Resource{
 											Schema: map[string]*schema.Schema{
 												"address": {
-													Type:     schema.TypeString,
-													Required: true,
+													Type:        schema.TypeString,
+													Required:    true,
+													Description: "Address of backend zdb (e.g. [300:a582:c60c:df75:f6da:8a92:d5ed:71ad]:9900 or 60.60.60.60:9900)",
 												},
 												"namespace": {
-													Type:     schema.TypeString,
-													Required: true,
+													Type:        schema.TypeString,
+													Required:    true,
+													Description: "ZDB namespace",
 												},
 												"password": {
-													Type:     schema.TypeString,
-													Required: true,
+													Type:        schema.TypeString,
+													Required:    true,
+													Description: "Namespace password",
 												},
 											},
 										},
@@ -324,16 +359,19 @@ func resourceDeployment() *schema.Resource {
 										Elem: &schema.Resource{
 											Schema: map[string]*schema.Schema{
 												"address": {
-													Type:     schema.TypeString,
-													Required: true,
+													Type:        schema.TypeString,
+													Required:    true,
+													Description: "Address of backend zdb (e.g. [300:a582:c60c:df75:f6da:8a92:d5ed:71ad]:9900 or 60.60.60.60:9900)",
 												},
 												"namespace": {
-													Type:     schema.TypeString,
-													Required: true,
+													Type:        schema.TypeString,
+													Required:    true,
+													Description: "ZDB namespace",
 												},
 												"password": {
-													Type:     schema.TypeString,
-													Required: true,
+													Type:        schema.TypeString,
+													Required:    true,
+													Description: "Namespace password",
 												},
 											},
 										},
@@ -342,19 +380,12 @@ func resourceDeployment() *schema.Resource {
 							},
 						},
 						"metrics_endpoint": {
-							Type:     schema.TypeString,
-							Computed: true,
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "QSFS exposed metrics",
 						},
 					},
 				},
-			},
-			"ip_range": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-			"network_name": {
-				Type:     schema.TypeString,
-				Optional: true,
 			},
 		},
 	}
@@ -369,6 +400,7 @@ type Disk struct {
 type ZDB struct {
 	Name        string
 	Password    string
+	Public      bool
 	Size        int
 	Description string
 	Mode        string
@@ -492,6 +524,7 @@ func GetZdbData(zdb map[string]interface{}) ZDB {
 		Size:        zdb["size"].(int),
 		Description: zdb["description"].(string),
 		Password:    zdb["password"].(string),
+		Public:      zdb["public"].(bool),
 		Mode:        zdb["mode"].(string),
 		IPs:         ips,
 		Port:        uint32(zdb["port"].(int)),
@@ -587,9 +620,10 @@ func (z *ZDB) GenerateZDBWorkload() gridtypes.Workload {
 		Description: z.Description,
 		Version:     Version,
 		Data: gridtypes.MustMarshal(zos.ZDB{
-			Size:     gridtypes.Unit(z.Size),
+			Size:     gridtypes.Unit(z.Size) * gridtypes.Gigabyte,
 			Mode:     zos.ZDBMode(z.Mode),
 			Password: z.Password,
+			Public:   z.Public,
 		}),
 	}
 	return workload
@@ -691,7 +725,7 @@ func (d *DeploymentDeployer) getNodeClient(nodeID uint32) (*client.NodeClient, e
 	cl := client.NewNodeClient(uint32(nodeInfo.TwinID), d.APIClient.rmb)
 	return cl, nil
 }
-func (d *DeploymentDeployer) GetOldDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
+func (d *DeploymentDeployer) GetOldDeployments(ctx context.Context) (map[uint32]uint64, error) {
 	deployments := make(map[uint32]uint64)
 	if d.Id != "" {
 
@@ -702,7 +736,7 @@ func (d *DeploymentDeployer) GetOldDeployments(ctx context.Context) (map[uint32]
 		deployments[d.Node] = deploymentID
 	}
 
-	return getDeploymentObjects(ctx, deployments, d)
+	return deployments, nil
 }
 func (d *DeploymentDeployer) updateState(ctx context.Context, currentDeploymentIDs map[uint32]uint64) error {
 	log.Printf("current deployments\n")
@@ -865,6 +899,7 @@ func (z *ZDB) Dictify() map[string]interface{} {
 	res["namespace"] = z.Namespace
 	res["port"] = int(z.Port)
 	res["password"] = z.Password
+	res["public"] = z.Public
 	return res
 }
 func (dep *DeploymentDeployer) storeState(d *schema.ResourceData) {
@@ -900,9 +935,12 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 		return diag.FromErr(errors.Wrap(err, "error validating deployment"))
 	}
 	apiClient := meta.(*apiClient)
+	if err := validateAccountMoneyForExtrinsics(apiClient); err != nil {
+		return diag.FromErr(err)
+	}
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
+	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := getDeploymentDeployer(d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
@@ -945,12 +983,13 @@ func flattenZDBData(workload gridtypes.Workload) (map[string]interface{}, error)
 			return nil, errors.Wrap(err, "couldn't decode zdb result")
 		}
 		wl["name"] = workload.Name
-		wl["size"] = data.(*zos.ZDB).Size
+		wl["size"] = data.(*zos.ZDB).Size / gridtypes.Gigabyte
 		wl["mode"] = data.(*zos.ZDB).Mode
 		wl["ips"] = result.IPs
 		wl["namespace"] = result.Namespace
 		wl["port"] = result.Port
 		wl["password"] = data.(*zos.ZDB).Password
+		wl["public"] = data.(*zos.ZDB).Public
 		wl["description"] = workload.Description
 		return wl, nil
 	}
@@ -1012,7 +1051,7 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 	apiClient := meta.(*apiClient)
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
+	go startRmbIfNeeded(rmbctx, apiClient)
 	cl := apiClient.rmb
 	var diags diag.Diagnostics
 	sub, err := substrate.NewSubstrate(apiClient.substrate_url)
@@ -1022,7 +1061,12 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 	nodeID := uint32(d.Get("node").(int))
 	nodeInfo, err := sub.GetNode(nodeID)
 	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "error getting node client"))
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  "Error reading data from remote, terraform state might be out of sync with the remote state",
+			Detail:   errors.Wrap(err, "error getting node client").Error(),
+		})
+		return diags
 	}
 
 	node := client.NewNodeClient(uint32(nodeInfo.TwinID), cl)
@@ -1031,13 +1075,23 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 	defer cancel()
 	contractId, err := strconv.ParseUint(d.Id(), 10, 64)
 	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "error parsing contract id"))
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  "Error reading data from remote, terraform state might be out of sync with the remote state",
+			Detail:   errors.Wrap(err, "error parsing contract id").Error(),
+		})
+		return diags
 	}
 	subctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	deployment, err := node.DeploymentGet(subctx, contractId)
 	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "error getting deployment"))
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  "Error reading data from remote, terraform state might be out of sync with the remote state",
+			Detail:   errors.Wrap(err, "error getting deployment").Error(),
+		})
+		return diags
 	}
 	qsfs := make([]map[string]interface{}, 0)
 	disks := make([]map[string]interface{}, 0)
@@ -1048,7 +1102,12 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 		if workload.Type == zos.ZMountType {
 			flattened, err := flattenDiskData(workload)
 			if err != nil {
-				return diag.FromErr(errors.Wrap(err, "error flattening disk"))
+				diags = append(diags, diag.Diagnostic{
+					Severity: diag.Warning,
+					Summary:  "Error reading data from remote, terraform state might be out of sync with the remote state",
+					Detail:   errors.Wrap(err, "error flattening disk").Error(),
+				})
+				return diags
 			}
 			disks = append(disks, flattened)
 
@@ -1056,14 +1115,24 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 		if workload.Type == zos.ZDBType {
 			flattened, err := flattenZDBData(workload)
 			if err != nil {
-				return diag.FromErr(errors.Wrap(err, "error flattening zdb"))
+				diags = append(diags, diag.Diagnostic{
+					Severity: diag.Warning,
+					Summary:  "Error reading data from remote, terraform state might be out of sync with the remote state",
+					Detail:   errors.Wrap(err, "error flattening zdb").Error(),
+				})
+				return diags
 			}
 			zdbs = append(zdbs, flattened)
 
 		} else if workload.Type == zos.ZMachineType {
 			flattened, err := flattenVMData(workload)
 			if err != nil {
-				return diag.FromErr(errors.Wrap(err, "error flattening vm"))
+				diags = append(diags, diag.Diagnostic{
+					Severity: diag.Warning,
+					Summary:  "Error reading data from remote, terraform state might be out of sync with the remote state",
+					Detail:   errors.Wrap(err, "error flattening vm").Error(),
+				})
+				return diags
 			}
 			vms = append(vms, flattened)
 		} else if workload.Type == zos.PublicIPType {
@@ -1105,7 +1174,7 @@ func validate(d *schema.ResourceData) error {
 	ipRangeStr := d.Get("ip_range").(string)
 	networkName := d.Get("network_name").(string)
 	vms := d.Get("vms").([]interface{})
-	_, err := gridtypes.ParseIPNet(ipRangeStr)
+	_, _, err := net.ParseCIDR(ipRangeStr)
 	if len(vms) != 0 && err != nil {
 		return errors.Wrap(err, "If you pass a vm, ip_range must be set to a valid ip range (e.g. 10.1.3.0/16)")
 	}
@@ -1122,12 +1191,15 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 		return diag.FromErr(errors.Wrap(err, "error validating deployment"))
 	}
 	if d.HasChange("node") {
-		return diag.FromErr(errors.New("changing node is not supported, you need to destroy the deployment and reapply it again but you will lost your old data"))
+		return diag.FromErr(errors.New("changing node is not supported, you need to destroy the deployment and reapply it again but you will lose your old data"))
 	}
 	apiClient := meta.(*apiClient)
+	if err := validateAccountMoneyForExtrinsics(apiClient); err != nil {
+		return diag.FromErr(err)
+	}
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
+	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := getDeploymentDeployer(d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
@@ -1158,9 +1230,12 @@ func (d *DeploymentDeployer) Cancel(ctx context.Context) error {
 
 func resourceDeploymentDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	apiClient := meta.(*apiClient)
+	if err := validateAccountMoneyForExtrinsics(apiClient); err != nil {
+		return diag.FromErr(err)
+	}
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
+	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := getDeploymentDeployer(d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))

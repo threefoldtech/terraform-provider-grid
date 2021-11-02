@@ -17,7 +17,7 @@ Data source for computing gateway name proxy fqdn.
 
 ### Required
 
-- **name** (String) The name
+- **name** (String) Name of the gateway name workload
 - **node** (Number) Node ID of the gateway
 
 ### Optional
@@ -26,6 +26,6 @@ Data source for computing gateway name proxy fqdn.
 
 ### Read-Only
 
-- **fqdn** (String) Full domain name
+- **fqdn** (String) Fullly qualified domain name
 
 

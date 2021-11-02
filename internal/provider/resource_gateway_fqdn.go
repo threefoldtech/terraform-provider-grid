@@ -27,44 +27,46 @@ func resourceGatewayFQDNProxy() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"name": {
-				Description: "resource name",
 				Type:        schema.TypeString,
-				Required:    true,
+				Optional:    true,
+				Default:     "name",
+				Description: "Gateway workload name (of no actual significance)",
 			},
 			"description": {
-				Description: "Description field",
 				Type:        schema.TypeString,
 				Optional:    true,
 				Default:     "",
+				Description: "Description field",
 			},
 			"node": {
-				Description: "The gateway's node id",
 				Type:        schema.TypeInt,
 				Required:    true,
+				Description: "The gateway's node id",
 			},
 			"fqdn": {
-				Description: "The fully quallified domain name of the deployed workload.",
 				Type:        schema.TypeString,
 				Required:    true,
+				Description: "The fully quallified domain name of the deployed workload",
 			},
 			"tls_passthrough": {
-				Description: "true to pass the tls as is to the backends.",
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Default:     false,
+				Description: "true to pass the tls as is to the backends",
 			},
 			"backends": {
-				Description: "The backends of the gateway proxy",
-				Type:        schema.TypeList,
-				Required:    true,
+				Type:     schema.TypeList,
+				Required: true,
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
+				Description: "The backends of the gateway proxy (in the format (http|https)://ip:port), with tls_passthrough the scheme must be https",
 			},
 			"node_deployment_id": {
-				Type:     schema.TypeMap,
-				Computed: true,
-				Elem:     &schema.Schema{Type: schema.TypeInt},
+				Type:        schema.TypeMap,
+				Computed:    true,
+				Elem:        &schema.Schema{Type: schema.TypeInt},
+				Description: "Mapping from each node to its deployment id",
 			},
 		},
 	}
@@ -115,17 +117,11 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 	return deployer, nil
 }
 
-func (k *GatewayFQDNDeployer) ValidateCreate(ctx context.Context) error {
-	return isNodesUp(ctx, []uint32{k.Node}, k.ncPool)
-}
-
-func (k *GatewayFQDNDeployer) ValidateUpdate(ctx context.Context) error {
-	nodes := make([]uint32, 0)
-	nodes = append(nodes, k.Node)
-	for node := range k.NodeDeploymentID {
-		nodes = append(nodes, node)
+func (k *GatewayFQDNDeployer) Validate(ctx context.Context) error {
+	if err := validateAccountMoneyForExtrinsics(k.APIClient); err != nil {
+		return err
 	}
-	return isNodesUp(ctx, nodes, k.ncPool)
+	return isNodesUp(ctx, []uint32{k.Node}, k.ncPool)
 }
 
 func (k *GatewayFQDNDeployer) ValidateRead(ctx context.Context) error {
@@ -197,11 +193,7 @@ func (k *GatewayFQDNDeployer) Deploy(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "couldn't generate deployments data")
 	}
-	oldDeployments, err := k.GetOldDeployments(ctx)
-	if err != nil {
-		return errors.Wrap(err, "couldn't get old deployments data")
-	}
-	currentDeployments, err := deployDeployments(ctx, oldDeployments, newDeployments, k.ncPool, k.APIClient, true)
+	currentDeployments, err := deployDeployments(ctx, k.NodeDeploymentID, newDeployments, k.ncPool, k.APIClient, true)
 	if err := k.updateState(ctx, currentDeployments); err != nil {
 		log.Printf("error updating state: %s\n", err)
 	}
@@ -232,14 +224,8 @@ func (k *GatewayFQDNDeployer) updateFromRemote(ctx context.Context) error {
 
 func (k *GatewayFQDNDeployer) Cancel(ctx context.Context) error {
 	newDeployments := make(map[uint32]gridtypes.Deployment)
-	oldDeployments := make(map[uint32]gridtypes.Deployment)
-	for node, deploymentID := range k.NodeDeploymentID {
-		oldDeployments[node] = gridtypes.Deployment{
-			ContractID: deploymentID,
-		}
-	}
 
-	currentDeployments, err := deployDeployments(ctx, oldDeployments, newDeployments, k.ncPool, k.APIClient, false)
+	currentDeployments, err := deployDeployments(ctx, k.NodeDeploymentID, newDeployments, k.ncPool, k.APIClient, false)
 	if err := k.updateState(ctx, currentDeployments); err != nil {
 		log.Printf("error updating state: %s\n", err)
 	}
@@ -252,18 +238,13 @@ func resourceGatewayFQDNCreate(ctx context.Context, d *schema.ResourceData, meta
 	apiClient := meta.(*apiClient)
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
+	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := NewGatewayFQDNDeployer(ctx, d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
-	if err := deployer.ValidateCreate(ctx); err != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Error happened while doing initial check (check https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)",
-			Detail:   err.Error(),
-		})
-		return diags
+	if err := deployer.Validate(ctx); err != nil {
+		return diag.FromErr(err)
 	}
 	err = deployer.Deploy(ctx)
 	if err != nil {
@@ -285,19 +266,14 @@ func resourceGatewayFQDNUpdate(ctx context.Context, d *schema.ResourceData, meta
 	apiClient := meta.(*apiClient)
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
+	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := NewGatewayFQDNDeployer(ctx, d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	if err := deployer.ValidateUpdate(ctx); err != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Error happened while doing initial check (check https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)",
-			Detail:   err.Error(),
-		})
-		return diags
+	if err := deployer.Validate(ctx); err != nil {
+		return diag.FromErr(err)
 	}
 
 	err = deployer.Deploy(ctx)
@@ -314,24 +290,21 @@ func resourceGatewayFQDNRead(ctx context.Context, d *schema.ResourceData, meta i
 	apiClient := meta.(*apiClient)
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
+	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := NewGatewayFQDNDeployer(ctx, d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	if err := deployer.ValidateRead(ctx); err != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Error happened while doing initial check (check https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)",
-			Detail:   err.Error(),
-		})
-		return diags
-	}
 	err = deployer.updateFromRemote(ctx)
 	log.Printf("read updateFromRemote err: %s\n", err)
 	if err != nil {
-		return diag.FromErr(err)
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  "Error reading data from remote, terraform state might be out of sync with the remote state",
+			Detail:   err.Error(),
+		})
+		return diags
 	}
 	deployer.storeState(d)
 	return diags
@@ -342,7 +315,7 @@ func resourceGatewayFQDNDelete(ctx context.Context, d *schema.ResourceData, meta
 	apiClient := meta.(*apiClient)
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	go startRmb(rmbctx, apiClient.substrate_url, int(apiClient.twin_id))
+	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := NewGatewayFQDNDeployer(ctx, d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
