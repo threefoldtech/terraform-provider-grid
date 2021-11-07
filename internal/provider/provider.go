@@ -99,6 +99,7 @@ func New(version string) func() *schema.Provider {
 				"grid_gateway_domain": dataSourceGatewayDomain(),
 			},
 			ResourcesMap: map[string]*schema.Resource{
+				"grid_scheduler":  ReourceScheduler(),
 				"grid_deployment": resourceDeployment(),
 				"grid_network":    resourceNetwork(),
 				"grid_kubernetes": resourceKubernetes(),
