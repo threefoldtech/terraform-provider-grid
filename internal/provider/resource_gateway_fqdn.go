@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"strconv"
@@ -209,11 +208,11 @@ func (k *GatewayFQDNDeployer) updateState(ctx context.Context, currentDeployment
 	if !ok {
 		k.FQDN = ""
 	} else {
-		var result zos.GatewayProxyResult
-		if err := json.Unmarshal(dl.Workloads[0].Result.Data, &result); err != nil {
-			return errors.Wrap(err, "error unmarshalling json")
+		data, err := dl.Workloads[0].WorkloadData()
+		if err != nil {
+			return errors.Wrap(err, "error getting workload data")
 		}
-		k.FQDN = result.FQDN
+		k.FQDN = data.(*zos.GatewayFQDNProxy).FQDN
 	}
 	return nil
 }
