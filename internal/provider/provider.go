@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"crypto/ed25519"
 	"log"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -11,6 +10,7 @@ import (
 	substrate "github.com/threefoldtech/substrate-client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/zos/pkg/rmb"
+	"github.com/vedhavyas/go-subkey"
 )
 
 var (
@@ -116,7 +116,7 @@ type apiClient struct {
 	rmb_redis_url string
 	use_rmb_proxy bool
 	rmb_proxy_url string
-	userSK        ed25519.PrivateKey
+	userSK        subkey.KeyPair
 	rmb           rmb.Client
 	sub           *substrate.Substrate
 	identity      *substrate.Identity
@@ -169,7 +169,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	if err := validateAccount(&apiClient); err != nil {
 		return nil, diag.FromErr(err)
 	}
-	pub := sk.Public().(ed25519.PublicKey)
+	pub := sk.Public()
 	twin, err := apiClient.sub.GetTwinByPubKey(pub)
 	if err != nil && errors.Is(err, substrate.ErrNotFound) {
 		return nil, diag.Errorf("no twin associated with the accound with the given mnemonics")
