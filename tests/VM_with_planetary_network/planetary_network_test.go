@@ -4,9 +4,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/grid-provider/tests"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
+	"github.com/threefoldtech/terraform-provider-grid/tests"
 )
 
 func TestSingleNodeDeployment(t *testing.T) {

@@ -7,7 +7,6 @@ terraform {
   required_providers {
     grid = {
       source = "threefoldtech/grid"
-      version = "0.1.1"
     }
   }
 }
@@ -16,19 +15,21 @@ provider "grid" {
 }
 
 resource "grid_network" "net1" {
-    nodes = [2, 4]
+    nodes = [2]
     ip_range = "10.1.0.0/16"
     name = "network"
     description = "newer network"
+    add_wg_access = true
 }
+
 resource "grid_deployment" "d1" {
   node = 2
   network_name = grid_network.net1.name
-  ip_range = grid_network.net1.nodes_ip_range["2"]
+  ip_range = lookup(grid_network.net1.nodes_ip_range, 2, "")
   vms {
     name = "vm1"
     flist = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
-    cpu = 1
+    cpu = 2 
     publicip = true
     memory = 1024
     entrypoint = "/sbin/zinit init"
@@ -40,6 +41,7 @@ resource "grid_deployment" "d1" {
       key = "TEST_VAR"
       value = "this value for test"
     }
+    planetary = true
   }
   vms {
     name = "anothervm"
@@ -53,6 +55,7 @@ resource "grid_deployment" "d1" {
     }
   }
 }
+
 output "wg_config" {
     value = grid_network.net1.access_wg_config
 }
@@ -64,4 +67,8 @@ output "node1_container2_ip" {
 }
 output "public_ip" {
     value = grid_deployment.d1.vms[0].computedip
+}
+
+output "ygg_ip" {
+    value = grid_deployment.d1.vms[0].ygg_ip
 }
