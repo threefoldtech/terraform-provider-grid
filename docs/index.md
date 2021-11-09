@@ -22,6 +22,7 @@ description: |-
 ### Optional
 
 - **graphql_url** (String) graphql url, example: https://tfchain.dev.threefold.io/graphql/graphql/
+- **key_type** (String) key type registered on substrate (ed25519 or sr25519)
 - **network** (String) grid network, one of: dev test
 - **rmb_proxy_url** (String) rmb proxy url, example: https://rmbproxy1.devnet.grid.tf/
 - **rmb_redis_url** (String)
