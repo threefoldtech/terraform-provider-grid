@@ -54,6 +54,12 @@ func New(version string) func() *schema.Provider {
 					Sensitive:   true,
 					DefaultFunc: schema.EnvDefaultFunc("MNEMONICS", nil),
 				},
+				"key_type": {
+					Type:        schema.TypeString,
+					Optional:    true,
+					Description: "key type registered on substrate (ed25519 or sr25519)",
+					DefaultFunc: schema.EnvDefaultFunc("KEY_TYPE", "ed25519"),
+				},
 				"network": {
 					Type:        schema.TypeString,
 					Required:    true,
@@ -108,6 +114,21 @@ func New(version string) func() *schema.Provider {
 	}
 }
 
+type edSecureKey struct {
+	subkey.KeyPair
+}
+type srSecureKey struct {
+	subkey.KeyPair
+}
+
+func (s edSecureKey) Type() string {
+	return "ed25519"
+}
+
+func (s srSecureKey) Type() string {
+	return "sr25519"
+}
+
 type apiClient struct {
 	twin_id       uint32
 	mnemonics     string
@@ -116,10 +137,11 @@ type apiClient struct {
 	rmb_redis_url string
 	use_rmb_proxy bool
 	rmb_proxy_url string
+	key_type      string
 	userSK        subkey.KeyPair
 	rmb           rmb.Client
 	sub           *substrate.Substrate
-	identity      *substrate.Identity
+	identity      substrate.Identity
 }
 
 func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
@@ -127,16 +149,24 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 
 	apiClient := apiClient{}
 	apiClient.mnemonics = d.Get("mnemonics").(string)
-	identity, err := substrate.IdentityFromPhrase(string(apiClient.mnemonics))
+	apiClient.key_type = d.Get("key_type").(string)
+	var identity substrate.Identity
+	if apiClient.key_type == "ed25519" {
+		identity, err = substrate.NewIdentityFromEd25519Phrase(string(apiClient.mnemonics))
+	} else if apiClient.key_type == "sr25519" {
+		identity, err = substrate.NewIdentityFromSr25519Phrase(string(apiClient.mnemonics))
+	} else {
+		err = errors.New("key_type must be one of ed25519 and sr25519")
+	}
 	if err != nil {
 		return nil, diag.FromErr(errors.Wrap(err, "error getting identity"))
 	}
-	sk, err := identity.SecureKey()
+	sk, err := identity.KeyPair()
 	apiClient.userSK = sk
 	if err != nil {
 		return nil, diag.FromErr(errors.Wrap(err, "error getting user secret"))
 	}
-	apiClient.identity = &identity
+	apiClient.identity = identity
 	network := d.Get("network").(string)
 	if network != "dev" && network != "test" {
 		return nil, diag.Errorf("network must be one of dev and test")

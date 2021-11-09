@@ -50,7 +50,7 @@ func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deployme
 }
 
 func cancelDeployment(ctx context.Context, nc *client.NodeClient, sc *substrate.Substrate, identity substrate.Identity, id uint64) error {
-	err := sc.CancelContract(&identity, id)
+	err := sc.CancelContract(identity, id)
 	if err != nil {
 		return errors.Wrap(err, "error cancelling contract")
 	}
@@ -241,7 +241,7 @@ func deployConsistentDeployments(ctx context.Context, oldDeployments map[uint32]
 				return currentDeployments, errors.Wrap(err, "failed to get node client")
 			}
 
-			if err := dl.Sign(api.twin_id, api.userSK, gridtypes.SignatureTypeSr25519); err != nil {
+			if err := dl.Sign(api.twin_id, api.userSK, api.key_type); err != nil {
 				return currentDeployments, errors.Wrap(err, "error signing deployment")
 			}
 
@@ -333,7 +333,7 @@ func deployConsistentDeployments(ctx context.Context, oldDeployments map[uint32]
 				}
 			}
 
-			if err := dl.Sign(api.twin_id, api.userSK, gridtypes.SignatureTypeSr25519); err != nil {
+			if err := dl.Sign(api.twin_id, api.userSK, api.key_type); err != nil {
 				return currentDeployments, errors.Wrap(err, "error signing deployment")
 			}
 

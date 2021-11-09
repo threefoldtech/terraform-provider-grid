@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     grid = {
-      source = "threefoldtech/grid"
+      source = "threefoldtechdev.com/providers/grid"
     }
   }
 }
@@ -11,7 +11,7 @@ provider "grid" {
 
 
 resource "grid_fqdn_proxy" "p1" {
-  node = 40
+  node = 7 
   name = "workloadname"
   fqdn = "remote.omar.grid.tf"
   backends = [format("https://137.184.106.152:443")]
