@@ -18,8 +18,8 @@ var (
 		"test": "wss://tfchain.test.threefold.io/ws",
 	}
 	GRAPHQL_URL = map[string]string{
-		"dev":  "https://tfchain.dev.threefold.io/graphql/graphql/",
-		"test": "https://tfchain.test.threefold.io/graphql/graphql/",
+		"dev":  "https://graphql.dev.grid.tf/graphql",
+		"test": "https://graphql.test.grid.tf/graphql",
 	}
 	RMB_PROXY_URL = map[string]string{
 		"dev":  "https://gridproxy.dev.grid.tf/",
@@ -74,7 +74,7 @@ func New(version string) func() *schema.Provider {
 				"graphql_url": {
 					Type:        schema.TypeString,
 					Optional:    true,
-					Description: "graphql url, example: https://tfchain.dev.threefold.io/graphql/graphql/",
+					Description: "graphql url, example: https://graphql.dev.grid.tf/graphql",
 					DefaultFunc: schema.EnvDefaultFunc("GRAPHQL_URL", nil),
 				},
 				"rmb_redis_url": {
@@ -85,7 +85,7 @@ func New(version string) func() *schema.Provider {
 				"rmb_proxy_url": {
 					Type:        schema.TypeString,
 					Optional:    true,
-					Description: "rmb proxy url, example: https://rmbproxy1.devnet.grid.tf/",
+					Description: "rmb proxy url, example: https://gridproxy.dev.grid.tf/",
 					DefaultFunc: schema.EnvDefaultFunc("RMB_PROXY_URL", nil),
 				},
 				"use_rmb_proxy": {
