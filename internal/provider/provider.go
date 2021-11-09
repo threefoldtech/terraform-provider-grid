@@ -10,7 +10,6 @@ import (
 	substrate "github.com/threefoldtech/substrate-client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/zos/pkg/rmb"
-	"github.com/vedhavyas/go-subkey"
 )
 
 var (
@@ -114,21 +113,6 @@ func New(version string) func() *schema.Provider {
 	}
 }
 
-type edSecureKey struct {
-	subkey.KeyPair
-}
-type srSecureKey struct {
-	subkey.KeyPair
-}
-
-func (s edSecureKey) Type() string {
-	return "ed25519"
-}
-
-func (s srSecureKey) Type() string {
-	return "sr25519"
-}
-
 type apiClient struct {
 	twin_id       uint32
 	mnemonics     string
@@ -138,7 +122,6 @@ type apiClient struct {
 	use_rmb_proxy bool
 	rmb_proxy_url string
 	key_type      string
-	userSK        subkey.KeyPair
 	rmb           rmb.Client
 	sub           *substrate.Substrate
 	identity      substrate.Identity
