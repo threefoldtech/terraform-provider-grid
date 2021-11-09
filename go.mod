@@ -13,7 +13,6 @@ require (
 	github.com/threefoldtech/go-rmb v0.1.4
 	github.com/threefoldtech/substrate-client v0.0.0-20211109151647-257f0b4da8bf
 	github.com/threefoldtech/zos v0.4.10-0.20211109151307-218c81c2f345
-	github.com/vedhavyas/go-subkey v1.0.2
 	golang.org/x/net v0.0.0-20211005001312-d4b1ae081e3b // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20210803171230-4253848d036c
 )
@@ -89,6 +88,7 @@ require (
 	github.com/rs/zerolog v1.26.0 // indirect
 	github.com/russross/blackfriday v1.6.0 // indirect
 	github.com/ulikunitz/xz v0.5.8 // indirect
+	github.com/vedhavyas/go-subkey v1.0.2 // indirect
 	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
 	github.com/zclconf/go-cty v1.8.2 // indirect
 	go.opencensus.io v0.23.0 // indirect
