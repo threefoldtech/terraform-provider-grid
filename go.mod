@@ -11,8 +11,8 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/shurcooL/graphql v0.0.0-20200928012149-18c5c3165e3a
 	github.com/threefoldtech/go-rmb v0.1.4
-	github.com/threefoldtech/substrate-client v0.0.0-20211029140440-1426b1f1a195
-	github.com/threefoldtech/zos v0.4.10-0.20211014140657-b0cf29ace4e2
+	github.com/threefoldtech/substrate-client v0.0.0-20211109151647-257f0b4da8bf
+	github.com/threefoldtech/zos v0.4.10-0.20211109151307-218c81c2f345
 	github.com/vedhavyas/go-subkey v1.0.2
 	golang.org/x/net v0.0.0-20211005001312-d4b1ae081e3b // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20210803171230-4253848d036c
@@ -103,7 +103,3 @@ require (
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 )
-
-replace github.com/threefoldtech/substrate-client => ../substrate-client
-
-replace github.com/threefoldtech/zos => ../zos

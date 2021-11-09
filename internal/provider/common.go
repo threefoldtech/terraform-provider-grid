@@ -241,7 +241,7 @@ func deployConsistentDeployments(ctx context.Context, oldDeployments map[uint32]
 				return currentDeployments, errors.Wrap(err, "failed to get node client")
 			}
 
-			if err := dl.Sign(api.twin_id, api.userSK, api.key_type); err != nil {
+			if err := dl.Sign(api.twin_id, api.identity); err != nil {
 				return currentDeployments, errors.Wrap(err, "error signing deployment")
 			}
 
@@ -333,7 +333,7 @@ func deployConsistentDeployments(ctx context.Context, oldDeployments map[uint32]
 				}
 			}
 
-			if err := dl.Sign(api.twin_id, api.userSK, api.key_type); err != nil {
+			if err := dl.Sign(api.twin_id, api.identity); err != nil {
 				return currentDeployments, errors.Wrap(err, "error signing deployment")
 			}
 

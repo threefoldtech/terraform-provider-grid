@@ -23,8 +23,8 @@ var (
 		"test": "https://tfchain.test.threefold.io/graphql/graphql/",
 	}
 	RMB_PROXY_URL = map[string]string{
-		"dev":  "https://rmbproxy1.devnet.grid.tf/",
-		"test": "https://rmbproxy1.testnet.grid.tf/",
+		"dev":  "https://gridproxy.dev.grid.tf/",
+		"test": "https://gridproxy.test.grid.tf/",
 	}
 )
 
@@ -162,7 +162,6 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 		return nil, diag.FromErr(errors.Wrap(err, "error getting identity"))
 	}
 	sk, err := identity.KeyPair()
-	apiClient.userSK = sk
 	if err != nil {
 		return nil, diag.FromErr(errors.Wrap(err, "error getting user secret"))
 	}
