@@ -121,7 +121,6 @@ type apiClient struct {
 	rmb_redis_url string
 	use_rmb_proxy bool
 	rmb_proxy_url string
-	key_type      string
 	rmb           rmb.Client
 	sub           *substrate.Substrate
 	identity      substrate.Identity
@@ -132,11 +131,11 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 
 	apiClient := apiClient{}
 	apiClient.mnemonics = d.Get("mnemonics").(string)
-	apiClient.key_type = d.Get("key_type").(string)
+	key_type := d.Get("key_type").(string)
 	var identity substrate.Identity
-	if apiClient.key_type == "ed25519" {
+	if key_type == "ed25519" {
 		identity, err = substrate.NewIdentityFromEd25519Phrase(string(apiClient.mnemonics))
-	} else if apiClient.key_type == "sr25519" {
+	} else if key_type == "sr25519" {
 		identity, err = substrate.NewIdentityFromSr25519Phrase(string(apiClient.mnemonics))
 	} else {
 		err = errors.New("key_type must be one of ed25519 and sr25519")
