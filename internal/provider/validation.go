@@ -9,16 +9,9 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/centrifuge/go-substrate-rpc-client/v3/signature"
 	"github.com/gomodule/redigo/redis"
 	"github.com/pkg/errors"
 	substrate "github.com/threefoldtech/substrate-client"
-	"github.com/vedhavyas/go-subkey"
-	"github.com/vedhavyas/go-subkey/sr25519"
-)
-
-const (
-	substrateNetwork = 42
 )
 
 // validateAccount checks the mnemonics is associated with an account with key type ed25519
@@ -28,17 +21,20 @@ func validateAccount(apiClient *apiClient) error {
 		return errors.Wrap(err, "failed to get account with the given mnemonics")
 	}
 	if err != nil { // Account not found
-		srIdentity, lerr := IdentityFromPhrase(apiClient.mnemonics)
-		if lerr != nil { // shouldn't happen, return original error
-			log.Printf("couldn't convert the mneomincs to sr key: %s", lerr.Error())
-			return err
+		funcs := map[string]func(string) (substrate.Identity, error){"ed25519": substrate.NewIdentityFromSr25519Phrase, "sr25519": substrate.NewIdentityFromEd25519Phrase}
+		for keyType, f := range funcs {
+			ident, err2 := f(apiClient.mnemonics)
+			if err2 != nil { // shouldn't happen, return original error
+				log.Printf("couldn't convert the mneomincs to sr key: %s", err2.Error())
+				return err
+			}
+			_, err2 = apiClient.sub.GetAccount(ident)
+			if err2 == nil { // found an identity with key type other than the provided
+				return fmt.Errorf("found an account with %s key type and the same mnemonics, make sure you provided the correct key type", keyType)
+			}
 		}
-		_, lerr = apiClient.sub.GetAccount(&srIdentity)
-		if lerr != nil { // doesn't have sr or ed key, return the original error
-			return err
-		}
-		// otherwise, has account with sr key (wrong key type)
-		return errors.New("the account associated with the given mnemonics have sr25519 key, it must have ed25519 key")
+		// didn't find an account with any key type
+		return err
 	}
 	return nil
 }
@@ -144,40 +140,6 @@ func validateAccountMoneyForExtrinsics(apiClient *apiClient) error {
 		return fmt.Errorf("account contains %s, min fee is 20000", acc.Data.Free)
 	}
 	return nil
-}
-
-//IdentityFromPhrase gets identity from hex seed or mnemonics
-func IdentityFromPhrase(seedOrPhrase string) (substrate.Identity, error) {
-	krp, err := keyringPairFromSecret(seedOrPhrase, substrateNetwork)
-	if err != nil {
-		return substrate.Identity{}, err
-	}
-
-	return substrate.Identity(krp), nil
-}
-
-// keyringPairFromSecret creates KeyPair based on seed/phrase and network
-// Leave network empty for default behavior
-func keyringPairFromSecret(seedOrPhrase string, network uint8) (signature.KeyringPair, error) {
-	scheme := sr25519.Scheme{}
-	kyr, err := subkey.DeriveKeyPair(scheme, seedOrPhrase)
-
-	if err != nil {
-		return signature.KeyringPair{}, err
-	}
-
-	ss58Address, err := kyr.SS58Address(network)
-	if err != nil {
-		return signature.KeyringPair{}, err
-	}
-
-	var pk = kyr.Public()
-
-	return signature.KeyringPair{
-		URI:       seedOrPhrase,
-		Address:   ss58Address,
-		PublicKey: pk,
-	}, nil
 }
 
 func newRedisPool(address string) (*redis.Pool, error) {
