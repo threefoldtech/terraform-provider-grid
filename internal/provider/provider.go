@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"crypto/ed25519"
 	"log"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -19,12 +18,12 @@ var (
 		"test": "wss://tfchain.test.threefold.io/ws",
 	}
 	GRAPHQL_URL = map[string]string{
-		"dev":  "https://tfchain.dev.threefold.io/graphql/graphql/",
-		"test": "https://tfchain.test.threefold.io/graphql/graphql/",
+		"dev":  "https://graphql.dev.grid.tf/graphql",
+		"test": "https://graphql.test.grid.tf/graphql",
 	}
 	RMB_PROXY_URL = map[string]string{
-		"dev":  "https://rmbproxy1.devnet.grid.tf/",
-		"test": "https://rmbproxy1.testnet.grid.tf/",
+		"dev":  "https://gridproxy.dev.grid.tf/",
+		"test": "https://gridproxy.test.grid.tf/",
 	}
 )
 
@@ -54,6 +53,12 @@ func New(version string) func() *schema.Provider {
 					Sensitive:   true,
 					DefaultFunc: schema.EnvDefaultFunc("MNEMONICS", nil),
 				},
+				"key_type": {
+					Type:        schema.TypeString,
+					Optional:    true,
+					Description: "key type registered on substrate (ed25519 or sr25519)",
+					DefaultFunc: schema.EnvDefaultFunc("KEY_TYPE", "ed25519"),
+				},
 				"network": {
 					Type:        schema.TypeString,
 					Required:    true,
@@ -69,7 +74,7 @@ func New(version string) func() *schema.Provider {
 				"graphql_url": {
 					Type:        schema.TypeString,
 					Optional:    true,
-					Description: "graphql url, example: https://tfchain.dev.threefold.io/graphql/graphql/",
+					Description: "graphql url, example: https://graphql.dev.grid.tf/graphql",
 					DefaultFunc: schema.EnvDefaultFunc("GRAPHQL_URL", nil),
 				},
 				"rmb_redis_url": {
@@ -80,7 +85,7 @@ func New(version string) func() *schema.Provider {
 				"rmb_proxy_url": {
 					Type:        schema.TypeString,
 					Optional:    true,
-					Description: "rmb proxy url, example: https://rmbproxy1.devnet.grid.tf/",
+					Description: "rmb proxy url, example: https://gridproxy.dev.grid.tf/",
 					DefaultFunc: schema.EnvDefaultFunc("RMB_PROXY_URL", nil),
 				},
 				"use_rmb_proxy": {
@@ -116,10 +121,9 @@ type apiClient struct {
 	rmb_redis_url string
 	use_rmb_proxy bool
 	rmb_proxy_url string
-	userSK        ed25519.PrivateKey
 	rmb           rmb.Client
 	sub           *substrate.Substrate
-	identity      *substrate.Identity
+	identity      substrate.Identity
 }
 
 func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
@@ -127,16 +131,23 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 
 	apiClient := apiClient{}
 	apiClient.mnemonics = d.Get("mnemonics").(string)
-	identity, err := substrate.IdentityFromPhrase(string(apiClient.mnemonics))
+	key_type := d.Get("key_type").(string)
+	var identity substrate.Identity
+	if key_type == "ed25519" {
+		identity, err = substrate.NewIdentityFromEd25519Phrase(string(apiClient.mnemonics))
+	} else if key_type == "sr25519" {
+		identity, err = substrate.NewIdentityFromSr25519Phrase(string(apiClient.mnemonics))
+	} else {
+		err = errors.New("key_type must be one of ed25519 and sr25519")
+	}
 	if err != nil {
 		return nil, diag.FromErr(errors.Wrap(err, "error getting identity"))
 	}
-	sk, err := identity.SecureKey()
-	apiClient.userSK = sk
+	sk, err := identity.KeyPair()
 	if err != nil {
 		return nil, diag.FromErr(errors.Wrap(err, "error getting user secret"))
 	}
-	apiClient.identity = &identity
+	apiClient.identity = identity
 	network := d.Get("network").(string)
 	if network != "dev" && network != "test" {
 		return nil, diag.Errorf("network must be one of dev and test")
@@ -169,7 +180,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	if err := validateAccount(&apiClient); err != nil {
 		return nil, diag.FromErr(err)
 	}
-	pub := sk.Public().(ed25519.PublicKey)
+	pub := sk.Public()
 	twin, err := apiClient.sub.GetTwinByPubKey(pub)
 	if err != nil && errors.Is(err, substrate.ErrNotFound) {
 		return nil, diag.Errorf("no twin associated with the accound with the given mnemonics")
