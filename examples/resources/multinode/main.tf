@@ -54,16 +54,12 @@ resource "grid_deployment" "d2" {
   }
 }
 
-output "wg_config" {
-    value = grid_network.net1.access_wg_config
-}
-
-output "noed1_container1_ip" {
+output "node1_container1_ip" {
     value = grid_deployment.d1.vms[0].ip
 }
 
 
-output "noed2_container1_ip" {
+output "node2_container1_ip" {
     value = grid_deployment.d2.vms[0].ip
 }
 
