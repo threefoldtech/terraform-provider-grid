@@ -10,7 +10,6 @@ terraform {
   required_providers {
     grid = {
       source = "threefoldtech/grid"
-      version = "0.1.2"
     }
   }
 }
@@ -22,7 +21,7 @@ resource "grid_fqdn_proxy" "p1" {
   node = 5
   name = "testname"
   fqdn = "${var.fqdn}"
-  backends = [format("${var.fqdn}")]
+  backends = [format("${var.backend}")]
   tls_passthrough = true
 }
 

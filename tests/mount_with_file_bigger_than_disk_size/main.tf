@@ -7,7 +7,6 @@ terraform {
   required_providers {
     grid = {
       source = "threefoldtech/grid"
-      version = "0.1.1"
     }
   }
 }
@@ -20,6 +19,7 @@ resource "grid_network" "net1" {
     ip_range = "10.1.0.0/16"
     name = "network"
     description = "newer network"
+    add_wg_access = true
 }
 resource "grid_deployment" "d1" {
   node = 4

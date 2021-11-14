@@ -60,8 +60,8 @@ func TestKubernetesDeployment(t *testing.T) {
 
 	// Check worker deployed number
 	nodes := strings.Split(string(res), "\n")
-	workers := nodes[1:]               // remove header
-	assert.Equal(t, len(workers)-1, 2) // assert that there are 1 worker and master
+	workers := nodes[1:]             // remove header
+	assert.Equal(t, len(workers), 2) // assert that there are 1 worker and master
 
 	// Check that worker is ready
 	for i := 0; i < len(workers)-1; i++ {

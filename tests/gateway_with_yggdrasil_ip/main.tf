@@ -6,13 +6,13 @@ terraform {
   required_providers {
     grid = {
       source = "threefoldtech/grid"
-      version = "0.1.2"
     }
   }
 }
 
 provider "grid" {
 }
+
 
 resource "grid_network" "net1" {
     nodes = [2, 4]
