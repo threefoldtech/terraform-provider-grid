@@ -54,12 +54,12 @@ resource "grid_deployment" "d2" {
   }
 }
 
-output "node1_container1_ip" {
+output "node1_zmachine1_ip" {
     value = grid_deployment.d1.vms[0].ip
 }
 
 
-output "node2_container1_ip" {
+output "node2_zmachine1_ip" {
     value = grid_deployment.d2.vms[0].ip
 }
 

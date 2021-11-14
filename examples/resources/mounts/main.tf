@@ -55,10 +55,10 @@ resource "grid_deployment" "d1" {
 output "wg_config" {
     value = grid_network.net1.access_wg_config
 }
-output "noed1_container1_ip" {
+output "node1_zmachine1_ip" {
     value = grid_deployment.d1.vms[0].ip
 }
-output "node1_container2_ip" {
+output "node1_zmachine2_ip" {
     value = grid_deployment.d1.vms[1].ip
 }
 output "public_ip" {
