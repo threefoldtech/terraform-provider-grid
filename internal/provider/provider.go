@@ -57,7 +57,7 @@ func New(version string) func() *schema.Provider {
 					Type:        schema.TypeString,
 					Optional:    true,
 					Description: "key type registered on substrate (ed25519 or sr25519)",
-					DefaultFunc: schema.EnvDefaultFunc("KEY_TYPE", "ed25519"),
+					DefaultFunc: schema.EnvDefaultFunc("KEY_TYPE", "sr25519"),
 				},
 				"network": {
 					Type:        schema.TypeString,
