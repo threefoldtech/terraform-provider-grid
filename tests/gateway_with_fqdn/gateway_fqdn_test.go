@@ -6,7 +6,6 @@ import (
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
-	"github.com/threefoldtech/terraform-provider-grid/tests"
 )
 
 func TestSingleNodeDeployment(t *testing.T) {
@@ -22,13 +21,14 @@ func TestSingleNodeDeployment(t *testing.T) {
 	*/
 
 	// retryable errors in terraform testing.
-	name := tests.RandomName()
+	// name := tests.RandomName()
 	backend := "http://69.164.223.208:443"
-	fdqn := "remote." + name + ".grid.tf"
+	fqdn := "remote.hassan.grid.tf" // "remote." + name + ".grid.tf"
+
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./",
 		Vars: map[string]interface{}{
-			"fdqn":    fdqn,
+			"fqdn":    fqdn,
 			"backend": backend,
 		},
 		Parallelism: 1,
@@ -38,10 +38,9 @@ func TestSingleNodeDeployment(t *testing.T) {
 	terraform.InitAndApply(t, terraformOptions)
 
 	// Check that the outputs not empty
-	fqdn := terraform.Output(t, terraformOptions, "fqdn")
-	assert.NotEmpty(t, fqdn)
+	fqdn_ := terraform.Output(t, terraformOptions, "fqdn")
+	assert.NotEmpty(t, fqdn_)
 
-	out, _ := exec.Command("ping", fqdn, "-c 5", "-i 3", "-w 10").Output()
+	out, _ := exec.Command("ping", fqdn_, "-c 5", "-i 3", "-w 10").Output()
 	assert.NotContains(t, string(out), "Destination Host Unreachable")
-
 }

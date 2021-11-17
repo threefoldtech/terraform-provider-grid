@@ -2,6 +2,7 @@ package test
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
@@ -51,11 +52,23 @@ func TestSingleNodeDeployment(t *testing.T) {
 	wgConfig := terraform.Output(t, terraformOptions, "wg_config")
 	assert.NotEmpty(t, wgConfig)
 
+	pIP := strings.Split(publicIP, "/")[0]
+	status := false
+	for i := 0; i < 5; i++ {
+		status = tests.Wait(pIP, "22")
+		if status {
+			break
+		}
+	}
+	if status == false {
+		t.Errorf("public ip not reachable")
+	}
+
 	verifyIPs := []string{publicIP, node1Container1IP, node1Container1IP}
 	tests.VerifyIPs(wgConfig, verifyIPs)
 	defer tests.DownWG()
 
 	// Check that env variables set successfully
-	res, _ := tests.RemoteRun("root", node1Container1IP, "printenv")
+	res, _ := tests.RemoteRun("root", pIP, "printenv")
 	assert.Contains(t, string(res), "TEST_VAR=this value for test")
 }

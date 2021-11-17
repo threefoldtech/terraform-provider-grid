@@ -28,11 +28,11 @@ resource "grid_deployment" "d1" {
   ip_range = lookup(grid_network.net1.nodes_ip_range, 2, "")
   vms {
     name = "vm1"
-    flist = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
+    flist = "https://hub.grid.tf/omar0.3bot/omarelawady-ubuntu-20.04.flist"
     cpu = 2 
     publicip = true
     memory = 1024
-    entrypoint = "/sbin/zinit init"
+    entrypoint = "/init.sh"
     env_vars {
       key = "SSH_KEY"
       value = "${var.public_key}"
@@ -45,10 +45,10 @@ resource "grid_deployment" "d1" {
   }
   vms {
     name = "anothervm"
-    flist = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
+    flist = "https://hub.grid.tf/omar0.3bot/omarelawady-ubuntu-20.04.flist"
     cpu = 1
     memory = 1024
-    entrypoint = "/sbin/zinit init"
+    entrypoint = "/init.sh"
     env_vars {
       key = "SSH_KEY"
       value = "${var.public_key}"

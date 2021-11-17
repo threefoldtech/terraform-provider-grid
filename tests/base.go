@@ -113,3 +113,11 @@ func RandomName() string {
 
 	return name
 }
+
+func Wait(addr string, port string) bool {
+	_, err := net.DialTimeout("tcp", net.JoinHostPort(addr, "22"), time.Second*60)
+	if err != nil {
+		return false
+	}
+	return true
+}

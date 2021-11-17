@@ -1,10 +1,10 @@
 package test
 
 import (
-	"testing"
-
 	"os"
 	"os/exec"
+	"testing"
+
 	"strings"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
@@ -50,18 +50,29 @@ func TestKubernetesDeployment(t *testing.T) {
 	defer tests.DownWG()
 
 	// Check that master is reachable
+	masterIP := strings.Split(masterPublicIP, "/")[0]
+	status := false
+	for i := 0; i < 5; i++ {
+		status = tests.Wait(masterIP, "22")
+		if status {
+			break
+		}
+	}
+	if status == false {
+		t.Errorf("public ip not reachable")
+	}
+
 	out, _ := exec.Command("ping", masterPublicIP, "-c 5", "-i 3", "-w 10").Output()
 	assert.NotContains(t, string(out), "Destination Host Unreachable")
 
 	// ssh to master node
-	masterIP := strings.Split(masterPublicIP, "/")[0]
 	res, errors := tests.RemoteRun("root", masterIP, "kubectl get node")
 	assert.Empty(t, errors)
 
 	// Check worker deployed number
 	nodes := strings.Split(string(res), "\n")
-	workers := nodes[1:]             // remove header
-	assert.Equal(t, len(workers), 2) // assert that there are 1 worker and master
+	workers := nodes[1:]               // remove header
+	assert.Equal(t, len(workers)-1, 2) // assert that there are 1 worker and 1 master
 
 	// Check that worker is ready
 	for i := 0; i < len(workers)-1; i++ {

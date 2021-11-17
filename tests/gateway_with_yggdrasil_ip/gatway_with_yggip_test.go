@@ -19,8 +19,8 @@ func TestSingleNodeDeployment(t *testing.T) {
 	   - Deploy a gateway with ygg ip.
 	   - Check that the outputs not empty.
 	   - Check that ygg ip is reachable.
-	   - ssh to VM and check if yggdrasil is active
-	   - Destroy the deployment
+	   - Check that gateway point to backend.
+	   - Destroy the deployment.
 	*/
 
 	// retryable errors in terraform testing.
@@ -47,6 +47,17 @@ func TestSingleNodeDeployment(t *testing.T) {
 	assert.NotContains(t, string(out), "Destination Host Unreachable")
 
 	// ssh to VM and check if yggdrasil is active
-	res, _ := tests.RemoteRun("root", yggIP, "systemctl status yggdrasil")
-	assert.Contains(t, string(res), "active (running)")
+	status := false
+	for i := 0; i < 5; i++ {
+		status = tests.Wait(yggIP, "22")
+		if status {
+			break
+		}
+	}
+	if status == false {
+		t.Errorf("ygg ip not reachable")
+	}
+
+	out1, _ := exec.Command("ping", fqdn, "-c 5", "-i 3", "-w 10").Output()
+	assert.NotContains(t, string(out1), "Destination Host Unreachable")
 }

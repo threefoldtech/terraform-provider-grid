@@ -39,20 +39,25 @@ func TestSingleNodeDeployment(t *testing.T) {
 	publicIP := terraform.Output(t, terraformOptions, "public_ip")
 	assert.NotEmpty(t, publicIP)
 
-	node1Container1IP := terraform.Output(t, terraformOptions, "node1_container1_ip")
-	assert.NotEmpty(t, node1Container1IP)
-
 	yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
 	assert.NotEmpty(t, yggIP)
 
-	wgConfig := terraform.Output(t, terraformOptions, "wg_config")
-	assert.NotEmpty(t, wgConfig)
+	status := false
+	for i := 0; i < 5; i++ {
+		status = tests.Wait(yggIP, "22")
+		if status {
+			break
+		}
+	}
+	if status == false {
+		t.Errorf("public ip not reachable")
+	}
 
-	verifyIPs := []string{publicIP, node1Container1IP, yggIP}
-	tests.VerifyIPs(wgConfig, verifyIPs)
+	verifyIPs := []string{publicIP, yggIP}
+	tests.VerifyIPs("", verifyIPs)
 	defer tests.DownWG()
 
-	// ssh to VM and check if yggdrasil is active
-	res, _ := tests.RemoteRun("root", yggIP, "systemctl status yggdrasil")
-	assert.Contains(t, string(res), "active (running)")
+	// ssh to VM by ygg_ip
+	res, _ := tests.RemoteRun("root", yggIP, "printenv")
+	assert.Contains(t, string(res), "TEST_VAR=this value for test")
 }

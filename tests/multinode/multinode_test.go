@@ -1,6 +1,7 @@
 package test
 
 import (
+	"strings"
 	"testing"
 
 	"os"
@@ -42,6 +43,9 @@ func TestMultiNodeDeployment(t *testing.T) {
 	node2Container1IP := terraform.Output(t, terraformOptions, "node2_container1_ip")
 	assert.NotEmpty(t, node2Container1IP)
 
+	publicIP := terraform.Output(t, terraformOptions, "public_ip")
+	assert.NotEmpty(t, publicIP)
+
 	// Up wireguard
 	wgConfig := terraform.Output(t, terraformOptions, "wg_config")
 	assert.NotEmpty(t, wgConfig)
@@ -50,7 +54,19 @@ func TestMultiNodeDeployment(t *testing.T) {
 	tests.VerifyIPs(wgConfig, verifyIPs)
 	defer tests.DownWG()
 
+	pIP := strings.Split(publicIP, "/")[0]
+	status := false
+	for i := 0; i < 5; i++ {
+		status = tests.Wait(pIP, "22")
+		if status {
+			break
+		}
+	}
+	if status == false {
+		t.Errorf("ip not reachable")
+	}
+
 	// Check that env variables set successfully
-	res, _ := tests.RemoteRun("root", node1Container1IP, "printenv")
+	res, _ := tests.RemoteRun("root", pIP, "printenv")
 	assert.Contains(t, string(res), "TEST_VAR=this value for test")
 }

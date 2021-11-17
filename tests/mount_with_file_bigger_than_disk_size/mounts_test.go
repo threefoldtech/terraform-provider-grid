@@ -33,7 +33,7 @@ func TestMountWithBiggerFileDeployment(t *testing.T) {
 	})
 	defer terraform.Destroy(t, terraformOptions)
 
-	_, err := terraform.InitAndApplyE(t, terraformOptions)
+	terraform.InitAndApplyE(t, terraformOptions)
 
 	publicIP := terraform.Output(t, terraformOptions, "public_ip")
 	assert.NotEmpty(t, publicIP)
@@ -46,7 +46,19 @@ func TestMountWithBiggerFileDeployment(t *testing.T) {
 
 	// ssh to VM and try to create a file with size 1G.
 	pIP := strings.Split(publicIP, "/")[0]
-	res, err := tests.RemoteRun("root", pIP, "cd /app/ && dd if=/dev/vda bs=1G count=1 of=test.txt")
-	assert.Empty(t, err)
-	assert.Contains(t, string(res), "out of memory")
+	status := false
+	for i := 0; i < 5; i++ {
+		status = tests.Wait(pIP, "22")
+		if status {
+			break
+		}
+	}
+	if status == false {
+		t.Errorf("public ip not reachable")
+	}
+
+	_, err := tests.RemoteRun("root", pIP, "cd /app/ && dd if=/dev/vda bs=1G count=1 of=test.txt")
+	if err == nil {
+		t.Errorf("should fail with out of memory")
+	}
 }

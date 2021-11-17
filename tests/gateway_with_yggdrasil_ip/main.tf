@@ -15,15 +15,15 @@ provider "grid" {
 
 
 resource "grid_network" "net1" {
-    nodes = [2, 4]
+    nodes = [1]
     ip_range = "10.1.0.0/16"
     name = "network"
     description = "newer network"
 }
 resource "grid_deployment" "d1" {
-  node = 2
+  node = 1
   network_name = grid_network.net1.name
-  ip_range = grid_network.net1.nodes_ip_range["2"]
+  ip_range = grid_network.net1.nodes_ip_range["1"]
   vms {
     name = "vm1"
     flist = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
@@ -40,11 +40,11 @@ resource "grid_deployment" "d1" {
 }
 
 resource "grid_fqdn_proxy" "p1" {
-  node = 5
+  node = 1
   name = "testname"
   fqdn = "remote.hassan.grid.tf"
-  backends = [format("http://[%s]", trimsuffix(grid_deployment.d1.vms[0].ygg_ip))]
-  tls_passthrough = true
+  backends = [format("http://[${grid_deployment.d1.vms[0].ygg_ip}]")]
+  tls_passthrough = false
 }
 
 output "fqdn" {

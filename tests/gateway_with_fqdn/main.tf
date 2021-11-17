@@ -18,11 +18,11 @@ provider "grid" {
 }
 
 resource "grid_fqdn_proxy" "p1" {
-  node = 5
+  node = 1
   name = "testname"
   fqdn = "${var.fqdn}"
   backends = [format("${var.backend}")]
-  tls_passthrough = true
+  tls_passthrough = false
 }
 
 output "fqdn" {

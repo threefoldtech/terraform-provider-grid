@@ -101,10 +101,6 @@ resource "grid_deployment" "qsfs" {
       key = "SSH_KEY"
       value = "${var.public_key}"
     }
-    env_vars {
-      key = "TEST_VAR"
-      value = "this value for test"
-    }
     mounts {
         disk_name = "qsfs"
         mount_point = "/qsfs"
