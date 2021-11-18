@@ -25,7 +25,7 @@ func validateAccount(apiClient *apiClient) error {
 		for keyType, f := range funcs {
 			ident, err2 := f(apiClient.mnemonics)
 			if err2 != nil { // shouldn't happen, return original error
-				log.Printf("couldn't convert the mneomincs to %s key: %s", keyType, err2.Error())
+				log.Printf("couldn't convert the mnemomincs to %s key: %s", keyType, err2.Error())
 				return err
 			}
 			_, err2 = apiClient.sub.GetAccount(ident)
