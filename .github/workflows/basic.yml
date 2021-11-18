@@ -12,7 +12,7 @@ jobs:
       - uses: autero1/action-terraform@v0.1.0
         with:
           terraform_version: 1.0.11
-      name: install
+      - name: install
         run: sudo apt-get install -y wireguard
       - name: Download Go Modules
         working-directory: tests
