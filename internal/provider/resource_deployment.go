@@ -25,7 +25,7 @@ const (
 func resourceDeployment() *schema.Resource {
 	return &schema.Resource{
 		// This description is used by the documentation generator and the language server.
-		Description: "Sample resource in the Terraform provider scaffolding.",
+		Description: "Deployment resource (zdbs + vms + disks + qsfs).",
 
 		CreateContext: resourceDeploymentCreate,
 		ReadContext:   resourceDeploymentRead,
@@ -203,20 +203,10 @@ func resourceDeployment() *schema.Resource {
 							Description: "Zmachine mounts, can reference QSFSs and Disks",
 						},
 						"env_vars": {
-							Type:     schema.TypeList,
-							Optional: true,
-							Elem: &schema.Resource{
-								Schema: map[string]*schema.Schema{
-									"key": {
-										Type:     schema.TypeString,
-										Required: true,
-									},
-									"value": {
-										Type:     schema.TypeString,
-										Required: true,
-									},
-								},
-							},
+							Type:        schema.TypeMap,
+							Optional:    true,
+							Elem:        &schema.Schema{Type: schema.TypeString},
+							Description: "Environment variables to pass to the zmachine",
 						},
 						"planetary": {
 							Type:        schema.TypeBool,
@@ -480,12 +470,11 @@ func GetVMData(vm map[string]interface{}) VM {
 		mount := Mount{DiskName: point["disk_name"].(string), MountPoint: point["mount_point"].(string)}
 		mounts = append(mounts, mount)
 	}
-	envs := vm["env_vars"].([]interface{})
+	envs := vm["env_vars"].(map[string]interface{})
 	envVars := make(map[string]string)
 
-	for _, env := range envs {
-		envVar := env.(map[string]interface{})
-		envVars[envVar["key"].(string)] = envVar["value"].(string)
+	for k, v := range envs {
+		envVars[k] = v.(string)
 	}
 	return VM{
 		Name:        vm["name"].(string),
@@ -850,12 +839,9 @@ func (d *DeploymentDeployer) Deploy(ctx context.Context) (uint32, error) {
 }
 
 func (vm *VM) Dictify() map[string]interface{} {
-	envVars := make([]interface{}, 0)
+	envVars := make(map[string]interface{}, 0)
 	for key, value := range vm.EnvVars {
-		envVar := map[string]interface{}{
-			"key": key, "value": value,
-		}
-		envVars = append(envVars, envVar)
+		envVars[key] = value
 	}
 	mounts := make([]map[string]interface{}, 0)
 	for _, mountPoint := range vm.Mounts {
@@ -1012,11 +998,9 @@ func flattenVMData(workload gridtypes.Workload) (map[string]interface{}, error) 
 			}
 			mounts = append(mounts, mount)
 		}
-		envVars := make([]interface{}, 0)
+		envVars := make(map[string]interface{}, 0)
 		for key, value := range data.Env {
-			envVars = append(envVars, map[string]interface{}{
-				"key": key, "value": value,
-			})
+			envVars[key] = value
 		}
 		machineData, err := workload.WorkloadData()
 		if err != nil {

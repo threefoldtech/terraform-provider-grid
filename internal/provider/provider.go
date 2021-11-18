@@ -14,8 +14,8 @@ import (
 
 var (
 	SUBSTRATE_URL = map[string]string{
-		"dev":  "wss://tfchain.dev.threefold.io/ws",
-		"test": "wss://tfchain.test.threefold.io/ws",
+		"dev":  "wss://tfchain.dev.grid.tf/ws",
+		"test": "wss://tfchain.test.grid.tf/ws",
 	}
 	GRAPHQL_URL = map[string]string{
 		"dev":  "https://graphql.dev.grid.tf/graphql",
@@ -68,7 +68,7 @@ func New(version string) func() *schema.Provider {
 				"substrate_url": {
 					Type:        schema.TypeString,
 					Optional:    true,
-					Description: "substrate url, example: wss://tfchain.dev.threefold.io/ws",
+					Description: "substrate url, example: wss://tfchain.dev.grid.tf/ws",
 					DefaultFunc: schema.EnvDefaultFunc("SUBSTRATE_URL", nil),
 				},
 				"graphql_url": {
