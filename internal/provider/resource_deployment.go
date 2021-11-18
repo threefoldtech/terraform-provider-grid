@@ -25,7 +25,7 @@ const (
 func resourceDeployment() *schema.Resource {
 	return &schema.Resource{
 		// This description is used by the documentation generator and the language server.
-		Description: "Sample resource in the Terraform provider scaffolding.",
+		Description: "Deployment resource (zdbs + vms + disks + qsfs).",
 
 		CreateContext: resourceDeploymentCreate,
 		ReadContext:   resourceDeploymentRead,

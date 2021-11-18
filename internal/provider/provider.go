@@ -68,7 +68,7 @@ func New(version string) func() *schema.Provider {
 				"substrate_url": {
 					Type:        schema.TypeString,
 					Optional:    true,
-					Description: "substrate url, example: wss://tfchain.dev.threefold.io/ws",
+					Description: "substrate url, example: wss://tfchain.dev.grid.tf/ws",
 					DefaultFunc: schema.EnvDefaultFunc("SUBSTRATE_URL", nil),
 				},
 				"graphql_url": {

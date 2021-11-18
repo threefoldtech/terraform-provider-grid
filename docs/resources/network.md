@@ -3,12 +3,12 @@
 page_title: "grid_network Resource - terraform-provider-grid"
 subcategory: ""
 description: |-
-  Sample resource in the Terraform provider scaffolding.
+  Network resource.
 ---
 
 # grid_network (Resource)
 
-Sample resource in the Terraform provider scaffolding.
+Network resource.
 
 
 

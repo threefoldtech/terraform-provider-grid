@@ -20,7 +20,7 @@ import (
 func resourceKubernetes() *schema.Resource {
 	return &schema.Resource{
 		// This description is used by the documentation generator and the language server.
-		Description: "Sample resource in the Terraform provider scaffolding.",
+		Description: "Kubernetes resource.",
 
 		CreateContext: resourceK8sCreate,
 		ReadContext:   resourceK8sRead,
