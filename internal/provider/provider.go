@@ -14,8 +14,8 @@ import (
 
 var (
 	SUBSTRATE_URL = map[string]string{
-		"dev":  "wss://tfchain.dev.threefold.io/ws",
-		"test": "wss://tfchain.test.threefold.io/ws",
+		"dev":  "wss://tfchain.dev.grid.tf/ws",
+		"test": "wss://tfchain.test.grid.tf/ws",
 	}
 	GRAPHQL_URL = map[string]string{
 		"dev":  "https://graphql.dev.grid.tf/graphql",
