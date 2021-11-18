@@ -1,0 +1,27 @@
+name: Run Tests
+on: push
+jobs:
+  go-tests:
+    name: Run Go Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-go@v1
+        with:
+          go-version: 1.17
+      - uses: autero1/action-terraform@v0.1.0
+        with:
+          terraform_version: 1.0.11
+      name: install
+        run: sudo apt-get install -y wireguard
+      - name: Download Go Modules
+        working-directory: tests
+        run: go mod download
+        run: go get gotest.tools/gotestsum
+      - name: Run Go Tests
+        env:
+          MNEMONICS: ${{ secrets.MNEMONICS }}
+          NETWORK: ${{ secrets.NETWORK }}
+        working-directory: tests
+        run: gotestsum --format testname
+        

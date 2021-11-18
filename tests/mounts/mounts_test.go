@@ -27,6 +27,8 @@ func TestSingleMountDeployment(t *testing.T) {
 	*/
 
 	// retryable errors in terraform testing.
+	// generate ssh keys for test
+	tests.SshKeys()
 	publicKey := os.Getenv("PUBLICKEY")
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./",

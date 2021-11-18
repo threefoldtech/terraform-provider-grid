@@ -5,10 +5,13 @@ import (
 	"testing"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
+	"github.com/threefoldtech/terraform-provider-grid/tests"
 )
 
 func TestSingleNodeWithSmallMemDeployment(t *testing.T) {
 	// retryable errors in terraform testing.
+	// generate ssh keys for test
+	tests.SshKeys()
 	publicKey := os.Getenv("PUBLICKEY")
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./",

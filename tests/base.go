@@ -3,6 +3,7 @@ package tests
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -120,4 +121,28 @@ func Wait(addr string, port string) bool {
 		return false
 	}
 	return true
+}
+
+func SshKeys() {
+	os.Mkdir("/tmp/.ssh", 0755)
+	cmd := exec.Command("ssh-keygen", "-t", "rsa", "-f", "/tmp/.ssh/id_rsa", "-q")
+	stdout, err := cmd.Output()
+
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(string(stdout))
+
+	private_key, err := ioutil.ReadFile("/tmp/.ssh/id_rsa")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	public_key, e := ioutil.ReadFile("/tmp/.ssh/id_rsa.pub")
+	if e != nil {
+		log.Fatal(err)
+	}
+
+	os.Setenv("PUBLICKEY", string(public_key))
+	os.Setenv("PRIVATEKEY", string(private_key))
 }
