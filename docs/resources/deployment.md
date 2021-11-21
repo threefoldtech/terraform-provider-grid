@@ -3,12 +3,12 @@
 page_title: "grid_deployment Resource - terraform-provider-grid"
 subcategory: ""
 description: |-
-  Sample resource in the Terraform provider scaffolding.
+  Deployment resource (zdbs + vms + disks + qsfs).
 ---
 
 # grid_deployment (Resource)
 
-Sample resource in the Terraform provider scaffolding.
+Deployment resource (zdbs + vms + disks + qsfs).
 
 
 
@@ -125,7 +125,7 @@ Optional:
 - **cpu** (Number) Number of VCPUs
 - **description** (String)
 - **entrypoint** (String) command to execute as the Zmachine init
-- **env_vars** (Block List) (see [below for nested schema](#nestedblock--vms--env_vars))
+- **env_vars** (Map of String) Environment variables to pass to the zmachine
 - **ip** (String) The private wg IP of the Zmachine
 - **memory** (Number) Memory size
 - **mounts** (Block List) Zmachine mounts, can reference QSFSs and Disks (see [below for nested schema](#nestedblock--vms--mounts))
@@ -137,15 +137,6 @@ Read-Only:
 
 - **computedip** (String) The reserved public ip
 - **ygg_ip** (String) Allocated Yggdrasil IP
-
-<a id="nestedblock--vms--env_vars"></a>
-### Nested Schema for `vms.env_vars`
-
-Required:
-
-- **key** (String)
-- **value** (String)
-
 
 <a id="nestedblock--vms--mounts"></a>
 ### Nested Schema for `vms.mounts`

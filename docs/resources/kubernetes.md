@@ -3,12 +3,12 @@
 page_title: "grid_kubernetes Resource - terraform-provider-grid"
 subcategory: ""
 description: |-
-  Sample resource in the Terraform provider scaffolding.
+  Kubernetes resource.
 ---
 
 # grid_kubernetes (Resource)
 
-Sample resource in the Terraform provider scaffolding.
+Kubernetes resource.
 
 
 

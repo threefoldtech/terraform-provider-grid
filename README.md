@@ -35,19 +35,13 @@ make docs
 cd examples/resources/singlenode
 export MNEMONICS="<mnemonics words>"
 export NETWORK="<network>" # dev or test
-terraform init && terraform apply -parallelism=1
+terraform init && terraform apply -parallelism=1 # creates resources defined in main.tf
+terraform destroy -parallelism=1 # destroy the created resource
 ```
-## Destroying deployment
-```bash
-terraform destroy -parallelism=1
-```
+Docs for resources and their arguments can be found [here](docs). For a thorough walkthrough over the usage and requirements of the plugin. please visit the [wiki](https://library.threefold.me/info/threefold#/manual_tfgrid3/manual3_iac/grid3_terraform/threefold__grid3_terraform_home) page.
 ## Current limitation
 
 - [parallism=1](https://github.com/threefoldtech/terraform-provider-grid/issues/12)
 - [increasing IPs in active deployment](https://github.com/threefoldtech/terraform-provider-grid/issues/15)
 - [introducing new nodes to kuberentes deployment](https://github.com/threefoldtech/terraform-provider-grid/issues/13)
 - [multiple deployments on the same node](https://github.com/threefoldtech/terraform-provider-grid/issues/11)
-
-## Troubleshooting
-
-see [steps](https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)
