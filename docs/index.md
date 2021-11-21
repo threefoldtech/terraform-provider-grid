@@ -21,10 +21,10 @@ description: |-
 
 ### Optional
 
-- **graphql_url** (String) graphql url, example: https://tfchain.dev.threefold.io/graphql/graphql/
+- **graphql_url** (String) graphql url, example: https://graphql.dev.grid.tf/graphql
 - **key_type** (String) key type registered on substrate (ed25519 or sr25519)
 - **network** (String) grid network, one of: dev test
-- **rmb_proxy_url** (String) rmb proxy url, example: https://rmbproxy1.devnet.grid.tf/
+- **rmb_proxy_url** (String) rmb proxy url, example: https://gridproxy.dev.grid.tf/
 - **rmb_redis_url** (String)
-- **substrate_url** (String) substrate url, example: wss://tfchain.dev.threefold.io/ws
+- **substrate_url** (String) substrate url, example: wss://tfchain.dev.grid.tf/ws
 - **use_rmb_proxy** (Boolean) whether to use the rmb proxy or not

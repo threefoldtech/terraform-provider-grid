@@ -14,8 +14,8 @@ import (
 
 var (
 	SUBSTRATE_URL = map[string]string{
-		"dev":  "wss://tfchain.dev.threefold.io/ws",
-		"test": "wss://tfchain.test.threefold.io/ws",
+		"dev":  "wss://tfchain.dev.grid.tf/ws",
+		"test": "wss://tfchain.test.grid.tf/ws",
 	}
 	GRAPHQL_URL = map[string]string{
 		"dev":  "https://graphql.dev.grid.tf/graphql",
@@ -57,7 +57,7 @@ func New(version string) func() *schema.Provider {
 					Type:        schema.TypeString,
 					Optional:    true,
 					Description: "key type registered on substrate (ed25519 or sr25519)",
-					DefaultFunc: schema.EnvDefaultFunc("KEY_TYPE", "ed25519"),
+					DefaultFunc: schema.EnvDefaultFunc("KEY_TYPE", "sr25519"),
 				},
 				"network": {
 					Type:        schema.TypeString,
@@ -68,7 +68,7 @@ func New(version string) func() *schema.Provider {
 				"substrate_url": {
 					Type:        schema.TypeString,
 					Optional:    true,
-					Description: "substrate url, example: wss://tfchain.dev.threefold.io/ws",
+					Description: "substrate url, example: wss://tfchain.dev.grid.tf/ws",
 					DefaultFunc: schema.EnvDefaultFunc("SUBSTRATE_URL", nil),
 				},
 				"graphql_url": {
@@ -99,6 +99,7 @@ func New(version string) func() *schema.Provider {
 				"grid_gateway_domain": dataSourceGatewayDomain(),
 			},
 			ResourcesMap: map[string]*schema.Resource{
+				"grid_scheduler":  ReourceScheduler(),
 				"grid_deployment": resourceDeployment(),
 				"grid_network":    resourceNetwork(),
 				"grid_kubernetes": resourceKubernetes(),
