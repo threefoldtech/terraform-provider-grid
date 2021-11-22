@@ -13,6 +13,7 @@ jobs:
       - uses: autero1/action-terraform@v0.1.0
         with:
           terraform_version: 1.0.11
+          ACTIONS_ALLOW_UNSECURE_COMMANDS: true
       - name: install wg and yggdrasil and add peers
         run: |
           sudo apt-get update
