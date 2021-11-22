@@ -26,6 +26,7 @@ jobs:
           sudo apt-get install yggdrasil
           sudo systemctl enable yggdrasil
           sudo  sed -i -- 's/Peers\: \[\]/Peers\: \[\n\ttcp\:\/\/51\.15\.204\.214\:12345\n\ttcp\:\/\/94\.130\.203\.208\:5999\n\]/g'  /etc/yggdrasil.conf  
+          sudo apt-get update
           sudo systemctl start yggdrasil
       - name: Download Go Modules
         working-directory: tests
