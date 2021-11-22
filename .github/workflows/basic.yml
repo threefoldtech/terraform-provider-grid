@@ -1,6 +1,11 @@
 name: Run Tests
 
+
+# on:
+#   schedule:
+#     - cron:  '0 0 * * *'
 on: push
+
 jobs:
   go-tests:
     name: Run Go Tests
@@ -46,5 +51,5 @@ jobs:
           NETWORK: ${{ secrets.NETWORK }}
           KEY_TYPE: ${{ secrets.KEY_TYPE }}
         working-directory: tests
-        run: gotestsum --format testname
+        run: go test ./... -p 1
 
