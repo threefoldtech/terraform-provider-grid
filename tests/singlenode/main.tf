@@ -33,13 +33,9 @@ resource "grid_deployment" "d1" {
     publicip = true
     memory = 1024
     entrypoint = "/init.sh"
-    env_vars {
-      key = "SSH_KEY"
-      value = "${var.public_key}"
-    }
-    env_vars {
-      key = "TEST_VAR"
-      value = "this value for test"
+    env_vars = {
+      SSH_KEY = "${var.public_key}"
+      TEST_VAR = "this value for test"
     }
     planetary = true
   }
@@ -49,9 +45,8 @@ resource "grid_deployment" "d1" {
     cpu = 1
     memory = 1024
     entrypoint = "/init.sh"
-    env_vars {
-      key = "SSH_KEY"
-      value = "${var.public_key}"
+    env_vars = {
+      SSH_KEY = "${var.public_key}"
     }
   }
 }

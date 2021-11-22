@@ -21,11 +21,11 @@ func validateAccount(apiClient *apiClient) error {
 		return errors.Wrap(err, "failed to get account with the given mnemonics")
 	}
 	if err != nil { // Account not found
-		funcs := map[string]func(string) (substrate.Identity, error){"ed25519": substrate.NewIdentityFromSr25519Phrase, "sr25519": substrate.NewIdentityFromEd25519Phrase}
+		funcs := map[string]func(string) (substrate.Identity, error){"ed25519": substrate.NewIdentityFromEd25519Phrase, "sr25519": substrate.NewIdentityFromSr25519Phrase}
 		for keyType, f := range funcs {
 			ident, err2 := f(apiClient.mnemonics)
 			if err2 != nil { // shouldn't happen, return original error
-				log.Printf("couldn't convert the mneomincs to sr key: %s", err2.Error())
+				log.Printf("couldn't convert the mnemomincs to %s key: %s", keyType, err2.Error())
 				return err
 			}
 			_, err2 = apiClient.sub.GetAccount(ident)

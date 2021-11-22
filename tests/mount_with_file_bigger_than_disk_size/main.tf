@@ -41,9 +41,8 @@ resource "grid_deployment" "d1" {
         disk_name = "data"
         mount_point = "/app"
     }
-    env_vars {
-      key = "SSH_KEY"
-      value = "${var.public_key}"
+    env_vars = {
+      SSH_KEY = "${var.public_key}"
     }
   }
 }

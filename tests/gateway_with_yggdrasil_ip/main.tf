@@ -31,9 +31,8 @@ resource "grid_deployment" "d1" {
     publicip = true
     memory = 1024
     entrypoint = "/sbin/zinit init"
-    env_vars {
-      key = "SSH_KEY"
-      value = "${var.public_key}"
+    env_vars = {
+      SSH_KEY = "${var.public_key}"
     }
     planetary = true
   }

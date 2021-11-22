@@ -97,9 +97,8 @@ resource "grid_deployment" "qsfs" {
     memory = 1024
     entrypoint = "/sbin/zinit init"
     planetary = true
-    env_vars {
-      key = "SSH_KEY"
-      value = "${var.public_key}"
+    env_vars = {
+      SSH_KEY = "${var.public_key}"
     }
     mounts {
         disk_name = "qsfs"

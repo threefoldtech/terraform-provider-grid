@@ -1,4 +1,5 @@
 name: Run Tests
+
 on: push
 jobs:
   go-tests:
@@ -12,8 +13,18 @@ jobs:
       - uses: autero1/action-terraform@v0.1.0
         with:
           terraform_version: 1.0.11
-      - name: install
-        run: sudo apt-get install -y wireguard
+      - name: install wg and yggdrasil and add peers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wireguard
+          sudo apt-get install dirmngr
+          gpg --fetch-keys https://neilalexander.s3.dualstack.eu-west-2.amazonaws.com/deb/key.txt
+          gpg --export 569130E8CA20FBC4CB3FDE555898470A764B32C9 | sudo apt-key add -
+          echo 'deb http://neilalexander.s3.dualstack.eu-west-2.amazonaws.com/deb/ debian yggdrasil' | sudo tee /etc/apt/sources.list.d/yggdrasil.list
+          sudo apt-get install yggdrasil
+          sudo systemctl enable yggdrasil
+          sudo  sed -i -- 's/Peers\: \[\]/Peers\: \[\n\ttcp\:\/\/51\.15\.204\.214\:12345\n\ttcp\:\/\/94\.130\.203\.208\:5999\n\]/g'  /etc/yggdrasil.conf  
+          sudo systemctl start yggdrasil
       - name: Download Go Modules
         working-directory: tests
         run: go mod download && go get gotest.tools/gotestsum
@@ -21,6 +32,7 @@ jobs:
         env:
           MNEMONICS: ${{ secrets.MNEMONICS }}
           NETWORK: ${{ secrets.NETWORK }}
+          KEY_TYPE: ${{ secrets.KEY_TYPE }}
         working-directory: tests
-        run: gotestsum --format testname
-        
+        run: |
+          --preserve-env=MNEMONICS --preserve-env=NETWORK --preserve-env=KEY_TYPE  gotestsum --format testname
