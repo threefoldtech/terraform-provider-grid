@@ -37,5 +37,5 @@ jobs:
           NETWORK: ${{ secrets.NETWORK }}
           KEY_TYPE: ${{ secrets.KEY_TYPE }}
         working-directory: tests
-        run: |
-          --preserve-env=MNEMONICS --preserve-env=NETWORK --preserve-env=KEY_TYPE  gotestsum --format testname
+        run: gotestsum --format testname
+
