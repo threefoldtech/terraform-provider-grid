@@ -15,10 +15,6 @@ jobs:
           ACTIONS_ALLOW_UNSECURE_COMMANDS: true
         with:
           terraform_version: 1.0.11
-      - name: Setup gotestsum
-        uses: autero1/action-gotestsum@v0.1.0
-        with:
-          gotestsum_version: 0.4.1
       - name: install wg and yggdrasil and add peers
         run: |
           sudo apt-get update
@@ -35,6 +31,12 @@ jobs:
       - name: Download Go Modules
         working-directory: tests
         run: go mod download && go get gotest.tools/gotestsum
+      - name: Setup gotestsum
+        uses: autero1/action-gotestsum@v0.1.0
+        env:
+          ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+        with:
+          gotestsum_version: 0.4.1
       - name: Run Go Tests
         env:
           MNEMONICS: ${{ secrets.MNEMONICS }}
