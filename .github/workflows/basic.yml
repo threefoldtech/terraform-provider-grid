@@ -30,7 +30,10 @@ jobs:
           sudo systemctl start yggdrasil
       - name: Download Go Modules
         working-directory: tests
-        run: go mod download && go get gotest.tools/gotestsum
+        run: |
+          go mod download
+          go get gotest.tools/gotestsum
+          go mod tidy
       - name: Setup gotestsum
         uses: autero1/action-gotestsum@v0.1.0
         env:
