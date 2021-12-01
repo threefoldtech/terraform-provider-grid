@@ -164,7 +164,7 @@ func getNodes(url string) ([]NodeData, error) {
 	}
 	res := make([]NodeData, 0)
 	for _, node := range nodes {
-		if node.State != "up" {
+		if node.Status != "up" {
 			continue
 		}
 		cap, err := freeCapacity(url, uint32(node.NodeID))
