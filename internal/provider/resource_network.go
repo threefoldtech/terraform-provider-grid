@@ -236,6 +236,11 @@ func (k *NetworkDeployer) Validate(ctx context.Context) error {
 	if err := validateAccountMoneyForExtrinsics(k.APIClient); err != nil {
 		return err
 	}
+	mask := k.IPRange.Mask
+	if mask.String() != "16" {
+		return fmt.Errorf("subnet in iprange %s should be 16", k.IPRange.String())
+	}
+
 	return isNodesUp(ctx, k.Nodes, k.ncPool)
 }
 
