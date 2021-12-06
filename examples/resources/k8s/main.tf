@@ -14,6 +14,7 @@ resource "grid_network" "net1" {
     ip_range = "10.1.0.0/16"
     name = "network12346"
     description = "newer network"
+    add_wg_access = true
 }
 
 resource "grid_kubernetes" "k8s1" {
