@@ -237,7 +237,7 @@ func (k *NetworkDeployer) Validate(ctx context.Context) error {
 		return err
 	}
 	mask := k.IPRange.Mask
-	if mask.String() != "16" {
+	if ones, _ := mask.Size(); ones != 16 {
 		return fmt.Errorf("subnet in iprange %s should be 16", k.IPRange.String())
 	}
 
