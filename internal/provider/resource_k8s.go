@@ -427,11 +427,27 @@ func (k *K8sDeployer) ValidateNames(ctx context.Context) error {
 	return nil
 }
 
+func (k *K8sDeployer) ValidateIPranges(ctx context.Context) error {
+
+	if _, ok := k.NodesIPRange[k.Master.Node]; !ok {
+		return fmt.Errorf("the master node %d doesn't exist in the network's ip ranges", k.Master.Node)
+	}
+	for _, w := range k.Workers {
+		if _, ok := k.NodesIPRange[w.Node]; !ok {
+			return fmt.Errorf("the node with id %d in worker %s doesn't exist in the network's ip ranges", w.Node, w.Name)
+		}
+	}
+	return nil
+}
+
 func (k *K8sDeployer) Validate(ctx context.Context) error {
 	if err := validateAccountMoneyForExtrinsics(k.APIClient); err != nil {
 		return err
 	}
 	if err := k.ValidateNames(ctx); err != nil {
+		return err
+	}
+	if err := k.ValidateIPranges(ctx); err != nil {
 		return err
 	}
 	nodes := make([]uint32, 0)
