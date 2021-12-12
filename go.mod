@@ -11,9 +11,9 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/shurcooL/graphql v0.0.0-20200928012149-18c5c3165e3a
-	github.com/threefoldtech/go-rmb v0.1.4
-	github.com/threefoldtech/substrate-client v0.0.0-20211109151647-257f0b4da8bf
-	github.com/threefoldtech/zos v0.4.10-0.20211109151307-218c81c2f345
+	github.com/threefoldtech/go-rmb v0.1.7
+	github.com/threefoldtech/substrate-client v0.0.0-20211125132706-b866e681a0eb
+	github.com/threefoldtech/zos v0.4.10-0.20211209144641-c7c03835ecff
 	golang.org/x/net v0.0.0-20211005001312-d4b1ae081e3b // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20210803171230-4253848d036c
 )
