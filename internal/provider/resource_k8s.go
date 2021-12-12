@@ -107,6 +107,17 @@ func resourceKubernetes() *schema.Resource {
 							Required:    true,
 							Description: "Memory size",
 						},
+						"planetary": {
+							Type:        schema.TypeBool,
+							Optional:    true,
+							Default:     false,
+							Description: "Enable Yggdrasil allocation",
+						},
+						"ygg_ip": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Allocated Yggdrasil IP",
+						},
 					},
 				},
 			},
@@ -159,6 +170,17 @@ func resourceKubernetes() *schema.Resource {
 							Required:    true,
 							Description: "Memory size",
 						},
+						"planetary": {
+							Type:        schema.TypeBool,
+							Optional:    true,
+							Default:     false,
+							Description: "Enable Yggdrasil allocation",
+						},
+						"ygg_ip": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Allocated Yggdrasil IP",
+						},
 					},
 				},
 			},
@@ -171,8 +193,10 @@ type K8sNodeData struct {
 	Node       uint32
 	DiskSize   int
 	PublicIP   bool
+	Planetary  bool
 	Flist      string
 	ComputedIP string
+	YggIP      string
 	IP         string
 	Cpu        int
 	Memory     int
@@ -200,8 +224,10 @@ func NewK8sNodeData(m map[string]interface{}) K8sNodeData {
 		Node:       uint32(m["node"].(int)),
 		DiskSize:   m["disk_size"].(int),
 		PublicIP:   m["publicip"].(bool),
+		Planetary:  m["planetary"].(bool),
 		Flist:      m["flist"].(string),
 		ComputedIP: m["computedip"].(string),
+		YggIP:      m["ygg_ip"].(string),
 		IP:         m["ip"].(string),
 		Cpu:        m["cpu"].(int),
 		Memory:     m["memory"].(int),
@@ -215,13 +241,20 @@ func NewK8sNodeDataFromWorkload(w gridtypes.Workload, nodeID uint32, diskSize in
 		return k, err
 	}
 	d := data.(*zos.ZMachine)
+	var result zos.ZMachineResult
+	err = w.Result.Unmarshal(&result)
+	if err != nil {
+		return k, err
+	}
 	k = K8sNodeData{
 		Name:       string(w.Name),
 		Node:       nodeID,
 		DiskSize:   diskSize,
 		PublicIP:   !d.Network.PublicIP.IsEmpty(),
+		Planetary:  result.YggIP != "",
 		Flist:      d.FList,
 		ComputedIP: computedIP,
+		YggIP:      result.YggIP,
 		IP:         d.Network.Interfaces[0].IP.String(),
 		Cpu:        int(d.ComputeCapacity.CPU),
 		Memory:     int(d.ComputeCapacity.Memory / gridtypes.Megabyte),
@@ -288,8 +321,10 @@ func (k *K8sNodeData) Dictify() map[string]interface{} {
 	res["node"] = int(k.Node)
 	res["disk_size"] = k.DiskSize
 	res["publicip"] = k.PublicIP
+	res["planetary"] = k.Planetary
 	res["flist"] = k.Flist
 	res["computedip"] = k.ComputedIP
+	res["ygg_ip"] = k.YggIP
 	res["ip"] = k.IP
 	res["cpu"] = k.Cpu
 	res["memory"] = k.Memory
@@ -499,6 +534,7 @@ func (k *K8sDeployer) updateState(ctx context.Context, currentDeploymentIDs map[
 	}
 	printDeployments(currentDeployments)
 	publicIPs := make(map[string]string)
+	yggIPs := make(map[string]string)
 	privateIPs := make(map[string]string)
 	for _, dl := range currentDeployments {
 		for _, w := range dl.Workloads {
@@ -516,6 +552,12 @@ func (k *K8sDeployer) updateState(ctx context.Context, currentDeploymentIDs map[
 					continue
 				}
 				privateIPs[string(w.Name)] = d.(*zos.ZMachine).Network.Interfaces[0].IP.String()
+
+				var result zos.ZMachineResult
+				if err := w.Result.Unmarshal(&result); err != nil {
+					log.Printf("error loading machine result: %s\n", err)
+				}
+				yggIPs[string(w.Name)] = result.YggIP
 			}
 		}
 	}
@@ -531,6 +573,12 @@ func (k *K8sDeployer) updateState(ctx context.Context, currentDeploymentIDs map[
 	} else {
 		k.Master.IP = ""
 	}
+	ygg, ok := yggIPs[string(k.Master.Name)]
+	if ok {
+		k.Master.YggIP = ygg
+	} else {
+		k.Master.YggIP = ""
+	}
 
 	for idx, w := range k.Workers {
 		workerIPName := fmt.Sprintf("%sip", w.Name)
@@ -544,6 +592,12 @@ func (k *K8sDeployer) updateState(ctx context.Context, currentDeploymentIDs map[
 			k.Workers[idx].IP = private
 		} else {
 			k.Workers[idx].IP = ""
+		}
+		ygg, ok := yggIPs[string(w.Name)]
+		if ok {
+			k.Workers[idx].YggIP = ygg
+		} else {
+			k.Workers[idx].YggIP = ""
 		}
 	}
 	log.Printf("Current state after updatestate %v\n", k)
@@ -762,7 +816,8 @@ func (k *K8sNodeData) GenerateK8sWorkload(deployer *K8sDeployer, masterIP string
 						IP:      net.ParseIP(k.IP),
 					},
 				},
-				PublicIP: gridtypes.Name(publicIPName),
+				PublicIP:  gridtypes.Name(publicIPName),
+				Planetary: k.Planetary,
 			},
 			ComputeCapacity: zos.MachineCapacity{
 				CPU:    uint8(k.Cpu),
