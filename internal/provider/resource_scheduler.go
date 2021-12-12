@@ -12,7 +12,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	rmbproxytypes "github.com/threefoldtech/terraform-provider-grid/internal/rmbproxy"
+	rmbproxytypes "github.com/threefoldtech/terraform-provider-grid/internal/gridproxy"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 

@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand"
 	"net"
+	"sort"
 	"time"
 
 	"github.com/pkg/errors"
@@ -48,7 +49,10 @@ Endpoint = %s
 }
 
 func getPublicNode(ctx context.Context, ncPool NodeClientCollection, graphqlURL string, preferedNodes []uint32) (uint32, error) {
-
+	preferedNodesSet := make(map[uint32]struct{})
+	for _, node := range preferedNodes {
+		preferedNodesSet[node] = struct{}{}
+	}
 	client := graphql.NewClient(graphqlURL, nil)
 	var q struct {
 		Nodes []struct {
@@ -62,7 +66,16 @@ func getPublicNode(ctx context.Context, ncPool NodeClientCollection, graphqlURL 
 	if err != nil {
 		return 0, err
 	}
-	publicNode := uint32(0)
+	preferedFn := func(nodeID uint32) int {
+		if _, ok := preferedNodesSet[nodeID]; ok {
+			return 0
+		} else {
+			return 1
+		}
+	}
+	sort.Slice(q.Nodes, func(i, j int) bool {
+		return preferedFn(uint32(q.Nodes[i].NodeId)) < preferedFn(uint32(q.Nodes[j].NodeId))
+	})
 	for _, node := range q.Nodes {
 		if node.PublicConfig.Ipv4 != "" {
 			log.Printf("found a node with ipv4 public config: %d %s\n", node.NodeId, node.PublicConfig.Ipv4)
@@ -70,18 +83,11 @@ func getPublicNode(ctx context.Context, ncPool NodeClientCollection, graphqlURL 
 				log.Printf("error checking public node %d: %s", node.NodeId, err.Error())
 				continue
 			}
-			if isInUint32(preferedNodes, uint32(node.NodeId)) {
-				return uint32(node.NodeId), nil
-			} else {
-				publicNode = uint32(node.NodeId)
-			}
+			return uint32(node.NodeId), nil
 		}
 	}
-	if publicNode == 0 {
-		return 0, errors.New("no nodes with public ipv4")
-	} else {
-		return publicNode, nil
-	}
+	return 0, errors.New("no nodes with public ipv4")
+
 }
 func validatePublicNode(ctx context.Context, nodeID uint32, ncPool NodeClientCollection) error {
 	sub, cancel := context.WithTimeout(ctx, 10*time.Second)
