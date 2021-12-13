@@ -12,7 +12,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	rmbproxytypes "github.com/threefoldtech/terraform-provider-grid/internal/gridproxy"
+	gridproxy "github.com/threefoldtech/terraform-provider-grid/internal/gridproxy"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
@@ -119,7 +119,7 @@ func getFarms(url string) (map[int]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	var farms rmbproxytypes.FarmResult
+	var farms gridproxy.FarmResult
 	if err := json.NewDecoder(req.Body).Decode(&farms); err != nil {
 		return nil, err
 	}
@@ -136,7 +136,7 @@ func freeCapacity(url string, nodeID uint32) (MachineCapacity, error) {
 	if err != nil {
 		return res, err
 	}
-	var node rmbproxytypes.NodeInfo
+	var node gridproxy.NodeInfo
 	if err := json.NewDecoder(req.Body).Decode(&node); err != nil {
 		return res, err
 	}
@@ -158,7 +158,7 @@ func getNodes(url string) ([]NodeData, error) {
 	if err != nil {
 		return nil, err
 	}
-	var nodes []rmbproxytypes.Node
+	var nodes []gridproxy.Node
 	if err := json.NewDecoder(req.Body).Decode(&nodes); err != nil {
 		return nil, err
 	}
