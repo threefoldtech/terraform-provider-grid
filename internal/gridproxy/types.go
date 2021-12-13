@@ -1,4 +1,4 @@
-package rmbproxy
+package gridproxy
 
 import (
 	"github.com/threefoldtech/zos/pkg/capacity/dmi"
@@ -33,7 +33,7 @@ type PublicConfig struct {
 type Node struct {
 	Version         int          `json:"version"`
 	ID              string       `json:"id"`
-	NodeID          int          `json:"nodeId"`
+	NodeID          uint32       `json:"nodeId"`
 	FarmID          int          `json:"farmId"`
 	TwinID          int          `json:"twinId"`
 	Country         string       `json:"country"`

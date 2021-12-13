@@ -1,4 +1,4 @@
-package rmbproxy
+package gridproxy
 
 import (
 	"encoding/json"
@@ -22,12 +22,24 @@ func (g *GridProxyClient) url(sub string, args ...interface{}) string {
 }
 
 func (g *GridProxyClient) Nodes() (res []Node, err error) {
-	req, err := http.Get(g.url("nodes"))
+	req, err := http.Get(g.url("nodes?max_result=99999999"))
 	if err != nil {
 		return
 	}
 	if err := json.NewDecoder(req.Body).Decode(&res); err != nil {
 		return res, err
+	}
+	return
+}
+
+func (g *GridProxyClient) AliveNodes() (res []Node, err error) {
+	res, err = g.Nodes()
+	n := 0
+	for i := range res {
+		if res[i].Status == NodeUP {
+			res[n] = res[i]
+			n++
+		}
 	}
 	return
 }
