@@ -839,7 +839,7 @@ func (d *DeploymentDeployer) Deploy(ctx context.Context) (uint32, error) {
 }
 
 func (vm *VM) Dictify() map[string]interface{} {
-	envVars := make(map[string]interface{}, 0)
+	envVars := make(map[string]interface{})
 	for key, value := range vm.EnvVars {
 		envVars[key] = value
 	}
@@ -998,7 +998,7 @@ func flattenVMData(workload gridtypes.Workload) (map[string]interface{}, error) 
 			}
 			mounts = append(mounts, mount)
 		}
-		envVars := make(map[string]interface{}, 0)
+		envVars := make(map[string]interface{})
 		for key, value := range data.Env {
 			envVars[key] = value
 		}

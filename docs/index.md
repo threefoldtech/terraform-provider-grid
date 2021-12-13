@@ -21,7 +21,6 @@ description: |-
 
 ### Optional
 
-- **graphql_url** (String) graphql url, example: https://graphql.dev.grid.tf/graphql
 - **key_type** (String) key type registered on substrate (ed25519 or sr25519)
 - **network** (String) grid network, one of: dev test
 - **rmb_proxy_url** (String) rmb proxy url, example: https://gridproxy.dev.grid.tf/

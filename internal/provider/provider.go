@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
 	substrate "github.com/threefoldtech/substrate-client"
+	gridproxy "github.com/threefoldtech/terraform-provider-grid/internal/gridproxy"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/zos/pkg/rmb"
 )
@@ -16,10 +17,6 @@ var (
 	SUBSTRATE_URL = map[string]string{
 		"dev":  "wss://tfchain.dev.grid.tf/ws",
 		"test": "wss://tfchain.test.grid.tf/ws",
-	}
-	GRAPHQL_URL = map[string]string{
-		"dev":  "https://graphql.dev.grid.tf/graphql",
-		"test": "https://graphql.test.grid.tf/graphql",
 	}
 	RMB_PROXY_URL = map[string]string{
 		"dev":  "https://gridproxy.dev.grid.tf/",
@@ -71,12 +68,6 @@ func New(version string) func() *schema.Provider {
 					Description: "substrate url, example: wss://tfchain.dev.grid.tf/ws",
 					DefaultFunc: schema.EnvDefaultFunc("SUBSTRATE_URL", nil),
 				},
-				"graphql_url": {
-					Type:        schema.TypeString,
-					Optional:    true,
-					Description: "graphql url, example: https://graphql.dev.grid.tf/graphql",
-					DefaultFunc: schema.EnvDefaultFunc("GRAPHQL_URL", nil),
-				},
 				"rmb_redis_url": {
 					Type:        schema.TypeString,
 					Optional:    true,
@@ -117,11 +108,11 @@ func New(version string) func() *schema.Provider {
 type apiClient struct {
 	twin_id       uint32
 	mnemonics     string
-	graphql_url   string
 	substrate_url string
 	rmb_redis_url string
 	use_rmb_proxy bool
 	rmb_proxy_url string
+	grid_client   gridproxy.GridProxyClient
 	rmb           rmb.Client
 	sub           *substrate.Substrate
 	identity      substrate.Identity
@@ -154,17 +145,12 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 		return nil, diag.Errorf("network must be one of dev and test")
 	}
 	apiClient.substrate_url = SUBSTRATE_URL[network]
-	apiClient.graphql_url = GRAPHQL_URL[network]
 	apiClient.rmb_proxy_url = RMB_PROXY_URL[network]
 	substrate_url := d.Get("substrate_url").(string)
-	graphql_url := d.Get("graphql_url").(string)
 	rmb_proxy_url := d.Get("rmb_proxy_url").(string)
 	if substrate_url != "" {
 		log.Printf("substrate url is not null %s", substrate_url)
 		apiClient.substrate_url = substrate_url
-	}
-	if graphql_url != "" {
-		apiClient.graphql_url = graphql_url
 	}
 	if rmb_proxy_url != "" {
 		apiClient.rmb_proxy_url = rmb_proxy_url
@@ -196,6 +182,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	} else {
 		cl, err = rmb.NewClient(apiClient.rmb_redis_url)
 	}
+	apiClient.grid_client = gridproxy.NewGridProxyClient(apiClient.rmb_proxy_url)
 	if err != nil {
 		return nil, diag.FromErr(errors.Wrap(err, "couldn't create rmb client"))
 	}

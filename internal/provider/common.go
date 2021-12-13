@@ -15,6 +15,8 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
+const RMB_WORKERS = 10
+
 type NodeClientCollection interface {
 	getNodeClient(nodeID uint32) (*client.NodeClient, error)
 }
@@ -52,7 +54,7 @@ func startRmbIfNeeded(ctx context.Context, api *apiClient) {
 	if api.use_rmb_proxy {
 		return
 	}
-	rmbClient, err := gormb.NewServer(api.substrate_url, "127.0.0.1:6379", int(api.twin_id))
+	rmbClient, err := gormb.NewServer(api.substrate_url, "127.0.0.1:6379", int(api.twin_id), RMB_WORKERS)
 	if err != nil {
 		log.Fatalf("couldn't start server %s\n", err)
 	}
