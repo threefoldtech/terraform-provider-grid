@@ -31,7 +31,7 @@
     ip_range = lookup(grid_network.net1.nodes_ip_range, 7, "")
     vms {
       name = "vm1"
-      flist = "https://hub.grid.tf/omarabdul3ziz.3bot/ashraffouda-peertube-v4.flist"
+      flist = "https://hub.grid.tf/omarabdul3ziz.3bot/threefoldtech-peertube-v3.0.flist"
       cpu = 2 
       publicip = true
       entrypoint = "/usr/local/bin/entrypoint.sh"
@@ -41,9 +41,12 @@
         PEERTUBE_DB_SUFFIX="_prod"
         PEERTUBE_DB_USERNAME="peertube"
         PEERTUBE_DB_PASSWORD="peertube"
-        PEERTUBE_ADMIN_EMAIL="support@incubaid.com"
+        PEERTUBE_ADMIN_EMAIL="support@threefold.com"
         PEERTUBE_WEBSERVER_HOSTNAME = data.grid_gateway_domain.domain.fqdn
         PEERTUBE_WEBSERVER_PORT=443
+        PEERTUBE_SMTP_HOSTNAME="https://app.sendgrid.com"
+        PEERTUBE_SMTP_USERNAME="sendgridusername"
+        PEERTUBE_SMTP_PASSWORD="sendgridpassword"
       }
       planetary = true
     }
