@@ -10,7 +10,7 @@ require (
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.6.1
 	github.com/pkg/errors v0.9.1
 	github.com/threefoldtech/go-rmb v0.1.7
-	github.com/threefoldtech/substrate-client v0.0.0-20211125132706-b866e681a0eb
+	github.com/threefoldtech/substrate-client v0.0.0-20211223160743-4612d0d36145
 	github.com/threefoldtech/zos v0.4.10-0.20211209144641-c7c03835ecff
 	golang.org/x/net v0.0.0-20211005001312-d4b1ae081e3b // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20210803171230-4253848d036c
