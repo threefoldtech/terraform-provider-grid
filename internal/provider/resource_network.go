@@ -236,6 +236,11 @@ func (k *NetworkDeployer) Validate(ctx context.Context) error {
 	if err := validateAccountMoneyForExtrinsics(k.APIClient); err != nil {
 		return err
 	}
+	mask := k.IPRange.Mask
+	if ones, _ := mask.Size(); ones != 16 {
+		return fmt.Errorf("subnet in iprange %s should be 16", k.IPRange.String())
+	}
+
 	return isNodesUp(ctx, k.Nodes, k.ncPool)
 }
 
@@ -442,7 +447,7 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context) (m
 	}
 	needsIPv4Access := k.AddWGAccess || (len(hiddenNodes) != 0 && len(hiddenNodes)+len(accessibleNodes) > 1)
 	if needsIPv4Access && ipv4Node == 0 { // we need an ipv4, add one forcibly
-		publicNode, err := getPublicNode(ctx, k.ncPool, k.APIClient.graphql_url, []uint32{})
+		publicNode, err := getPublicNode(ctx, k.APIClient.grid_client, []uint32{})
 		if err != nil {
 			return nil, errors.Wrap(err, "public node needed because you requested adding wg access or a hidden node is added to the network")
 		}

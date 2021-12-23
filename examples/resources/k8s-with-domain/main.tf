@@ -21,7 +21,7 @@ resource "grid_kubernetes" "k8s1" {
   network_name = grid_network.net1.name
   nodes_ip_range = grid_network.net1.nodes_ip_range 
   token = "12345678910122"
-  ssh_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCtCuUUCZGLZ4NoihAiUK8K0kSoTR1WgIaLQKqMdQ/99eocMLqJgQMRIp8lueFG7SpcgXVRzln8KNKZX1Hm8lcrXICr3dnTW/0bpEnF4QOGLYZ/qTLF5WmoCgKyJ6WO96GjWJBsZPads+RD0WeiijV7jj29lALsMAI8CuOH0pcYUwWsRX/I1z2goMPNRY+PBjknMYFXEqizfUXqUnpzF3w/bKe8f3gcrmOm/Dxh1nHceJDW52TJL/sPcl6oWnHZ3fY4meTiAS5NZglyBF5oKD463GJnMt/rQ1gDNl8E4jSJUArN7GBJntTYxFoFo6zxB1OsSPr/7zLfPG420+9saBu9yN1O9DlSwn1ZX+Jg0k7VFbUpKObaCKRmkKfLiXJdxkKFH/+qBoCCnM5hfYxAKAyQ3YCCP/j9wJMBkbvE1QJMuuoeptNIvSQW6WgwBfKIK0shsmhK2TDdk0AHEnzxPSkVGV92jygSLeZ4ur/MZqWDx/b+gACj65M3Y7tzSpsR76M= omar@omar-Predator-PT315-52"
+  ssh_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDTwULSsUubOq3VPWL6cdrDvexDmjfznGydFPyaNcn7gAL9lRxwFbCDPMj7MbhNSpxxHV2+/iJPQOTVJu4oc1N7bPP3gBCnF51rPrhTpGCt5pBbTzeyNweanhedkKDsCO2mIEh/92Od5Hg512dX4j7Zw6ipRWYSaepapfyoRnNSriW/s3DH/uewezVtL5EuypMdfNngV/u2KZYWoeiwhrY/yEUykQVUwDysW/xUJNP5o+KSTAvNSJatr3FbuCFuCjBSvageOLHePTeUwu6qjqe+Xs4piF1ByO/6cOJ8bt5Vcx0bAtI8/MPApplUU/JWevsPNApvnA/ntffI+u8DCwgP"
 
   master {
     disk_size = 23
@@ -54,11 +54,22 @@ resource "grid_kubernetes" "k8s1" {
   }
 }
 
-
+data "grid_gateway_domain" "domain" {
+  node = 7 
+  name = "ashraf"
+}
+resource "grid_name_proxy" "p1" {
+  node = 7
+  name = "ashraf"
+  backends = [format("https://%s:443", split("/", grid_kubernetes.k8s1.master[0].computedip)[0])]
+  tls_passthrough = true
+}
 output "master_public_ip" {
     value = grid_kubernetes.k8s1.master[0].computedip
 }
-
+output "fqdn" {
+    value = data.grid_gateway_domain.domain.fqdn
+}
 output "wg_config" {
     value = grid_network.net1.access_wg_config
 }

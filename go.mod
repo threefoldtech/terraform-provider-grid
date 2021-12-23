@@ -8,12 +8,10 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/terraform-plugin-docs v0.4.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.6.1
-	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.9.1
-	github.com/shurcooL/graphql v0.0.0-20200928012149-18c5c3165e3a
-	github.com/threefoldtech/go-rmb v0.1.4
-	github.com/threefoldtech/substrate-client v0.0.0-20211109151647-257f0b4da8bf
-	github.com/threefoldtech/zos v0.4.10-0.20211109151307-218c81c2f345
+	github.com/threefoldtech/go-rmb v0.1.7
+	github.com/threefoldtech/substrate-client v0.0.0-20211223160743-4612d0d36145
+	github.com/threefoldtech/zos v0.4.10-0.20211209144641-c7c03835ecff
 	golang.org/x/net v0.0.0-20211005001312-d4b1ae081e3b // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20210803171230-4253848d036c
 )
@@ -82,6 +80,7 @@ require (
 	github.com/mitchellh/mapstructure v1.4.2 // indirect
 	github.com/mitchellh/reflectwalk v1.0.1 // indirect
 	github.com/oklog/run v1.0.0 // indirect
+	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/pierrec/xxHash v0.1.5 // indirect
 	github.com/posener/complete v1.2.3 // indirect
 	github.com/rs/cors v1.8.0 // indirect

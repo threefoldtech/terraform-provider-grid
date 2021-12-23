@@ -46,12 +46,14 @@ Required:
 Optional:
 
 - **flist** (String)
+- **planetary** (Boolean) Enable Yggdrasil allocation
 - **publicip** (Boolean) true to enable public ip reservation
 
 Read-Only:
 
 - **computedip** (String) The reserved public IP
 - **ip** (String) The private IP (computed from nodes_ip_range)
+- **ygg_ip** (String) Allocated Yggdrasil IP
 
 
 <a id="nestedblock--workers"></a>
@@ -68,11 +70,13 @@ Required:
 Optional:
 
 - **flist** (String)
+- **planetary** (Boolean) Enable Yggdrasil allocation
 - **publicip** (Boolean) true to enable public ip reservation
 
 Read-Only:
 
 - **computedip** (String) The reserved public ip
 - **ip** (String) The private IP (computed from nodes_ip_range)
+- **ygg_ip** (String) Allocated Yggdrasil IP
 
 
