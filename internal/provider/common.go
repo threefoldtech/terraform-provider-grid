@@ -10,6 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 	gormb "github.com/threefoldtech/go-rmb"
+	"github.com/threefoldtech/terraform-provider-grid/internal/gridproxy"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -172,6 +173,100 @@ func sameWorkloadsNames(d1 gridtypes.Deployment, d2 gridtypes.Deployment) bool {
 		}
 	}
 	return true
+}
+
+func capacity(dl gridtypes.Deployment) (gridtypes.Capacity, error) {
+	cap := gridtypes.Capacity{}
+	for _, wl := range dl.Workloads {
+		wlCap, err := wl.Capacity()
+		if err != nil {
+			return cap, err
+		}
+		cap.Add(&wlCap)
+	}
+	return cap, nil
+}
+
+func capacityPrettyPrint(cap gridtypes.Capacity) string {
+	return fmt.Sprintf("[cru: %d, mru: %d, sru: %d, hru: %d]", cap.CRU, cap.MRU, cap.SRU, cap.HRU)
+}
+
+func hasWorkload(dl *gridtypes.Deployment, wlType gridtypes.WorkloadType) bool {
+	for _, wl := range dl.Workloads {
+		if wl.Type == wlType {
+			return true
+		}
+	}
+	return false
+}
+
+func ValidateDeployments(ctx context.Context, apiClient *apiClient, deployments map[uint32]gridtypes.Deployment) error {
+	farmIPs := make(map[int]int)
+	allNodes, err := apiClient.grid_client.Nodes()
+	if err != nil {
+		return errors.Wrap(err, "failed to fetch nodes from the grid proxy")
+	}
+	allFarms, err := apiClient.grid_client.Farms()
+	if err != nil {
+		return errors.Wrap(err, "failed to fetch farms from the grid proxy")
+	}
+	nodeMap := make(map[uint32]gridproxy.Node)
+	for _, node := range allNodes {
+		nodeMap[node.NodeID] = node
+	}
+	for _, farm := range allFarms.Data.Farms {
+		farmIPs[farm.FarmID] = 0
+		for _, ip := range farm.PublicIps {
+			if ip.ContractID == 0 {
+				farmIPs[farm.FarmID]++
+			}
+		}
+	}
+	for node, dl := range deployments {
+		if err := dl.Valid(); err != nil {
+			return errors.Wrap(err, "invalid deployment")
+		}
+		needed, err := capacity(dl)
+		if err != nil {
+			return err
+		}
+
+		nodeInfo, err := apiClient.grid_client.Node(node)
+		if err != nil {
+			return errors.Wrapf(err, "couldn't get node %d info", node)
+		}
+		nodeData, ok := nodeMap[node]
+		if !ok {
+			return fmt.Errorf("node %d not returned from the grid proxy", node)
+		}
+		farmIPs[nodeData.FarmID] -= int(countDeploymentPublicIPs(dl))
+		if farmIPs[nodeData.FarmID] < 0 {
+			return fmt.Errorf("farm %d doesn't have enough public ips", nodeData.FarmID)
+		}
+		if hasWorkload(&dl, zos.GatewayFQDNProxyType) && nodeData.PublicConfig.Ipv4 == "" {
+			return fmt.Errorf("node %d can't deploy a fqdn workload as it doesn't have a public ipv4 configured", node)
+		}
+		if hasWorkload(&dl, zos.GatewayNameProxyType) && nodeData.PublicConfig.Domain == "" {
+			return fmt.Errorf("node %d can't deploy a gateway name workload as it doesn't have a domain configured", node)
+		}
+		crus := nodeInfo.Capacity.Total.CRU - nodeInfo.Capacity.Used.CRU
+		mrus := nodeInfo.Capacity.Total.MRU - nodeInfo.Capacity.Used.MRU
+		hrus := nodeInfo.Capacity.Total.HRU - nodeInfo.Capacity.Used.HRU
+		srus := nodeInfo.Capacity.Total.SRU - nodeInfo.Capacity.Used.SRU
+		if crus < uint64(needed.SRU) ||
+			mrus < needed.MRU ||
+			srus < needed.SRU ||
+			hrus < needed.HRU {
+			free := gridtypes.Capacity{
+				CRU: crus,
+				HRU: hrus,
+				MRU: mrus,
+				SRU: srus,
+			}
+			return fmt.Errorf("node %d doesn't have enough resources. needed: %v, free: %v", node, capacityPrettyPrint(needed), capacityPrettyPrint(free))
+		}
+	}
+	return nil
 }
 
 // deployDeployments transforms oldDeployment to match newDeployment. In case of error,

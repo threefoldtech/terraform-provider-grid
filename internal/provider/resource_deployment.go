@@ -453,7 +453,9 @@ func constructPublicIPWorkload(workloadName string) gridtypes.Workload {
 		Version: 0,
 		Name:    gridtypes.Name(workloadName),
 		Type:    zos.PublicIPType,
-		Data:    gridtypes.MustMarshal(zos.PublicIP{}),
+		Data: gridtypes.MustMarshal(zos.PublicIP{
+			V4: true,
+		}),
 	}
 }
 
@@ -719,7 +721,7 @@ func (d *DeploymentDeployer) GetOldDeployments(ctx context.Context) (map[uint32]
 
 		deploymentID, err := strconv.ParseUint(d.Id, 10, 64)
 		if err != nil {
-			return nil, errors.Wrap(err, "couldn't get node client")
+			return nil, errors.Wrapf(err, "couldn't parse deployment id %d", d.Id)
 		}
 		deployments[d.Node] = deploymentID
 	}
@@ -826,6 +828,9 @@ func (d *DeploymentDeployer) Deploy(ctx context.Context) (uint32, error) {
 	newDeployments, err := d.GenerateVersionlessDeployments(ctx)
 	if err != nil {
 		return 0, errors.Wrap(err, "couldn't generate deployments data")
+	}
+	if err := ValidateDeployments(ctx, d.APIClient, newDeployments); err != nil {
+		return 0, err
 	}
 	oldDeployments, err := d.GetOldDeployments(ctx)
 	if err != nil {

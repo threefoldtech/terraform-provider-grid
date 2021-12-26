@@ -192,6 +192,9 @@ func (k *GatewayFQDNDeployer) Deploy(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "couldn't generate deployments data")
 	}
+	if err := ValidateDeployments(ctx, k.APIClient, newDeployments); err != nil {
+		return err
+	}
 	currentDeployments, err := deployDeployments(ctx, k.NodeDeploymentID, newDeployments, k.ncPool, k.APIClient, true)
 	if err := k.updateState(ctx, currentDeployments); err != nil {
 		log.Printf("error updating state: %s\n", err)
