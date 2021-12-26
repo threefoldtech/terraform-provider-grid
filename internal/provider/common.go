@@ -86,7 +86,10 @@ func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deployme
 				}
 				return t.AsError()
 			}
-			lerr = err
+			if ctx.Err() != context.DeadlineExceeded {
+				// remember the error as long as we didn't time out
+				lerr = err
+			}
 		}
 	}
 }
