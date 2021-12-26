@@ -240,18 +240,18 @@ func resourceGatewayFQDNCreate(ctx context.Context, d *schema.ResourceData, meta
 	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := NewGatewayFQDNDeployer(ctx, d, apiClient)
 	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
+		return diagsFromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 	if err := deployer.Validate(ctx); err != nil {
-		return diag.FromErr(err)
+		return diagsFromErr(err)
 	}
 	err = deployer.Deploy(ctx)
 	if err != nil {
 		if len(deployer.NodeDeploymentID) != 0 {
 			// failed to deploy and failed to revert, store the current state locally
-			diags = diag.FromErr(err)
+			diags = diagsFromErr(err)
 		} else {
-			return diag.FromErr(err)
+			return diagsFromErr(err)
 		}
 	}
 	deployer.storeState(d)
@@ -268,16 +268,16 @@ func resourceGatewayFQDNUpdate(ctx context.Context, d *schema.ResourceData, meta
 	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := NewGatewayFQDNDeployer(ctx, d, apiClient)
 	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
+		return diagsFromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
 	if err := deployer.Validate(ctx); err != nil {
-		return diag.FromErr(err)
+		return diagsFromErr(err)
 	}
 
 	err = deployer.Deploy(ctx)
 	if err != nil {
-		diags = diag.FromErr(err)
+		diags = diagsFromErr(err)
 	}
 	deployer.storeState(d)
 	return diags
@@ -292,7 +292,7 @@ func resourceGatewayFQDNRead(ctx context.Context, d *schema.ResourceData, meta i
 	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := NewGatewayFQDNDeployer(ctx, d, apiClient)
 	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
+		return diagsFromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
 	err = deployer.updateFromRemote(ctx)
@@ -317,11 +317,11 @@ func resourceGatewayFQDNDelete(ctx context.Context, d *schema.ResourceData, meta
 	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := NewGatewayFQDNDeployer(ctx, d, apiClient)
 	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
+		return diagsFromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 	err = deployer.Cancel(ctx)
 	if err != nil {
-		diags = diag.FromErr(err)
+		diags = diagsFromErr(err)
 	}
 	if err == nil {
 		d.SetId("")

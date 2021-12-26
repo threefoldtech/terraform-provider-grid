@@ -8,8 +8,11 @@ import (
 	"log"
 	"time"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/pkg/errors"
 	gormb "github.com/threefoldtech/go-rmb"
+	"github.com/threefoldtech/substrate-client"
+	"github.com/threefoldtech/terraform-provider-grid/internal"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -21,33 +24,71 @@ type NodeClientCollection interface {
 	getNodeClient(nodeID uint32) (*client.NodeClient, error)
 }
 
-func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deploymentID uint64, version int) error {
-	done := false
-	for start := time.Now(); time.Since(start) < 4*time.Minute; time.Sleep(1 * time.Second) {
-		done = true
-		sub, cancel := context.WithTimeout(ctx, 10*time.Second)
-		defer cancel()
-		dl, err := nodeClient.DeploymentGet(sub, deploymentID)
-		if err != nil {
-			return err
-		}
-		if dl.Version != version {
+func diagsFromErr(e error) diag.Diagnostics {
+	if e, ok := e.(*internal.Terror); ok {
+		return e.Diagnostics
+	}
+	return diag.FromErr(e)
+}
+
+func checkWorkloadState(ctx context.Context, nodeClient *client.NodeClient, deploymentID uint64, version int) (bool, error) {
+	t := internal.NewTerror()
+	sub, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	dl, err := nodeClient.DeploymentGet(sub, deploymentID)
+	if err != nil {
+		t.AppendErr(err)
+		return false, t.AsError()
+	}
+	if dl.Version != version {
+		t.AppendErr(fmt.Errorf("version is %d, expected: %d", dl.Version, version))
+		return false, t.AsError()
+	}
+	done := true
+	for _, wl := range dl.Workloads {
+		if wl.Result.State == "" {
+			t.AppendErr(fmt.Errorf("state of workload %s is not a final state", wl.Name))
+			done = false
 			continue
 		}
-		for idx, wl := range dl.Workloads {
-			if wl.Result.State == "" {
-				done = false
-				continue
-			}
-			if wl.Result.State != gridtypes.StateOk {
-				return errors.New(fmt.Sprintf("workload %d failed within deployment %d with error %s", idx, deploymentID, wl.Result.Error))
-			}
-		}
-		if done {
-			return nil
+		if wl.Result.State != gridtypes.StateOk {
+			t.Append(diag.Diagnostic{
+				Severity: diag.Error,
+				Summary:  fmt.Sprintf("workload %s failed", wl.Name),
+				Detail:   wl.Result.Error,
+			})
 		}
 	}
-	return errors.New(fmt.Sprintf("waiting for deployment %d timedout", deploymentID))
+	return done, t.AsError()
+}
+
+func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deploymentID uint64, version int) error {
+	t := internal.NewTerror()
+	tc := time.NewTicker(1 * time.Second)
+	var lerr error
+	ctx, cancel := context.WithTimeout(ctx, 4*time.Minute)
+	defer cancel()
+	for {
+		select {
+		case <-ctx.Done():
+			if lerr != nil {
+				t.AppendWrappedErr(lerr, "deployment %d timed out", deploymentID)
+			} else {
+				t.AppendErr(fmt.Errorf("deployment %d timed out", deploymentID))
+			}
+			return t.AsError()
+		case <-tc.C:
+			done, err := checkWorkloadState(ctx, nodeClient, deploymentID, version)
+			log.Printf("checking round %t: %s", done, err)
+			if done {
+				if err != nil {
+					t.AppendWrappedErr(err, "deployment %d error", deploymentID)
+				}
+				return t.AsError()
+			}
+			lerr = err
+		}
+	}
 }
 
 func startRmbIfNeeded(ctx context.Context, api *apiClient) {
@@ -143,17 +184,30 @@ func isNodeUp(ctx context.Context, nc *client.NodeClient) error {
 }
 
 func isNodesUp(ctx context.Context, nodes []uint32, nc NodeClientCollection) error {
+	t := internal.NewTerror()
 	for _, node := range nodes {
 		cl, err := nc.getNodeClient(node)
-		if err != nil {
-			return fmt.Errorf("couldn't get node %d client: %w", node, err)
+		if errors.Is(err, substrate.ErrNotFound) {
+			t.AppendErr(fmt.Errorf("node %d doesn't exit. make sure you are on the right network (e.g. dev/test) and the node id is correct", node))
+			continue
+		} else if err != nil {
+			t.Append(diag.Diagnostic{
+				Severity: diag.Error,
+				Summary:  fmt.Sprintf("couldn't get node %d client", node),
+				Detail:   err.Error(),
+			})
+			continue
 		}
 		if err := isNodeUp(ctx, cl); err != nil {
-			return fmt.Errorf("couldn't reach node %d: %w", node, err)
+			t.Append(diag.Diagnostic{
+				Severity: diag.Error,
+				Summary:  fmt.Sprintf("couldn't connect to node %d, node can be down or unreachable", node),
+				Detail:   err.Error(),
+			})
+			continue
 		}
 	}
-
-	return nil
+	return t.AsError()
 }
 
 func sameWorkloadsNames(d1 gridtypes.Deployment, d2 gridtypes.Deployment) bool {
@@ -177,21 +231,27 @@ func sameWorkloadsNames(d1 gridtypes.Deployment, d2 gridtypes.Deployment) bool {
 // deployDeployments transforms oldDeployment to match newDeployment. In case of error,
 //                   it tries to revert to the old state. Whatever is done the current state is returned
 func deployDeployments(ctx context.Context, oldDeploymentIDs map[uint32]uint64, newDeployments map[uint32]gridtypes.Deployment, nc NodeClientCollection, api *apiClient, revertOnFailure bool) (map[uint32]uint64, error) {
+	t := internal.NewTerror()
 	oldDeployments, oldErr := getDeploymentObjects(ctx, oldDeploymentIDs, nc)
 	// ignore oldErr until we need oldDeployments
 	curentDeployments, err := deployConsistentDeployments(ctx, oldDeploymentIDs, newDeployments, nc, api)
+	if err != nil {
+		t.AppendWrappedErr(err, "failed to deploy deployments")
+	}
 	if err != nil && revertOnFailure {
 		if oldErr != nil {
-			return curentDeployments, fmt.Errorf("failed to deploy deployments: %w; failed to fetch deployment objects to revert deployments: %s; try again", err, oldErr)
+			t.AppendWrappedErr(oldErr, "failed to fetch deployment objects to revert deployments")
+			return curentDeployments, t.AsError()
 		}
 
 		currentDls, rerr := deployConsistentDeployments(ctx, curentDeployments, oldDeployments, nc, api)
 		if rerr != nil {
-			return currentDls, fmt.Errorf("failed to deploy deployments: %w; failed to revert deployments: %s; try again", err, rerr)
+			t.AppendWrappedErr(rerr, "failed to revert deployments")
+			return currentDls, t.AsError()
 		}
-		return currentDls, err
+		return currentDls, t.AsError()
 	}
-	return curentDeployments, err
+	return curentDeployments, t.AsError()
 }
 
 func deployConsistentDeployments(ctx context.Context, oldDeployments map[uint32]uint64, newDeployments map[uint32]gridtypes.Deployment, nc NodeClientCollection, api *apiClient) (currentDeployments map[uint32]uint64, err error) {
@@ -272,7 +332,7 @@ func deployConsistentDeployments(ctx context.Context, oldDeployments map[uint32]
 			err = waitDeployment(ctx, client, dl.ContractID, dl.Version)
 
 			if err != nil {
-				return currentDeployments, errors.Wrap(err, "error waiting deployment")
+				return currentDeployments, err
 			}
 		}
 	}
@@ -356,7 +416,7 @@ func deployConsistentDeployments(ctx context.Context, oldDeployments map[uint32]
 
 			err = waitDeployment(ctx, client, dl.ContractID, dl.Version)
 			if err != nil {
-				return currentDeployments, errors.Wrap(err, "error waiting deployment")
+				return currentDeployments, err
 			}
 		}
 	}

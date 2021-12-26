@@ -133,11 +133,11 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 		err = errors.New("key_type must be one of ed25519 and sr25519")
 	}
 	if err != nil {
-		return nil, diag.FromErr(errors.Wrap(err, "error getting identity"))
+		return nil, diagsFromErr(errors.Wrap(err, "error getting identity"))
 	}
 	sk, err := identity.KeyPair()
 	if err != nil {
-		return nil, diag.FromErr(errors.Wrap(err, "error getting user secret"))
+		return nil, diagsFromErr(errors.Wrap(err, "error getting user secret"))
 	}
 	apiClient.identity = identity
 	network := d.Get("network").(string)
@@ -158,14 +158,14 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	log.Printf("substrate url: %s %s\n", apiClient.substrate_url, substrate_url)
 	apiClient.sub, err = substrate.NewSubstrate(apiClient.substrate_url)
 	if err != nil {
-		return nil, diag.FromErr(errors.Wrap(err, "couldn't create substrate client"))
+		return nil, diagsFromErr(errors.Wrap(err, "couldn't create substrate client"))
 	}
 	apiClient.use_rmb_proxy = d.Get("use_rmb_proxy").(bool)
 
 	apiClient.rmb_redis_url = d.Get("rmb_redis_url").(string)
 
 	if err := validateAccount(&apiClient); err != nil {
-		return nil, diag.FromErr(err)
+		return nil, diagsFromErr(err)
 	}
 	pub := sk.Public()
 	twin, err := apiClient.sub.GetTwinByPubKey(pub)
@@ -173,7 +173,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 		return nil, diag.Errorf("no twin associated with the accound with the given mnemonics")
 	}
 	if err != nil {
-		return nil, diag.FromErr(errors.Wrap(err, "failed to get twin for the given mnemonics"))
+		return nil, diagsFromErr(errors.Wrap(err, "failed to get twin for the given mnemonics"))
 	}
 	apiClient.twin_id = twin
 	var cl rmb.Client
@@ -184,11 +184,11 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	}
 	apiClient.grid_client = gridproxy.NewGridProxyClient(apiClient.rmb_proxy_url)
 	if err != nil {
-		return nil, diag.FromErr(errors.Wrap(err, "couldn't create rmb client"))
+		return nil, diagsFromErr(errors.Wrap(err, "couldn't create rmb client"))
 	}
 	apiClient.rmb = cl
 	if err := preValidate(&apiClient); err != nil {
-		return nil, diag.FromErr(err)
+		return nil, diagsFromErr(err)
 	}
 	return &apiClient, nil
 }

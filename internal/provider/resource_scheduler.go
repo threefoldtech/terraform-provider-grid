@@ -221,7 +221,7 @@ func schedule(ctx context.Context, d *schema.ResourceData, meta interface{}) dia
 	go startRmbIfNeeded(ctx, apiClient)
 	nodes, err := getNodes(apiClient.rmb_proxy_url)
 	if err != nil {
-		return diag.FromErr(err)
+		return diagsFromErr(err)
 	}
 	rand.Seed(time.Now().UnixNano())
 	rand.Shuffle(len(nodes), func(i, j int) { nodes[i], nodes[j] = nodes[j], nodes[i] })
@@ -270,7 +270,7 @@ func schedule(ctx context.Context, d *schema.ResourceData, meta interface{}) dia
 		}
 		if _, ok := assignment[r.Name]; !ok {
 			json.NewEncoder(log.Writer()).Encode(r)
-			return diag.FromErr(fmt.Errorf("didn't find a suitable node"))
+			return diagsFromErr(fmt.Errorf("didn't find a suitable node"))
 		}
 	}
 	d.Set("nodes", assignment)

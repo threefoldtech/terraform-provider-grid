@@ -917,24 +917,24 @@ func (dep *DeploymentDeployer) storeState(d *schema.ResourceData) {
 func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	err := validate(d)
 	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "error validating deployment"))
+		return diagsFromErr(errors.Wrap(err, "error validating deployment"))
 	}
 	apiClient := meta.(*apiClient)
 	if err := validateAccountMoneyForExtrinsics(apiClient); err != nil {
-		return diag.FromErr(err)
+		return diagsFromErr(err)
 	}
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := getDeploymentDeployer(d, apiClient)
 	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
+		return diagsFromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
 	var diags diag.Diagnostics
 	deploymentID, err := deployer.Deploy(ctx)
 	if err != nil {
-		return diag.FromErr(err)
+		return diagsFromErr(err)
 	}
 	deployer.storeState(d)
 	d.SetId(strconv.FormatUint(uint64(deploymentID), 10))
@@ -1039,7 +1039,7 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 	var diags diag.Diagnostics
 	sub, err := substrate.NewSubstrate(apiClient.substrate_url)
 	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "error getting substrate client"))
+		return diagsFromErr(errors.Wrap(err, "error getting substrate client"))
 	}
 	nodeID := uint32(d.Get("node").(int))
 	nodeInfo, err := sub.GetNode(nodeID)
@@ -1171,27 +1171,27 @@ func validate(d *schema.ResourceData) error {
 func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	err := validate(d)
 	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "error validating deployment"))
+		return diagsFromErr(errors.Wrap(err, "error validating deployment"))
 	}
 	if d.HasChange("node") {
-		return diag.FromErr(errors.New("changing node is not supported, you need to destroy the deployment and reapply it again but you will lose your old data"))
+		return diagsFromErr(errors.New("changing node is not supported, you need to destroy the deployment and reapply it again but you will lose your old data"))
 	}
 	apiClient := meta.(*apiClient)
 	if err := validateAccountMoneyForExtrinsics(apiClient); err != nil {
-		return diag.FromErr(err)
+		return diagsFromErr(err)
 	}
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := getDeploymentDeployer(d, apiClient)
 	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
+		return diagsFromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
 	var diags diag.Diagnostics
 	_, err = deployer.Deploy(ctx)
 	if err != nil {
-		return diag.FromErr(err)
+		return diagsFromErr(err)
 	}
 	deployer.storeState(d)
 	return diags
@@ -1214,20 +1214,20 @@ func (d *DeploymentDeployer) Cancel(ctx context.Context) error {
 func resourceDeploymentDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	apiClient := meta.(*apiClient)
 	if err := validateAccountMoneyForExtrinsics(apiClient); err != nil {
-		return diag.FromErr(err)
+		return diagsFromErr(err)
 	}
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := getDeploymentDeployer(d, apiClient)
 	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
+		return diagsFromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
 	var diags diag.Diagnostics
 	err = deployer.Cancel(ctx)
 	if err != nil {
-		diags = diag.FromErr(err)
+		diags = diagsFromErr(err)
 	}
 	if err == nil {
 		d.SetId("")

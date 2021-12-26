@@ -668,18 +668,18 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := NewNetworkDeployer(ctx, d, apiClient)
 	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
+		return diagsFromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 	if err := deployer.Validate(ctx); err != nil {
-		return diag.FromErr(err)
+		return diagsFromErr(err)
 	}
 	err = deployer.Deploy(ctx)
 	if err != nil {
 		if len(deployer.NodeDeploymentID) != 0 {
 			// failed to deploy and failed to revert, store the current state locally
-			diags = diag.FromErr(err)
+			diags = diagsFromErr(err)
 		} else {
-			return diag.FromErr(err)
+			return diagsFromErr(err)
 		}
 	}
 	deployer.storeState(d)
@@ -696,19 +696,19 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := NewNetworkDeployer(ctx, d, apiClient)
 	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
+		return diagsFromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
 	if err := deployer.Validate(ctx); err != nil {
-		return diag.FromErr(err)
+		return diagsFromErr(err)
 	}
 	if err := deployer.invalidateBrokenAttributes(); err != nil {
-		return diag.FromErr(errors.Wrap(err, "couldn't invalidate broken attributes"))
+		return diagsFromErr(errors.Wrap(err, "couldn't invalidate broken attributes"))
 	}
 
 	err = deployer.Deploy(ctx)
 	if err != nil {
-		diags = diag.FromErr(err)
+		diags = diagsFromErr(err)
 	}
 	deployer.storeState(d)
 	return diags
@@ -723,11 +723,11 @@ func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta inter
 	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := NewNetworkDeployer(ctx, d, apiClient)
 	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
+		return diagsFromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
 	if err := deployer.invalidateBrokenAttributes(); err != nil {
-		return diag.FromErr(errors.Wrap(err, "couldn't invalidate broken attributes"))
+		return diagsFromErr(errors.Wrap(err, "couldn't invalidate broken attributes"))
 	}
 
 	err = deployer.readNodesConfig(ctx)
@@ -751,11 +751,11 @@ func resourceNetworkDelete(ctx context.Context, d *schema.ResourceData, meta int
 	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := NewNetworkDeployer(ctx, d, apiClient)
 	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
+		return diagsFromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 	err = deployer.Cancel(ctx)
 	if err != nil {
-		diags = diag.FromErr(err)
+		diags = diagsFromErr(err)
 	}
 	if err == nil {
 		d.SetId("")

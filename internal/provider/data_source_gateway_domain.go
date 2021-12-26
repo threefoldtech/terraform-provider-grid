@@ -46,16 +46,16 @@ func dataSourceGatewayRead(ctx context.Context, d *schema.ResourceData, meta int
 	ncPool := NewNodeClient(apiClient.sub, apiClient.rmb)
 	nodeClient, err := ncPool.getNodeClient(nodeID)
 	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "failed to get node client"))
+		return diagsFromErr(errors.Wrap(err, "failed to get node client"))
 	}
 	sub, cancel := context.WithTimeout(ctx, time.Minute)
 	defer cancel()
 	cfg, err := nodeClient.NetworkGetPublicConfig(sub)
 	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "couldn't get node public config"))
+		return diagsFromErr(errors.Wrap(err, "couldn't get node public config"))
 	}
 	if cfg.Domain == "" {
-		return diag.FromErr(errors.New("node doesn't contain a domain in its public config"))
+		return diagsFromErr(errors.New("node doesn't contain a domain in its public config"))
 	}
 	fqdn := fmt.Sprintf("%s.%s", name, cfg.Domain)
 	d.Set("fqdn", fqdn)
