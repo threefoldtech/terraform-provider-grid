@@ -23,7 +23,7 @@ import (
  *				t = t.AppendErr(err)
  *			}
  *		}
- *		return 0, t.AsNullIfEmpty()
+ *		return 0, t.AsError()
  *	}
  */
 
