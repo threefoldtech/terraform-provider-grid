@@ -215,9 +215,6 @@ func (k *GatewayNameDeployer) Deploy(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "couldn't generate deployments data")
 	}
-	if err := ValidateDeployments(ctx, k.APIClient, newDeployments); err != nil {
-		return err
-	}
 	cid, err := k.ensureNameContract(ctx, k.Name)
 	if err != nil {
 		return err

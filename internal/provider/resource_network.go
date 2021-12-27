@@ -632,9 +632,6 @@ func (k *NetworkDeployer) Deploy(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "couldn't generate deployments data")
 	}
-	if err := ValidateDeployments(ctx, k.APIClient, newDeployments); err != nil {
-		return err
-	}
 	log.Printf("new deployments")
 	printDeployments(newDeployments)
 	currentDeployments, err := deployDeployments(ctx, k.NodeDeploymentID, newDeployments, k.ncPool, k.APIClient, true)

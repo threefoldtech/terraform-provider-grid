@@ -829,9 +829,6 @@ func (d *DeploymentDeployer) Deploy(ctx context.Context) (uint32, error) {
 	if err != nil {
 		return 0, errors.Wrap(err, "couldn't generate deployments data")
 	}
-	if err := ValidateDeployments(ctx, d.APIClient, newDeployments); err != nil {
-		return 0, err
-	}
 	oldDeployments, err := d.GetOldDeployments(ctx)
 	if err != nil {
 		return 0, errors.Wrap(err, "couldn't get old deployments data")
