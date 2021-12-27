@@ -453,7 +453,9 @@ func constructPublicIPWorkload(workloadName string) gridtypes.Workload {
 		Version: 0,
 		Name:    gridtypes.Name(workloadName),
 		Type:    zos.PublicIPType,
-		Data:    gridtypes.MustMarshal(zos.PublicIP{}),
+		Data: gridtypes.MustMarshal(zos.PublicIP{
+			V4: true,
+		}),
 	}
 }
 
