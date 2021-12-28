@@ -80,12 +80,13 @@ type NodeIDResult struct {
 }
 
 type Farm struct {
-	Name            string `json:"name"`
-	FarmID          int    `json:"farmId"`
-	TwinID          int    `json:"twinId"`
-	Version         int    `json:"version"`
-	PricingPolicyID int    `json:"pricingPolicyId"`
-	StellarAddress  string `json:"stellarAddress"`
+	Name            string     `json:"name"`
+	FarmID          int        `json:"farmId"`
+	TwinID          int        `json:"twinId"`
+	Version         int        `json:"version"`
+	PricingPolicyID int        `json:"pricingPolicyId"`
+	StellarAddress  string     `json:"stellarAddress"`
+	PublicIps       []PublicIP `json:"publicIps"`
 }
 
 type PublicIP struct {
@@ -97,8 +98,7 @@ type PublicIP struct {
 }
 
 type farmData struct {
-	Farms     []Farm     `json:"farms"`
-	PublicIps []PublicIP `json:"publicIps"`
+	Farms []Farm `json:"farms"`
 }
 
 // FarmResult is to unmarshal json in it

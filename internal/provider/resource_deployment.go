@@ -721,7 +721,7 @@ func (d *DeploymentDeployer) GetOldDeployments(ctx context.Context) (map[uint32]
 
 		deploymentID, err := strconv.ParseUint(d.Id, 10, 64)
 		if err != nil {
-			return nil, errors.Wrap(err, "couldn't get node client")
+			return nil, errors.Wrapf(err, "couldn't parse deployment id %s", d.Id)
 		}
 		deployments[d.Node] = deploymentID
 	}
