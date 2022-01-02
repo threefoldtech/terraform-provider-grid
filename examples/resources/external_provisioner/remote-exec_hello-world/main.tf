@@ -23,8 +23,8 @@ resource "grid_deployment" "d1" {
   ip_range = lookup(grid_network.net1.nodes_ip_range, 1, "")
   vms {
     name = "vm1"
-    flist = "https://hub.grid.tf/samehabouelsaad.3bot/abouelsaad-centos-8-scp.flist"
-    entrypoint = "/entrypoint.sh"
+    flist = "https://hub.grid.tf/samehabouelsaad.3bot/abouelsaad-grid3_ubuntu20.04-latest.flist"
+    entrypoint = "/init.sh"
     cpu = 2 
     memory = 1024
     env_vars = {
