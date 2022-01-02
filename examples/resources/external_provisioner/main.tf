@@ -10,7 +10,7 @@ provider "grid" {
 }
 
 resource "grid_network" "net1" {
-    nodes = [1]
+    nodes = [7]
     ip_range = "10.1.0.0/24"
     name = "network"
     description = "newer network"
@@ -18,13 +18,13 @@ resource "grid_network" "net1" {
 }
  
 resource "grid_deployment" "d1" {
-  node = 1
+  node = 7
   network_name = grid_network.net1.name
-  ip_range = lookup(grid_network.net1.nodes_ip_range, 1, "")
+  ip_range = lookup(grid_network.net1.nodes_ip_range, 7, "")
   vms {
     name = "vm1"
-    flist = "https://hub.grid.tf/samehabouelsaad.3bot/abouelsaad-centos-8-scp.flist"
-    entrypoint = "/entrypoint.sh"
+    flist = "https://hub.grid.tf/samehabouelsaad.3bot/abouelsaad-grid3_ubuntu20.04-latest.flist"
+    entrypoint = "/init.sh"
     cpu = 2 
     memory = 1024
     env_vars = {
