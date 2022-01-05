@@ -82,6 +82,11 @@ func resourceKubernetes() *schema.Resource {
 							Optional:    true,
 							Description: "true to enable public ip reservation",
 						},
+						"publicip6": {
+							Type:        schema.TypeBool,
+							Optional:    true,
+							Description: "true to enable public ipv6 reservation",
+						},
 						"flist": {
 							Type:     schema.TypeString,
 							Optional: true,
@@ -91,6 +96,11 @@ func resourceKubernetes() *schema.Resource {
 							Type:        schema.TypeString,
 							Computed:    true,
 							Description: "The reserved public IP",
+						},
+						"computedip6": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "The reserved public IPv6",
 						},
 						"ip": {
 							Type:        schema.TypeString,
@@ -155,6 +165,16 @@ func resourceKubernetes() *schema.Resource {
 							Computed:    true,
 							Description: "The reserved public ip",
 						},
+						"publicip6": {
+							Type:        schema.TypeBool,
+							Optional:    true,
+							Description: "true to enable public ipv6 reservation",
+						},
+						"computedip6": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "The reserved public ipv6",
+						},
 						"ip": {
 							Type:        schema.TypeString,
 							Computed:    true,
@@ -189,17 +209,19 @@ func resourceKubernetes() *schema.Resource {
 }
 
 type K8sNodeData struct {
-	Name       string
-	Node       uint32
-	DiskSize   int
-	PublicIP   bool
-	Planetary  bool
-	Flist      string
-	ComputedIP string
-	YggIP      string
-	IP         string
-	Cpu        int
-	Memory     int
+	Name        string
+	Node        uint32
+	DiskSize    int
+	PublicIP    bool
+	PublicIP6   bool
+	Planetary   bool
+	Flist       string
+	ComputedIP  string
+	ComputedIP6 string
+	YggIP       string
+	IP          string
+	Cpu         int
+	Memory      int
 }
 
 type K8sDeployer struct {
@@ -220,21 +242,23 @@ type K8sDeployer struct {
 
 func NewK8sNodeData(m map[string]interface{}) K8sNodeData {
 	return K8sNodeData{
-		Name:       m["name"].(string),
-		Node:       uint32(m["node"].(int)),
-		DiskSize:   m["disk_size"].(int),
-		PublicIP:   m["publicip"].(bool),
-		Planetary:  m["planetary"].(bool),
-		Flist:      m["flist"].(string),
-		ComputedIP: m["computedip"].(string),
-		YggIP:      m["ygg_ip"].(string),
-		IP:         m["ip"].(string),
-		Cpu:        m["cpu"].(int),
-		Memory:     m["memory"].(int),
+		Name:        m["name"].(string),
+		Node:        uint32(m["node"].(int)),
+		DiskSize:    m["disk_size"].(int),
+		PublicIP:    m["publicip"].(bool),
+		PublicIP6:   m["publicip6"].(bool),
+		Planetary:   m["planetary"].(bool),
+		Flist:       m["flist"].(string),
+		ComputedIP:  m["computedip"].(string),
+		ComputedIP6: m["computedip6"].(string),
+		YggIP:       m["ygg_ip"].(string),
+		IP:          m["ip"].(string),
+		Cpu:         m["cpu"].(int),
+		Memory:      m["memory"].(int),
 	}
 }
 
-func NewK8sNodeDataFromWorkload(w gridtypes.Workload, nodeID uint32, diskSize int, computedIP string) (K8sNodeData, error) {
+func NewK8sNodeDataFromWorkload(w gridtypes.Workload, nodeID uint32, diskSize int, computedIP string, computedIP6 string) (K8sNodeData, error) {
 	var k K8sNodeData
 	data, err := w.WorkloadData()
 	if err != nil {
@@ -247,17 +271,19 @@ func NewK8sNodeDataFromWorkload(w gridtypes.Workload, nodeID uint32, diskSize in
 		return k, err
 	}
 	k = K8sNodeData{
-		Name:       string(w.Name),
-		Node:       nodeID,
-		DiskSize:   diskSize,
-		PublicIP:   !d.Network.PublicIP.IsEmpty(),
-		Planetary:  result.YggIP != "",
-		Flist:      d.FList,
-		ComputedIP: computedIP,
-		YggIP:      result.YggIP,
-		IP:         d.Network.Interfaces[0].IP.String(),
-		Cpu:        int(d.ComputeCapacity.CPU),
-		Memory:     int(d.ComputeCapacity.Memory / gridtypes.Megabyte),
+		Name:        string(w.Name),
+		Node:        nodeID,
+		DiskSize:    diskSize,
+		PublicIP:    computedIP != "",
+		PublicIP6:   computedIP6 != "",
+		Planetary:   result.YggIP != "",
+		Flist:       d.FList,
+		ComputedIP:  computedIP,
+		ComputedIP6: computedIP6,
+		YggIP:       result.YggIP,
+		IP:          d.Network.Interfaces[0].IP.String(),
+		Cpu:         int(d.ComputeCapacity.CPU),
+		Memory:      int(d.ComputeCapacity.Memory / gridtypes.Megabyte),
 	}
 	return k, nil
 }
@@ -321,9 +347,11 @@ func (k *K8sNodeData) Dictify() map[string]interface{} {
 	res["node"] = int(k.Node)
 	res["disk_size"] = k.DiskSize
 	res["publicip"] = k.PublicIP
+	res["publicip6"] = k.PublicIP6
 	res["planetary"] = k.Planetary
 	res["flist"] = k.Flist
 	res["computedip"] = k.ComputedIP
+	res["computedip6"] = k.ComputedIP6
 	res["ygg_ip"] = k.YggIP
 	res["ip"] = k.IP
 	res["cpu"] = k.Cpu
@@ -534,6 +562,7 @@ func (k *K8sDeployer) updateState(ctx context.Context, currentDeploymentIDs map[
 	}
 	printDeployments(currentDeployments)
 	publicIPs := make(map[string]string)
+	publicIP6s := make(map[string]string)
 	yggIPs := make(map[string]string)
 	privateIPs := make(map[string]string)
 	for _, dl := range currentDeployments {
@@ -545,6 +574,7 @@ func (k *K8sDeployer) updateState(ctx context.Context, currentDeploymentIDs map[
 					continue
 				}
 				publicIPs[string(w.Name)] = d.IP
+				publicIP6s[string(w.Name)] = d.IPv6
 			} else if w.Type == zos.ZMachineType {
 				d, err := w.WorkloadData()
 				if err != nil {
@@ -562,43 +592,17 @@ func (k *K8sDeployer) updateState(ctx context.Context, currentDeploymentIDs map[
 		}
 	}
 	masterIPName := fmt.Sprintf("%sip", k.Master.Name)
-	if ip, ok := publicIPs[masterIPName]; ok {
-		k.Master.ComputedIP = ip
-	} else {
-		k.Master.ComputedIP = ""
-	}
-	private, ok := privateIPs[string(k.Master.Name)]
-	if ok {
-		k.Master.IP = private
-	} else {
-		k.Master.IP = ""
-	}
-	ygg, ok := yggIPs[string(k.Master.Name)]
-	if ok {
-		k.Master.YggIP = ygg
-	} else {
-		k.Master.YggIP = ""
-	}
+	k.Master.ComputedIP = publicIPs[masterIPName]
+	k.Master.ComputedIP6 = publicIP6s[masterIPName]
+	k.Master.IP = privateIPs[string(k.Master.Name)]
+	k.Master.YggIP = yggIPs[string(k.Master.Name)]
 
 	for idx, w := range k.Workers {
 		workerIPName := fmt.Sprintf("%sip", w.Name)
-		if ip, ok := publicIPs[workerIPName]; ok {
-			k.Workers[idx].ComputedIP = ip
-		} else {
-			k.Workers[idx].ComputedIP = ""
-		}
-		private, ok := privateIPs[string(w.Name)]
-		if ok {
-			k.Workers[idx].IP = private
-		} else {
-			k.Workers[idx].IP = ""
-		}
-		ygg, ok := yggIPs[string(w.Name)]
-		if ok {
-			k.Workers[idx].YggIP = ygg
-		} else {
-			k.Workers[idx].YggIP = ""
-		}
+		k.Workers[idx].ComputedIP = publicIPs[workerIPName]
+		k.Workers[idx].ComputedIP = publicIP6s[workerIPName]
+		k.Workers[idx].IP = privateIPs[string(w.Name)]
+		k.Workers[idx].YggIP = yggIPs[string(w.Name)]
 	}
 	log.Printf("Current state after updatestate %v\n", k)
 	return nil
@@ -667,9 +671,11 @@ func (k *K8sDeployer) updateFromRemote(ctx context.Context) error {
 	workloadNodeID := make(map[string]uint32)
 	workloadDiskSize := make(map[string]int)
 	workloadComputedIP := make(map[string]string)
+	workloadComputedIP6 := make(map[string]string)
 	workloadObj := make(map[string]gridtypes.Workload)
 
 	publicIPs := make(map[string]string)
+	publicIP6s := make(map[string]string)
 	diskSize := make(map[string]int)
 	for node, dl := range currentDeployments {
 		for _, w := range dl.Workloads {
@@ -684,6 +690,7 @@ func (k *K8sDeployer) updateFromRemote(ctx context.Context) error {
 					continue
 				}
 				publicIPs[string(w.Name)] = d.IP
+				publicIP6s[string(w.Name)] = d.IPv6
 			} else if w.Type == zos.ZMountType {
 				d, err := w.WorkloadData()
 				if err != nil {
@@ -702,6 +709,7 @@ func (k *K8sDeployer) updateFromRemote(ctx context.Context) error {
 				diskKey := fmt.Sprintf("%sdisk", w.Name)
 				workloadDiskSize[string(w.Name)] = diskSize[diskKey]
 				workloadComputedIP[string(w.Name)] = publicIPs[publicIPKey]
+				workloadComputedIP6[string(w.Name)] = publicIP6s[publicIPKey]
 			}
 		}
 	}
@@ -712,13 +720,11 @@ func (k *K8sDeployer) updateFromRemote(ctx context.Context) error {
 		k.Master = nil
 	} else {
 		masterWorkload := workloadObj[k.Master.Name]
-		masterIP, ipExists := workloadComputedIP[k.Master.Name]
-		if !ipExists {
-			masterIP = ""
-		}
+		masterIP := workloadComputedIP[k.Master.Name]
+		masterIP6 := workloadComputedIP6[k.Master.Name]
 		masterDiskSize := workloadDiskSize[k.Master.Name]
 
-		m, err := NewK8sNodeDataFromWorkload(masterWorkload, masterNodeID, masterDiskSize, masterIP)
+		m, err := NewK8sNodeDataFromWorkload(masterWorkload, masterNodeID, masterDiskSize, masterIP, masterIP6)
 		if err != nil {
 			return errors.Wrap(err, "failed to get master data from workload")
 		}
@@ -735,12 +741,11 @@ func (k *K8sDeployer) updateFromRemote(ctx context.Context) error {
 		}
 		delete(workloadNodeID, w.Name)
 		workerWorkload := workloadObj[w.Name]
-		workerIP, ipExists := workloadComputedIP[w.Name]
-		if !ipExists {
-			workerIP = ""
-		}
+		workerIP := workloadComputedIP[w.Name]
+		workerIP6 := workloadComputedIP6[w.Name]
+
 		workerDiskSize := workloadDiskSize[w.Name]
-		w, err := NewK8sNodeDataFromWorkload(workerWorkload, workerNodeID, workerDiskSize, workerIP)
+		w, err := NewK8sNodeDataFromWorkload(workerWorkload, workerNodeID, workerDiskSize, workerIP, workerIP6)
 		if err != nil {
 			return errors.Wrap(err, "failed to get worker data from workload")
 		}
@@ -753,12 +758,10 @@ func (k *K8sDeployer) updateFromRemote(ctx context.Context) error {
 			continue
 		}
 		workerWorkload := workloadObj[name]
-		workerIP, ipExists := workloadComputedIP[name]
-		if !ipExists {
-			workerIP = ""
-		}
+		workerIP := workloadComputedIP[name]
+		workerIP6 := workloadComputedIP6[name]
 		workerDiskSize := workloadDiskSize[name]
-		w, err := NewK8sNodeDataFromWorkload(workerWorkload, workerNodeID, workerDiskSize, workerIP)
+		w, err := NewK8sNodeDataFromWorkload(workerWorkload, workerNodeID, workerDiskSize, workerIP, workerIP6)
 		if err != nil {
 			return errors.Wrap(err, "failed to get worker data from workload")
 		}
@@ -788,9 +791,9 @@ func (k *K8sNodeData) GenerateK8sWorkload(deployer *K8sDeployer, masterIP string
 	}
 	workloads = append(workloads, diskWorkload)
 	publicIPName := ""
-	if k.PublicIP {
+	if k.PublicIP || k.PublicIP6 {
 		publicIPName = fmt.Sprintf("%sip", k.Name)
-		workloads = append(workloads, constructPublicIPWorkload(publicIPName))
+		workloads = append(workloads, constructPublicIPWorkload(publicIPName, k.PublicIP, k.PublicIP6))
 	}
 	envVars := map[string]string{
 		"SSH_KEY":           deployer.SSHKey,

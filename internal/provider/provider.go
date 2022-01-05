@@ -45,10 +45,10 @@ func New(version string) func() *schema.Provider {
 		p := &schema.Provider{
 			Schema: map[string]*schema.Schema{
 				"mnemonics": {
-					Type:        schema.TypeString,
-					Required:    true,
-					Sensitive:   true,
-					DefaultFunc: schema.EnvDefaultFunc("MNEMONICS", nil),
+					Type:      schema.TypeString,
+					Required:  true,
+					Sensitive: true,
+					// DefaultFunc: schema.EnvDefaultFunc("MNEMONICS", nil),
 				},
 				"key_type": {
 					Type:        schema.TypeString,

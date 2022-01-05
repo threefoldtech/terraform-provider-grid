@@ -146,10 +146,20 @@ func resourceDeployment() *schema.Resource {
 							Optional:    true,
 							Description: "true to enable public ip reservation",
 						},
+						"publicip6": {
+							Type:        schema.TypeBool,
+							Optional:    true,
+							Description: "true to enable public ipv6 reservation",
+						},
 						"computedip": {
 							Type:        schema.TypeString,
 							Computed:    true,
 							Description: "The reserved public ip",
+						},
+						"computedip6": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "The reserved public ipv6",
 						},
 						"ip": {
 							Type:        schema.TypeString,
@@ -403,8 +413,10 @@ type VM struct {
 	Name        string
 	Flist       string
 	PublicIP    bool
+	PublicIP6   bool
 	Planetary   bool
 	ComputedIP  string
+	ComputedIP6 string
 	YggIP       string
 	IP          string
 	Description string
@@ -448,19 +460,21 @@ func getFreeIP(ipRange gridtypes.IPNet, usedIPs []string) (string, error) {
 	return "", errors.New("all ips are used")
 }
 
-func constructPublicIPWorkload(workloadName string) gridtypes.Workload {
+func constructPublicIPWorkload(workloadName string, ipv4 bool, ipv6 bool) gridtypes.Workload {
 	return gridtypes.Workload{
 		Version: 0,
 		Name:    gridtypes.Name(workloadName),
 		Type:    zos.PublicIPType,
 		Data: gridtypes.MustMarshal(zos.PublicIP{
-			V4: true,
+			V4: ipv4,
+			V6: ipv6,
 		}),
 	}
 }
 
 type PubIPData struct {
 	IP      string `json:"ip"`
+	IPv6    string `json:"ip6"`
 	Gateway string `json:"gateway"`
 }
 
@@ -481,8 +495,10 @@ func GetVMData(vm map[string]interface{}) VM {
 	return VM{
 		Name:        vm["name"].(string),
 		PublicIP:    vm["publicip"].(bool),
+		PublicIP6:   vm["publicip6"].(bool),
 		Flist:       vm["flist"].(string),
 		ComputedIP:  vm["computedip"].(string),
+		ComputedIP6: vm["computedip6"].(string),
 		YggIP:       vm["ygg_ip"].(string),
 		Planetary:   vm["planetary"].(bool),
 		IP:          vm["ip"].(string),
@@ -622,9 +638,9 @@ func (z *ZDB) GenerateZDBWorkload() gridtypes.Workload {
 func (vm *VM) GenerateVMWorkload(deployer *DeploymentDeployer) []gridtypes.Workload {
 	workloads := make([]gridtypes.Workload, 0)
 	publicIPName := ""
-	if vm.PublicIP {
+	if vm.PublicIP || vm.PublicIP6 {
 		publicIPName = fmt.Sprintf("%sip", vm.Name)
-		workloads = append(workloads, constructPublicIPWorkload(publicIPName))
+		workloads = append(workloads, constructPublicIPWorkload(publicIPName, vm.PublicIP, vm.PublicIP6))
 	}
 	mounts := make([]zos.MachineMount, 0)
 	for _, mount := range vm.Mounts {
@@ -736,6 +752,7 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, currentDeploymentI
 	}
 	printDeployments(currentDeployments)
 	publicIPs := make(map[string]string)
+	publicIP6s := make(map[string]string)
 	yggIPs := make(map[string]string)
 	privateIPs := make(map[string]string)
 	zdbIPs := make(map[string][]string)
@@ -752,6 +769,7 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, currentDeploymentI
 					continue
 				}
 				publicIPs[string(w.Name)] = d.IP
+				publicIP6s[string(w.Name)] = d.IPv6
 			} else if w.Type == zos.ZMachineType {
 				d, err := w.WorkloadData()
 				if err != nil {
@@ -781,27 +799,13 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, currentDeploymentI
 	}
 	for idx, vm := range d.VMs {
 		vmIPName := fmt.Sprintf("%sip", vm.Name)
-		if ip, ok := publicIPs[vmIPName]; ok {
-			d.VMs[idx].ComputedIP = ip
-			d.VMs[idx].PublicIP = true
-		} else {
-			d.VMs[idx].ComputedIP = ""
-			d.VMs[idx].PublicIP = false
-		}
-		private, ok := privateIPs[string(vm.Name)]
-		if ok {
-			d.VMs[idx].IP = private
-		} else {
-			d.VMs[idx].IP = ""
-		}
-		ygg, ok := yggIPs[string(vm.Name)]
-		if ok {
-			d.VMs[idx].YggIP = ygg
-			d.VMs[idx].Planetary = true
-		} else {
-			d.VMs[idx].YggIP = ""
-			d.VMs[idx].Planetary = false
-		}
+		d.VMs[idx].ComputedIP = publicIPs[vmIPName]
+		d.VMs[idx].PublicIP = publicIPs[vmIPName] != ""
+		d.VMs[idx].ComputedIP6 = publicIP6s[vmIPName]
+		d.VMs[idx].PublicIP6 = publicIP6s[vmIPName] != ""
+		d.VMs[idx].IP = privateIPs[string(vm.Name)]
+		d.VMs[idx].YggIP = yggIPs[string(vm.Name)]
+		d.VMs[idx].Planetary = yggIPs[string(vm.Name)] != ""
 	}
 	for idx, zdb := range d.ZDBs {
 		if ips, ok := zdbIPs[zdb.Name]; ok {
@@ -856,9 +860,11 @@ func (vm *VM) Dictify() map[string]interface{} {
 	res["name"] = vm.Name
 	res["description"] = vm.Description
 	res["publicip"] = vm.PublicIP
+	res["publicip6"] = vm.PublicIP6
 	res["planetary"] = vm.Planetary
 	res["flist"] = vm.Flist
 	res["computedip"] = vm.ComputedIP
+	res["computedip6"] = vm.ComputedIP6
 	res["ygg_ip"] = vm.YggIP
 	res["ip"] = vm.IP
 	res["mounts"] = mounts
@@ -1083,6 +1089,7 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 	zdbs := make([]map[string]interface{}, 0)
 	vms := make([]map[string]interface{}, 0)
 	publicIPs := make(map[string]string)
+	publicIP6s := make(map[string]string)
 	for _, workload := range deployment.Workloads {
 		if workload.Type == zos.ZMountType {
 			flattened, err := flattenDiskData(workload)
@@ -1127,6 +1134,7 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 				continue
 			}
 			publicIPs[string(workload.Name)] = ipData.IP
+			publicIP6s[string(workload.Name)] = ipData.IPv6
 		} else if workload.Type == zos.QuantumSafeFSType {
 			q, err := NewQSFSFromWorkload(&workload)
 			if err != nil {
@@ -1139,13 +1147,10 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 
 	for _, vm := range vms {
 		vmIPName := fmt.Sprintf("%sip", vm["name"])
-		if ip, ok := publicIPs[vmIPName]; ok {
-			vm["computedip"] = ip
-			vm["publicip"] = true
-		} else {
-			vm["computedip"] = ""
-			vm["publicip"] = false
-		}
+		vm["computedip"] = publicIPs[vmIPName]
+		vm["publicip"] = vm["computedip"] != ""
+		vm["computedip6"] = publicIP6s[vmIPName]
+		vm["publicip6"] = vm["computedip6"] != ""
 	}
 
 	d.Set("vms", vms)
