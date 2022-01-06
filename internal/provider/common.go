@@ -68,7 +68,14 @@ func countDeploymentPublicIPs(dl gridtypes.Deployment) uint32 {
 	var res uint32 = 0
 	for _, wl := range dl.Workloads {
 		if wl.Type == zos.PublicIPType {
-			res++
+			data, err := wl.WorkloadData()
+			if err != nil {
+				log.Printf("couldn't parse workload data %s", err.Error())
+				continue
+			}
+			if data.(*zos.PublicIP).V4 {
+				res++
+			}
 		}
 	}
 	return res

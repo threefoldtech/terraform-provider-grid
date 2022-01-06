@@ -131,11 +131,13 @@ Optional:
 - **mounts** (Block List) Zmachine mounts, can reference QSFSs and Disks (see [below for nested schema](#nestedblock--vms--mounts))
 - **planetary** (Boolean) Enable Yggdrasil allocation
 - **publicip** (Boolean) true to enable public ip reservation
+- **publicip6** (Boolean) true to enable public ipv6 reservation
 - **rootfs_size** (Number) Rootfs size in MB
 
 Read-Only:
 
 - **computedip** (String) The reserved public ip
+- **computedip6** (String) The reserved public ipv6
 - **ygg_ip** (String) Allocated Yggdrasil IP
 
 <a id="nestedblock--vms--mounts"></a>
