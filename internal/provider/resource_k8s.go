@@ -92,6 +92,11 @@ func resourceKubernetes() *schema.Resource {
 							Optional: true,
 							Default:  "https://hub.grid.tf/ahmed_hanafy_1/ahmedhanafy725-k3s-latest.flist",
 						},
+						"flist_checksum": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "if present, the flist is rejected if it has a different hash. the flist hash can be found by append",
+						},
 						"computedip": {
 							Type:        schema.TypeString,
 							Computed:    true,
@@ -144,6 +149,11 @@ func resourceKubernetes() *schema.Resource {
 							Type:     schema.TypeString,
 							Optional: true,
 							Default:  "https://hub.grid.tf/ahmed_hanafy_1/ahmedhanafy725-k3s-latest.flist",
+						},
+						"flist_checksum": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "if present, the flist is rejected if it has a different hash. the flist hash can be found by append",
 						},
 						"disk_size": {
 							Type:        schema.TypeInt,
@@ -209,19 +219,20 @@ func resourceKubernetes() *schema.Resource {
 }
 
 type K8sNodeData struct {
-	Name        string
-	Node        uint32
-	DiskSize    int
-	PublicIP    bool
-	PublicIP6   bool
-	Planetary   bool
-	Flist       string
-	ComputedIP  string
-	ComputedIP6 string
-	YggIP       string
-	IP          string
-	Cpu         int
-	Memory      int
+	Name          string
+	Node          uint32
+	DiskSize      int
+	PublicIP      bool
+	PublicIP6     bool
+	Planetary     bool
+	Flist         string
+	FlistChecksum string
+	ComputedIP    string
+	ComputedIP6   string
+	YggIP         string
+	IP            string
+	Cpu           int
+	Memory        int
 }
 
 type K8sDeployer struct {
@@ -242,19 +253,20 @@ type K8sDeployer struct {
 
 func NewK8sNodeData(m map[string]interface{}) K8sNodeData {
 	return K8sNodeData{
-		Name:        m["name"].(string),
-		Node:        uint32(m["node"].(int)),
-		DiskSize:    m["disk_size"].(int),
-		PublicIP:    m["publicip"].(bool),
-		PublicIP6:   m["publicip6"].(bool),
-		Planetary:   m["planetary"].(bool),
-		Flist:       m["flist"].(string),
-		ComputedIP:  m["computedip"].(string),
-		ComputedIP6: m["computedip6"].(string),
-		YggIP:       m["ygg_ip"].(string),
-		IP:          m["ip"].(string),
-		Cpu:         m["cpu"].(int),
-		Memory:      m["memory"].(int),
+		Name:          m["name"].(string),
+		Node:          uint32(m["node"].(int)),
+		DiskSize:      m["disk_size"].(int),
+		PublicIP:      m["publicip"].(bool),
+		PublicIP6:     m["publicip6"].(bool),
+		Planetary:     m["planetary"].(bool),
+		Flist:         m["flist"].(string),
+		FlistChecksum: m["flist_checksum"].(string),
+		ComputedIP:    m["computedip"].(string),
+		ComputedIP6:   m["computedip6"].(string),
+		YggIP:         m["ygg_ip"].(string),
+		IP:            m["ip"].(string),
+		Cpu:           m["cpu"].(int),
+		Memory:        m["memory"].(int),
 	}
 }
 
@@ -386,6 +398,21 @@ func (k *K8sDeployer) invalidateBrokenAttributes() error {
 	k.Workers = newWorkers
 	return nil
 }
+
+func (d *K8sDeployer) retainChecksums(workers []interface{}, master interface{}) {
+	checksumMap := make(map[string]string)
+	checksumMap[d.Master.Name] = d.Master.FlistChecksum
+	for _, w := range d.Workers {
+		checksumMap[w.Name] = w.FlistChecksum
+	}
+	typed := master.(map[string]interface{})
+	typed["flist_checksum"] = checksumMap[typed["name"].(string)]
+	for _, w := range workers {
+		typed := w.(map[string]interface{})
+		typed["flist_checksum"] = checksumMap[typed["name"].(string)]
+	}
+}
+
 func (k *K8sDeployer) storeState(d *schema.ResourceData) {
 	workers := make([]interface{}, 0)
 	for _, w := range k.Workers {
@@ -397,15 +424,13 @@ func (k *K8sDeployer) storeState(d *schema.ResourceData) {
 	}
 	log.Printf("master data: %v\n", k.Master)
 	if k.Master == nil {
-		l := make([]interface{}, 0)
-		x := K8sNodeData{}
-		l = append(l, x.Dictify())
-		d.Set("master", l)
-	} else {
-		l := make([]interface{}, 0)
-		l = append(l, k.Master.Dictify())
-		d.Set("master", l)
+		k.Master = &K8sNodeData{}
 	}
+	master := k.Master.Dictify()
+	k.retainChecksums(workers, master)
+
+	l := []interface{}{master}
+	d.Set("master", l)
 	d.Set("workers", workers)
 	d.Set("token", k.Token)
 	d.Set("ssh_key", k.SSHKey)
@@ -473,6 +498,27 @@ func (k *K8sDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[u
 	return deployments, nil
 }
 
+func (d *K8sDeployer) validateChecksums() error {
+	nodes := append(d.Workers, *d.Master)
+	for _, vm := range nodes {
+		if vm.FlistChecksum == "" {
+			continue
+		}
+		checksum, err := getFlistChecksum(vm.Flist)
+		if err != nil {
+			return errors.Wrapf(err, "couldn't get flist %s hash", vm.Flist)
+		}
+		if vm.FlistChecksum != checksum {
+			return fmt.Errorf("passed checksum %s of %s doesn't match %s returned from %s",
+				vm.FlistChecksum,
+				vm.Name,
+				checksum,
+				flistChecksumURL(vm.Flist),
+			)
+		}
+	}
+	return nil
+}
 func (k *K8sDeployer) GetOldDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
 	return getDeploymentObjects(ctx, k.NodeDeploymentID, k.ncPool)
 }
@@ -523,6 +569,9 @@ func (k *K8sDeployer) Validate(ctx context.Context) error {
 }
 
 func (k *K8sDeployer) Deploy(ctx context.Context) error {
+	if err := k.validateChecksums(); err != nil {
+		return err
+	}
 	newDeployments, err := k.GenerateVersionlessDeployments(ctx)
 	if err != nil {
 		return errors.Wrap(err, "couldn't generate deployments data")
@@ -661,7 +710,6 @@ func (k *K8sDeployer) updateFromRemote(ctx context.Context) error {
 		}
 	}
 
-	log.Printf("calling updateFromRemote1")
 	nodeDeploymentID := make(map[uint32]uint64)
 	for node, dl := range currentDeployments {
 		nodeDeploymentID[node] = dl.ContractID
@@ -701,7 +749,6 @@ func (k *K8sDeployer) updateFromRemote(ctx context.Context) error {
 			}
 		}
 	}
-	log.Printf("calling updateFromRemote2")
 	for _, dl := range currentDeployments {
 		for _, w := range dl.Workloads {
 			if w.Type == zos.ZMachineType {
@@ -713,7 +760,6 @@ func (k *K8sDeployer) updateFromRemote(ctx context.Context) error {
 			}
 		}
 	}
-	log.Printf("calling updateFromRemote3")
 	// update master
 	masterNodeID, ok := workloadNodeID[k.Master.Name]
 	if !ok {
@@ -730,7 +776,6 @@ func (k *K8sDeployer) updateFromRemote(ctx context.Context) error {
 		}
 		k.Master = &m
 	}
-	log.Printf("calling updateFromRemote4")
 	// update workers
 	workers := make([]K8sNodeData, 0)
 	for _, w := range k.Workers {
@@ -751,7 +796,6 @@ func (k *K8sDeployer) updateFromRemote(ctx context.Context) error {
 		}
 		workers = append(workers, w)
 	}
-	log.Printf("calling updateFromRemote5")
 	// add missing workers (in case of failed deletions)
 	for name, workerNodeID := range workloadNodeID {
 		if name == k.Master.Name {
@@ -767,7 +811,6 @@ func (k *K8sDeployer) updateFromRemote(ctx context.Context) error {
 		}
 		workers = append(workers, w)
 	}
-	log.Printf("calling updateFromRemote6")
 	k.Workers = workers
 	log.Printf("after updateFromRemote\n")
 	enc := json.NewEncoder(log.Writer())

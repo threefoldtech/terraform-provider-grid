@@ -126,6 +126,7 @@ Optional:
 - **description** (String)
 - **entrypoint** (String) command to execute as the Zmachine init
 - **env_vars** (Map of String) Environment variables to pass to the zmachine
+- **flist_checksum** (String) if present, the flist is rejected if it has a different hash. the flist hash can be found by append
 - **ip** (String) The private wg IP of the Zmachine
 - **memory** (Number) Memory size
 - **mounts** (Block List) Zmachine mounts, can reference QSFSs and Disks (see [below for nested schema](#nestedblock--vms--mounts))
