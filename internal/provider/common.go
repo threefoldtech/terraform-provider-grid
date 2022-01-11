@@ -5,7 +5,10 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -79,6 +82,17 @@ func countDeploymentPublicIPs(dl gridtypes.Deployment) uint32 {
 		}
 	}
 	return res
+}
+func flistChecksumURL(url string) string {
+	return fmt.Sprintf("%s.md5", url)
+}
+func getFlistChecksum(url string) (string, error) {
+	response, err := http.Get(flistChecksumURL(url))
+	if err != nil {
+		return "", err
+	}
+	hash, err := ioutil.ReadAll(response.Body)
+	return strings.TrimSpace(string(hash)), err
 }
 
 // constructWorkloadHashes returns a mapping between workloadname to the workload hash

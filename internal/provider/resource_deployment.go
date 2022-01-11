@@ -7,12 +7,11 @@ import (
 	"log"
 	"net"
 	"strconv"
-	"time"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
-	substrate "github.com/threefoldtech/substrate-client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -140,6 +139,11 @@ func resourceDeployment() *schema.Resource {
 							Type:        schema.TypeString,
 							Required:    true,
 							Description: "e.g. https://hub.grid.tf/omar0.3bot/omarelawady-ubuntu-20.04.flist",
+						},
+						"flist_checksum": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "if present, the flist is rejected if it has a different hash. the flist hash can be found by append",
 						},
 						"publicip": {
 							Type:        schema.TypeBool,
@@ -410,22 +414,23 @@ type ZDB struct {
 }
 
 type VM struct {
-	Name        string
-	Flist       string
-	PublicIP    bool
-	PublicIP6   bool
-	Planetary   bool
-	ComputedIP  string
-	ComputedIP6 string
-	YggIP       string
-	IP          string
-	Description string
-	Cpu         int
-	Memory      int
-	RootfsSize  int
-	Entrypoint  string
-	Mounts      []Mount
-	EnvVars     map[string]string
+	Name          string
+	Flist         string
+	FlistChecksum string
+	PublicIP      bool
+	PublicIP6     bool
+	Planetary     bool
+	ComputedIP    string
+	ComputedIP6   string
+	YggIP         string
+	IP            string
+	Description   string
+	Cpu           int
+	Memory        int
+	RootfsSize    int
+	Entrypoint    string
+	Mounts        []Mount
+	EnvVars       map[string]string
 }
 type Mount struct {
 	DiskName   string
@@ -493,22 +498,23 @@ func GetVMData(vm map[string]interface{}) VM {
 		envVars[k] = v.(string)
 	}
 	return VM{
-		Name:        vm["name"].(string),
-		PublicIP:    vm["publicip"].(bool),
-		PublicIP6:   vm["publicip6"].(bool),
-		Flist:       vm["flist"].(string),
-		ComputedIP:  vm["computedip"].(string),
-		ComputedIP6: vm["computedip6"].(string),
-		YggIP:       vm["ygg_ip"].(string),
-		Planetary:   vm["planetary"].(bool),
-		IP:          vm["ip"].(string),
-		Cpu:         vm["cpu"].(int),
-		Memory:      vm["memory"].(int),
-		RootfsSize:  vm["rootfs_size"].(int),
-		Entrypoint:  vm["entrypoint"].(string),
-		Mounts:      mounts,
-		EnvVars:     envVars,
-		Description: vm["description"].(string),
+		Name:          vm["name"].(string),
+		PublicIP:      vm["publicip"].(bool),
+		PublicIP6:     vm["publicip6"].(bool),
+		Flist:         vm["flist"].(string),
+		FlistChecksum: vm["flist_checksum"].(string),
+		ComputedIP:    vm["computedip"].(string),
+		ComputedIP6:   vm["computedip6"].(string),
+		YggIP:         vm["ygg_ip"].(string),
+		Planetary:     vm["planetary"].(bool),
+		IP:            vm["ip"].(string),
+		Cpu:           vm["cpu"].(int),
+		Memory:        vm["memory"].(int),
+		RootfsSize:    vm["rootfs_size"].(int),
+		Entrypoint:    vm["entrypoint"].(string),
+		Mounts:        mounts,
+		EnvVars:       envVars,
+		Description:   vm["description"].(string),
 	}
 }
 
@@ -828,7 +834,31 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, currentDeploymentI
 	return nil
 }
 
+func (d *DeploymentDeployer) validateChecksums() error {
+	for _, vm := range d.VMs {
+		if vm.FlistChecksum == "" {
+			continue
+		}
+		checksum, err := getFlistChecksum(vm.Flist)
+		if err != nil {
+			return errors.Wrapf(err, "couldn't get flist %s hash", vm.Flist)
+		}
+		if vm.FlistChecksum != checksum {
+			return fmt.Errorf(
+				"passed checksum %s of %s doesn't match %s returned from %s",
+				vm.FlistChecksum,
+				vm.Name,
+				checksum,
+				flistChecksumURL(vm.Flist),
+			)
+		}
+	}
+	return nil
+}
 func (d *DeploymentDeployer) Deploy(ctx context.Context) (uint32, error) {
+	if err := d.validateChecksums(); err != nil {
+		return 0, err
+	}
 	newDeployments, err := d.GenerateVersionlessDeployments(ctx)
 	if err != nil {
 		return 0, errors.Wrap(err, "couldn't generate deployments data")
@@ -895,6 +925,19 @@ func (z *ZDB) Dictify() map[string]interface{} {
 	res["public"] = z.Public
 	return res
 }
+
+// keep only the ones set by the user (should assign checksums to non-existent ones?)
+func (d *DeploymentDeployer) retainChecksums(vms []interface{}) {
+	checksumMap := make(map[string]string)
+	for _, vm := range d.VMs {
+		checksumMap[vm.Name] = vm.FlistChecksum
+	}
+	for _, vm := range vms {
+		typed := vm.(map[string]interface{})
+		typed["flist_checksum"] = checksumMap[typed["name"].(string)]
+	}
+}
+
 func (dep *DeploymentDeployer) storeState(d *schema.ResourceData) {
 	vms := make([]interface{}, 0)
 	for _, vm := range dep.VMs {
@@ -912,6 +955,7 @@ func (dep *DeploymentDeployer) storeState(d *schema.ResourceData) {
 	for _, q := range dep.QSFSs {
 		qsfs = append(zdbs, q.Dictify())
 	}
+	dep.retainChecksums(vms)
 	d.Set("vms", vms)
 	d.Set("zdbs", zdbs)
 	d.Set("disks", disks)
@@ -923,8 +967,7 @@ func (dep *DeploymentDeployer) storeState(d *schema.ResourceData) {
 	}
 }
 func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	err := validate(d)
-	if err != nil {
+	if err := validate(d); err != nil {
 		return diag.FromErr(errors.Wrap(err, "error validating deployment"))
 	}
 	apiClient := meta.(*apiClient)
@@ -949,121 +992,23 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 	return diags
 }
 
-func flattenDiskData(workload gridtypes.Workload) (map[string]interface{}, error) {
-	if workload.Type == zos.ZMountType {
-		wl := make(map[string]interface{})
-		data, err := workload.WorkloadData()
-		if err != nil {
-			return nil, err
-		}
-		wl["name"] = workload.Name
-		wl["size"] = data.(*zos.ZMount).Size / gridtypes.Gigabyte
-		wl["description"] = workload.Description
-		return wl, nil
-	}
-
-	return nil, errors.New("The wrokload is not of type zos.ZMountType")
-}
-func flattenZDBData(workload gridtypes.Workload) (map[string]interface{}, error) {
-	if workload.Type == zos.ZDBType {
-		wl := make(map[string]interface{})
-		data, err := workload.WorkloadData()
-		if err != nil {
-			return nil, err
-		}
-		var result zos.ZDBResult
-		if err := workload.Result.Unmarshal(&result); err != nil {
-			return nil, errors.Wrap(err, "couldn't decode zdb result")
-		}
-		wl["name"] = workload.Name
-		wl["size"] = data.(*zos.ZDB).Size / gridtypes.Gigabyte
-		wl["mode"] = data.(*zos.ZDB).Mode
-		wl["ips"] = result.IPs
-		wl["namespace"] = result.Namespace
-		wl["port"] = result.Port
-		wl["password"] = data.(*zos.ZDB).Password
-		wl["public"] = data.(*zos.ZDB).Public
-		wl["description"] = workload.Description
-		return wl, nil
-	}
-
-	return nil, errors.New("The wrokload is not of type zos.ZDBType")
-}
-
-func flattenVMData(workload gridtypes.Workload) (map[string]interface{}, error) {
-	if workload.Type == zos.ZMachineType {
-		wl := make(map[string]interface{})
-		workloadData, err := workload.WorkloadData()
-		if err != nil {
-			return nil, err
-		}
-		data := workloadData.(*zos.ZMachine)
-
-		mounts := make([]map[string]interface{}, 0)
-		for _, mountPoint := range data.Mounts {
-			mount := map[string]interface{}{
-				"disk_name": string(mountPoint.Name), "mount_point": mountPoint.Mountpoint,
-			}
-			mounts = append(mounts, mount)
-		}
-		envVars := make(map[string]interface{})
-		for key, value := range data.Env {
-			envVars[key] = value
-		}
-		machineData, err := workload.WorkloadData()
-		if err != nil {
-			return nil, err
-		}
-		var result zos.ZMachineResult
-		if err := workload.Result.Unmarshal(&result); err != nil {
-			return nil, errors.Wrap(err, "couldn't decode zdb result")
-		}
-
-		wl["cpu"] = data.ComputeCapacity.CPU
-		wl["memory"] = uint64(data.ComputeCapacity.Memory) / uint64(gridtypes.Megabyte)
-		wl["rootfs_size"] = uint64(data.Size) / uint64(gridtypes.Megabyte)
-		wl["mounts"] = mounts
-		wl["name"] = workload.Name
-		wl["flist"] = data.FList
-		wl["entrypoint"] = data.Entrypoint
-		wl["description"] = workload.Description
-		wl["env_vars"] = envVars
-		wl["ip"] = machineData.(*zos.ZMachine).Network.Interfaces[0].IP.String()
-		wl["ygg_ip"] = result.YggIP
-		wl["planetary"] = result.YggIP != ""
-		return wl, nil
-	}
-
-	return nil, errors.New("The wrokload is not of type zos.ZMachineType")
-}
-
 func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	// use the meta valufreeIPe to retrieve your client from the provider configure method
 	apiClient := meta.(*apiClient)
+	var diags diag.Diagnostics
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	go startRmbIfNeeded(rmbctx, apiClient)
-	cl := apiClient.rmb
-	var diags diag.Diagnostics
-	sub, err := substrate.NewSubstrate(apiClient.substrate_url)
-	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "error getting substrate client"))
-	}
-	nodeID := uint32(d.Get("node").(int))
-	nodeInfo, err := sub.GetNode(nodeID)
+	deployer, err := getDeploymentDeployer(d, apiClient)
 	if err != nil {
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Warning,
 			Summary:  "Error reading data from remote, terraform state might be out of sync with the remote state",
-			Detail:   errors.Wrap(err, "error getting node client").Error(),
+			Detail:   err.Error(),
 		})
 		return diags
 	}
-
-	node := client.NewNodeClient(uint32(nodeInfo.TwinID), cl)
-
-	ctx, cancel = context.WithTimeout(ctx, 120*time.Second)
-	defer cancel()
+	nodeID := uint32(d.Get("node").(int))
 	contractId, err := strconv.ParseUint(d.Id(), 10, 64)
 	if err != nil {
 		diags = append(diags, diag.Diagnostic{
@@ -1073,95 +1018,28 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 		})
 		return diags
 	}
-	subctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-	deployment, err := node.DeploymentGet(subctx, contractId)
-	if err != nil {
+	if err := deployer.updateState(ctx, map[uint32]uint64{nodeID: contractId}); err != nil {
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Warning,
 			Summary:  "Error reading data from remote, terraform state might be out of sync with the remote state",
-			Detail:   errors.Wrap(err, "error getting deployment").Error(),
+			Detail:   errors.Wrap(err, "error syncing with the remote data").Error(),
 		})
 		return diags
 	}
-	qsfs := make([]map[string]interface{}, 0)
-	disks := make([]map[string]interface{}, 0)
-	zdbs := make([]map[string]interface{}, 0)
-	vms := make([]map[string]interface{}, 0)
-	publicIPs := make(map[string]string)
-	publicIP6s := make(map[string]string)
-	for _, workload := range deployment.Workloads {
-		if workload.Type == zos.ZMountType {
-			flattened, err := flattenDiskData(workload)
-			if err != nil {
-				diags = append(diags, diag.Diagnostic{
-					Severity: diag.Warning,
-					Summary:  "Error reading data from remote, terraform state might be out of sync with the remote state",
-					Detail:   errors.Wrap(err, "error flattening disk").Error(),
-				})
-				return diags
-			}
-			disks = append(disks, flattened)
-
-		}
-		if workload.Type == zos.ZDBType {
-			flattened, err := flattenZDBData(workload)
-			if err != nil {
-				diags = append(diags, diag.Diagnostic{
-					Severity: diag.Warning,
-					Summary:  "Error reading data from remote, terraform state might be out of sync with the remote state",
-					Detail:   errors.Wrap(err, "error flattening zdb").Error(),
-				})
-				return diags
-			}
-			zdbs = append(zdbs, flattened)
-
-		} else if workload.Type == zos.ZMachineType {
-			flattened, err := flattenVMData(workload)
-			if err != nil {
-				diags = append(diags, diag.Diagnostic{
-					Severity: diag.Warning,
-					Summary:  "Error reading data from remote, terraform state might be out of sync with the remote state",
-					Detail:   errors.Wrap(err, "error flattening vm").Error(),
-				})
-				return diags
-			}
-			vms = append(vms, flattened)
-		} else if workload.Type == zos.PublicIPType {
-			ipData := PubIPData{}
-			if err := json.Unmarshal(workload.Result.Data, &ipData); err != nil {
-				log.Printf("error unmarshalling json: %s\n", err)
-				continue
-			}
-			publicIPs[string(workload.Name)] = ipData.IP
-			publicIP6s[string(workload.Name)] = ipData.IPv6
-		} else if workload.Type == zos.QuantumSafeFSType {
-			q, err := NewQSFSFromWorkload(&workload)
-			if err != nil {
-				log.Printf("error getting qsfs from workload: %s\n", err)
-				continue
-			}
-			qsfs = append(qsfs, q.Dictify())
-		}
-	}
-
-	for _, vm := range vms {
-		vmIPName := fmt.Sprintf("%sip", vm["name"])
-		vm["computedip"] = publicIPs[vmIPName]
-		vm["publicip"] = vm["computedip"] != ""
-		vm["computedip6"] = publicIP6s[vmIPName]
-		vm["publicip6"] = vm["computedip6"] != ""
-	}
-
-	d.Set("vms", vms)
-	d.Set("disks", disks)
-	d.Set("zdbs", zdbs)
-	d.Set("qsfs", qsfs)
+	deployer.storeState(d)
 	return diags
 }
 
 func validate(d *schema.ResourceData) error {
 	ipRangeStr := d.Get("ip_range").(string)
+	if ipRangeStr == "" {
+		return errors.New("empty ip_range was passed," +
+			" you probably used the wrong node id in the expression `lookup(grid_network.net1.nodes_ip_range, 4, \"\")`" +
+			" the node id in the lookup must match the node property of the resource.")
+	}
+	if strings.TrimSpace(ipRangeStr) != ipRangeStr {
+		return errors.New("ip_range must not contain trailing or leading spaces")
+	}
 	networkName := d.Get("network_name").(string)
 	vms := d.Get("vms").([]interface{})
 	_, _, err := net.ParseCIDR(ipRangeStr)
