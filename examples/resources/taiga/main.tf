@@ -21,16 +21,36 @@ resource "grid_deployment" "node1" {
   node         = 1
   network_name = grid_network.net2.name
   ip_range     = lookup(grid_network.net2.nodes_ip_range, 1, "")
+  disks {
+    name        = "data0"
+    # will hold images, volumes etc. modify the size according to your needs
+    size        = 100
+    description = "volume holding docker data"
+  }
   vms {
     name        = "taiga"
-    flist       = "https://hub.grid.tf/samehabouelsaad.3bot/abouelsaad-taiga-test.flist"
+    flist       = "https://hub.grid.tf/samehabouelsaad.3bot/abouelsaad-grid3_taiga_docker-latest.flist"
     entrypoint  = "/sbin/zinit init"
     cpu         = 4
     memory      = 8096
     rootfs_size = 51200
+    mounts {
+      disk_name   = "data0"
+      mount_point = "/var/lib/docker"
+    }
     env_vars = {
       SSH_KEY     = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC9MI7fh4xEOOEKL7PvLvXmSeRWesToj6E26bbDASvlZnyzlSKFLuYRpnVjkr8JcuWKZP6RQn8+2aRs6Owyx7Tx+9kmEh7WI5fol0JNDn1D0gjp4XtGnqnON7d0d5oFI+EjQQwgCZwvg0PnV/2DYoH4GJ6KPCclPz4a6eXrblCLA2CHTzghDgyj2x5B4vB3rtoI/GAYYNqxB7REngOG6hct8vdtSndeY1sxuRoBnophf7MPHklRQ6EG2GxQVzAOsBgGHWSJPsXQkxbs8am0C9uEDL+BJuSyFbc/fSRKptU1UmS18kdEjRgGNoQD7D+Maxh1EbmudYqKW92TVgdxXWTQv1b1+3dG5+9g+hIWkbKZCBcfMe4nA5H7qerLvoFWLl6dKhayt1xx5mv8XhXCpEC22/XHxhRBHBaWwSSI+QPOCvs4cdrn4sQU+EXsy7+T7FIXPeWiC2jhFd6j8WIHAv6/rRPsiwV1dobzZOrCxTOnrqPB+756t7ANxuktsVlAZaM= sameh@sameh-inspiron-3576",
       DOMAIN_NAME = data.grid_gateway_domain.domain.fqdn,
+      ADMIN_USERNAME = "sameh",
+      ADMIN_PASSWORD = "password",
+      ADMIN_EMAIL = "samehabouelsaad@gmail.com",
+      DEFAULT_FROM_EMAIL = "farouks@incubaid.com",
+      EMAIL_USE_TLS = "True",
+      EMAIL_USE_SSL = "False",
+      EMAIL_HOST = "smtp.gmail.com",
+      EMAIL_PORT = "587",
+      EMAIL_HOST_USER = "farouks@incubaid.com",
+      EMAIL_HOST_PASSWORD = "password",
     }
     planetary = true
   }
