@@ -46,12 +46,15 @@ Required:
 Optional:
 
 - **flist** (String)
+- **flist_checksum** (String) if present, the flist is rejected if it has a different hash. the flist hash can be found by append
 - **planetary** (Boolean) Enable Yggdrasil allocation
 - **publicip** (Boolean) true to enable public ip reservation
+- **publicip6** (Boolean) true to enable public ipv6 reservation
 
 Read-Only:
 
 - **computedip** (String) The reserved public IP
+- **computedip6** (String) The reserved public IPv6
 - **ip** (String) The private IP (computed from nodes_ip_range)
 - **ygg_ip** (String) Allocated Yggdrasil IP
 
@@ -70,12 +73,15 @@ Required:
 Optional:
 
 - **flist** (String)
+- **flist_checksum** (String) if present, the flist is rejected if it has a different hash. the flist hash can be found by append
 - **planetary** (Boolean) Enable Yggdrasil allocation
 - **publicip** (Boolean) true to enable public ip reservation
+- **publicip6** (Boolean) true to enable public ipv6 reservation
 
 Read-Only:
 
 - **computedip** (String) The reserved public ip
+- **computedip6** (String) The reserved public ipv6
 - **ip** (String) The private IP (computed from nodes_ip_range)
 - **ygg_ip** (String) Allocated Yggdrasil IP
 

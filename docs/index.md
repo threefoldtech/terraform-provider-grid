@@ -22,7 +22,7 @@ description: |-
 ### Optional
 
 - **key_type** (String) key type registered on substrate (ed25519 or sr25519)
-- **network** (String) grid network, one of: dev test
+- **network** (String) grid network, one of: dev test main
 - **rmb_proxy_url** (String) rmb proxy url, example: https://gridproxy.dev.grid.tf/
 - **rmb_redis_url** (String)
 - **substrate_url** (String) substrate url, example: wss://tfchain.dev.grid.tf/ws

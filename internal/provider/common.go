@@ -5,11 +5,15 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
 	gormb "github.com/threefoldtech/go-rmb"
+	"github.com/threefoldtech/terraform-provider-grid/internal/gridproxy"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -67,10 +71,28 @@ func countDeploymentPublicIPs(dl gridtypes.Deployment) uint32 {
 	var res uint32 = 0
 	for _, wl := range dl.Workloads {
 		if wl.Type == zos.PublicIPType {
-			res++
+			data, err := wl.WorkloadData()
+			if err != nil {
+				log.Printf("couldn't parse workload data %s", err.Error())
+				continue
+			}
+			if data.(*zos.PublicIP).V4 {
+				res++
+			}
 		}
 	}
 	return res
+}
+func flistChecksumURL(url string) string {
+	return fmt.Sprintf("%s.md5", url)
+}
+func getFlistChecksum(url string) (string, error) {
+	response, err := http.Get(flistChecksumURL(url))
+	if err != nil {
+		return "", err
+	}
+	hash, err := ioutil.ReadAll(response.Body)
+	return strings.TrimSpace(string(hash)), err
 }
 
 // constructWorkloadHashes returns a mapping between workloadname to the workload hash
@@ -174,10 +196,139 @@ func sameWorkloadsNames(d1 gridtypes.Deployment, d2 gridtypes.Deployment) bool {
 	return true
 }
 
+func capacity(dl gridtypes.Deployment) (gridtypes.Capacity, error) {
+	cap := gridtypes.Capacity{}
+	for _, wl := range dl.Workloads {
+		wlCap, err := wl.Capacity()
+		if err != nil {
+			return cap, err
+		}
+		cap.Add(&wlCap)
+	}
+	return cap, nil
+}
+
+func capacityPrettyPrint(cap gridtypes.Capacity) string {
+	return fmt.Sprintf("[mru: %d, sru: %d, hru: %d]", cap.MRU, cap.SRU, cap.HRU)
+}
+
+func hasWorkload(dl *gridtypes.Deployment, wlType gridtypes.WorkloadType) bool {
+	for _, wl := range dl.Workloads {
+		if wl.Type == wlType {
+			return true
+		}
+	}
+	return false
+}
+
+func ValidateDeployments(ctx context.Context, apiClient *apiClient, oldDeployments map[uint32]gridtypes.Deployment, newDeployments map[uint32]gridtypes.Deployment) error {
+	farmIPs := make(map[int]int)
+	allNodes, err := apiClient.grid_client.Nodes()
+	if err != nil {
+		return errors.Wrap(err, "failed to fetch nodes from the grid proxy")
+	}
+	allFarms, err := apiClient.grid_client.Farms()
+	if err != nil {
+		return errors.Wrap(err, "failed to fetch farms from the grid proxy")
+	}
+	nodeMap := make(map[uint32]gridproxy.Node)
+	for _, node := range allNodes {
+		nodeMap[node.NodeID] = node
+	}
+	for _, farm := range allFarms.Data.Farms {
+		farmIPs[farm.FarmID] = 0
+		for _, ip := range farm.PublicIps {
+			if ip.ContractID == 0 {
+				farmIPs[farm.FarmID]++
+			}
+		}
+	}
+	for node, dl := range oldDeployments {
+		nodeData, ok := nodeMap[node]
+		if !ok {
+			return fmt.Errorf("node %d not returned from the grid proxy", node)
+		}
+		farmIPs[nodeData.FarmID] += int(countDeploymentPublicIPs(dl))
+	}
+	for node, dl := range newDeployments {
+		oldDl, alreadyExists := oldDeployments[node]
+		if err := dl.Valid(); err != nil {
+			return errors.Wrap(err, "invalid deployment")
+		}
+		needed, err := capacity(dl)
+		if err != nil {
+			return err
+		}
+
+		requiredIPs := int(countDeploymentPublicIPs(dl))
+		nodeInfo, err := apiClient.grid_client.Node(node)
+		if err != nil {
+			return errors.Wrapf(err, "couldn't get node %d info", node)
+		}
+		if alreadyExists {
+			oldCap, err := capacity(oldDl)
+			if err != nil {
+				return errors.Wrapf(err, "couldn't read old deployment %d of node %d capacity", oldDl.ContractID, node)
+			}
+			nodeInfo.Capacity.Total.Add(&oldCap)
+			contract, err := apiClient.sub.GetContract(oldDl.ContractID)
+			if err != nil {
+				return errors.Wrapf(err, "couldn't get node contract %d", oldDl.ContractID)
+			}
+			current := int(contract.ContractType.NodeContract.PublicIPsCount)
+			if requiredIPs > current {
+				return fmt.Errorf(
+					"currently, it's not possible to increase the number of reserved public ips in a deployment, node: %d, current: %d, requested: %d",
+					node,
+					current,
+					requiredIPs,
+				)
+			}
+		}
+
+		nodeData, ok := nodeMap[node]
+		if !ok {
+			return fmt.Errorf("node %d not returned from the grid proxy", node)
+		}
+		farmIPs[nodeData.FarmID] -= requiredIPs
+		if farmIPs[nodeData.FarmID] < 0 {
+			return fmt.Errorf("farm %d doesn't have enough public ips", nodeData.FarmID)
+		}
+		if hasWorkload(&dl, zos.GatewayFQDNProxyType) && nodeData.PublicConfig.Ipv4 == "" {
+			return fmt.Errorf("node %d can't deploy a fqdn workload as it doesn't have a public ipv4 configured", node)
+		}
+		if hasWorkload(&dl, zos.GatewayNameProxyType) && nodeData.PublicConfig.Domain == "" {
+			return fmt.Errorf("node %d can't deploy a gateway name workload as it doesn't have a domain configured", node)
+		}
+		mrus := nodeInfo.Capacity.Total.MRU - nodeInfo.Capacity.Used.MRU
+		hrus := nodeInfo.Capacity.Total.HRU - nodeInfo.Capacity.Used.HRU
+		srus := nodeInfo.Capacity.Total.SRU - nodeInfo.Capacity.Used.SRU
+		if mrus < needed.MRU ||
+			srus < needed.SRU ||
+			hrus < needed.HRU {
+			free := gridtypes.Capacity{
+				HRU: hrus,
+				MRU: mrus,
+				SRU: srus,
+			}
+			return fmt.Errorf("node %d doesn't have enough resources. needed: %v, free: %v", node, capacityPrettyPrint(needed), capacityPrettyPrint(free))
+		}
+	}
+	return nil
+}
+
 // deployDeployments transforms oldDeployment to match newDeployment. In case of error,
 //                   it tries to revert to the old state. Whatever is done the current state is returned
 func deployDeployments(ctx context.Context, oldDeploymentIDs map[uint32]uint64, newDeployments map[uint32]gridtypes.Deployment, nc NodeClientCollection, api *apiClient, revertOnFailure bool) (map[uint32]uint64, error) {
 	oldDeployments, oldErr := getDeploymentObjects(ctx, oldDeploymentIDs, nc)
+	if oldErr == nil {
+		// check resources only when old deployments are readable
+		// being readable means it's a fresh deployment or an update with good nodes
+		// this is done to avoid preventing deletion of deployments on dead nodes
+		if err := ValidateDeployments(ctx, api, oldDeployments, newDeployments); err != nil {
+			return oldDeploymentIDs, err
+		}
+	}
 	// ignore oldErr until we need oldDeployments
 	curentDeployments, err := deployConsistentDeployments(ctx, oldDeploymentIDs, newDeployments, nc, api)
 	if err != nil && revertOnFailure {

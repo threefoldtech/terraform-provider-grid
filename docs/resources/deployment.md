@@ -126,16 +126,19 @@ Optional:
 - **description** (String)
 - **entrypoint** (String) command to execute as the Zmachine init
 - **env_vars** (Map of String) Environment variables to pass to the zmachine
+- **flist_checksum** (String) if present, the flist is rejected if it has a different hash. the flist hash can be found by append
 - **ip** (String) The private wg IP of the Zmachine
 - **memory** (Number) Memory size
 - **mounts** (Block List) Zmachine mounts, can reference QSFSs and Disks (see [below for nested schema](#nestedblock--vms--mounts))
 - **planetary** (Boolean) Enable Yggdrasil allocation
 - **publicip** (Boolean) true to enable public ip reservation
+- **publicip6** (Boolean) true to enable public ipv6 reservation
 - **rootfs_size** (Number) Rootfs size in MB
 
 Read-Only:
 
 - **computedip** (String) The reserved public ip
+- **computedip6** (String) The reserved public ipv6
 - **ygg_ip** (String) Allocated Yggdrasil IP
 
 <a id="nestedblock--vms--mounts"></a>
