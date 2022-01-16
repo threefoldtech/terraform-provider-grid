@@ -47,8 +47,8 @@ resource "grid_deployment" "node1" {
       # configure smtp settings bellow only If you have an working smtp service and you know what you’re doing.
       # otherwise leave these settings empty. gives wrong smtp settings will cause issues/server errors in taiga.
       DEFAULT_FROM_EMAIL = "",
-      EMAIL_USE_TLS = "",
-      EMAIL_USE_SSL = "",
+      EMAIL_USE_TLS = "", # either "True" or "False"
+      EMAIL_USE_SSL = "", # either "True" or "False"
       EMAIL_HOST = "",
       EMAIL_PORT = "",
       EMAIL_HOST_USER = "",
