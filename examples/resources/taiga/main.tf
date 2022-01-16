@@ -44,13 +44,15 @@ resource "grid_deployment" "node1" {
       ADMIN_USERNAME = "sameh",
       ADMIN_PASSWORD = "password",
       ADMIN_EMAIL = "samehabouelsaad@gmail.com",
-      DEFAULT_FROM_EMAIL = "farouks@incubaid.com",
-      EMAIL_USE_TLS = "True",
-      EMAIL_USE_SSL = "False",
-      EMAIL_HOST = "smtp.gmail.com",
-      EMAIL_PORT = "587",
-      EMAIL_HOST_USER = "farouks@incubaid.com",
-      EMAIL_HOST_PASSWORD = "password",
+      # configure smtp settings bellow only If you have an working smtp service and you know what you’re doing.
+      # otherwise leave these settings empty. gives wrong smtp settings will cause issues/server errors in taiga.
+      DEFAULT_FROM_EMAIL = "",
+      EMAIL_USE_TLS = "",
+      EMAIL_USE_SSL = "",
+      EMAIL_HOST = "",
+      EMAIL_PORT = "",
+      EMAIL_HOST_USER = "",
+      EMAIL_HOST_PASSWORD = "",
     }
     planetary = true
   }
