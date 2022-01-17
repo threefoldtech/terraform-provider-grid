@@ -39,12 +39,12 @@ func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deployme
 			continue
 		}
 		for idx, wl := range dl.Workloads {
-			if wl.Result.State == "" {
-				done = false
+			if wl.Result.State == gridtypes.StateOk {
 				continue
-			}
-			if wl.Result.State != gridtypes.StateOk {
+			} else if wl.Result.State == gridtypes.StateError {
 				return errors.New(fmt.Sprintf("workload %d failed within deployment %d with error %s", idx, deploymentID, wl.Result.Error))
+			} else {
+				done = false
 			}
 		}
 		if done {
