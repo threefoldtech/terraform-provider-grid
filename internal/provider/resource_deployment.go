@@ -1031,17 +1031,17 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 }
 
 func validate(d *schema.ResourceData) error {
+	vms := d.Get("vms").([]interface{})
 	ipRangeStr := d.Get("ip_range").(string)
-	if ipRangeStr == "" {
+	if len(vms) != 0 && ipRangeStr == "" {
 		return errors.New("empty ip_range was passed," +
 			" you probably used the wrong node id in the expression `lookup(grid_network.net1.nodes_ip_range, 4, \"\")`" +
 			" the node id in the lookup must match the node property of the resource.")
 	}
-	if strings.TrimSpace(ipRangeStr) != ipRangeStr {
+	if len(vms) != 0 && strings.TrimSpace(ipRangeStr) != ipRangeStr {
 		return errors.New("ip_range must not contain trailing or leading spaces")
 	}
 	networkName := d.Get("network_name").(string)
-	vms := d.Get("vms").([]interface{})
 	_, _, err := net.ParseCIDR(ipRangeStr)
 	if len(vms) != 0 && err != nil {
 		return errors.Wrap(err, "If you pass a vm, ip_range must be set to a valid ip range (e.g. 10.1.3.0/16)")
