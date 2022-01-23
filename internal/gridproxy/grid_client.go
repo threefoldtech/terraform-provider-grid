@@ -45,7 +45,7 @@ func (g *GridProxyClient) AliveNodes() (res []Node, err error) {
 }
 
 func (g *GridProxyClient) Farms() (res FarmResult, err error) {
-	req, err := http.Get(g.url("farms"))
+	req, err := http.Get(g.url("farms?max_result=99999999"))
 	if err != nil {
 		return
 	}
