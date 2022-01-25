@@ -58,7 +58,7 @@ func startRmbIfNeeded(ctx context.Context, api *apiClient) {
 	if api.use_rmb_proxy {
 		return
 	}
-	rmbClient, err := gormb.NewServer(api.substrate_url, "127.0.0.1:6379", int(api.twin_id), RMB_WORKERS)
+	rmbClient, err := gormb.NewServer(api.substrate_url, "127.0.0.1:6379", RMB_WORKERS, api.identity)
 	if err != nil {
 		log.Fatalf("couldn't start server %s\n", err)
 	}
@@ -235,7 +235,7 @@ func ValidateDeployments(ctx context.Context, apiClient *apiClient, oldDeploymen
 	for _, node := range allNodes {
 		nodeMap[node.NodeID] = node
 	}
-	for _, farm := range allFarms.Data.Farms {
+	for _, farm := range allFarms {
 		farmIPs[farm.FarmID] = 0
 		for _, ip := range farm.PublicIps {
 			if ip.ContractID == 0 {

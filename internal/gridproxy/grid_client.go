@@ -21,8 +21,19 @@ func (g *GridProxyClient) url(sub string, args ...interface{}) string {
 	return g.endpoint + fmt.Sprintf(sub, args...)
 }
 
+func (g *GridProxyClient) Ping() error {
+	req, err := http.Get(g.url(""))
+	if err != nil {
+		return err
+	}
+	if req.StatusCode != http.StatusOK {
+		return fmt.Errorf("non ok return status code from the the grid proxy home page: %d", req.StatusCode)
+	}
+	return nil
+}
+
 func (g *GridProxyClient) Nodes() (res []Node, err error) {
-	req, err := http.Get(g.url("nodes?max_result=99999999"))
+	req, err := http.Get(g.url("nodes?size=99999999"))
 	if err != nil {
 		return
 	}
@@ -45,7 +56,7 @@ func (g *GridProxyClient) AliveNodes() (res []Node, err error) {
 }
 
 func (g *GridProxyClient) Farms() (res FarmResult, err error) {
-	req, err := http.Get(g.url("farms?max_result=99999999"))
+	req, err := http.Get(g.url("farms?size=99999999"))
 	if err != nil {
 		return
 	}

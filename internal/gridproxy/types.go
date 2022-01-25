@@ -31,26 +31,29 @@ type PublicConfig struct {
 
 // Node is a struct holding the data for a node for the nodes view
 type Node struct {
-	Version         int          `json:"version"`
-	ID              string       `json:"id"`
-	NodeID          uint32       `json:"nodeId"`
-	FarmID          int          `json:"farmId"`
-	TwinID          int          `json:"twinId"`
-	Country         string       `json:"country"`
-	GridVersion     int          `json:"gridVersion"`
-	City            string       `json:"city"`
-	Uptime          int64        `json:"uptime"`
-	Created         int64        `json:"created"`
-	FarmingPolicyID int          `json:"farmingPolicyId"`
-	UpdatedAt       string       `json:"updatedAt"`
-	Cru             string       `json:"cru"`
-	Mru             string       `json:"mru"`
-	Sru             string       `json:"sru"`
-	Hru             string       `json:"hru"`
-	PublicConfig    PublicConfig `json:"publicConfig"`
-	Status          string       `json:"status"` // added node state field for up or down
+	Version           int                `json:"version"`
+	ID                string             `json:"id"`
+	NodeID            uint32             `json:"nodeId"`
+	FarmID            int                `json:"farmId"`
+	TwinID            int                `json:"twinId"`
+	Country           string             `json:"country"`
+	GridVersion       int                `json:"gridVersion"`
+	City              string             `json:"city"`
+	Uptime            int64              `json:"uptime"`
+	Created           int64              `json:"created"`
+	FarmingPolicyID   int                `json:"farmingPolicyId"`
+	UpdatedAt         string             `json:"updatedAt"`
+	TotalResources    gridtypes.Capacity `json:"total_resources"`
+	UsedResources     gridtypes.Capacity `json:"used_resources"`
+	Location          Location           `json:"location"`
+	PublicConfig      PublicConfig       `json:"publicConfig"`
+	Status            string             `json:"status"` // added node status field for up or down
+	CertificationType string             `json:"certificationType"`
 }
-
+type Location struct {
+	Country string `json:"country"`
+	City    string `json:"city"`
+}
 type NodeStatus struct {
 	Status string `json:"nodes"`
 }
@@ -88,7 +91,6 @@ type Farm struct {
 	StellarAddress  string     `json:"stellarAddress"`
 	PublicIps       []PublicIP `json:"publicIps"`
 }
-
 type PublicIP struct {
 	ID         string `json:"id"`
 	IP         string `json:"ip"`
@@ -97,11 +99,4 @@ type PublicIP struct {
 	Gateway    string `json:"gateway"`
 }
 
-type farmData struct {
-	Farms []Farm `json:"farms"`
-}
-
-// FarmResult is to unmarshal json in it
-type FarmResult struct {
-	Data farmData `json:"data"`
-}
+type FarmResult = []Farm

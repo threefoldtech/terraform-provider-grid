@@ -113,7 +113,6 @@ type apiClient struct {
 	substrate_url string
 	rmb_redis_url string
 	use_rmb_proxy bool
-	rmb_proxy_url string
 	grid_client   gridproxy.GridProxyClient
 	rmb           rmb.Client
 	sub           *substrate.Substrate
@@ -147,15 +146,15 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 		return nil, diag.Errorf("network must be one of dev, test, and main")
 	}
 	apiClient.substrate_url = SUBSTRATE_URL[network]
-	apiClient.rmb_proxy_url = RMB_PROXY_URL[network]
+	rmb_proxy_url := RMB_PROXY_URL[network]
 	substrate_url := d.Get("substrate_url").(string)
-	rmb_proxy_url := d.Get("rmb_proxy_url").(string)
+	passed_rmb_proxy_url := d.Get("rmb_proxy_url").(string)
 	if substrate_url != "" {
 		log.Printf("substrate url is not null %s", substrate_url)
 		apiClient.substrate_url = substrate_url
 	}
-	if rmb_proxy_url != "" {
-		apiClient.rmb_proxy_url = rmb_proxy_url
+	if passed_rmb_proxy_url != "" {
+		rmb_proxy_url = passed_rmb_proxy_url
 	}
 	log.Printf("substrate url: %s %s\n", apiClient.substrate_url, substrate_url)
 	apiClient.sub, err = substrate.NewSubstrate(apiClient.substrate_url)
@@ -180,11 +179,11 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	apiClient.twin_id = twin
 	var cl rmb.Client
 	if apiClient.use_rmb_proxy {
-		cl = client.NewProxyBus(apiClient.rmb_proxy_url, apiClient.twin_id)
+		cl, err = client.NewProxyBus(rmb_proxy_url, apiClient.twin_id, apiClient.sub, identity)
 	} else {
 		cl, err = rmb.NewClient(apiClient.rmb_redis_url)
 	}
-	apiClient.grid_client = gridproxy.NewGridProxyClient(apiClient.rmb_proxy_url)
+	apiClient.grid_client = gridproxy.NewGridProxyClient(rmb_proxy_url)
 	if err != nil {
 		return nil, diag.FromErr(errors.Wrap(err, "couldn't create rmb client"))
 	}
