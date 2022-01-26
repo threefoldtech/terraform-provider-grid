@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
-	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/pkg/errors"
 	gridproxy "github.com/threefoldtech/terraform-provider-grid/internal/gridproxy"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
@@ -114,31 +114,23 @@ type Request struct {
 	Certified bool
 }
 
-func getFarms(url string) (map[int]string, error) {
-	req, err := http.Get(fmt.Sprintf("%s/farms", url))
+func getFarms(client *gridproxy.GridProxyClient) (map[int]string, error) {
+	farms, err := client.Farms()
 	if err != nil {
 		return nil, err
 	}
-	var farms gridproxy.FarmResult
-	if err := json.NewDecoder(req.Body).Decode(&farms); err != nil {
-		return nil, err
-	}
 	farmMap := make(map[int]string)
-	for _, f := range farms.Data.Farms {
+	for _, f := range farms {
 		farmMap[f.FarmID] = f.Name
 	}
 	return farmMap, nil
 }
 
-func freeCapacity(url string, nodeID uint32) (MachineCapacity, error) {
+func freeCapacity(client *gridproxy.GridProxyClient, nodeID uint32) (MachineCapacity, error) {
 	var res MachineCapacity
-	req, err := http.Get(fmt.Sprintf("%s/nodes/%d", url, nodeID))
+	node, err := client.Node(nodeID)
 	if err != nil {
-		return res, err
-	}
-	var node gridproxy.NodeInfo
-	if err := json.NewDecoder(req.Body).Decode(&node); err != nil {
-		return res, err
+		return res, errors.Wrapf(err, "couldn't fetch node %d", nodeID)
 	}
 
 	res.CPUs = node.Capacity.Total.CRU - node.Capacity.Used.CRU
@@ -149,25 +141,21 @@ func freeCapacity(url string, nodeID uint32) (MachineCapacity, error) {
 	return res, nil
 }
 
-func getNodes(url string) ([]NodeData, error) {
-	farms, err := getFarms(url)
+func getNodes(client *gridproxy.GridProxyClient) ([]NodeData, error) {
+	farms, err := getFarms(client)
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.Get(fmt.Sprintf("%s/nodes", url))
+	nodes, err := client.AliveNodes()
 	if err != nil {
-		return nil, err
-	}
-	var nodes []gridproxy.Node
-	if err := json.NewDecoder(req.Body).Decode(&nodes); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "couldn't fetch nodes")
 	}
 	res := make([]NodeData, 0)
 	for _, node := range nodes {
 		if node.Status != "up" {
 			continue
 		}
-		cap, err := freeCapacity(url, uint32(node.NodeID))
+		cap, err := freeCapacity(client, uint32(node.NodeID))
 		if err != nil {
 			return nil, err
 		}
@@ -219,7 +207,7 @@ func subtract(node *NodeData, r *Request) {
 func schedule(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	apiClient := meta.(*apiClient)
 	go startRmbIfNeeded(ctx, apiClient)
-	nodes, err := getNodes(apiClient.rmb_proxy_url)
+	nodes, err := getNodes(&apiClient.grid_client)
 	if err != nil {
 		return diag.FromErr(err)
 	}

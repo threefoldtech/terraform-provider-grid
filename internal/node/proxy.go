@@ -13,6 +13,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/go-rmb"
+	"github.com/threefoldtech/substrate-client"
 )
 
 const (
@@ -20,18 +21,28 @@ const (
 )
 
 type ProxyBus struct {
-	endpoint string
-	twinID   uint32
+	signer      substrate.Identity
+	endpoint    string
+	twinID      uint32
+	verifyReply bool
+	resolver    rmb.TwinResolver
 }
 
-func NewProxyBus(endpoint string, twinID uint32) *ProxyBus {
+func NewProxyBus(endpoint string, twinID uint32, sub *substrate.Substrate, signer substrate.Identity, verifyReply bool) (*ProxyBus, error) {
 	if len(endpoint) != 0 && endpoint[len(endpoint)-1] == '/' {
 		endpoint = endpoint[:len(endpoint)-1]
 	}
+	resolver, err := rmb.NewSubstrateResolver(sub)
+	if err != nil {
+		return nil, errors.Wrap(err, "couldn't get a client to explorer resolver")
+	}
 	return &ProxyBus{
+		signer,
 		endpoint,
 		twinID,
-	}
+		verifyReply,
+		rmb.NewCacheResolver(resolver, time.Second),
+	}, nil
 }
 
 func (r *ProxyBus) requestEndpoint(twinid uint32) string {
@@ -55,6 +66,11 @@ func (r *ProxyBus) Call(ctx context.Context, twin uint32, fn string, data interf
 		TwinSrc:    int(r.twinID),
 		TwinDst:    []int{int(twin)},
 		Data:       base64.StdEncoding.EncodeToString(bs),
+		Epoch:      time.Now().Unix(),
+		Proxy:      true,
+	}
+	if err := msg.Sign(r.signer); err != nil {
+		return err
 	}
 	bs, err = json.Marshal(msg)
 	if err != nil {
@@ -79,6 +95,17 @@ func (r *ProxyBus) Call(ctx context.Context, twin uint32, fn string, data interf
 	if err != nil {
 		return errors.Wrap(err, "couldn't poll response")
 	}
+	pk, err := r.resolver.PublicKey(int(twin))
+	if err != nil {
+		return errors.Wrap(err, "couldn't get twin public key")
+	}
+	if r.verifyReply {
+
+		if err := msg.Verify(pk); err != nil {
+			return err
+		}
+	}
+
 	// errorred ?
 	if len(msg.Err) != 0 {
 		return errors.New(msg.Err)
