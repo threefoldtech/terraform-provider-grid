@@ -5,7 +5,6 @@ import (
 	"log"
 	"math/big"
 	"net"
-	"net/http"
 	"net/url"
 	"time"
 
@@ -105,14 +104,7 @@ func validateRMB(apiClient *apiClient) error {
 }
 
 func validateRMBProxyServer(apiClient *apiClient) error {
-	resp, err := http.Get(apiClient.rmb_proxy_url)
-	if err != nil {
-		return errors.Wrapf(err, "couldn't reach rmb proxy at %s", apiClient.rmb_proxy_url)
-	}
-	if resp.StatusCode != 200 {
-		return errors.Wrapf(err, "rmb proxy at %s returned status code %d", apiClient.rmb_proxy_url, resp.StatusCode)
-	}
-	return nil
+	return apiClient.grid_client.Ping()
 }
 
 func validateRMBProxy(apiClient *apiClient) error {
