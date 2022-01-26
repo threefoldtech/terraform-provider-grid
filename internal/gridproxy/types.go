@@ -8,10 +8,10 @@ import (
 const NodeUP = "up"
 const NodeDOWN = "down"
 
-// CapacityResult is the NodeData capacity results to unmarshal json in it
+// capacityResult is the NodeData capacity results to unmarshal json in it
 type capacityResult struct {
-	Total gridtypes.Capacity `json:"total"`
-	Used  gridtypes.Capacity `json:"used"`
+	Total gridtypes.Capacity `json:"total_resources"`
+	Used  gridtypes.Capacity `json:"used_resources"`
 }
 
 // NodeInfo is node specific info, queried directly from the node
@@ -100,3 +100,21 @@ type PublicIP struct {
 }
 
 type FarmResult = []Farm
+
+type farmDataV0 struct {
+	Farms []Farm `json:"farms"`
+}
+
+// FarmResult is to unmarshal json in it
+type FarmResultV0 struct {
+	Data farmDataV0 `json:"data"`
+}
+type capacityResultV0 struct {
+	Total gridtypes.Capacity `json:"total"`
+	Used  gridtypes.Capacity `json:"used"`
+}
+type NodeInfoV0 struct {
+	Capacity   capacityResultV0 `json:"capacity"`
+	DMI        dmi.DMI          `json:"dmi"`
+	Hypervisor string           `json:"hypervisor"`
+}

@@ -21,13 +21,14 @@ const (
 )
 
 type ProxyBus struct {
-	signer   substrate.Identity
-	endpoint string
-	twinID   uint32
-	resolver rmb.TwinResolver
+	signer      substrate.Identity
+	endpoint    string
+	twinID      uint32
+	verifyReply bool
+	resolver    rmb.TwinResolver
 }
 
-func NewProxyBus(endpoint string, twinID uint32, sub *substrate.Substrate, signer substrate.Identity) (*ProxyBus, error) {
+func NewProxyBus(endpoint string, twinID uint32, sub *substrate.Substrate, signer substrate.Identity, verifyReply bool) (*ProxyBus, error) {
 	if len(endpoint) != 0 && endpoint[len(endpoint)-1] == '/' {
 		endpoint = endpoint[:len(endpoint)-1]
 	}
@@ -39,6 +40,7 @@ func NewProxyBus(endpoint string, twinID uint32, sub *substrate.Substrate, signe
 		signer,
 		endpoint,
 		twinID,
+		verifyReply,
 		rmb.NewCacheResolver(resolver, time.Second),
 	}, nil
 }
@@ -97,8 +99,11 @@ func (r *ProxyBus) Call(ctx context.Context, twin uint32, fn string, data interf
 	if err != nil {
 		return errors.Wrap(err, "couldn't get twin public key")
 	}
-	if err := msg.Verify(pk); err != nil {
-		return err
+	if r.verifyReply {
+
+		if err := msg.Verify(pk); err != nil {
+			return err
+		}
 	}
 
 	// errorred ?

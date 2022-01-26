@@ -87,6 +87,12 @@ func New(version string) func() *schema.Provider {
 					Description: "whether to use the rmb proxy or not",
 					DefaultFunc: schema.EnvDefaultFunc("USE_RMB_PROXY", true),
 				},
+				"verify_reply": {
+					Type:        schema.TypeBool,
+					Optional:    true,
+					Description: "whether to verify rmb replies (temporary for dev use only)",
+					DefaultFunc: schema.EnvDefaultFunc("VERIFY_REPLY", false),
+				},
 			},
 			DataSourcesMap: map[string]*schema.Resource{
 				"grid_gateway_domain": dataSourceGatewayDomain(),
@@ -179,7 +185,8 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	apiClient.twin_id = twin
 	var cl rmb.Client
 	if apiClient.use_rmb_proxy {
-		cl, err = client.NewProxyBus(rmb_proxy_url, apiClient.twin_id, apiClient.sub, identity)
+		verify_reply := d.Get("verify_reply").(bool)
+		cl, err = client.NewProxyBus(rmb_proxy_url, apiClient.twin_id, apiClient.sub, identity, verify_reply)
 	} else {
 		cl, err = rmb.NewClient(apiClient.rmb_redis_url)
 	}
