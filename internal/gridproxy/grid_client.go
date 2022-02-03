@@ -10,22 +10,31 @@ import (
 	"strings"
 )
 
-type GridProxyClient struct {
+type GridProxyClient interface {
+	Ping() error
+	Nodes() (res []Node, err error)
+	AliveNodes() (res []Node, err error)
+	Farms() (res FarmResult, err error)
+	Node(nodeID uint32) (res NodeInfo, err error)
+	NodeStatus(nodeID uint32) (res NodeStatus, err error)
+}
+
+type GridProxyClientimpl struct {
 	endpoint string
 }
 
-func NewGridProxyClient(endpoint string) GridProxyClient {
+func NewGridProxyClient(endpoint string) GridProxyClientimpl {
 	if endpoint[len(endpoint)-1] != '/' {
 		endpoint += "/"
 	}
-	return GridProxyClient{endpoint}
+	return GridProxyClientimpl{endpoint}
 }
 
-func (g *GridProxyClient) url(sub string, args ...interface{}) string {
+func (g *GridProxyClientimpl) url(sub string, args ...interface{}) string {
 	return g.endpoint + fmt.Sprintf(sub, args...)
 }
 
-func (g *GridProxyClient) Ping() error {
+func (g *GridProxyClientimpl) Ping() error {
 	req, err := http.Get(g.url(""))
 	if err != nil {
 		return err
@@ -36,7 +45,7 @@ func (g *GridProxyClient) Ping() error {
 	return nil
 }
 
-func (g *GridProxyClient) Nodes() (res []Node, err error) {
+func (g *GridProxyClientimpl) Nodes() (res []Node, err error) {
 	req, err := http.Get(g.url("nodes?size=99999999&max_result=99999999"))
 	if err != nil {
 		return
@@ -47,7 +56,7 @@ func (g *GridProxyClient) Nodes() (res []Node, err error) {
 	return
 }
 
-func (g *GridProxyClient) AliveNodes() (res []Node, err error) {
+func (g *GridProxyClientimpl) AliveNodes() (res []Node, err error) {
 	res, err = g.Nodes()
 	n := 0
 	for i := range res {
@@ -59,7 +68,7 @@ func (g *GridProxyClient) AliveNodes() (res []Node, err error) {
 	return
 }
 
-func (g *GridProxyClient) Farms() (res FarmResult, err error) {
+func (g *GridProxyClientimpl) Farms() (res FarmResult, err error) {
 	req, err := http.Get(g.url("farms?size=99999999&max_result=99999999"))
 	if err != nil {
 		return
@@ -83,7 +92,7 @@ func (g *GridProxyClient) Farms() (res FarmResult, err error) {
 	return
 }
 
-func (g *GridProxyClient) Node(nodeID uint32) (res NodeInfo, err error) {
+func (g *GridProxyClientimpl) Node(nodeID uint32) (res NodeInfo, err error) {
 	req, err := http.Get(g.url("nodes/%d", nodeID))
 	if err != nil {
 		return
@@ -109,7 +118,7 @@ func (g *GridProxyClient) Node(nodeID uint32) (res NodeInfo, err error) {
 	return
 }
 
-func (g *GridProxyClient) NodeStatus(nodeID uint32) (res NodeStatus, err error) {
+func (g *GridProxyClientimpl) NodeStatus(nodeID uint32) (res NodeStatus, err error) {
 	req, err := http.Get(g.url("nodes/%d/status", nodeID))
 	if err != nil {
 		return

@@ -190,11 +190,14 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	} else {
 		cl, err = rmb.NewClient(apiClient.rmb_redis_url)
 	}
-	apiClient.grid_client = gridproxy.NewGridProxyClient(rmb_proxy_url)
 	if err != nil {
 		return nil, diag.FromErr(errors.Wrap(err, "couldn't create rmb client"))
 	}
 	apiClient.rmb = cl
+
+	grid_client := gridproxy.NewGridProxyClient(rmb_proxy_url)
+	retrying_grid_client := gridproxy.NewRetryingGridProxyClient(&grid_client)
+	apiClient.grid_client = &retrying_grid_client
 	if err := preValidate(&apiClient); err != nil {
 		return nil, diag.FromErr(err)
 	}
