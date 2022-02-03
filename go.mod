@@ -3,6 +3,7 @@ module github.com/threefoldtech/terraform-provider-grid
 go 1.17
 
 require (
+	github.com/cenkalti/backoff/v3 v3.2.2
 	github.com/centrifuge/go-substrate-rpc-client/v3 v3.0.2
 	github.com/gomodule/redigo v1.8.8
 	github.com/google/uuid v1.3.0
