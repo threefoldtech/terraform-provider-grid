@@ -114,7 +114,7 @@ type Request struct {
 	Certified bool
 }
 
-func getFarms(client *gridproxy.GridProxyClient) (map[int]string, error) {
+func getFarms(client gridproxy.GridProxyClient) (map[int]string, error) {
 	farms, err := client.Farms()
 	if err != nil {
 		return nil, err
@@ -137,7 +137,7 @@ func freeCapacity(node *gridproxy.Node) MachineCapacity {
 	return res
 }
 
-func getNodes(client *gridproxy.GridProxyClient) ([]NodeData, error) {
+func getNodes(client gridproxy.GridProxyClient) ([]NodeData, error) {
 	farms, err := getFarms(client)
 	if err != nil {
 		return nil, err
@@ -200,7 +200,7 @@ func subtract(node *NodeData, r *Request) {
 func schedule(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	apiClient := meta.(*apiClient)
 	go startRmbIfNeeded(ctx, apiClient)
-	nodes, err := getNodes(&apiClient.grid_client)
+	nodes, err := getNodes(apiClient.grid_client)
 	if err != nil {
 		return diag.FromErr(err)
 	}
