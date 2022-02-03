@@ -45,7 +45,7 @@ func (g *RetryingGridProxyClient) Nodes() (res []Node, err error) {
 
 func (g *RetryingGridProxyClient) AliveNodes() (res []Node, err error) {
 	f := func() error {
-		res, err = g.cl.Nodes()
+		res, err = g.cl.AliveNodes()
 		return err
 	}
 	backoff.RetryNotify(f, bf(), notify("alive_nodes"))
