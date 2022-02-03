@@ -114,7 +114,7 @@ type Request struct {
 	Certified bool
 }
 
-func getFarms(client *gridproxy.GridProxyClient) (map[int]string, error) {
+func getFarms(client gridproxy.GridProxyClient) (map[int]string, error) {
 	farms, err := client.Farms()
 	if err != nil {
 		return nil, err
@@ -126,22 +126,18 @@ func getFarms(client *gridproxy.GridProxyClient) (map[int]string, error) {
 	return farmMap, nil
 }
 
-func freeCapacity(client *gridproxy.GridProxyClient, nodeID uint32) (MachineCapacity, error) {
+func freeCapacity(node *gridproxy.Node) MachineCapacity {
 	var res MachineCapacity
-	node, err := client.Node(nodeID)
-	if err != nil {
-		return res, errors.Wrapf(err, "couldn't fetch node %d", nodeID)
-	}
 
-	res.CPUs = node.Capacity.Total.CRU - node.Capacity.Used.CRU
-	res.Memory = uint64(node.Capacity.Total.MRU) - uint64(node.Capacity.Used.MRU)
-	res.Hru = uint64(node.Capacity.Total.HRU) - uint64(node.Capacity.Used.HRU)
-	res.Sru = uint64(node.Capacity.Total.SRU) - uint64(node.Capacity.Used.SRU)
+	res.CPUs = node.TotalResources.CRU - node.UsedResources.CRU
+	res.Memory = uint64(node.TotalResources.MRU) - uint64(node.UsedResources.MRU)
+	res.Hru = uint64(node.TotalResources.HRU) - uint64(node.UsedResources.HRU)
+	res.Sru = uint64(node.TotalResources.SRU) - uint64(node.UsedResources.SRU)
 
-	return res, nil
+	return res
 }
 
-func getNodes(client *gridproxy.GridProxyClient) ([]NodeData, error) {
+func getNodes(client gridproxy.GridProxyClient) ([]NodeData, error) {
 	farms, err := getFarms(client)
 	if err != nil {
 		return nil, err
@@ -155,10 +151,7 @@ func getNodes(client *gridproxy.GridProxyClient) ([]NodeData, error) {
 		if node.Status != "up" {
 			continue
 		}
-		cap, err := freeCapacity(client, uint32(node.NodeID))
-		if err != nil {
-			return nil, err
-		}
+		cap := freeCapacity(&node)
 		farm, ok := farms[node.FarmID]
 		if !ok {
 			return nil, fmt.Errorf("farm %d not found", node.FarmID)
@@ -207,7 +200,7 @@ func subtract(node *NodeData, r *Request) {
 func schedule(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	apiClient := meta.(*apiClient)
 	go startRmbIfNeeded(ctx, apiClient)
-	nodes, err := getNodes(&apiClient.grid_client)
+	nodes, err := getNodes(apiClient.grid_client)
 	if err != nil {
 		return diag.FromErr(err)
 	}
