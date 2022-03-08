@@ -43,7 +43,7 @@ func dataSourceGatewayRead(ctx context.Context, d *schema.ResourceData, meta int
 	go startRmbIfNeeded(ctx, apiClient)
 	nodeID := uint32(d.Get("node").(int))
 	name := d.Get("name").(string)
-	ncPool := NewNodeClient(apiClient.sub, apiClient.rmb)
+	ncPool := NewNodeClient(apiClient.manager, apiClient.rmb)
 	nodeClient, err := ncPool.getNodeClient(nodeID)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "failed to get node client"))

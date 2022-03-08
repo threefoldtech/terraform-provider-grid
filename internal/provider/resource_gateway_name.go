@@ -118,7 +118,7 @@ func NewGatewayNameDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 		TLSPassthrough:   d.Get("tls_passthrough").(bool),
 		NodeDeploymentID: nodeDeploymentID,
 		APIClient:        apiClient,
-		ncPool:           NewNodeClient(apiClient.sub, apiClient.rmb),
+		ncPool:           NewNodeClient(apiClient.manager, apiClient.rmb),
 		NameContractID:   uint64(d.Get("name_contract_id").(int)),
 	}
 	return deployer, nil
@@ -185,14 +185,14 @@ func (k *GatewayNameDeployer) GetOldDeployments(ctx context.Context) (map[uint32
 }
 
 func (k *GatewayNameDeployer) ensureNameContract(ctx context.Context, name string) (uint64, error) {
-	contractID, err := k.APIClient.sub.GetContractIDByNameRegistration(name)
+	contractID, err := k.APIClient.manager.GetContractIDByNameRegistration(name)
 	if errors.Is(err, substrate.ErrNotFound) {
 		if k.NameContractID != 0 { // the name changed, remove the old one
-			if err := k.APIClient.sub.CancelContract(k.APIClient.identity, k.NameContractID); err != nil {
+			if err := k.APIClient.manager.CancelContract(k.APIClient.identity, k.NameContractID); err != nil {
 				return 0, errors.Wrap(err, "couldn't delete the old name contract")
 			}
 		}
-		contractID, err := k.APIClient.sub.CreateNameContract(k.APIClient.identity, name)
+		contractID, err := k.APIClient.manager.CreateNameContract(k.APIClient.identity, name)
 		return contractID, errors.Wrap(err, "failed to create name contract")
 	} else if err != nil {
 		return 0, errors.Wrapf(err, "couldn't get the owning contract id of the name %s", name)
@@ -200,7 +200,7 @@ func (k *GatewayNameDeployer) ensureNameContract(ctx context.Context, name strin
 	if contractID == k.NameContractID {
 		return contractID, nil
 	}
-	contract, err := k.APIClient.sub.GetContract(contractID)
+	contract, err := k.APIClient.manager.GetContract(contractID)
 	if err != nil {
 		return 0, errors.Wrapf(err, "couldn't get the owning contract of the name %s", name)
 	}
@@ -260,7 +260,7 @@ func (k *GatewayNameDeployer) Cancel(ctx context.Context) error {
 		return err
 	}
 	if k.NameContractID != 0 {
-		return k.APIClient.sub.CancelContract(k.APIClient.identity, k.NameContractID)
+		return k.APIClient.manager.CancelContract(k.APIClient.identity, k.NameContractID)
 	}
 	return nil
 }

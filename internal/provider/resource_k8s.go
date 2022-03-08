@@ -347,7 +347,7 @@ func NewK8sDeployer(d *schema.ResourceData, apiClient *apiClient) (K8sDeployer, 
 		UsedIPs:          usedIPs,
 		NodesIPRange:     nodesIPRange,
 		APIClient:        apiClient,
-		ncPool:           NewNodeClient(apiClient.sub, apiClient.rmb),
+		ncPool:           NewNodeClient(apiClient.manager, apiClient.rmb),
 		d:                d,
 	}
 	return deployer, nil
@@ -376,7 +376,7 @@ func (k *K8sDeployer) invalidateBrokenAttributes() error {
 	newWorkers := make([]K8sNodeData, 0)
 	validNodes := make(map[uint32]struct{})
 	for node, contractID := range k.NodeDeploymentID {
-		contract, err := k.APIClient.sub.GetContract(contractID)
+		contract, err := k.APIClient.manager.GetContract(contractID)
 		if (err == nil && !contract.State.IsCreated) || errors.Is(err, substrate.ErrNotFound) {
 			delete(k.NodeDeploymentID, node)
 			delete(k.NodesIPRange, node)
@@ -660,7 +660,7 @@ func (k *K8sDeployer) updateState(ctx context.Context, currentDeploymentIDs map[
 func (k *K8sDeployer) removeDeletedContracts(ctx context.Context) error {
 	nodeDeploymentID := make(map[uint32]uint64)
 	for nodeID, deploymentID := range k.NodeDeploymentID {
-		cont, err := k.APIClient.sub.GetContract(deploymentID)
+		cont, err := k.APIClient.manager.GetContract(deploymentID)
 		if err != nil {
 			return errors.Wrap(err, "failed to get deployments")
 		}

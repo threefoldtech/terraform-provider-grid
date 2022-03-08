@@ -25,7 +25,7 @@ type NodeClientCollection interface {
 	getNodeClient(nodeID uint32) (*client.NodeClient, error)
 }
 
-func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deploymentID uint64, version int) error {
+func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deploymentID uint64, version uint32) error {
 	done := false
 	for start := time.Now(); time.Since(start) < 4*time.Minute; time.Sleep(1 * time.Second) {
 		done = true
@@ -58,7 +58,7 @@ func startRmbIfNeeded(ctx context.Context, api *apiClient) {
 	if api.use_rmb_proxy {
 		return
 	}
-	rmbClient, err := gormb.NewServer(api.substrate_url, "127.0.0.1:6379", RMB_WORKERS, api.identity)
+	rmbClient, err := gormb.NewServer(api.manager, "127.0.0.1:6379", RMB_WORKERS, api.identity)
 	if err != nil {
 		log.Fatalf("couldn't start server %s\n", err)
 	}
@@ -113,8 +113,8 @@ func constructWorkloadHashes(dl gridtypes.Deployment) (map[string]string, error)
 }
 
 // constructWorkloadHashes returns a mapping between workloadname to the workload version
-func constructWorkloadVersions(dl gridtypes.Deployment) map[string]int {
-	versions := make(map[string]int)
+func constructWorkloadVersions(dl gridtypes.Deployment) map[string]uint32 {
+	versions := make(map[string]uint32)
 
 	for _, w := range dl.Workloads {
 		key := string(w.Name)
@@ -271,7 +271,7 @@ func ValidateDeployments(ctx context.Context, apiClient *apiClient, oldDeploymen
 				return errors.Wrapf(err, "couldn't read old deployment %d of node %d capacity", oldDl.ContractID, node)
 			}
 			nodeInfo.Capacity.Total.Add(&oldCap)
-			contract, err := apiClient.sub.GetContract(oldDl.ContractID)
+			contract, err := apiClient.manager.GetContract(oldDl.ContractID)
 			if err != nil {
 				return errors.Wrapf(err, "couldn't get node contract %d", oldDl.ContractID)
 			}
@@ -359,7 +359,7 @@ func deployConsistentDeployments(ctx context.Context, oldDeployments map[uint32]
 				return currentDeployments, errors.Wrap(err, "failed to get node client")
 			}
 
-			err = api.sub.CancelContract(api.identity, contractID)
+			err = api.manager.CancelContract(api.identity, contractID)
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "failed to delete deployment")
 			}
@@ -399,7 +399,7 @@ func deployConsistentDeployments(ctx context.Context, oldDeployments map[uint32]
 
 			publicIPCount := countDeploymentPublicIPs(dl)
 			log.Printf("Number of public ips: %d\n", publicIPCount)
-			contractID, err := api.sub.CreateNodeContract(api.identity, node, nil, hashHex, publicIPCount)
+			contractID, err := api.manager.CreateNodeContract(api.identity, node, nil, hashHex, publicIPCount)
 			log.Printf("CreateNodeContract returned id: %d\n", contractID)
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "failed to create contract")
@@ -410,7 +410,7 @@ func deployConsistentDeployments(ctx context.Context, oldDeployments map[uint32]
 			err = client.DeploymentDeploy(sub, dl)
 
 			if err != nil {
-				rerr := api.sub.CancelContract(api.identity, contractID)
+				rerr := api.manager.CancelContract(api.identity, contractID)
 				log.Printf("failed to send deployment deploy request to node %s", err)
 				if rerr != nil {
 					return currentDeployments, fmt.Errorf("error sending deployment to the node: %w, error cancelling contract: %s; you must cancel it manually (id: %d)", err, rerr, contractID)
@@ -490,7 +490,7 @@ func deployConsistentDeployments(ctx context.Context, oldDeployments map[uint32]
 			log.Printf("[DEBUG] HASH: %s", hashHex)
 			// TODO: Destroy and create if publicIPCount is changed
 			// publicIPCount := countDeploymentPublicIPs(dl)
-			contractID, err := api.sub.UpdateNodeContract(api.identity, dl.ContractID, nil, hashHex)
+			contractID, err := api.manager.UpdateNodeContract(api.identity, dl.ContractID, nil, hashHex)
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "failed to update deployment")
 			}

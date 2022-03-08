@@ -10,6 +10,7 @@ import (
 	substrate "github.com/threefoldtech/substrate-client"
 	gridproxy "github.com/threefoldtech/terraform-provider-grid/internal/gridproxy"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
+	"github.com/threefoldtech/terraform-provider-grid/internal/substrateutils"
 	"github.com/threefoldtech/zos/pkg/rmb"
 )
 
@@ -121,7 +122,7 @@ type apiClient struct {
 	use_rmb_proxy bool
 	grid_client   gridproxy.GridProxyClient
 	rmb           rmb.Client
-	sub           *substrate.Substrate
+	manager       substrateutils.SubstrateManager
 	identity      substrate.Identity
 }
 
@@ -163,10 +164,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 		rmb_proxy_url = passed_rmb_proxy_url
 	}
 	log.Printf("substrate url: %s %s\n", apiClient.substrate_url, substrate_url)
-	apiClient.sub, err = substrate.NewManager(apiClient.substrate_url).Substrate()
-	if err != nil {
-		return nil, diag.FromErr(errors.Wrap(err, "couldn't create substrate client"))
-	}
+	apiClient.manager = substrateutils.NewManagerWrapper(substrate.NewManager(apiClient.substrate_url))
 	apiClient.use_rmb_proxy = d.Get("use_rmb_proxy").(bool)
 
 	apiClient.rmb_redis_url = d.Get("rmb_redis_url").(string)
@@ -175,7 +173,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 		return nil, diag.FromErr(err)
 	}
 	pub := sk.Public()
-	twin, err := apiClient.sub.GetTwinByPubKey(pub)
+	twin, err := apiClient.manager.GetTwinByPubKey(pub)
 	if err != nil && errors.Is(err, substrate.ErrNotFound) {
 		return nil, diag.Errorf("no twin associated with the accound with the given mnemonics")
 	}
@@ -186,7 +184,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	var cl rmb.Client
 	if apiClient.use_rmb_proxy {
 		verify_reply := d.Get("verify_reply").(bool)
-		cl, err = client.NewProxyBus(rmb_proxy_url, apiClient.twin_id, apiClient.sub, identity, verify_reply)
+		cl, err = client.NewProxyBus(rmb_proxy_url, apiClient.twin_id, apiClient.manager, identity, verify_reply)
 	} else {
 		cl, err = rmb.NewClient(apiClient.rmb_redis_url)
 	}

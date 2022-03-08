@@ -111,7 +111,7 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 		TLSPassthrough:   d.Get("tls_passthrough").(bool),
 		NodeDeploymentID: nodeDeploymentID,
 		APIClient:        apiClient,
-		ncPool:           NewNodeClient(apiClient.sub, apiClient.rmb),
+		ncPool:           NewNodeClient(apiClient.manager, apiClient.rmb),
 	}
 	return deployer, nil
 }

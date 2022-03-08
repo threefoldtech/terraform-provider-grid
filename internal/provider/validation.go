@@ -15,7 +15,7 @@ import (
 
 // validateAccount checks the mnemonics is associated with an account with key type ed25519
 func validateAccount(apiClient *apiClient) error {
-	_, err := apiClient.sub.GetAccount(apiClient.identity)
+	_, err := apiClient.manager.GetAccount(apiClient.identity)
 	if err != nil && !errors.Is(err, substrate.ErrAccountNotFound) {
 		return errors.Wrap(err, "failed to get account with the given mnemonics")
 	}
@@ -27,7 +27,7 @@ func validateAccount(apiClient *apiClient) error {
 				log.Printf("couldn't convert the mnemomincs to %s key: %s", keyType, err2.Error())
 				return err
 			}
-			_, err2 = apiClient.sub.GetAccount(ident)
+			_, err2 = apiClient.manager.GetAccount(ident)
 			if err2 == nil { // found an identity with key type other than the provided
 				return fmt.Errorf("found an account with %s key type and the same mnemonics, make sure you provided the correct key type", keyType)
 			}
@@ -53,7 +53,7 @@ func validateRedis(apiClient *apiClient) error {
 }
 
 func validateYggdrasil(apiClient *apiClient) error {
-	twin, err := apiClient.sub.GetTwin(apiClient.twin_id)
+	twin, err := apiClient.manager.GetTwin(apiClient.twin_id)
 	if err != nil {
 		return errors.Wrapf(err, "coudln't get twin %d from substrate", apiClient.twin_id)
 	}
@@ -123,7 +123,7 @@ func preValidate(apiClient *apiClient) error {
 }
 
 func validateAccountMoneyForExtrinsics(apiClient *apiClient) error {
-	acc, err := apiClient.sub.GetAccount(apiClient.identity)
+	acc, err := apiClient.manager.GetAccount(apiClient.identity)
 	if err != nil && !errors.Is(err, substrate.ErrAccountNotFound) {
 		return errors.Wrap(err, "failed to get account with the given mnemonics")
 	}

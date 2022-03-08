@@ -147,7 +147,7 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 	}
 
 	// external node related data
-	ncPool := NewNodeClient(apiClient.sub, apiClient.rmb)
+	ncPool := NewNodeClient(apiClient.manager, apiClient.rmb)
 	addWGAccess := d.Get("add_wg_access").(bool)
 
 	var externalIP *gridtypes.IPNet
@@ -196,7 +196,7 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 // invalidateBrokenAttributes removes outdated attrs and deleted contracts
 func (k *NetworkDeployer) invalidateBrokenAttributes() error {
 	for node, contractID := range k.NodeDeploymentID {
-		contract, err := k.APIClient.sub.GetContract(contractID)
+		contract, err := k.APIClient.manager.GetContract(contractID)
 		if (err == nil && !contract.State.IsCreated) || errors.Is(err, substrate.ErrNotFound) {
 			delete(k.NodeDeploymentID, node)
 			delete(k.NodesIPRange, node)

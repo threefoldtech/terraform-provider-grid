@@ -729,7 +729,7 @@ func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context)
 	return deployments, nil
 }
 func (d *DeploymentDeployer) getNodeClient(nodeID uint32) (*client.NodeClient, error) {
-	nodeInfo, err := d.APIClient.sub.GetNode(nodeID)
+	nodeInfo, err := d.APIClient.manager.GetNode(nodeID)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get node")
 	}
