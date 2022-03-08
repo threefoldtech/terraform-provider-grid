@@ -163,7 +163,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 		rmb_proxy_url = passed_rmb_proxy_url
 	}
 	log.Printf("substrate url: %s %s\n", apiClient.substrate_url, substrate_url)
-	apiClient.sub, err = substrate.NewSubstrate(apiClient.substrate_url)
+	apiClient.sub, err = substrate.NewManager(apiClient.substrate_url).Substrate()
 	if err != nil {
 		return nil, diag.FromErr(errors.Wrap(err, "couldn't create substrate client"))
 	}
