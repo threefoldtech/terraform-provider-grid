@@ -118,17 +118,17 @@ func NewGatewayNameDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 		TLSPassthrough:   d.Get("tls_passthrough").(bool),
 		NodeDeploymentID: nodeDeploymentID,
 		APIClient:        apiClient,
-		ncPool:           NewNodeClient(apiClient.manager, apiClient.rmb),
+		ncPool:           NewNodeClient(apiClient.rmb),
 		NameContractID:   uint64(d.Get("name_contract_id").(int)),
 	}
 	return deployer, nil
 }
 
-func (k *GatewayNameDeployer) Validate(ctx context.Context) error {
-	if err := validateAccountMoneyForExtrinsics(k.APIClient); err != nil {
+func (k *GatewayNameDeployer) Validate(ctx context.Context, sub *substrate.Substrate) error {
+	if err := validateAccountMoneyForExtrinsics(sub, k.APIClient.identity); err != nil {
 		return err
 	}
-	return isNodesUp(ctx, []uint32{k.Node}, k.ncPool)
+	return isNodesUp(ctx, sub, []uint32{k.Node}, k.ncPool)
 }
 
 func (k *GatewayNameDeployer) storeState(d *schema.ResourceData) {
@@ -180,19 +180,15 @@ func (k *GatewayNameDeployer) GenerateVersionlessDeployments(ctx context.Context
 	return deployments, nil
 }
 
-func (k *GatewayNameDeployer) GetOldDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
-	return getDeploymentObjects(ctx, k.NodeDeploymentID, k.ncPool)
-}
-
-func (k *GatewayNameDeployer) ensureNameContract(ctx context.Context, name string) (uint64, error) {
-	contractID, err := k.APIClient.manager.GetContractIDByNameRegistration(name)
+func (k *GatewayNameDeployer) ensureNameContract(ctx context.Context, sub *substrate.Substrate, name string) (uint64, error) {
+	contractID, err := sub.GetContractIDByNameRegistration(name)
 	if errors.Is(err, substrate.ErrNotFound) {
 		if k.NameContractID != 0 { // the name changed, remove the old one
-			if err := k.APIClient.manager.CancelContract(k.APIClient.identity, k.NameContractID); err != nil {
+			if err := sub.CancelContract(k.APIClient.identity, k.NameContractID); err != nil {
 				return 0, errors.Wrap(err, "couldn't delete the old name contract")
 			}
 		}
-		contractID, err := k.APIClient.manager.CreateNameContract(k.APIClient.identity, name)
+		contractID, err := sub.CreateNameContract(k.APIClient.identity, name)
 		return contractID, errors.Wrap(err, "failed to create name contract")
 	} else if err != nil {
 		return 0, errors.Wrapf(err, "couldn't get the owning contract id of the name %s", name)
@@ -200,7 +196,7 @@ func (k *GatewayNameDeployer) ensureNameContract(ctx context.Context, name strin
 	if contractID == k.NameContractID {
 		return contractID, nil
 	}
-	contract, err := k.APIClient.manager.GetContract(contractID)
+	contract, err := sub.GetContract(contractID)
 	if err != nil {
 		return 0, errors.Wrapf(err, "couldn't get the owning contract of the name %s", name)
 	}
@@ -210,30 +206,30 @@ func (k *GatewayNameDeployer) ensureNameContract(ctx context.Context, name strin
 	return contractID, nil
 }
 
-func (k *GatewayNameDeployer) Deploy(ctx context.Context) error {
+func (k *GatewayNameDeployer) Deploy(ctx context.Context, sub *substrate.Substrate) error {
 	newDeployments, err := k.GenerateVersionlessDeployments(ctx)
 	if err != nil {
 		return errors.Wrap(err, "couldn't generate deployments data")
 	}
-	cid, err := k.ensureNameContract(ctx, k.Name)
+	cid, err := k.ensureNameContract(ctx, sub, k.Name)
 	if err != nil {
 		return err
 	}
 	k.NameContractID = cid
-	currentDeployments, err := deployDeployments(ctx, k.NodeDeploymentID, newDeployments, k.ncPool, k.APIClient, true)
-	if err := k.updateState(ctx, currentDeployments); err != nil {
+	currentDeployments, err := deployDeployments(ctx, sub, k.NodeDeploymentID, newDeployments, k.ncPool, k.APIClient, true)
+	if err := k.updateState(ctx, sub, currentDeployments); err != nil {
 		log.Printf("error updating state: %s\n", err)
 	}
 	return err
 }
-func (k *GatewayNameDeployer) updateState(ctx context.Context, currentDeploymentIDs map[uint32]uint64) error {
+func (k *GatewayNameDeployer) updateState(ctx context.Context, sub *substrate.Substrate, currentDeploymentIDs map[uint32]uint64) error {
 	k.NodeDeploymentID = currentDeploymentIDs
-	dls, err := getDeploymentObjects(ctx, currentDeploymentIDs, k.ncPool)
+	dls, err := getDeploymentObjects(ctx, sub, currentDeploymentIDs, k.ncPool)
 	if err != nil {
 		return errors.Wrap(err, "couldn't get deployment objects")
 	}
 	dl, ok := dls[k.Node]
-	if !ok {
+	if !ok || len(dl.Workloads) == 0 {
 		k.FQDN = ""
 	} else {
 		var result zos.GatewayProxyResult
@@ -245,30 +241,34 @@ func (k *GatewayNameDeployer) updateState(ctx context.Context, currentDeployment
 	return nil
 }
 
-func (k *GatewayNameDeployer) updateFromRemote(ctx context.Context) error {
-	return k.updateState(ctx, k.NodeDeploymentID)
+func (k *GatewayNameDeployer) updateFromRemote(ctx context.Context, sub *substrate.Substrate) error {
+	return k.updateState(ctx, sub, k.NodeDeploymentID)
 }
 
-func (k *GatewayNameDeployer) Cancel(ctx context.Context) error {
+func (k *GatewayNameDeployer) Cancel(ctx context.Context, sub *substrate.Substrate) error {
 	newDeployments := make(map[uint32]gridtypes.Deployment)
-	currentDeployments, err := deployDeployments(ctx, k.NodeDeploymentID, newDeployments, k.ncPool, k.APIClient, false)
+	currentDeployments, err := deployDeployments(ctx, sub, k.NodeDeploymentID, newDeployments, k.ncPool, k.APIClient, false)
 	// update even in case of error, then return the error after
-	if err := k.updateState(ctx, currentDeployments); err != nil {
+	if err := k.updateState(ctx, sub, currentDeployments); err != nil {
 		log.Printf("error updating state: %s\n", err)
 	}
 	if err != nil {
 		return err
 	}
 	if k.NameContractID != 0 {
-		return k.APIClient.manager.CancelContract(k.APIClient.identity, k.NameContractID)
+		return sub.CancelContract(k.APIClient.identity, k.NameContractID)
 	}
 	return nil
 }
 
 func resourceGatewayNameCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
+	sub, err := apiClient.manager.Substrate()
+	if err != nil {
+		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
+	}
+	defer sub.Close()
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	go startRmbIfNeeded(rmbctx, apiClient)
@@ -276,10 +276,10 @@ func resourceGatewayNameCreate(ctx context.Context, d *schema.ResourceData, meta
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
-	if err := deployer.Validate(ctx); err != nil {
+	if err := deployer.Validate(ctx, sub); err != nil {
 		return diag.FromErr(err)
 	}
-	err = deployer.Deploy(ctx)
+	err = deployer.Deploy(ctx, sub)
 	if err != nil {
 		if len(deployer.NodeDeploymentID) != 0 {
 			// failed to deploy and failed to revert, store the current state locally
@@ -294,9 +294,13 @@ func resourceGatewayNameCreate(ctx context.Context, d *schema.ResourceData, meta
 }
 
 func resourceGatewayNameUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
+	sub, err := apiClient.manager.Substrate()
+	if err != nil {
+		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
+	}
+	defer sub.Close()
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	go startRmbIfNeeded(rmbctx, apiClient)
@@ -305,11 +309,11 @@ func resourceGatewayNameUpdate(ctx context.Context, d *schema.ResourceData, meta
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	if err := deployer.Validate(ctx); err != nil {
+	if err := deployer.Validate(ctx, sub); err != nil {
 		return diag.FromErr(err)
 	}
 
-	err = deployer.Deploy(ctx)
+	err = deployer.Deploy(ctx, sub)
 	if err != nil {
 		diags = diag.FromErr(err)
 	}
@@ -317,10 +321,16 @@ func resourceGatewayNameUpdate(ctx context.Context, d *schema.ResourceData, meta
 	return diags
 }
 
+// TODO: make this non failing
 func resourceGatewayNameRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
+	sub, err := apiClient.manager.Substrate()
+	if err != nil {
+		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
+	}
+	defer sub.Close()
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	go startRmbIfNeeded(rmbctx, apiClient)
@@ -329,7 +339,7 @@ func resourceGatewayNameRead(ctx context.Context, d *schema.ResourceData, meta i
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	err = deployer.updateFromRemote(ctx)
+	err = deployer.updateFromRemote(ctx, sub)
 	log.Printf("read updateFromRemote err: %s\n", err)
 	if err != nil {
 		diags = append(diags, diag.Diagnostic{
@@ -346,6 +356,11 @@ func resourceGatewayNameRead(ctx context.Context, d *schema.ResourceData, meta i
 func resourceGatewayNameDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
+	sub, err := apiClient.manager.Substrate()
+	if err != nil {
+		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
+	}
+	defer sub.Close()
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	go startRmbIfNeeded(rmbctx, apiClient)
@@ -353,7 +368,7 @@ func resourceGatewayNameDelete(ctx context.Context, d *schema.ResourceData, meta
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
-	err = deployer.Cancel(ctx)
+	err = deployer.Cancel(ctx, sub)
 	if err != nil {
 		diags = diag.FromErr(err)
 	}

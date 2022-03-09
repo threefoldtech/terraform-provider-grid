@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
+	"github.com/threefoldtech/substrate-client"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
@@ -111,24 +112,24 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 		TLSPassthrough:   d.Get("tls_passthrough").(bool),
 		NodeDeploymentID: nodeDeploymentID,
 		APIClient:        apiClient,
-		ncPool:           NewNodeClient(apiClient.manager, apiClient.rmb),
+		ncPool:           NewNodeClient(apiClient.rmb),
 	}
 	return deployer, nil
 }
 
-func (k *GatewayFQDNDeployer) Validate(ctx context.Context) error {
-	if err := validateAccountMoneyForExtrinsics(k.APIClient); err != nil {
+func (k *GatewayFQDNDeployer) Validate(ctx context.Context, sub *substrate.Substrate) error {
+	if err := validateAccountMoneyForExtrinsics(sub, k.APIClient.identity); err != nil {
 		return err
 	}
-	return isNodesUp(ctx, []uint32{k.Node}, k.ncPool)
+	return isNodesUp(ctx, sub, []uint32{k.Node}, k.ncPool)
 }
 
-func (k *GatewayFQDNDeployer) ValidateRead(ctx context.Context) error {
+func (k *GatewayFQDNDeployer) ValidateRead(ctx context.Context, sub *substrate.Substrate) error {
 	nodes := make([]uint32, 0)
 	for node := range k.NodeDeploymentID {
 		nodes = append(nodes, node)
 	}
-	return isNodesUp(ctx, nodes, k.ncPool)
+	return isNodesUp(ctx, sub, nodes, k.ncPool)
 }
 
 func (k *GatewayFQDNDeployer) ValidateDelete(ctx context.Context) error {
@@ -183,24 +184,24 @@ func (k *GatewayFQDNDeployer) GenerateVersionlessDeployments(ctx context.Context
 	return deployments, nil
 }
 
-func (k *GatewayFQDNDeployer) GetOldDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
-	return getDeploymentObjects(ctx, k.NodeDeploymentID, k.ncPool)
+func (k *GatewayFQDNDeployer) GetOldDeployments(ctx context.Context, sub *substrate.Substrate) (map[uint32]gridtypes.Deployment, error) {
+	return getDeploymentObjects(ctx, sub, k.NodeDeploymentID, k.ncPool)
 }
 
-func (k *GatewayFQDNDeployer) Deploy(ctx context.Context) error {
+func (k *GatewayFQDNDeployer) Deploy(ctx context.Context, sub *substrate.Substrate) error {
 	newDeployments, err := k.GenerateVersionlessDeployments(ctx)
 	if err != nil {
 		return errors.Wrap(err, "couldn't generate deployments data")
 	}
-	currentDeployments, err := deployDeployments(ctx, k.NodeDeploymentID, newDeployments, k.ncPool, k.APIClient, true)
-	if err := k.updateState(ctx, currentDeployments); err != nil {
+	currentDeployments, err := deployDeployments(ctx, sub, k.NodeDeploymentID, newDeployments, k.ncPool, k.APIClient, true)
+	if err := k.updateState(ctx, sub, currentDeployments); err != nil {
 		log.Printf("error updating state: %s\n", err)
 	}
 	return err
 }
-func (k *GatewayFQDNDeployer) updateState(ctx context.Context, currentDeploymentIDs map[uint32]uint64) error {
+func (k *GatewayFQDNDeployer) updateState(ctx context.Context, sub *substrate.Substrate, currentDeploymentIDs map[uint32]uint64) error {
 	k.NodeDeploymentID = currentDeploymentIDs
-	dls, err := getDeploymentObjects(ctx, currentDeploymentIDs, k.ncPool)
+	dls, err := getDeploymentObjects(ctx, sub, currentDeploymentIDs, k.ncPool)
 	if err != nil {
 		return errors.Wrap(err, "couldn't get deployment objects")
 	}
@@ -217,24 +218,28 @@ func (k *GatewayFQDNDeployer) updateState(ctx context.Context, currentDeployment
 	return nil
 }
 
-func (k *GatewayFQDNDeployer) updateFromRemote(ctx context.Context) error {
-	return k.updateState(ctx, k.NodeDeploymentID)
+func (k *GatewayFQDNDeployer) updateFromRemote(ctx context.Context, sub *substrate.Substrate) error {
+	return k.updateState(ctx, sub, k.NodeDeploymentID)
 }
 
-func (k *GatewayFQDNDeployer) Cancel(ctx context.Context) error {
+func (k *GatewayFQDNDeployer) Cancel(ctx context.Context, sub *substrate.Substrate) error {
 	newDeployments := make(map[uint32]gridtypes.Deployment)
 
-	currentDeployments, err := deployDeployments(ctx, k.NodeDeploymentID, newDeployments, k.ncPool, k.APIClient, false)
-	if err := k.updateState(ctx, currentDeployments); err != nil {
+	currentDeployments, err := deployDeployments(ctx, sub, k.NodeDeploymentID, newDeployments, k.ncPool, k.APIClient, false)
+	if err := k.updateState(ctx, sub, currentDeployments); err != nil {
 		log.Printf("error updating state: %s\n", err)
 	}
 	return err
 }
 
 func resourceGatewayFQDNCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
+	sub, err := apiClient.manager.Substrate()
+	if err != nil {
+		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
+	}
+	defer sub.Close()
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	go startRmbIfNeeded(rmbctx, apiClient)
@@ -242,10 +247,10 @@ func resourceGatewayFQDNCreate(ctx context.Context, d *schema.ResourceData, meta
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
-	if err := deployer.Validate(ctx); err != nil {
+	if err := deployer.Validate(ctx, sub); err != nil {
 		return diag.FromErr(err)
 	}
-	err = deployer.Deploy(ctx)
+	err = deployer.Deploy(ctx, sub)
 	if err != nil {
 		if len(deployer.NodeDeploymentID) != 0 {
 			// failed to deploy and failed to revert, store the current state locally
@@ -263,6 +268,11 @@ func resourceGatewayFQDNUpdate(ctx context.Context, d *schema.ResourceData, meta
 
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
+	sub, err := apiClient.manager.Substrate()
+	if err != nil {
+		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
+	}
+	defer sub.Close()
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	go startRmbIfNeeded(rmbctx, apiClient)
@@ -271,11 +281,11 @@ func resourceGatewayFQDNUpdate(ctx context.Context, d *schema.ResourceData, meta
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	if err := deployer.Validate(ctx); err != nil {
+	if err := deployer.Validate(ctx, sub); err != nil {
 		return diag.FromErr(err)
 	}
 
-	err = deployer.Deploy(ctx)
+	err = deployer.Deploy(ctx, sub)
 	if err != nil {
 		diags = diag.FromErr(err)
 	}
@@ -287,6 +297,11 @@ func resourceGatewayFQDNRead(ctx context.Context, d *schema.ResourceData, meta i
 
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
+	sub, err := apiClient.manager.Substrate()
+	if err != nil {
+		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
+	}
+	defer sub.Close()
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	go startRmbIfNeeded(rmbctx, apiClient)
@@ -295,7 +310,7 @@ func resourceGatewayFQDNRead(ctx context.Context, d *schema.ResourceData, meta i
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	err = deployer.updateFromRemote(ctx)
+	err = deployer.updateFromRemote(ctx, sub)
 	log.Printf("read updateFromRemote err: %s\n", err)
 	if err != nil {
 		diags = append(diags, diag.Diagnostic{
@@ -312,6 +327,11 @@ func resourceGatewayFQDNRead(ctx context.Context, d *schema.ResourceData, meta i
 func resourceGatewayFQDNDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
+	sub, err := apiClient.manager.Substrate()
+	if err != nil {
+		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
+	}
+	defer sub.Close()
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	go startRmbIfNeeded(rmbctx, apiClient)
@@ -319,7 +339,7 @@ func resourceGatewayFQDNDelete(ctx context.Context, d *schema.ResourceData, meta
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
-	err = deployer.Cancel(ctx)
+	err = deployer.Cancel(ctx, sub)
 	if err != nil {
 		diags = diag.FromErr(err)
 	}
