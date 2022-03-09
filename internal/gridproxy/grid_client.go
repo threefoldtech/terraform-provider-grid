@@ -8,6 +8,8 @@ import (
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 type GridProxyClient interface {
@@ -30,6 +32,18 @@ func NewGridProxyClient(endpoint string) GridProxyClientimpl {
 	return GridProxyClientimpl{endpoint}
 }
 
+func parseError(body io.ReadCloser) error {
+	text, err := ioutil.ReadAll(body)
+	if err != nil {
+		return errors.Wrap(err, "couldn't read body response")
+	}
+	var res ErrorReply
+	if err := json.Unmarshal(text, &res); err != nil {
+		return errors.New(string(text))
+	}
+	return fmt.Errorf("%s", res.Error)
+}
+
 func (g *GridProxyClientimpl) url(sub string, args ...interface{}) string {
 	return g.endpoint + fmt.Sprintf(sub, args...)
 }
@@ -40,7 +54,7 @@ func (g *GridProxyClientimpl) Ping() error {
 		return err
 	}
 	if req.StatusCode != http.StatusOK {
-		return fmt.Errorf("non ok return status code from the the grid proxy home page: %d", req.StatusCode)
+		return fmt.Errorf("non ok return status code from the the grid proxy home page: %s", http.StatusText(req.StatusCode))
 	}
 	return nil
 }
@@ -48,6 +62,10 @@ func (g *GridProxyClientimpl) Ping() error {
 func (g *GridProxyClientimpl) Nodes() (res []Node, err error) {
 	req, err := http.Get(g.url("nodes?size=99999999&max_result=99999999"))
 	if err != nil {
+		return
+	}
+	if req.StatusCode != http.StatusOK {
+		err = parseError(req.Body)
 		return
 	}
 	if err := json.NewDecoder(req.Body).Decode(&res); err != nil {
@@ -58,6 +76,9 @@ func (g *GridProxyClientimpl) Nodes() (res []Node, err error) {
 
 func (g *GridProxyClientimpl) AliveNodes() (res []Node, err error) {
 	res, err = g.Nodes()
+	if err != nil {
+		return
+	}
 	n := 0
 	for i := range res {
 		if res[i].Status == NodeUP {
@@ -71,6 +92,10 @@ func (g *GridProxyClientimpl) AliveNodes() (res []Node, err error) {
 func (g *GridProxyClientimpl) Farms() (res FarmResult, err error) {
 	req, err := http.Get(g.url("farms?size=99999999&max_result=99999999"))
 	if err != nil {
+		return
+	}
+	if req.StatusCode != http.StatusOK {
+		err = parseError(req.Body)
 		return
 	}
 	data, err := io.ReadAll(req.Body)
@@ -97,6 +122,10 @@ func (g *GridProxyClientimpl) Node(nodeID uint32) (res NodeInfo, err error) {
 	if err != nil {
 		return
 	}
+	if req.StatusCode != http.StatusOK {
+		err = parseError(req.Body)
+		return
+	}
 	data, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		return
@@ -121,6 +150,10 @@ func (g *GridProxyClientimpl) Node(nodeID uint32) (res NodeInfo, err error) {
 func (g *GridProxyClientimpl) NodeStatus(nodeID uint32) (res NodeStatus, err error) {
 	req, err := http.Get(g.url("nodes/%d/status", nodeID))
 	if err != nil {
+		return
+	}
+	if req.StatusCode != http.StatusOK {
+		err = parseError(req.Body)
 		return
 	}
 	if err := json.NewDecoder(req.Body).Decode(&res); err != nil {

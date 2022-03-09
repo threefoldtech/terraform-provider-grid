@@ -9,25 +9,22 @@ import (
 
 type NodeClientPool struct {
 	nodeClients map[uint32]*client.NodeClient
-
-	sub *substrate.Substrate
-	rmb rmb.Client
+	rmb         rmb.Client
 }
 
-func NewNodeClient(sub *substrate.Substrate, rmb rmb.Client) *NodeClientPool {
+func NewNodeClient(rmb rmb.Client) *NodeClientPool {
 	return &NodeClientPool{
 		nodeClients: make(map[uint32]*client.NodeClient),
 		rmb:         rmb,
-		sub:         sub,
 	}
 }
 
-func (k *NodeClientPool) getNodeClient(nodeID uint32) (*client.NodeClient, error) {
+func (k *NodeClientPool) getNodeClient(sub *substrate.Substrate, nodeID uint32) (*client.NodeClient, error) {
 	cl, ok := k.nodeClients[nodeID]
 	if ok {
 		return cl, nil
 	}
-	nodeInfo, err := k.sub.GetNode(nodeID)
+	nodeInfo, err := sub.GetNode(nodeID)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get node")
 	}

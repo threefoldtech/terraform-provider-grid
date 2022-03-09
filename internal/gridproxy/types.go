@@ -29,6 +29,10 @@ type PublicConfig struct {
 	Ipv6   string `json:"ipv6"`
 }
 
+type ErrorReply struct {
+	Error string `json:"error"`
+}
+
 // Node is a struct holding the data for a node for the nodes view
 type Node struct {
 	Version           int                `json:"version"`
