@@ -46,7 +46,6 @@ type Node struct {
 	Uptime            int64              `json:"uptime"`
 	Created           int64              `json:"created"`
 	FarmingPolicyID   int                `json:"farmingPolicyId"`
-	UpdatedAt         string             `json:"updatedAt"`
 	TotalResources    gridtypes.Capacity `json:"total_resources"`
 	UsedResources     gridtypes.Capacity `json:"used_resources"`
 	Location          Location           `json:"location"`
