@@ -305,7 +305,7 @@ func ValidateDeployments(ctx context.Context, sub *substrate.Substrate, gridClie
 		}
 		mrus := nodeInfo.Capacity.Total.MRU - nodeInfo.Capacity.Used.MRU
 		hrus := nodeInfo.Capacity.Total.HRU - nodeInfo.Capacity.Used.HRU
-		srus := nodeInfo.Capacity.Total.SRU - nodeInfo.Capacity.Used.SRU
+		srus := 2*nodeInfo.Capacity.Total.SRU - nodeInfo.Capacity.Used.SRU
 		if mrus < needed.MRU ||
 			srus < needed.SRU ||
 			hrus < needed.HRU {

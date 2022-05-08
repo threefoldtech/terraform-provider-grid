@@ -10,6 +10,7 @@ require (
 	github.com/hashicorp/terraform-plugin-docs v0.5.1
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.10.1
 	github.com/pkg/errors v0.9.1
+	github.com/stretchr/testify v1.7.1
 	github.com/threefoldtech/go-rmb v0.1.11-0.20220224131627-825c23c921d3
 	github.com/threefoldtech/substrate-client v0.0.0-20220328075445-99d0ff259160
 	github.com/threefoldtech/zos v0.5.6-0.20220308141056-258859a3efe6
@@ -93,7 +94,6 @@ require (
 	github.com/rs/cors v1.8.2 // indirect
 	github.com/rs/zerolog v1.26.0 // indirect
 	github.com/russross/blackfriday v1.6.0 // indirect
-	github.com/stretchr/testify v1.7.1 // indirect
 	github.com/ulikunitz/xz v0.5.8 // indirect
 	github.com/vedhavyas/go-subkey v1.0.3 // indirect
 	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
