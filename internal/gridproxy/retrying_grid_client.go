@@ -8,15 +8,20 @@ import (
 )
 
 type RetryingGridProxyClient struct {
-	cl GridProxyClient
+	cl      GridProxyClient
+	timeout time.Duration
 }
 
-func NewRetryingGridProxyClient(cl GridProxyClient) RetryingGridProxyClient {
-	return RetryingGridProxyClient{cl}
+func NewRetryingGridProxyClient(cl GridProxyClient) GridProxyClient {
+	return NewRetryingGridProxyClientWithTimeout(cl, 2*time.Minute)
 }
-func bf() *backoff.ExponentialBackOff {
+func NewRetryingGridProxyClientWithTimeout(cl GridProxyClient, timeout time.Duration) GridProxyClient {
+	proxy := RetryingGridProxyClient{cl, timeout}
+	return &proxy
+}
+func bf(timeout time.Duration) *backoff.ExponentialBackOff {
 	res := backoff.NewExponentialBackOff()
-	res.MaxElapsedTime = 2 * time.Minute
+	res.MaxElapsedTime = timeout
 	return res
 }
 
@@ -30,34 +35,25 @@ func (g *RetryingGridProxyClient) Ping() error {
 	f := func() error {
 		return g.cl.Ping()
 	}
-	return backoff.RetryNotify(f, bf(), notify("ping"))
+	return backoff.RetryNotify(f, bf(g.timeout), notify("ping"))
 
 }
 
-func (g *RetryingGridProxyClient) Nodes() (res []Node, err error) {
+func (g *RetryingGridProxyClient) Nodes(filter NodeFilter, pagination Limit) (res []Node, err error) {
 	f := func() error {
-		res, err = g.cl.Nodes()
+		res, err = g.cl.Nodes(filter, pagination)
 		return err
 	}
-	backoff.RetryNotify(f, bf(), notify("nodes"))
+	backoff.RetryNotify(f, bf(g.timeout), notify("nodes"))
 	return
 }
 
-func (g *RetryingGridProxyClient) AliveNodes() (res []Node, err error) {
+func (g *RetryingGridProxyClient) Farms(filter FarmFilter, pagination Limit) (res FarmResult, err error) {
 	f := func() error {
-		res, err = g.cl.AliveNodes()
+		res, err = g.cl.Farms(filter, pagination)
 		return err
 	}
-	backoff.RetryNotify(f, bf(), notify("alive_nodes"))
-	return
-}
-
-func (g *RetryingGridProxyClient) Farms() (res FarmResult, err error) {
-	f := func() error {
-		res, err = g.cl.Farms()
-		return err
-	}
-	backoff.RetryNotify(f, bf(), notify("farms"))
+	backoff.RetryNotify(f, bf(g.timeout), notify("farms"))
 	return
 }
 
@@ -66,7 +62,7 @@ func (g *RetryingGridProxyClient) Node(nodeID uint32) (res NodeInfo, err error) 
 		res, err = g.cl.Node(nodeID)
 		return err
 	}
-	backoff.RetryNotify(f, bf(), notify("node"))
+	backoff.RetryNotify(f, bf(g.timeout), notify("node"))
 	return
 }
 
@@ -75,6 +71,6 @@ func (g *RetryingGridProxyClient) NodeStatus(nodeID uint32) (res NodeStatus, err
 		res, err = g.cl.NodeStatus(nodeID)
 		return err
 	}
-	backoff.RetryNotify(f, bf(), notify("node_status"))
+	backoff.RetryNotify(f, bf(g.timeout), notify("node_status"))
 	return
 }

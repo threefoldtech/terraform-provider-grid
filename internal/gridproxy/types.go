@@ -1,7 +1,6 @@
 package gridproxy
 
 import (
-	"github.com/threefoldtech/zos/pkg/capacity/dmi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
@@ -9,16 +8,14 @@ const NodeUP = "up"
 const NodeDOWN = "down"
 
 // capacityResult is the NodeData capacity results to unmarshal json in it
-type capacityResult struct {
+type CapacityResult struct {
 	Total gridtypes.Capacity `json:"total_resources"`
 	Used  gridtypes.Capacity `json:"used_resources"`
 }
 
 // NodeInfo is node specific info, queried directly from the node
 type NodeInfo struct {
-	Capacity   capacityResult `json:"capacity"`
-	DMI        dmi.DMI        `json:"dmi"`
-	Hypervisor string         `json:"hypervisor"`
+	Capacity CapacityResult `json:"capacity"`
 }
 
 type PublicConfig struct {
@@ -58,7 +55,7 @@ type Location struct {
 	City    string `json:"city"`
 }
 type NodeStatus struct {
-	Status string `json:"nodes"`
+	Status string `json:"status"`
 }
 
 // Nodes is struct for the whole nodes view
@@ -104,20 +101,45 @@ type PublicIP struct {
 
 type FarmResult = []Farm
 
-type farmDataV0 struct {
-	Farms []Farm `json:"farms"`
+// FarmResult is to unmarshal json in it
+
+// Limit used for pagination
+type Limit struct {
+	Size     uint64
+	Page     uint64
+	RetCount bool
 }
 
-// FarmResult is to unmarshal json in it
-type FarmResultV0 struct {
-	Data farmDataV0 `json:"data"`
+// NodeFilter node filters
+type NodeFilter struct {
+	Status       *string
+	FreeMRU      *uint64
+	FreeHRU      *uint64
+	FreeSRU      *uint64
+	Country      *string
+	City         *string
+	FarmName     *string
+	FarmIDs      []uint64
+	FreeIPs      *uint64
+	IPv4         *bool
+	IPv6         *bool
+	Domain       *bool
+	Rentable     *bool
+	RentedBy     *uint64
+	AvailableFor *uint64
 }
-type capacityResultV0 struct {
-	Total gridtypes.Capacity `json:"total"`
-	Used  gridtypes.Capacity `json:"used"`
-}
-type NodeInfoV0 struct {
-	Capacity   capacityResultV0 `json:"capacity"`
-	DMI        dmi.DMI          `json:"dmi"`
-	Hypervisor string           `json:"hypervisor"`
+
+// FarmFilter farm filters
+type FarmFilter struct {
+	FreeIPs           *uint64
+	TotalIPs          *uint64
+	StellarAddress    *string
+	PricingPolicyID   *uint64
+	Version           *uint64
+	FarmID            *uint64
+	TwinID            *uint64
+	Name              *string
+	NameContains      *string
+	CertificationType *string
+	Dedicated         *bool
 }
