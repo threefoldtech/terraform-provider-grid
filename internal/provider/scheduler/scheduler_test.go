@@ -72,7 +72,7 @@ func (m *GridProxyClientMock) AddNode(id uint32, node gridproxy.Node) {
 
 func TestSchedulerEmpty(t *testing.T) {
 	proxy := &GridProxyClientMock{}
-	scheduler := NewScheduler(proxy)
+	scheduler := NewScheduler(proxy, 1)
 	_, err := scheduler.Schedule(&Request{
 		Cap: Capacity{
 			Memory: 1,
@@ -113,7 +113,7 @@ func TestSchedulerSuccess(t *testing.T) {
 		Name:   "freefarm",
 		FarmID: 1,
 	})
-	scheduler := NewScheduler(proxy)
+	scheduler := NewScheduler(proxy, 1)
 	nodeID, err := scheduler.Schedule(&Request{
 		Cap: Capacity{
 			Hru:    3,
@@ -158,7 +158,7 @@ func TestSchedulerSuccessOn4thPage(t *testing.T) {
 		Name:   "freefarm",
 		FarmID: 1,
 	})
-	scheduler := NewScheduler(proxy)
+	scheduler := NewScheduler(proxy, 1)
 	nodeID, err := scheduler.Schedule(&Request{
 		Cap: Capacity{
 			Hru:    3,
@@ -221,7 +221,7 @@ func TestSchedulerFailure(t *testing.T) {
 		"domain": func(r *Request) { r.HasDomain = true },
 	}
 	for key, fn := range violations {
-		scheduler := NewScheduler(proxy)
+		scheduler := NewScheduler(proxy, 1)
 		cp := req
 		fn(&cp)
 		_, err := scheduler.Schedule(&cp)
@@ -253,7 +253,7 @@ func TestSchedulerFailureAfterSuccess(t *testing.T) {
 		Name:   "freefarm",
 		FarmID: 1,
 	})
-	scheduler := NewScheduler(proxy)
+	scheduler := NewScheduler(proxy, 1)
 	nodeID, err := scheduler.Schedule(&Request{
 		Cap: Capacity{
 			Hru:    2,
@@ -309,7 +309,7 @@ func TestSchedulerSuccessAfterSuccess(t *testing.T) {
 		Name:   "freefarm",
 		FarmID: 1,
 	})
-	scheduler := NewScheduler(proxy)
+	scheduler := NewScheduler(proxy, 1)
 	nodeID, err := scheduler.Schedule(&Request{
 		Cap: Capacity{
 			Hru:    2,

@@ -16,17 +16,19 @@ type nodeInfo struct {
 }
 
 type Scheduler struct {
-	nodes map[uint32]nodeInfo
+	nodes  map[uint32]nodeInfo
+	twinID uint64
 	// mapping from farm name to its id
 	farmIDS         map[string]int
 	gridProxyClient gridproxy.GridProxyClient
 }
 
-func NewScheduler(gridProxyClient gridproxy.GridProxyClient) Scheduler {
+func NewScheduler(gridProxyClient gridproxy.GridProxyClient, twinID uint64) Scheduler {
 	return Scheduler{
 		nodes:           map[uint32]nodeInfo{},
 		gridProxyClient: gridProxyClient,
 
+		twinID:  twinID,
 		farmIDS: make(map[string]int),
 	}
 }
@@ -77,7 +79,7 @@ func (n *Scheduler) addNodes(nodes []gridproxy.Node) {
 
 // Schedule makes sure there's at least one node that satisfies the given request
 func (n *Scheduler) Schedule(r *Request) (uint32, error) {
-	f := constructFilter(r)
+	f := constructFilter(r, n.twinID)
 	l := gridproxy.Limit{
 		Size:     1,
 		Page:     1,
