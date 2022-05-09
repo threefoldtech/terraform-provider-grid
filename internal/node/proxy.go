@@ -81,11 +81,7 @@ func (r *ProxyBus) Call(ctx context.Context, twin uint32, fn string, data interf
 		return errors.Wrap(err, "error sending request")
 	}
 	if resp.StatusCode != http.StatusOK {
-		bs, err := io.ReadAll(resp.Body)
-		if err != nil {
-			log.Printf("error parsing response body: %s", err.Error())
-		}
-		return fmt.Errorf("non ok return code: %d, body: %s", resp.StatusCode, string(bs))
+		return parseError(resp)
 	}
 	var res ProxyResponse
 	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
@@ -106,7 +102,7 @@ func (r *ProxyBus) Call(ctx context.Context, twin uint32, fn string, data interf
 		}
 	}
 
-	// errorred ?
+	// errorred?
 	if len(msg.Err) != 0 {
 		return errors.New(msg.Err)
 	}
@@ -148,12 +144,7 @@ func (r *ProxyBus) pollResponse(ctx context.Context, twin uint32, retqueue strin
 				continue
 			}
 			if resp.StatusCode != http.StatusOK {
-				bs, e := io.ReadAll(resp.Body)
-				if e != nil {
-					log.Printf("error parsing response body: %s", e.Error())
-				}
-				log.Printf("non ok status code: %d, body: %s", resp.StatusCode, bs)
-				err = fmt.Errorf("non ok return code: %d, body: %s", resp.StatusCode, bs)
+				err = parseError(resp)
 				errCount += 1
 				continue
 			}
@@ -172,6 +163,35 @@ func (r *ProxyBus) pollResponse(ctx context.Context, twin uint32, retqueue strin
 			return rmb.Message{}, errors.New("context cancelled")
 		}
 	}
+}
+
+func parseError(resp *http.Response) error {
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return errors.Wrapf(err, "failed to read error response (%d)", resp.StatusCode)
+	}
+
+	var errContent ErrorReply
+	if err := json.Unmarshal(bodyBytes, &errContent); err != nil {
+		return fmt.Errorf("(%d): %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	// just in case it was decided to unify grid proxy error messages
+	if errContent.Error != "" {
+		return fmt.Errorf("(%d): %s", resp.StatusCode, errContent.Error)
+	}
+
+	if errContent.Message != "" {
+		return fmt.Errorf("(%d): %s", resp.StatusCode, errContent.Message)
+	}
+
+	return fmt.Errorf("%s (%d)", http.StatusText(resp.StatusCode), resp.StatusCode)
+}
+
+type ErrorReply struct {
+	Status  string `json:",omitempty"`
+	Message string `json:",omitempty"`
+	Error   string `json:"error"`
 }
 
 type ProxyResponse struct {
