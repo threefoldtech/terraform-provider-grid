@@ -53,7 +53,8 @@ func getPublicNode(ctx context.Context, gridClient gridproxy.GridProxyClient, pr
 	for _, node := range preferedNodes {
 		preferedNodesSet[node] = struct{}{}
 	}
-	nodes, err := gridClient.AliveNodes()
+	// BTODO: fix
+	nodes, err := gridClient.Nodes(gridproxy.NodeFilter{}, gridproxy.Limit{})
 	if err != nil {
 		return 0, errors.Wrap(err, "couldn't fetch nodes from the rmb proxy")
 	}

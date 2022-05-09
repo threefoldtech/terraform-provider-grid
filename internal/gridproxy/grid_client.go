@@ -5,18 +5,15 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
-	"strings"
 
 	"github.com/pkg/errors"
 )
 
 type GridProxyClient interface {
 	Ping() error
-	Nodes() (res []Node, err error)
-	AliveNodes() (res []Node, err error)
-	Farms() (res FarmResult, err error)
+	Nodes(filter NodeFilter, pagination Limit) (res []Node, err error)
+	Farms(filter FarmFilter, pagination Limit) (res FarmResult, err error)
 	Node(nodeID uint32) (res NodeInfo, err error)
 	NodeStatus(nodeID uint32) (res NodeStatus, err error)
 }
@@ -25,11 +22,12 @@ type GridProxyClientimpl struct {
 	endpoint string
 }
 
-func NewGridProxyClient(endpoint string) GridProxyClientimpl {
+func NewGridProxyClient(endpoint string) GridProxyClient {
 	if endpoint[len(endpoint)-1] != '/' {
 		endpoint += "/"
 	}
-	return GridProxyClientimpl{endpoint}
+	proxy := GridProxyClientimpl{endpoint}
+	return &proxy
 }
 
 func parseError(body io.ReadCloser) error {
@@ -59,8 +57,9 @@ func (g *GridProxyClientimpl) Ping() error {
 	return nil
 }
 
-func (g *GridProxyClientimpl) Nodes() (res []Node, err error) {
-	req, err := http.Get(g.url("nodes?size=99999999&max_result=99999999"))
+func (g *GridProxyClientimpl) Nodes(filter NodeFilter, limit Limit) (res []Node, err error) {
+	query := nodeParams(filter, limit)
+	req, err := http.Get(g.url(fmt.Sprintf("nodes%s", query)))
 	if err != nil {
 		return
 	}
@@ -74,23 +73,9 @@ func (g *GridProxyClientimpl) Nodes() (res []Node, err error) {
 	return
 }
 
-func (g *GridProxyClientimpl) AliveNodes() (res []Node, err error) {
-	res, err = g.Nodes()
-	if err != nil {
-		return
-	}
-	n := 0
-	for i := range res {
-		if res[i].Status == NodeUP {
-			res[n] = res[i]
-			n++
-		}
-	}
-	return
-}
-
-func (g *GridProxyClientimpl) Farms() (res FarmResult, err error) {
-	req, err := http.Get(g.url("farms?size=99999999&max_result=99999999"))
+func (g *GridProxyClientimpl) Farms(filter FarmFilter, limit Limit) (res FarmResult, err error) {
+	query := farmParams(filter, limit)
+	req, err := http.Get(g.url(fmt.Sprintf("farms%s", query)))
 	if err != nil {
 		return
 	}
@@ -103,17 +88,6 @@ func (g *GridProxyClientimpl) Farms() (res FarmResult, err error) {
 		return
 	}
 	err = json.Unmarshal(data, &res)
-	if err != nil || len(res) == 0 {
-		var old FarmResultV0
-		err1 := json.Unmarshal(data, &old)
-		if err1 != nil {
-			log.Printf("error unmarshaling old %s", err1.Error())
-			return
-		}
-		res = old.Data.Farms
-		err = nil
-		return
-	}
 	return
 }
 
@@ -130,20 +104,7 @@ func (g *GridProxyClientimpl) Node(nodeID uint32) (res NodeInfo, err error) {
 	if err != nil {
 		return
 	}
-	if strings.Contains(string(data), `"total_resources"`) {
-		err = json.Unmarshal(data, &res)
-	} else {
-		var old NodeInfoV0
-		err = json.Unmarshal(data, &old)
-		res = NodeInfo{
-			Capacity: capacityResult{
-				Used:  old.Capacity.Used,
-				Total: old.Capacity.Total,
-			},
-			DMI:        old.DMI,
-			Hypervisor: old.Hypervisor,
-		}
-	}
+	err = json.Unmarshal(data, &res)
 	return
 }
 

@@ -2,17 +2,13 @@ package provider
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"log"
-	"math/rand"
 	"strconv"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
-	gridproxy "github.com/threefoldtech/terraform-provider-grid/internal/gridproxy"
+	"github.com/threefoldtech/terraform-provider-grid/internal/provider/scheduler"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
@@ -89,170 +85,52 @@ func ReourceScheduler() *schema.Resource {
 	}
 }
 
-type MachineCapacity struct {
-	CPUs   uint64
-	Memory uint64
-	Sru    uint64
-	Hru    uint64
-}
-
-type NodeData struct {
-	ID        uint32
-	Farm      string
-	HasIPv4   bool
-	HasDomain bool
-	Certified bool
-	Cap       MachineCapacity
-}
-
-type Request struct {
-	Cap       MachineCapacity
-	Name      string
-	Farm      string
-	HasIPv4   bool
-	HasDomain bool
-	Certified bool
-}
-
-func getFarms(client gridproxy.GridProxyClient) (map[int]string, error) {
-	farms, err := client.Farms()
-	if err != nil {
-		return nil, err
-	}
-	farmMap := make(map[int]string)
-	for _, f := range farms {
-		farmMap[f.FarmID] = f.Name
-	}
-	return farmMap, nil
-}
-
-func freeCapacity(node *gridproxy.Node) MachineCapacity {
-	var res MachineCapacity
-
-	res.CPUs = node.TotalResources.CRU - node.UsedResources.CRU
-	res.Memory = uint64(node.TotalResources.MRU) - uint64(node.UsedResources.MRU)
-	res.Hru = uint64(node.TotalResources.HRU) - uint64(node.UsedResources.HRU)
-	res.Sru = uint64(node.TotalResources.SRU) - uint64(node.UsedResources.SRU)
-
-	return res
-}
-
-func getNodes(client gridproxy.GridProxyClient) ([]NodeData, error) {
-	farms, err := getFarms(client)
-	if err != nil {
-		return nil, err
-	}
-	nodes, err := client.AliveNodes()
-	if err != nil {
-		return nil, errors.Wrap(err, "couldn't fetch nodes")
-	}
-	res := make([]NodeData, 0)
-	for _, node := range nodes {
-		if node.Status != "up" {
-			continue
-		}
-		cap := freeCapacity(&node)
-		farm, ok := farms[node.FarmID]
-		if !ok {
-			return nil, fmt.Errorf("farm %d not found", node.FarmID)
-		}
-		res = append(res, NodeData{
-			ID:        uint32(node.NodeID),
-			Farm:      farm,
-			HasIPv4:   node.PublicConfig.Ipv4 != "",
-			HasDomain: node.PublicConfig.Domain != "",
-			Certified: true, // TODO: how to know
-			Cap:       cap,
-		})
-	}
-	return res, nil
-}
-
-func fullfils(node *NodeData, r *Request) bool {
-	log.Printf("farm: %t\n", r.Farm != "" && r.Farm != node.Farm)
-	log.Printf("cert: %t\n", r.Certified && !node.Certified)
-	log.Printf("ipv4: %t\n", r.HasIPv4 && !node.HasIPv4)
-	log.Printf("domain: %t\n", r.HasDomain && !node.HasDomain)
-	log.Printf("cru: %t\n", r.Cap.CPUs > node.Cap.CPUs)
-	log.Printf("hru: %t\n", r.Cap.Hru > node.Cap.Hru)
-	log.Printf("sru: %t\n", r.Cap.Sru > node.Cap.Sru)
-	log.Printf("memory: %t\n", r.Cap.Memory > node.Cap.Memory)
-	if r.Farm != "" && r.Farm != node.Farm ||
-		r.Certified && !node.Certified ||
-		r.HasDomain && !node.HasDomain ||
-		r.HasIPv4 && !node.HasIPv4 ||
-		r.Cap.CPUs > node.Cap.CPUs ||
-		r.Cap.Memory > node.Cap.Memory ||
-		r.Cap.Hru > node.Cap.Hru ||
-		r.Cap.Sru > node.Cap.Sru {
-		return false
-	}
-	return true
-}
-
-func subtract(node *NodeData, r *Request) {
-	node.Cap.CPUs -= r.Cap.CPUs
-	node.Cap.Memory -= r.Cap.Memory
-	node.Cap.Hru -= r.Cap.Hru
-	node.Cap.Sru -= r.Cap.Sru
-}
-
-func schedule(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	apiClient := meta.(*apiClient)
-	go startRmbIfNeeded(ctx, apiClient)
-	nodes, err := getNodes(apiClient.grid_client)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	rand.Seed(time.Now().UnixNano())
-	rand.Shuffle(len(nodes), func(i, j int) { nodes[i], nodes[j] = nodes[j], nodes[i] })
+func parseAssignment(d *schema.ResourceData) map[string]uint32 {
 	assignmentIfs := d.Get("nodes").(map[string]interface{})
 	assignment := make(map[string]uint32)
 	for k, v := range assignmentIfs {
 		assignment[k] = v.(uint32)
 	}
+	return assignment
+}
+
+func parseRequests(d *schema.ResourceData, assignment map[string]uint32) []scheduler.Request {
 	reqsIfs := d.Get("requests").([]interface{})
-	reqs := make([]Request, 0)
+	reqs := make([]scheduler.Request, 0)
 	for _, r := range reqsIfs {
 		mp := r.(map[string]interface{})
 		if _, ok := assignment[mp["name"].(string)]; ok {
 			// skip already assigned ones
 			continue
 		}
-		reqs = append(reqs, Request{
+		reqs = append(reqs, scheduler.Request{
 			Name:      mp["name"].(string),
 			Farm:      mp["farm"].(string),
 			HasIPv4:   mp["ipv4"].(bool),
 			HasDomain: mp["domain"].(bool),
 			Certified: mp["certified"].(bool),
-			Cap: MachineCapacity{
-				CPUs:   uint64(mp["cru"].(int)),
+			Cap: scheduler.Capacity{
 				Memory: uint64(mp["mru"].(int)) * uint64(gridtypes.Megabyte),
 				Hru:    uint64(mp["hru"].(int)) * uint64(gridtypes.Megabyte),
 				Sru:    uint64(mp["sru"].(int)) * uint64(gridtypes.Megabyte),
 			},
 		})
 	}
-	log.Printf("requests length: %d\n", len(reqsIfs))
-	log.Printf("nodes length: %d\n", len(nodes))
-	curNode := 0
+	return reqs
+}
+
+func schedule(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	apiClient := meta.(*apiClient)
+	go startRmbIfNeeded(ctx, apiClient)
+	assignment := parseAssignment(d)
+	reqs := parseRequests(d, assignment)
+	scheduler := scheduler.NewScheduler(apiClient.grid_client)
 	for _, r := range reqs {
-		i := 0
-		for i < len(nodes) {
-			json.NewEncoder(log.Writer()).Encode(nodes[curNode])
-			if fullfils(&nodes[curNode], &r) {
-				subtract(&nodes[curNode], &r)
-				assignment[r.Name] = nodes[curNode].ID
-				curNode = (curNode + 1) % len(nodes)
-				break
-			}
-			curNode = (curNode + 1) % len(nodes)
-			i++
+		node, err := scheduler.Schedule(&r)
+		if err != nil {
+			return diag.FromErr(errors.Wrapf(err, "couldn't schedule request %s", r.Name))
 		}
-		if _, ok := assignment[r.Name]; !ok {
-			json.NewEncoder(log.Writer()).Encode(r)
-			return diag.FromErr(fmt.Errorf("didn't find a suitable node"))
-		}
+		assignment[r.Name] = node
 	}
 	d.Set("nodes", assignment)
 	return nil

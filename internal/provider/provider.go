@@ -198,8 +198,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	apiClient.rmb = cl
 
 	grid_client := gridproxy.NewGridProxyClient(rmb_proxy_url)
-	retrying_grid_client := gridproxy.NewRetryingGridProxyClient(&grid_client)
-	apiClient.grid_client = &retrying_grid_client
+	apiClient.grid_client = gridproxy.NewRetryingGridProxyClient(grid_client)
 	if err := preValidate(&apiClient, sub); err != nil {
 		return nil, diag.FromErr(err)
 	}

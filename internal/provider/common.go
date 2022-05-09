@@ -224,11 +224,13 @@ func hasWorkload(dl *gridtypes.Deployment, wlType gridtypes.WorkloadType) bool {
 
 func ValidateDeployments(ctx context.Context, sub *substrate.Substrate, gridClient gridproxy.GridProxyClient, oldDeployments map[uint32]gridtypes.Deployment, newDeployments map[uint32]gridtypes.Deployment) error {
 	farmIPs := make(map[int]int)
-	allNodes, err := gridClient.Nodes()
+	// BTODO: fix
+	allNodes, err := gridClient.Nodes(gridproxy.NodeFilter{}, gridproxy.Limit{})
 	if err != nil {
 		return errors.Wrap(err, "failed to fetch nodes from the grid proxy")
 	}
-	allFarms, err := gridClient.Farms()
+	// BTODO: fix
+	allFarms, err := gridClient.Farms(gridproxy.FarmFilter{}, gridproxy.Limit{})
 	if err != nil {
 		return errors.Wrap(err, "failed to fetch farms from the grid proxy")
 	}
@@ -303,7 +305,7 @@ func ValidateDeployments(ctx context.Context, sub *substrate.Substrate, gridClie
 		}
 		mrus := nodeInfo.Capacity.Total.MRU - nodeInfo.Capacity.Used.MRU
 		hrus := nodeInfo.Capacity.Total.HRU - nodeInfo.Capacity.Used.HRU
-		srus := nodeInfo.Capacity.Total.SRU - nodeInfo.Capacity.Used.SRU
+		srus := 2*nodeInfo.Capacity.Total.SRU - nodeInfo.Capacity.Used.SRU
 		if mrus < needed.MRU ||
 			srus < needed.SRU ||
 			hrus < needed.HRU {
