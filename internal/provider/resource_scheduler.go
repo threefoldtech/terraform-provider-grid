@@ -124,7 +124,7 @@ func schedule(ctx context.Context, d *schema.ResourceData, meta interface{}) dia
 	go startRmbIfNeeded(ctx, apiClient)
 	assignment := parseAssignment(d)
 	reqs := parseRequests(d, assignment)
-	scheduler := scheduler.NewScheduler(apiClient.grid_client)
+	scheduler := scheduler.NewScheduler(apiClient.grid_client, uint64(apiClient.twin_id))
 	for _, r := range reqs {
 		node, err := scheduler.Schedule(&r)
 		if err != nil {

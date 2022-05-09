@@ -100,7 +100,7 @@ func TestConstructFilter(t *testing.T) {
 		Certified: true,
 	}
 
-	con := constructFilter(&r)
+	con := constructFilter(&r, 1)
 	assert.Equal(t, *con.Status, "up", "construct-filter-status")
 	assert.Equal(t, *con.FreeMRU, uint64(1), "construct-filter-mru")
 	assert.Equal(t, *con.FreeSRU, uint64(2), "construct-filter-sru")
@@ -111,9 +111,9 @@ func TestConstructFilter(t *testing.T) {
 	assert.Empty(t, con.FarmIDs, "construct-filter-farm-ids")
 	assert.Empty(t, con.FreeIPs, "construct-filter-free-ips")
 	assert.Equal(t, *con.IPv4, true, "construct-filter-ipv4")
-	assert.Empty(t, con.IPv6, nil, "construct-filter-ipv6")
-	assert.Empty(t, con.Domain, nil, "construct-filter-domain")
-	assert.Empty(t, con.Rentable, nil, "construct-filter-rentable")
-	assert.Empty(t, con.RentedBy, nil, "construct-filter-rented-by")
-	assert.Empty(t, con.AvailableFor, nil, "construct-filter-available-for")
+	assert.Empty(t, con.IPv6, "construct-filter-ipv6")
+	assert.Empty(t, con.Domain, "construct-filter-domain")
+	assert.Empty(t, con.Rentable, "construct-filter-rentable")
+	assert.Empty(t, con.RentedBy, "construct-filter-rented-by")
+	assert.Equal(t, *con.AvailableFor, uint64(1), "construct-filter-available-for")
 }

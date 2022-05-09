@@ -37,8 +37,9 @@ func subtract(node *Capacity, r *Request) {
 	node.Sru -= r.Cap.Sru
 }
 
-func constructFilter(r *Request) (f gridproxy.NodeFilter) {
+func constructFilter(r *Request, twinID uint64) (f gridproxy.NodeFilter) {
 	f.Status = &StatusUP
+	f.AvailableFor = &twinID
 	if r.Farm != "" {
 		f.FarmName = &r.Farm
 	}
