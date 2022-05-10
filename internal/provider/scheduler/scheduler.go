@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"fmt"
+	"math/rand"
 
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/terraform-provider-grid/internal/gridproxy"
@@ -54,7 +55,13 @@ func (n *Scheduler) getFarmID(farmName string) (int, error) {
 }
 
 func (n *Scheduler) getNode(r *Request) uint32 {
-	for node, cap := range n.nodes {
+	nodes := make([]uint32, 0, len(n.nodes))
+	for node := range n.nodes {
+		nodes = append(nodes, node)
+	}
+	rand.Shuffle(len(nodes), func(i, j int) { nodes[i], nodes[j] = nodes[j], nodes[i] })
+	for _, node := range nodes {
+		cap := n.nodes[node]
 		// TODO: later add free ips check when specifying the number of ips is supported
 		if fullfils(&cap, r) {
 			return node
@@ -81,7 +88,7 @@ func (n *Scheduler) addNodes(nodes []gridproxy.Node) {
 func (n *Scheduler) Schedule(r *Request) (uint32, error) {
 	f := constructFilter(r, n.twinID)
 	l := gridproxy.Limit{
-		Size:     1,
+		Size:     10,
 		Page:     1,
 		RetCount: false,
 	}
@@ -103,7 +110,7 @@ func (n *Scheduler) Schedule(r *Request) (uint32, error) {
 		}
 		n.addNodes(nodes)
 		node = n.getNode(r)
-		if l.Page == 1 && l.Size == 1 {
+		if l.Page == 1 && l.Size == 10 {
 			l.Page = 2
 		} else {
 			l.Size *= 2
