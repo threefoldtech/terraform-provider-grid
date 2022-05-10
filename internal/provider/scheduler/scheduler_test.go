@@ -132,9 +132,9 @@ func TestSchedulerSuccess(t *testing.T) {
 
 func TestSchedulerSuccessOn4thPage(t *testing.T) {
 	proxy := &GridProxyClientMock{}
-	proxy.AddNode(2, gridproxy.Node{})
-	proxy.AddNode(3, gridproxy.Node{})
-	proxy.AddNode(4, gridproxy.Node{})
+	for i := uint32(2); i <= 30; i++ {
+		proxy.AddNode(i, gridproxy.Node{})
+	}
 	proxy.AddNode(1, gridproxy.Node{
 		NodeID: 1,
 		TotalResources: gridtypes.Capacity{

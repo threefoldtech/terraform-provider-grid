@@ -3,6 +3,8 @@ package provider
 import (
 	"context"
 	"log"
+	"math/rand"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -126,6 +128,7 @@ type apiClient struct {
 }
 
 func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
+	rand.Seed(time.Now().UnixNano())
 	var err error
 
 	apiClient := apiClient{}
