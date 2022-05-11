@@ -14,7 +14,12 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
-var ErrNoAccessibleInterfaceFound = fmt.Errorf("couldn't find a publicly accessible ipv4 or ipv6")
+var (
+	trueVal  = true
+	statusUp = "up"
+
+	ErrNoAccessibleInterfaceFound = fmt.Errorf("couldn't find a publicly accessible ipv4 or ipv6")
+)
 
 func ipNet(a, b, c, d, msk byte) gridtypes.IPNet {
 	return gridtypes.NewIPNet(net.IPNet{
@@ -53,10 +58,36 @@ func getPublicNode(ctx context.Context, gridClient gridproxy.GridProxyClient, pr
 	for _, node := range preferedNodes {
 		preferedNodesSet[node] = struct{}{}
 	}
-	// BTODO: fix
-	nodes, err := gridClient.Nodes(gridproxy.NodeFilter{}, gridproxy.Limit{})
+	nodes, err := gridClient.Nodes(gridproxy.NodeFilter{
+		IPv4:   &trueVal,
+		Status: &statusUp,
+	}, gridproxy.Limit{})
 	if err != nil {
 		return 0, errors.Wrap(err, "couldn't fetch nodes from the rmb proxy")
+	}
+	// force add preferred nodes
+	nodeMap := make(map[uint32]struct{})
+	for _, node := range nodes {
+		nodeMap[node.NodeID] = struct{}{}
+	}
+	for _, node := range preferedNodes {
+		if _, ok := nodeMap[uint32(node)]; ok {
+			continue
+		}
+		nodeInfo, err := gridClient.Node(node)
+		if err != nil {
+			log.Printf("failed to get node %d from the grid proxy", node)
+			continue
+		}
+		if nodeInfo.PublicConfig.Ipv4 == "" {
+			continue
+		}
+		if nodeInfo.Status != "up" {
+			continue
+		}
+		nodes = append(nodes, gridproxy.Node{
+			PublicConfig: nodeInfo.PublicConfig,
+		})
 	}
 	lastPrefered := 0
 	for i := range nodes {
@@ -66,19 +97,17 @@ func getPublicNode(ctx context.Context, gridClient gridproxy.GridProxyClient, pr
 		}
 	}
 	for _, node := range nodes {
-		if node.PublicConfig.Ipv4 != "" {
-			log.Printf("found a node with ipv4 public config: %d %s\n", node.NodeID, node.PublicConfig.Ipv4)
-			ip, _, err := net.ParseCIDR(node.PublicConfig.Ipv4)
-			if err != nil {
-				log.Printf("couldn't parse public ip %s of node %d: %s", node.PublicConfig.Ipv4, node.NodeID, err.Error())
-				continue
-			}
-			if ip.IsPrivate() {
-				log.Printf("public ip %s of node %d is private", node.PublicConfig.Ipv4, node.NodeID)
-				continue
-			}
-			return node.NodeID, nil
+		log.Printf("found a node with ipv4 public config: %d %s\n", node.NodeID, node.PublicConfig.Ipv4)
+		ip, _, err := net.ParseCIDR(node.PublicConfig.Ipv4)
+		if err != nil {
+			log.Printf("couldn't parse public ip %s of node %d: %s", node.PublicConfig.Ipv4, node.NodeID, err.Error())
+			continue
 		}
+		if ip.IsPrivate() {
+			log.Printf("public ip %s of node %d is private", node.PublicConfig.Ipv4, node.NodeID)
+			continue
+		}
+		return node.NodeID, nil
 	}
 	return 0, errors.New("no nodes with public ipv4")
 }
