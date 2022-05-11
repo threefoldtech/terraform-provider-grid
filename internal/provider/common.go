@@ -224,25 +224,43 @@ func hasWorkload(dl *gridtypes.Deployment, wlType gridtypes.WorkloadType) bool {
 
 func ValidateDeployments(ctx context.Context, sub *substrate.Substrate, gridClient gridproxy.GridProxyClient, oldDeployments map[uint32]gridtypes.Deployment, newDeployments map[uint32]gridtypes.Deployment) error {
 	farmIPs := make(map[int]int)
-	// BTODO: fix
-	allNodes, err := gridClient.Nodes(gridproxy.NodeFilter{}, gridproxy.Limit{})
-	if err != nil {
-		return errors.Wrap(err, "failed to fetch nodes from the grid proxy")
+	nodeMap := make(map[uint32]gridproxy.NodeInfo)
+	for node, _ := range oldDeployments {
+		nodeInfo, err := gridClient.Node(node)
+		if err != nil {
+			return errors.Wrapf(err, "couldn't get node %d data from the grid proxy", node)
+		}
+		nodeMap[node] = nodeInfo
+		farmIPs[nodeInfo.FarmID] = 0
 	}
-	// BTODO: fix
-	allFarms, err := gridClient.Farms(gridproxy.FarmFilter{}, gridproxy.Limit{})
-	if err != nil {
-		return errors.Wrap(err, "failed to fetch farms from the grid proxy")
+	for node, _ := range newDeployments {
+		if _, ok := nodeMap[node]; ok {
+			continue
+		}
+		nodeInfo, err := gridClient.Node(node)
+		if err != nil {
+			return errors.Wrapf(err, "couldn't get node %d data from the grid proxy", node)
+		}
+		nodeMap[node] = nodeInfo
+		farmIPs[nodeInfo.FarmID] = 0
 	}
-	nodeMap := make(map[uint32]gridproxy.Node)
-	for _, node := range allNodes {
-		nodeMap[node.NodeID] = node
-	}
-	for _, farm := range allFarms {
-		farmIPs[farm.FarmID] = 0
-		for _, ip := range farm.PublicIps {
+	for farm := range farmIPs {
+		farmUint64 := uint64(farm)
+		farmInfo, err := gridClient.Farms(gridproxy.FarmFilter{
+			FarmID: &farmUint64,
+		}, gridproxy.Limit{
+			Page: 1,
+			Size: 1,
+		})
+		if err != nil {
+			return errors.Wrapf(err, "couldn't get farm %d data from the grid proxy", farm)
+		}
+		if len(farmInfo) == 0 {
+			return fmt.Errorf("farm %d not returned from the proxy", farm)
+		}
+		for _, ip := range farmInfo[0].PublicIps {
 			if ip.ContractID == 0 {
-				farmIPs[farm.FarmID]++
+				farmIPs[farm]++
 			}
 		}
 	}
@@ -264,10 +282,7 @@ func ValidateDeployments(ctx context.Context, sub *substrate.Substrate, gridClie
 		}
 
 		requiredIPs := int(countDeploymentPublicIPs(dl))
-		nodeInfo, err := gridClient.Node(node)
-		if err != nil {
-			return errors.Wrapf(err, "couldn't get node %d info", node)
-		}
+		nodeInfo := nodeMap[node]
 		if alreadyExists {
 			oldCap, err := capacity(oldDl)
 			if err != nil {
@@ -289,18 +304,14 @@ func ValidateDeployments(ctx context.Context, sub *substrate.Substrate, gridClie
 			}
 		}
 
-		nodeData, ok := nodeMap[node]
-		if !ok {
-			return fmt.Errorf("node %d not returned from the grid proxy", node)
+		farmIPs[nodeInfo.FarmID] -= requiredIPs
+		if farmIPs[nodeInfo.FarmID] < 0 {
+			return fmt.Errorf("farm %d doesn't have enough public ips", nodeInfo.FarmID)
 		}
-		farmIPs[nodeData.FarmID] -= requiredIPs
-		if farmIPs[nodeData.FarmID] < 0 {
-			return fmt.Errorf("farm %d doesn't have enough public ips", nodeData.FarmID)
-		}
-		if hasWorkload(&dl, zos.GatewayFQDNProxyType) && nodeData.PublicConfig.Ipv4 == "" {
+		if hasWorkload(&dl, zos.GatewayFQDNProxyType) && nodeInfo.PublicConfig.Ipv4 == "" {
 			return fmt.Errorf("node %d can't deploy a fqdn workload as it doesn't have a public ipv4 configured", node)
 		}
-		if hasWorkload(&dl, zos.GatewayNameProxyType) && nodeData.PublicConfig.Domain == "" {
+		if hasWorkload(&dl, zos.GatewayNameProxyType) && nodeInfo.PublicConfig.Domain == "" {
 			return fmt.Errorf("node %d can't deploy a gateway name workload as it doesn't have a domain configured", node)
 		}
 		mrus := nodeInfo.Capacity.Total.MRU - nodeInfo.Capacity.Used.MRU

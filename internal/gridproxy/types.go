@@ -15,7 +15,10 @@ type CapacityResult struct {
 
 // NodeInfo is node specific info, queried directly from the node
 type NodeInfo struct {
-	Capacity CapacityResult `json:"capacity"`
+	FarmID       int            `json:"farmId"`
+	PublicConfig PublicConfig   `json:"publicConfig"`
+	Status       string         `json:"status"` // added node status field for up or down
+	Capacity     CapacityResult `json:"capacity"`
 }
 
 type PublicConfig struct {
