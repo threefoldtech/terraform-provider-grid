@@ -90,7 +90,7 @@ func resourceKubernetes() *schema.Resource {
 						"flist": {
 							Type:     schema.TypeString,
 							Optional: true,
-							Default:  "https://hub.grid.tf/ahmed_hanafy_1/ahmedhanafy725-k3s-latest.flist",
+							Default:  "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist",
 						},
 						"flist_checksum": {
 							Type:        schema.TypeString,
@@ -148,7 +148,7 @@ func resourceKubernetes() *schema.Resource {
 						"flist": {
 							Type:     schema.TypeString,
 							Optional: true,
-							Default:  "https://hub.grid.tf/ahmed_hanafy_1/ahmedhanafy725-k3s-latest.flist",
+							Default:  "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist",
 						},
 						"flist_checksum": {
 							Type:        schema.TypeString,
