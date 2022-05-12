@@ -373,7 +373,8 @@ func deployConsistentDeployments(ctx context.Context, sub *substrate.Substrate, 
 			}
 
 			err = sub.CancelContract(api.identity, contractID)
-			if err != nil {
+
+			if err != nil && !strings.Contains(err.Error(), "ContractNotExists") {
 				return currentDeployments, errors.Wrap(err, "failed to delete deployment")
 			}
 			delete(currentDeployments, node)
