@@ -380,12 +380,12 @@ func (k *K8sDeployer) invalidateBrokenAttributes(sub *substrate.Substrate) error
 		if (err == nil && !contract.State.IsCreated) || errors.Is(err, substrate.ErrNotFound) {
 			delete(k.NodeDeploymentID, node)
 			delete(k.NodesIPRange, node)
+		} else if err != nil {
+			return errors.Wrapf(err, "couldn't get node %d contract %d", node, contractID)
 		} else {
 			validNodes[node] = struct{}{}
 		}
-		if err != nil {
-			return errors.Wrapf(err, "couldn't get node %d contract %d", node, contractID)
-		}
+
 	}
 	if _, ok := validNodes[k.Master.Node]; !ok {
 		k.Master = &K8sNodeData{}

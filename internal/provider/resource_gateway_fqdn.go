@@ -310,6 +310,21 @@ func resourceGatewayFQDNRead(ctx context.Context, d *schema.ResourceData, meta i
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
+	contractId, err := strconv.ParseUint(d.Id(), 10, 64)
+	if err != nil {
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  "Error reading data from remote, terraform state might be out of sync with the remote state",
+			Detail:   errors.Wrap(err, "error parsing contract id").Error(),
+		})
+		return diags
+	}
+	_, err = sub.GetContract(contractId)
+	if err != nil && errors.Is(err, substrate.ErrNotFound) {
+		d.SetId("")
+		return diags
+	}
+
 	err = deployer.updateFromRemote(ctx, sub)
 	log.Printf("read updateFromRemote err: %s\n", err)
 	if err != nil {

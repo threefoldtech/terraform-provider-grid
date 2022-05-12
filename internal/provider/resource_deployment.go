@@ -1036,6 +1036,12 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 		})
 		return diags
 	}
+	_, err = sub.GetContract(contractId)
+	if err != nil && errors.Is(err, substrate.ErrNotFound) {
+		d.SetId("")
+		return diags
+	}
+
 	if err := deployer.updateState(ctx, sub, map[uint32]uint64{nodeID: contractId}); err != nil {
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Warning,
