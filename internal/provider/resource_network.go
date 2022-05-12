@@ -203,8 +203,7 @@ func (k *NetworkDeployer) invalidateBrokenAttributes(sub *substrate.Substrate) e
 			delete(k.NodesIPRange, node)
 			delete(k.Keys, node)
 			delete(k.WGPort, node)
-		}
-		if err != nil {
+		} else if err != nil {
 			return errors.Wrapf(err, "couldn't get node %d contract %d", node, contractID)
 		}
 	}
