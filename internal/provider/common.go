@@ -26,10 +26,20 @@ type NodeClientCollection interface {
 	getNodeClient(sub *substrate.Substrate, nodeID uint32) (*client.NodeClient, error)
 }
 
+type Progress struct {
+	time    time.Time
+	stateOk int
+}
+
 func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deploymentID uint64, version uint32) error {
 	done := false
-	for start := time.Now(); time.Since(start) < 4*time.Minute; time.Sleep(1 * time.Second) {
+	last_progress := Progress{time.Now(), 0}
+	is_progressing := true
+
+	for start := time.Now(); time.Since(start) < 4*time.Minute || is_progressing; time.Sleep(1 * time.Second) {
 		done = true
+		state_Ok := 0
+
 		sub, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
 		dl, err := nodeClient.DeploymentGet(sub, deploymentID)
@@ -41,6 +51,7 @@ func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deployme
 		}
 		for idx, wl := range dl.Workloads {
 			if wl.Result.State == gridtypes.StateOk {
+				state_Ok++
 				continue
 			} else if wl.Result.State == gridtypes.StateError {
 				return errors.New(fmt.Sprintf("workload %d failed within deployment %d with error %s", idx, deploymentID, wl.Result.Error))
@@ -48,8 +59,16 @@ func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deployme
 				done = false
 			}
 		}
+
 		if done {
 			return nil
+		}
+
+		cur_progress := Progress{time.Now(), state_Ok}
+		if last_progress.stateOk < cur_progress.stateOk {
+			last_progress = cur_progress
+		} else if cur_progress.time.Sub(last_progress.time) > time.Minute {
+			is_progressing = false
 		}
 	}
 	return errors.New(fmt.Sprintf("waiting for deployment %d timedout", deploymentID))
