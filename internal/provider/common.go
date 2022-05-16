@@ -43,8 +43,7 @@ func getExponentialBackoff(initial_interval time.Duration, multiplier float64, m
 
 func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deploymentID uint64, version uint32) error {
 	last_progress := Progress{time.Now(), 0}
-	var deploy_error error = nil
-	backoff.Retry(func() error {
+	deployment_error := backoff.Retry(func() error {
 		done := true
 		state_Ok := 0
 
@@ -52,18 +51,16 @@ func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deployme
 		defer cancel()
 		dl, err := nodeClient.DeploymentGet(sub, deploymentID)
 		if err != nil {
-			deploy_error = err
-			return nil
+			return backoff.Permanent(err)
 		}
 		if dl.Version != version {
-			return errors.New("not the same version")
+			return errors.New("fetched old deployment")
 		}
 		for idx, wl := range dl.Workloads {
 			if wl.Result.State == gridtypes.StateOk {
 				state_Ok++
 			} else if wl.Result.State == gridtypes.StateError {
-				deploy_error = errors.New(fmt.Sprintf("workload %d failed within deployment %d with error %s", idx, deploymentID, wl.Result.Error))
-				return nil
+				return backoff.Permanent(errors.New(fmt.Sprintf("workload %d failed within deployment %d with error %s", idx, deploymentID, wl.Result.Error)))
 			} else {
 				done = false
 			}
@@ -77,15 +74,14 @@ func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deployme
 		if last_progress.stateOk < cur_progress.stateOk {
 			last_progress = cur_progress
 		} else if cur_progress.time.Sub(last_progress.time) > time.Minute {
-			deploy_error = errors.New(fmt.Sprintf("waiting for deployment %d timedout", deploymentID))
-			return nil
+			return backoff.Permanent(errors.New(fmt.Sprintf("waiting for deployment %d timedout", deploymentID)))
 		}
 
 		return errors.New("deployment in progress")
 	},
 		backoff.WithContext(getExponentialBackoff(3*time.Second, 1.25, 40*time.Second, 50*time.Minute), ctx))
 
-	return deploy_error
+	return deployment_error
 }
 
 func startRmbIfNeeded(ctx context.Context, api *apiClient) {
