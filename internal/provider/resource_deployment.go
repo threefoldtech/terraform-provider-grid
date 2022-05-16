@@ -8,6 +8,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -31,6 +32,10 @@ func resourceDeployment() *schema.Resource {
 		ReadContext:   resourceDeploymentRead,
 		UpdateContext: resourceDeploymentUpdate,
 		DeleteContext: resourceDeploymentDelete,
+
+		Timeouts: &schema.ResourceTimeout{
+			Create: schema.DefaultTimeout(45 * time.Minute),
+		},
 
 		Schema: map[string]*schema.Schema{
 			"node": {
