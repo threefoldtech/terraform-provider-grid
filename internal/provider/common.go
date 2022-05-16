@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cenkalti/backoff"
 	"github.com/pkg/errors"
 	gormb "github.com/threefoldtech/go-rmb"
 	substrate "github.com/threefoldtech/substrate-client"
@@ -31,30 +32,38 @@ type Progress struct {
 	stateOk int
 }
 
-func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deploymentID uint64, version uint32) error {
-	done := false
-	last_progress := Progress{time.Now(), 0}
-	is_progressing := true
+func getExponentialBackoff(initial_interval time.Duration, multiplier float64, max_interval time.Duration, max_elapsed_time time.Duration) *backoff.ExponentialBackOff {
+	b := backoff.NewExponentialBackOff()
+	b.InitialInterval = initial_interval
+	b.Multiplier = multiplier
+	b.MaxInterval = max_interval
+	b.MaxElapsedTime = max_elapsed_time
+	return b
+}
 
-	for start := time.Now(); time.Since(start) < 4*time.Minute || is_progressing; time.Sleep(1 * time.Second) {
-		done = true
+func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deploymentID uint64, version uint32) error {
+	last_progress := Progress{time.Now(), 0}
+	var deploy_error error = nil
+	backoff.Retry(func() error {
+		done := true
 		state_Ok := 0
 
 		sub, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
 		dl, err := nodeClient.DeploymentGet(sub, deploymentID)
 		if err != nil {
-			return err
+			deploy_error = err
+			return nil
 		}
 		if dl.Version != version {
-			continue
+			return errors.New("not the same version")
 		}
 		for idx, wl := range dl.Workloads {
 			if wl.Result.State == gridtypes.StateOk {
 				state_Ok++
-				continue
 			} else if wl.Result.State == gridtypes.StateError {
-				return errors.New(fmt.Sprintf("workload %d failed within deployment %d with error %s", idx, deploymentID, wl.Result.Error))
+				deploy_error = errors.New(fmt.Sprintf("workload %d failed within deployment %d with error %s", idx, deploymentID, wl.Result.Error))
+				return nil
 			} else {
 				done = false
 			}
@@ -68,10 +77,15 @@ func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deployme
 		if last_progress.stateOk < cur_progress.stateOk {
 			last_progress = cur_progress
 		} else if cur_progress.time.Sub(last_progress.time) > time.Minute {
-			is_progressing = false
+			deploy_error = errors.New(fmt.Sprintf("waiting for deployment %d timedout", deploymentID))
+			return nil
 		}
-	}
-	return errors.New(fmt.Sprintf("waiting for deployment %d timedout", deploymentID))
+
+		return errors.New("deployment in progress")
+	},
+		backoff.WithContext(getExponentialBackoff(3*time.Second, 1.25, 40*time.Second, 50*time.Minute), ctx))
+
+	return deploy_error
 }
 
 func startRmbIfNeeded(ctx context.Context, api *apiClient) {
