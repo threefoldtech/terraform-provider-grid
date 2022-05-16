@@ -43,7 +43,9 @@ func getExponentialBackoff(initial_interval time.Duration, multiplier float64, m
 
 func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deploymentID uint64, version uint32) error {
 	last_progress := Progress{time.Now(), 0}
+
 	deployment_error := backoff.Retry(func() error {
+		var version_err error = errors.New("deployment version not updated on node")
 		done := true
 		state_Ok := 0
 
@@ -53,17 +55,20 @@ func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deployme
 		if err != nil {
 			return backoff.Permanent(err)
 		}
-		if dl.Version != version {
-			return errors.New("fetched old deployment")
-		}
-		for idx, wl := range dl.Workloads {
-			if wl.Result.State == gridtypes.StateOk {
-				state_Ok++
-			} else if wl.Result.State == gridtypes.StateError {
-				return backoff.Permanent(errors.New(fmt.Sprintf("workload %d failed within deployment %d with error %s", idx, deploymentID, wl.Result.Error)))
-			} else {
-				done = false
+
+		if dl.Version == version {
+			version_err = nil
+			for idx, wl := range dl.Workloads {
+				if wl.Result.State == gridtypes.StateOk {
+					state_Ok++
+				} else if wl.Result.State == gridtypes.StateError {
+					return backoff.Permanent(errors.New(fmt.Sprintf("workload %d failed within deployment %d with error %s", idx, deploymentID, wl.Result.Error)))
+				} else {
+					done = false
+				}
 			}
+		} else {
+			done = false
 		}
 
 		if done {
@@ -74,7 +79,11 @@ func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deployme
 		if last_progress.stateOk < cur_progress.stateOk {
 			last_progress = cur_progress
 		} else if cur_progress.time.Sub(last_progress.time) > time.Minute {
-			return backoff.Permanent(errors.New(fmt.Sprintf("waiting for deployment %d timedout", deploymentID)))
+			timeout_err := fmt.Errorf("waiting for deployment %d timedout", deploymentID)
+			if version_err != nil {
+				timeout_err = fmt.Errorf(timeout_err.Error()+": %w", version_err)
+			}
+			return backoff.Permanent(timeout_err)
 		}
 
 		return errors.New("deployment in progress")
