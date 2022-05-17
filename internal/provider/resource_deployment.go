@@ -759,12 +759,14 @@ func (d *DeploymentDeployer) GetOldDeployments(ctx context.Context) (map[uint32]
 	return deployments, nil
 }
 func (d *DeploymentDeployer) updateState(ctx context.Context, sub *substrate.Substrate, currentDeploymentIDs map[uint32]uint64) error {
-	log.Printf("current deployments\n")
+
 	currentDeployments, err := getDeploymentObjects(ctx, sub, currentDeploymentIDs, d)
 	if err != nil {
 		return errors.Wrap(err, "failed to get deployments to update local state")
 	}
+	log.Printf("current deployments\n")
 	printDeployments(currentDeployments)
+
 	publicIPs := make(map[string]string)
 	publicIP6s := make(map[string]string)
 	yggIPs := make(map[string]string)
@@ -775,7 +777,7 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, sub *substrate.Sub
 	workloads := make(map[string]*gridtypes.Workload)
 
 	for _, dl := range currentDeployments {
-		for _, w := range dl.Workloads {
+		for idx, w := range dl.Workloads {
 			if w.Type == zos.PublicIPType {
 				d := PubIPData{}
 				if err := json.Unmarshal(w.Result.Data, &d); err != nil {
@@ -807,7 +809,7 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, sub *substrate.Sub
 				zdbPort[string(w.Name)] = d.Port
 				zdbNamespace[string(w.Name)] = d.Namespace
 			} else if w.Type == zos.QuantumSafeFSType {
-				workloads[string(w.Name)] = &w
+				workloads[string(w.Name)] = &dl.Workloads[idx]
 			}
 		}
 	}

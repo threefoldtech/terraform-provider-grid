@@ -78,7 +78,7 @@ func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deployme
 		cur_progress := Progress{time.Now(), state_Ok}
 		if last_progress.stateOk < cur_progress.stateOk {
 			last_progress = cur_progress
-		} else if cur_progress.time.Sub(last_progress.time) > time.Minute {
+		} else if cur_progress.time.Sub(last_progress.time) > 4*time.Minute {
 			timeout_err := fmt.Errorf("waiting for deployment %d timedout", deploymentID)
 			if version_err != nil {
 				timeout_err = fmt.Errorf(timeout_err.Error()+": %w", version_err)
