@@ -41,13 +41,13 @@ func getExponentialBackoff(initial_interval time.Duration, multiplier float64, m
 	return b
 }
 
-func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deploymentID uint64, version uint32) error {
-	last_progress := Progress{time.Now(), 0}
+func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deploymentID uint64, version uint32, workloadVersions map[string]uint32) error {
+	lastProgress := Progress{time.Now(), 0}
 
-	deployment_error := backoff.Retry(func() error {
-		var version_err error = errors.New("deployment version not updated on node")
+	deploymentError := backoff.Retry(func() error {
+		var deploymentVersionError error = errors.New("deployment version not updated on node")
 		done := true
-		state_Ok := 0
+		stateOk := 0
 
 		sub, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
@@ -55,12 +55,11 @@ func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deployme
 		if err != nil {
 			return backoff.Permanent(err)
 		}
-
 		if dl.Version == version {
-			version_err = nil
+			deploymentVersionError = nil
 			for idx, wl := range dl.Workloads {
-				if wl.Result.State == gridtypes.StateOk {
-					state_Ok++
+				if _, ok := workloadVersions[wl.Name.String()]; ok && wl.Version == workloadVersions[wl.Name.String()] && wl.Result.State == gridtypes.StateOk {
+					stateOk++
 				} else if wl.Result.State == gridtypes.StateError {
 					return backoff.Permanent(errors.New(fmt.Sprintf("workload %d failed within deployment %d with error %s", idx, deploymentID, wl.Result.Error)))
 				} else {
@@ -75,22 +74,22 @@ func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deployme
 			return nil
 		}
 
-		cur_progress := Progress{time.Now(), state_Ok}
-		if last_progress.stateOk < cur_progress.stateOk {
-			last_progress = cur_progress
-		} else if cur_progress.time.Sub(last_progress.time) > 4*time.Minute {
-			timeout_err := fmt.Errorf("waiting for deployment %d timedout", deploymentID)
-			if version_err != nil {
-				timeout_err = fmt.Errorf(timeout_err.Error()+": %w", version_err)
+		currentProgress := Progress{time.Now(), stateOk}
+		if lastProgress.stateOk < currentProgress.stateOk {
+			lastProgress = currentProgress
+		} else if currentProgress.time.Sub(lastProgress.time) > 4*time.Minute {
+			timeoutError := fmt.Errorf("waiting for deployment %d timedout", deploymentID)
+			if deploymentVersionError != nil {
+				timeoutError = fmt.Errorf(timeoutError.Error()+": %w", deploymentVersionError)
 			}
-			return backoff.Permanent(timeout_err)
+			return backoff.Permanent(timeoutError)
 		}
 
 		return errors.New("deployment in progress")
 	},
 		backoff.WithContext(getExponentialBackoff(3*time.Second, 1.25, 40*time.Second, 50*time.Minute), ctx))
 
-	return deployment_error
+	return deploymentError
 }
 
 func startRmbIfNeeded(ctx context.Context, api *apiClient) {
@@ -471,8 +470,11 @@ func deployConsistentDeployments(ctx context.Context, sub *substrate.Substrate, 
 				}
 			}
 			currentDeployments[node] = dl.ContractID
-
-			err = waitDeployment(ctx, client, dl.ContractID, dl.Version)
+			newWorkloadVersions := map[string]uint32{}
+			for _, w := range dl.Workloads {
+				newWorkloadVersions[w.Name.String()] = 0
+			}
+			err = waitDeployment(ctx, client, dl.ContractID, dl.Version, newWorkloadVersions)
 
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "error waiting deployment")
@@ -512,6 +514,7 @@ func deployConsistentDeployments(ctx context.Context, sub *substrate.Substrate, 
 				return currentDeployments, errors.Wrap(err, "couldn't get new workloads hashes")
 			}
 			oldWorkloadsVersions := constructWorkloadVersions(oldDl)
+			newWorkloadsVersions := map[string]uint32{}
 			dl.Version = oldDl.Version + 1
 			dl.ContractID = oldDl.ContractID
 			for idx, w := range dl.Workloads {
@@ -522,6 +525,7 @@ func deployConsistentDeployments(ctx context.Context, sub *substrate.Substrate, 
 				} else if ok && newHash == oldHash {
 					dl.Workloads[idx].Version = oldWorkloadsVersions[string(w.Name)]
 				}
+				newWorkloadsVersions[dl.Workloads[idx].Name.String()] = dl.Workloads[idx].Version
 			}
 
 			if err := dl.Sign(api.twin_id, api.identity); err != nil {
@@ -557,7 +561,7 @@ func deployConsistentDeployments(ctx context.Context, sub *substrate.Substrate, 
 			}
 			currentDeployments[node] = dl.ContractID
 
-			err = waitDeployment(ctx, client, dl.ContractID, dl.Version)
+			err = waitDeployment(ctx, client, dl.ContractID, dl.Version, newWorkloadsVersions)
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "error waiting deployment")
 			}
