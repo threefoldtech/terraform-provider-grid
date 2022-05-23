@@ -683,6 +683,7 @@ func (vm *VM) GenerateVMWorkload(deployer *DeploymentDeployer) []gridtypes.Workl
 			Mounts:     mounts,
 			Env:        vm.EnvVars,
 		}),
+		Description: vm.Description,
 	}
 	workloads = append(workloads, workload)
 
@@ -776,6 +777,15 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, sub *substrate.Sub
 	zdbNamespace := make(map[string]string)
 	workloads := make(map[string]*gridtypes.Workload)
 
+	vmCpu := make(map[string]int)
+	vmMemory := make(map[string]gridtypes.Unit)
+	vmMounts := make(map[string][]Mount)
+	vmFlist := make(map[string]string)
+	vmEntryPoint := make(map[string]string)
+	vmEnvironmentVariables := make(map[string]map[string]string)
+	vmRootFSSize := make(map[string]int)
+	vmDescription := make(map[string]string)
+
 	for _, dl := range currentDeployments {
 		for idx, w := range dl.Workloads {
 			if w.Type == zos.PublicIPType {
@@ -799,6 +809,17 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, sub *substrate.Sub
 				}
 				privateIPs[string(w.Name)] = d.(*zos.ZMachine).Network.Interfaces[0].IP.String()
 				yggIPs[string(w.Name)] = res.YggIP
+
+				vmFlist[string(w.Name)] = d.(*zos.ZMachine).FList
+				vmRootFSSize[string(w.Name)] = int(d.(*zos.ZMachine).Size / gridtypes.Megabyte)
+				vmCpu[string(w.Name)] = int(d.(*zos.ZMachine).ComputeCapacity.CPU)
+				vmMemory[string(w.Name)] = d.(*zos.ZMachine).ComputeCapacity.Memory / gridtypes.Megabyte
+				for _, mnt := range d.(*zos.ZMachine).Mounts {
+					vmMounts[string(w.Name)] = append(vmMounts[string(w.Name)], Mount{mnt.Name.String(), mnt.Mountpoint})
+				}
+				vmEntryPoint[string(w.Name)] = d.(*zos.ZMachine).Entrypoint
+				vmEnvironmentVariables[string(w.Name)] = d.(*zos.ZMachine).Env
+				vmDescription[string(w.Name)] = w.Description
 			} else if w.Type == zos.ZDBType {
 				d := zos.ZDBResult{}
 				if err := json.Unmarshal(w.Result.Data, &d); err != nil {
@@ -822,6 +843,14 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, sub *substrate.Sub
 		d.VMs[idx].IP = privateIPs[string(vm.Name)]
 		d.VMs[idx].YggIP = yggIPs[string(vm.Name)]
 		d.VMs[idx].Planetary = yggIPs[string(vm.Name)] != ""
+		d.VMs[idx].Flist = vmFlist[string(vm.Name)]
+		d.VMs[idx].Cpu = int(vmCpu[string(vm.Name)])
+		d.VMs[idx].Memory = int(vmMemory[string(vm.Name)])
+		d.VMs[idx].Mounts = vmMounts[string(vm.Name)]
+		d.VMs[idx].Entrypoint = vmEntryPoint[string(vm.Name)]
+		d.VMs[idx].EnvVars = vmEnvironmentVariables[string(vm.Name)]
+		d.VMs[idx].RootfsSize = vmRootFSSize[string(vm.Name)]
+		d.VMs[idx].Description = vmDescription[string(vm.Name)]
 	}
 	for idx, zdb := range d.ZDBs {
 		if ips, ok := zdbIPs[zdb.Name]; ok {
@@ -999,11 +1028,15 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 
 	var diags diag.Diagnostics
 	deploymentID, err := deployer.Deploy(ctx, sub)
+	if deploymentID != 0 {
+		d.SetId(strconv.FormatUint(uint64(deploymentID), 10))
+		deployer.storeState(d)
+	}
+
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	deployer.storeState(d)
-	d.SetId(strconv.FormatUint(uint64(deploymentID), 10))
+
 	return diags
 }
 
@@ -1111,10 +1144,10 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 
 	var diags diag.Diagnostics
 	_, err = deployer.Deploy(ctx, sub)
+	deployer.storeState(d)
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	deployer.storeState(d)
 	return diags
 }
 
