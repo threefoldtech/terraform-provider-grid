@@ -1028,11 +1028,15 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 
 	var diags diag.Diagnostics
 	deploymentID, err := deployer.Deploy(ctx, sub)
-	deployer.storeState(d)
+	if deploymentID != 0 {
+		d.SetId(strconv.FormatUint(uint64(deploymentID), 10))
+		deployer.storeState(d)
+	}
+
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	d.SetId(strconv.FormatUint(uint64(deploymentID), 10))
+
 	return diags
 }
 

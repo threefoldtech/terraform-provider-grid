@@ -43,12 +43,11 @@ func getExponentialBackoff(initial_interval time.Duration, multiplier float64, m
 
 func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deploymentID uint64, version uint32, workloadVersions map[string]uint32) error {
 	lastProgress := Progress{time.Now(), 0}
+	numberOfWorkloads := len(workloadVersions)
 
 	deploymentError := backoff.Retry(func() error {
 		var deploymentVersionError error = errors.New("deployment version not updated on node")
-		done := true
 		stateOk := 0
-
 		sub, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
 		dl, err := nodeClient.DeploymentGet(sub, deploymentID)
@@ -58,19 +57,17 @@ func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deployme
 		if dl.Version == version {
 			deploymentVersionError = nil
 			for idx, wl := range dl.Workloads {
-				if _, ok := workloadVersions[wl.Name.String()]; ok && wl.Version == workloadVersions[wl.Name.String()] && wl.Result.State == gridtypes.StateOk {
-					stateOk++
-				} else if wl.Result.State == gridtypes.StateError {
-					return backoff.Permanent(errors.New(fmt.Sprintf("workload %d failed within deployment %d with error %s", idx, deploymentID, wl.Result.Error)))
-				} else {
-					done = false
+				if _, ok := workloadVersions[wl.Name.String()]; ok && wl.Version == workloadVersions[wl.Name.String()] {
+					if wl.Result.State == gridtypes.StateOk {
+						stateOk++
+					} else if wl.Result.State == gridtypes.StateError {
+						return backoff.Permanent(errors.New(fmt.Sprintf("workload %d failed within deployment %d with error %s", idx, deploymentID, wl.Result.Error)))
+					}
 				}
 			}
-		} else {
-			done = false
 		}
 
-		if done {
+		if stateOk == numberOfWorkloads {
 			return nil
 		}
 
@@ -525,7 +522,7 @@ func deployConsistentDeployments(ctx context.Context, sub *substrate.Substrate, 
 				} else if ok && newHash == oldHash {
 					dl.Workloads[idx].Version = oldWorkloadsVersions[string(w.Name)]
 				}
-				newWorkloadsVersions[dl.Workloads[idx].Name.String()] = dl.Workloads[idx].Version
+				newWorkloadsVersions[w.Name.String()] = w.Version
 			}
 
 			if err := dl.Sign(api.twin_id, api.identity); err != nil {
