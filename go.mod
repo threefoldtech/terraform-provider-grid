@@ -3,6 +3,7 @@ module github.com/threefoldtech/terraform-provider-grid
 go 1.17
 
 require (
+	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/cenkalti/backoff/v3 v3.2.2
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.0
 	github.com/gomodule/redigo v1.8.8
@@ -12,8 +13,8 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.7.1
 	github.com/threefoldtech/go-rmb v0.1.11-0.20220224131627-825c23c921d3
-	github.com/threefoldtech/substrate-client v0.0.0-20220509081306-42520ab2c1a1
-	github.com/threefoldtech/zos v0.5.6-0.20220308141056-258859a3efe6
+	github.com/threefoldtech/substrate-client v0.0.0-20220513092006-992cef6e4dc1
+	github.com/threefoldtech/zos v0.5.6-0.20220518100703-dac8846ca683
 	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2 // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20210803171230-4253848d036c
 )
@@ -32,7 +33,6 @@ require (
 	github.com/aws/aws-sdk-go v1.40.45 // indirect
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d // indirect
 	github.com/bgentry/speakeasy v0.1.0 // indirect
-	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/cosmos/go-bip39 v1.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect

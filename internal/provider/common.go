@@ -259,7 +259,7 @@ func hasWorkload(dl *gridtypes.Deployment, wlType gridtypes.WorkloadType) bool {
 func ValidateDeployments(ctx context.Context, sub *substrate.Substrate, gridClient gridproxy.GridProxyClient, oldDeployments map[uint32]gridtypes.Deployment, newDeployments map[uint32]gridtypes.Deployment) error {
 	farmIPs := make(map[int]int)
 	nodeMap := make(map[uint32]gridproxy.NodeInfo)
-	for node, _ := range oldDeployments {
+	for node := range oldDeployments {
 		nodeInfo, err := gridClient.Node(node)
 		if err != nil {
 			return errors.Wrapf(err, "couldn't get node %d data from the grid proxy", node)
@@ -267,7 +267,7 @@ func ValidateDeployments(ctx context.Context, sub *substrate.Substrate, gridClie
 		nodeMap[node] = nodeInfo
 		farmIPs[nodeInfo.FarmID] = 0
 	}
-	for node, _ := range newDeployments {
+	for node := range newDeployments {
 		if _, ok := nodeMap[node]; ok {
 			continue
 		}
