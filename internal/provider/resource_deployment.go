@@ -257,12 +257,14 @@ func resourceDeployment() *schema.Resource {
 							Default:  "",
 						},
 						"zmachine": {
-							Type:     schema.TypeString,
-							Required: true,
+							Type:        schema.TypeString,
+							Required:    true,
+							Description: "The name of the zmachine that is producing logs. Should be on the same private network as the zlogs workload.",
 						},
 						"output": {
-							Type:     schema.TypeString,
-							Required: true,
+							Type:        schema.TypeString,
+							Required:    true,
+							Description: "The URL of the remote machine receiving logs. Valid log schemes are redis, ws, and wss",
 						},
 					},
 				},
