@@ -243,8 +243,9 @@ func resourceDeployment() *schema.Resource {
 				},
 			},
 			"zlogs": {
-				Type:     schema.TypeList,
-				Optional: true,
+				Type:        schema.TypeList,
+				Optional:    true,
+				Description: "Zlogs is a utility workload that allows you to stream `zmachine` logs to a remote location.",
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
@@ -264,7 +265,7 @@ func resourceDeployment() *schema.Resource {
 						"output": {
 							Type:        schema.TypeString,
 							Required:    true,
-							Description: "The URL of the remote machine receiving logs. Valid log schemes are redis, ws, and wss",
+							Description: "The URL of the remote machine receiving logs. Valid log schema are redis, ws, and wss",
 						},
 					},
 				},
