@@ -242,6 +242,31 @@ func resourceDeployment() *schema.Resource {
 					},
 				},
 			},
+			"zlogs": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"name": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"description": {
+							Type:     schema.TypeString,
+							Optional: true,
+							Default:  "",
+						},
+						"zmachine": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"output": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+					},
+				},
+			},
 			"qsfs": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -442,6 +467,13 @@ type Mount struct {
 	DiskName   string
 	MountPoint string
 }
+
+type Zlogs struct {
+	Name        string
+	ZMahine     string
+	Output      string
+	Description string
+}
 type DeploymentDeployer struct {
 	Id           string
 	Node         uint32
@@ -449,6 +481,7 @@ type DeploymentDeployer struct {
 	ZDBs         []ZDB
 	VMs          []VM
 	QSFSs        []QSFS
+	Zlogs        []Zlogs
 	IPRange      *gridtypes.IPNet
 	UsedIPs      []string
 	NetworkName  string
@@ -551,6 +584,15 @@ func GetZdbData(zdb map[string]interface{}) ZDB {
 	}
 }
 
+func GetZlogsData(zlog map[string]interface{}) Zlogs {
+	return Zlogs{
+		Name:        zlog["name"].(string),
+		ZMahine:     zlog["zmachine"].(string),
+		Output:      zlog["output"].(string),
+		Description: zlog["description"].(string),
+	}
+}
+
 func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (DeploymentDeployer, error) {
 	ipRangeStr := d.Get("ip_range").(string)
 	var ipRange *gridtypes.IPNet
@@ -585,6 +627,13 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 			usedIPs = append(usedIPs, data.IP)
 		}
 	}
+
+	zlogs := make([]Zlogs, 0)
+	for _, zlog := range d.Get("zlogs").([]interface{}) {
+		data := GetZlogsData(zlog.(map[string]interface{}))
+		zlogs = append(zlogs, data)
+	}
+
 	qsfs := make([]QSFS, 0)
 	for _, q := range d.Get("qsfs").([]interface{}) {
 		data := NewQSFSFromSchema(q.(map[string]interface{}))
@@ -597,6 +646,7 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 		VMs:         vms,
 		QSFSs:       qsfs,
 		ZDBs:        zdbs,
+		Zlogs:       zlogs,
 		IPRange:     ipRange,
 		UsedIPs:     usedIPs,
 		NetworkName: d.Get("network_name").(string),
@@ -689,6 +739,20 @@ func (vm *VM) GenerateVMWorkload(deployer *DeploymentDeployer) []gridtypes.Workl
 
 	return workloads
 }
+
+func (zlog *Zlogs) GenerateWorkload() gridtypes.Workload {
+	return gridtypes.Workload{
+		Version: Version,
+		Name:    gridtypes.Name(zlog.Name),
+		Type:    zos.ZLogsType,
+		Data: gridtypes.MustMarshal(zos.ZLogs{
+			ZMachine: gridtypes.Name(zlog.ZMahine),
+			Output:   zlog.Output,
+		}),
+		Description: zlog.Description,
+	}
+}
+
 func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
 	deployments := make(map[uint32]gridtypes.Deployment)
 	err := d.assignNodesIPs()
@@ -715,6 +779,11 @@ func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context)
 			return nil, errors.Wrapf(err, "failed to generate qsfs %d", idx)
 		}
 		workloads = append(workloads, qsfsWorkload)
+	}
+
+	for _, zlog := range d.Zlogs {
+		workload := zlog.GenerateWorkload()
+		workloads = append(workloads, workload)
 	}
 
 	deployment := gridtypes.Deployment{
@@ -786,6 +855,10 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, sub *substrate.Sub
 	vmRootFSSize := make(map[string]int)
 	vmDescription := make(map[string]string)
 
+	zlogsZmachine := make(map[string]string)
+	zlogsOutput := make(map[string]string)
+	zlogsDescription := make(map[string]string)
+
 	for _, dl := range currentDeployments {
 		for idx, w := range dl.Workloads {
 			if w.Type == zos.PublicIPType {
@@ -831,6 +904,15 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, sub *substrate.Sub
 				zdbNamespace[string(w.Name)] = d.Namespace
 			} else if w.Type == zos.QuantumSafeFSType {
 				workloads[string(w.Name)] = &dl.Workloads[idx]
+			} else if w.Type == zos.ZLogsType {
+				d, err := w.WorkloadData()
+				if err != nil {
+					log.Printf("error loading machine data: %s\n", err)
+					continue
+				}
+				zlogsZmachine[w.Name.String()] = string(d.(*zos.ZLogs).ZMachine)
+				zlogsOutput[w.Name.String()] = d.(*zos.ZLogs).Output
+				zlogsDescription[w.Name.String()] = w.Description
 			}
 		}
 	}
@@ -868,6 +950,11 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, sub *substrate.Sub
 		if err := d.QSFSs[idx].updateFromWorkload(workloads[name]); err != nil {
 			log.Printf("couldn't update qsfs from workload: %s\n", err)
 		}
+	}
+	for idx, zlog := range d.Zlogs {
+		d.Zlogs[idx].ZMahine = zlogsZmachine[zlog.Name]
+		d.Zlogs[idx].Output = zlogsOutput[zlog.Name]
+		d.Zlogs[idx].Description = zlogsDescription[zlog.Name]
 	}
 	log.Printf("Current state after updatestate %v\n", d)
 	return nil
@@ -965,6 +1052,15 @@ func (z *ZDB) Dictify() map[string]interface{} {
 	return res
 }
 
+func (zlog *Zlogs) Dictify() map[string]interface{} {
+	res := make(map[string]interface{})
+	res["name"] = zlog.Name
+	res["description"] = zlog.Description
+	res["zmachine"] = zlog.ZMahine
+	res["output"] = zlog.Output
+	return res
+}
+
 // keep only the ones set by the user (should assign checksums to non-existent ones?)
 func (d *DeploymentDeployer) retainChecksums(vms []interface{}) {
 	checksumMap := make(map[string]string)
@@ -994,11 +1090,16 @@ func (dep *DeploymentDeployer) storeState(d *schema.ResourceData) {
 	for _, q := range dep.QSFSs {
 		qsfs = append(zdbs, q.Dictify())
 	}
+	zlogs := make([]interface{}, 0)
+	for _, zlog := range dep.Zlogs {
+		zlogs = append(zlogs, zlog.Dictify())
+	}
 	dep.retainChecksums(vms)
 	d.Set("vms", vms)
 	d.Set("zdbs", zdbs)
 	d.Set("disks", disks)
 	d.Set("qsfs", qsfs)
+	d.Set("zlogs", zlogs)
 	d.Set("node", dep.Node)
 	d.Set("network_name", dep.NetworkName)
 	if dep.IPRange != nil {

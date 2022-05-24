@@ -522,7 +522,7 @@ func deployConsistentDeployments(ctx context.Context, sub *substrate.Substrate, 
 				} else if ok && newHash == oldHash {
 					dl.Workloads[idx].Version = oldWorkloadsVersions[string(w.Name)]
 				}
-				newWorkloadsVersions[w.Name.String()] = w.Version
+				newWorkloadsVersions[w.Name.String()] = dl.Workloads[idx].Version
 			}
 
 			if err := dl.Sign(api.twin_id, api.identity); err != nil {
