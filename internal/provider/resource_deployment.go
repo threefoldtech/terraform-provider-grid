@@ -2,10 +2,11 @@ package provider
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/rand"
 	"net"
 	"strconv"
 	"strings"
@@ -244,7 +245,9 @@ func resourceDeployment() *schema.Resource {
 							Type:        schema.TypeList,
 							Optional:    true,
 							Description: "Zlogs is a utility workload that allows you to stream `zmachine` logs to a remote location.",
-							Elem:        &schema.Schema{Type: schema.TypeString},
+							Elem: &schema.Schema{
+								Type:        schema.TypeString,
+								Description: "Url of the remote machine receiving logs."},
 						},
 					},
 				},
@@ -710,9 +713,11 @@ func (vm *VM) GenerateVMWorkload(deployer *DeploymentDeployer) []gridtypes.Workl
 }
 
 func (zlog *Zlog) GenerateWorkload(deployer *DeploymentDeployer, zmachine string) gridtypes.Workload {
+	url := []byte(zlog.Output)
+	urlHash := md5.Sum([]byte(url))
 	return gridtypes.Workload{
 		Version: Version,
-		Name:    gridtypes.Name(strconv.FormatInt(rand.Int63(), 10)),
+		Name:    gridtypes.Name(hex.EncodeToString(urlHash[:])),
 		Type:    zos.ZLogsType,
 		Data: gridtypes.MustMarshal(zos.ZLogs{
 			ZMachine: gridtypes.Name(zmachine),
