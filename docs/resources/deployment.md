@@ -29,7 +29,6 @@ Deployment resource (zdbs + vms + disks + qsfs).
 - **timeouts** (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 - **vms** (Block List) (see [below for nested schema](#nestedblock--vms))
 - **zdbs** (Block List) (see [below for nested schema](#nestedblock--zdbs))
-- **zlogs** (Block List) Zlogs is a utility workload that allows you to stream `zmachine` logs to a remote location. (see [below for nested schema](#nestedblock--zlogs))
 
 <a id="nestedblock--disks"></a>
 ### Nested Schema for `disks`
@@ -144,6 +143,7 @@ Optional:
 - **publicip** (Boolean) true to enable public ip reservation
 - **publicip6** (Boolean) true to enable public ipv6 reservation
 - **rootfs_size** (Number) Rootfs size in MB
+- **zlogs** (List of String) Zlogs is a utility workload that allows you to stream `zmachine` logs to a remote location.
 
 Read-Only:
 
@@ -181,19 +181,5 @@ Read-Only:
 - **ips** (List of String) IPs of the zdb
 - **namespace** (String) Namespace of the zdb
 - **port** (Number) Port of the zdb
-
-
-<a id="nestedblock--zlogs"></a>
-### Nested Schema for `zlogs`
-
-Required:
-
-- **name** (String)
-- **output** (String) The URL of the remote machine receiving logs. Valid log schema are redis, ws, and wss
-- **zmachine** (String) The name of the zmachine that is producing logs. Should be on the same private network as the zlogs workload.
-
-Optional:
-
-- **description** (String)
 
 
