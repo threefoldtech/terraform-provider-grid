@@ -844,7 +844,7 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, sub *substrate.Sub
 
 	numOk := 0
 	for idx, vm := range d.VMs {
-		if _, ok := stateOkWorkloads[vm.Name]; !ok {
+		if !stateOkWorkloads[vm.Name] {
 			continue
 		}
 		d.VMs[numOk] = d.VMs[idx]
@@ -870,7 +870,7 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, sub *substrate.Sub
 
 	numOk = 0
 	for idx, zdb := range d.ZDBs {
-		if _, ok := stateOkWorkloads[zdb.Name]; !ok {
+		if !stateOkWorkloads[zdb.Name] {
 			continue
 		}
 		d.ZDBs[numOk] = d.ZDBs[idx]
@@ -889,7 +889,7 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, sub *substrate.Sub
 
 	numOk = 0
 	for idx, qsfs := range d.QSFSs {
-		if _, ok := stateOkWorkloads[qsfs.Name]; !ok {
+		if !stateOkWorkloads[qsfs.Name] {
 			continue
 		}
 		d.QSFSs[numOk] = d.QSFSs[idx]
@@ -903,7 +903,7 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, sub *substrate.Sub
 
 	numOk = 0
 	for idx, disk := range d.Disks {
-		if _, ok := stateOkWorkloads[disk.Name]; !ok {
+		if !stateOkWorkloads[disk.Name] {
 			continue
 		}
 		d.Disks[numOk] = d.Disks[idx]
