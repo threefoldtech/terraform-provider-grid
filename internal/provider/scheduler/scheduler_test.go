@@ -117,7 +117,7 @@ func TestSchedulerSuccess(t *testing.T) {
 	nodeID, err := scheduler.Schedule(&Request{
 		Cap: Capacity{
 			Hru:    3,
-			Sru:    17,
+			Sru:    7,
 			Memory: 11,
 		},
 		HasIPv4:   true,
@@ -162,7 +162,7 @@ func TestSchedulerSuccessOn4thPage(t *testing.T) {
 	nodeID, err := scheduler.Schedule(&Request{
 		Cap: Capacity{
 			Hru:    3,
-			Sru:    17,
+			Sru:    7,
 			Memory: 11,
 		},
 		HasIPv4:   true,
@@ -204,7 +204,7 @@ func TestSchedulerFailure(t *testing.T) {
 	req := Request{
 		Cap: Capacity{
 			Hru:    3,
-			Sru:    17,
+			Sru:    7,
 			Memory: 11,
 		},
 		HasIPv4:   false,
@@ -257,7 +257,7 @@ func TestSchedulerFailureAfterSuccess(t *testing.T) {
 	nodeID, err := scheduler.Schedule(&Request{
 		Cap: Capacity{
 			Hru:    2,
-			Sru:    16,
+			Sru:    6,
 			Memory: 10,
 		},
 		HasIPv4:   true,
@@ -313,7 +313,7 @@ func TestSchedulerSuccessAfterSuccess(t *testing.T) {
 	nodeID, err := scheduler.Schedule(&Request{
 		Cap: Capacity{
 			Hru:    2,
-			Sru:    16,
+			Sru:    6,
 			Memory: 10,
 		},
 		HasIPv4:   true,
