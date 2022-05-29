@@ -7,7 +7,7 @@ require (
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.0
 	github.com/gomodule/redigo v1.8.8
 	github.com/google/uuid v1.3.0
-	github.com/hashicorp/terraform-plugin-docs v0.5.1
+	github.com/hashicorp/terraform-plugin-docs v0.8.1
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.16.0
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.7.1
@@ -18,16 +18,17 @@ require (
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20210803171230-4253848d036c
 )
 
+require github.com/cenkalti/backoff v2.2.1+incompatible
+
 require (
 	github.com/ChainSafe/go-schnorrkel v1.0.0 // indirect
 	github.com/Masterminds/goutils v1.1.0 // indirect
-	github.com/Masterminds/semver v1.5.0 // indirect
-	github.com/Masterminds/sprig v2.22.0+incompatible // indirect
+	github.com/Masterminds/semver/v3 v3.1.1 // indirect
+	github.com/Masterminds/sprig/v3 v3.2.0 // indirect
 	github.com/agext/levenshtein v1.2.2 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
 	github.com/bgentry/speakeasy v0.1.0 // indirect
-	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/cosmos/go-bip39 v1.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -46,12 +47,15 @@ require (
 	github.com/gtank/merlin v0.1.1 // indirect
 	github.com/gtank/ristretto255 v0.1.2 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
+	github.com/hashicorp/go-checkpoint v0.5.0 // indirect
+	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-cty v1.4.1-0.20200414143053-d3edf31b6320 // indirect
 	github.com/hashicorp/go-hclog v1.2.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-plugin v1.4.3 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
 	github.com/hashicorp/go-version v1.4.0 // indirect
+	github.com/hashicorp/hc-install v0.3.2 // indirect
 	github.com/hashicorp/hcl/v2 v2.12.0 // indirect
 	github.com/hashicorp/logutils v1.0.0 // indirect
 	github.com/hashicorp/terraform-exec v0.16.1 // indirect
@@ -64,10 +68,10 @@ require (
 	github.com/huandu/xstrings v1.3.2 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/jbenet/go-base58 v0.0.0-20150317085156-6237cf65f3a6 // indirect
-	github.com/mattn/go-colorable v0.1.11 // indirect
+	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mimoo/StrobeGo v0.0.0-20210601165009-122bf33a46e0 // indirect
-	github.com/mitchellh/cli v1.1.2 // indirect
+	github.com/mitchellh/cli v1.1.3 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/go-testing-interface v1.14.1 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
@@ -81,6 +85,8 @@ require (
 	github.com/rs/cors v1.8.2 // indirect
 	github.com/rs/zerolog v1.26.0 // indirect
 	github.com/russross/blackfriday v1.6.0 // indirect
+	github.com/shopspring/decimal v1.2.0 // indirect
+	github.com/spf13/cast v1.3.1 // indirect
 	github.com/vedhavyas/go-subkey v1.0.3 // indirect
 	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
 	github.com/vmihailenco/msgpack/v4 v4.3.12 // indirect
