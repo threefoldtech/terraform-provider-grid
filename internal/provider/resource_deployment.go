@@ -902,7 +902,19 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, sub *substrate.Sub
 		d.VMs[idx].EnvVars = vmEnvironmentVariables[string(vm.Name)]
 		d.VMs[idx].RootfsSize = vmRootFSSize[string(vm.Name)]
 		d.VMs[idx].Description = vmDescription[string(vm.Name)]
-		d.VMs[idx].Zlogs = vmZlog[vm.Name]
+
+		okZlogs := 0
+		for zlogIdx, zlog := range d.VMs[idx].Zlogs {
+			url := []byte(zlog.Output)
+			urlHash := md5.Sum([]byte(url))
+			name := hex.EncodeToString(urlHash[:])
+			if !stateOkWorkloads[name] {
+				continue
+			}
+			d.VMs[idx].Zlogs[okZlogs] = d.VMs[idx].Zlogs[zlogIdx]
+			okZlogs++
+		}
+		d.VMs[idx].Zlogs = d.VMs[idx].Zlogs[:okZlogs]
 	}
 	for idx, zdb := range d.ZDBs {
 		if ips, ok := zdbIPs[zdb.Name]; ok {
