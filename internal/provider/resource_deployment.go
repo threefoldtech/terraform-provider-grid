@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -786,8 +787,18 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, sub *substrate.Sub
 	vmRootFSSize := make(map[string]int)
 	vmDescription := make(map[string]string)
 
+	stateOkWorkloads := make(map[string]map[string]bool)
+
 	for _, dl := range currentDeployments {
 		for idx, w := range dl.Workloads {
+			if w.Result.State != gridtypes.StateOk {
+				continue
+			}
+			if _, ok := stateOkWorkloads[w.Type.String()]; !ok {
+				stateOkWorkloads[w.Type.String()] = map[string]bool{}
+			}
+			stateOkWorkloads[w.Type.String()][w.Name.String()] = true
+
 			if w.Type == zos.PublicIPType {
 				d := PubIPData{}
 				if err := json.Unmarshal(w.Result.Data, &d); err != nil {
@@ -834,6 +845,30 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, sub *substrate.Sub
 			}
 		}
 	}
+	if _, ok := stateOkWorkloads[zos.ZMachineType.String()]; ok {
+		removeNotOkWorkloads(&d.VMs, stateOkWorkloads[zos.ZMachineType.String()])
+	} else {
+		d.VMs = []VM{}
+	}
+
+	if _, ok := stateOkWorkloads[zos.ZMountType.String()]; ok {
+		removeNotOkWorkloads(&d.VMs, stateOkWorkloads[zos.ZMountType.String()])
+	} else {
+		d.Disks = []Disk{}
+	}
+
+	if _, ok := stateOkWorkloads[zos.ZDBType.String()]; ok {
+		removeNotOkWorkloads(&d.VMs, stateOkWorkloads[zos.ZDBType.String()])
+	} else {
+		d.ZDBs = []ZDB{}
+	}
+
+	if _, ok := stateOkWorkloads[zos.QuantumSafeFSType.String()]; ok {
+		removeNotOkWorkloads(&d.VMs, stateOkWorkloads[zos.QuantumSafeFSType.String()])
+	} else {
+		d.QSFSs = []QSFS{}
+	}
+
 	for idx, vm := range d.VMs {
 		vmIPName := fmt.Sprintf("%sip", vm.Name)
 		d.VMs[idx].ComputedIP = publicIPs[vmIPName]
@@ -871,6 +906,25 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, sub *substrate.Sub
 	}
 	log.Printf("Current state after updatestate %v\n", d)
 	return nil
+}
+
+func removeNotOkWorkloads(workloadsInterface interface{}, mp map[string]bool) {
+	workloadsPtr := reflect.ValueOf(workloadsInterface)
+	if workloadsPtr.Kind() == reflect.Ptr {
+		workloads := reflect.Indirect(workloadsPtr)
+		n := workloads.Len()
+		for i := 0; i < n && n > 0; {
+			wlName := workloads.Index(i).FieldByName("Name").String()
+			if _, ok := mp[wlName]; !ok {
+				workloads.Index(i).Set(workloads.Index(n - 1))
+				workloads.SetLen(n - 1)
+				n--
+			} else {
+				i++
+			}
+		}
+		log.Printf("number of workloads after remove inside remove: %d", n)
+	}
 }
 
 func (d *DeploymentDeployer) validateChecksums() error {
