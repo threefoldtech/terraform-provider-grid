@@ -2,6 +2,8 @@ package provider
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -239,6 +241,14 @@ func resourceDeployment() *schema.Resource {
 							Computed:    true,
 							Description: "Allocated Yggdrasil IP",
 						},
+						"zlogs": {
+							Type:        schema.TypeList,
+							Optional:    true,
+							Description: "Zlogs is a utility workload that allows you to stream `zmachine` logs to a remote location.",
+							Elem: &schema.Schema{
+								Type:        schema.TypeString,
+								Description: "Url of the remote machine receiving logs."},
+						},
 					},
 				},
 			},
@@ -436,11 +446,16 @@ type VM struct {
 	RootfsSize    int
 	Entrypoint    string
 	Mounts        []Mount
+	Zlogs         []Zlog
 	EnvVars       map[string]string
 }
 type Mount struct {
 	DiskName   string
 	MountPoint string
+}
+
+type Zlog struct {
+	Output string
 }
 type DeploymentDeployer struct {
 	Id           string
@@ -503,6 +518,11 @@ func GetVMData(vm map[string]interface{}) VM {
 	for k, v := range envs {
 		envVars[k] = v.(string)
 	}
+	zlogs := make([]Zlog, 0)
+	for _, v := range vm["zlogs"].([]interface{}) {
+		zlogs = append(zlogs, Zlog{v.(string)})
+	}
+
 	return VM{
 		Name:          vm["name"].(string),
 		PublicIP:      vm["publicip"].(bool),
@@ -521,6 +541,7 @@ func GetVMData(vm map[string]interface{}) VM {
 		Mounts:        mounts,
 		EnvVars:       envVars,
 		Description:   vm["description"].(string),
+		Zlogs:         zlogs,
 	}
 }
 
@@ -585,6 +606,7 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 			usedIPs = append(usedIPs, data.IP)
 		}
 	}
+
 	qsfs := make([]QSFS, 0)
 	for _, q := range d.Get("qsfs").([]interface{}) {
 		data := NewQSFSFromSchema(q.(map[string]interface{}))
@@ -689,6 +711,21 @@ func (vm *VM) GenerateVMWorkload(deployer *DeploymentDeployer) []gridtypes.Workl
 
 	return workloads
 }
+
+func (zlog *Zlog) GenerateWorkload(deployer *DeploymentDeployer, zmachine string) gridtypes.Workload {
+	url := []byte(zlog.Output)
+	urlHash := md5.Sum([]byte(url))
+	return gridtypes.Workload{
+		Version: Version,
+		Name:    gridtypes.Name(hex.EncodeToString(urlHash[:])),
+		Type:    zos.ZLogsType,
+		Data: gridtypes.MustMarshal(zos.ZLogs{
+			ZMachine: gridtypes.Name(zmachine),
+			Output:   zlog.Output,
+		}),
+	}
+}
+
 func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
 	deployments := make(map[uint32]gridtypes.Deployment)
 	err := d.assignNodesIPs()
@@ -707,6 +744,10 @@ func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context)
 	for _, vm := range d.VMs {
 		vmWorkloads := vm.GenerateVMWorkload(d)
 		workloads = append(workloads, vmWorkloads...)
+		for _, zlog := range vm.Zlogs {
+			zlogWorkload := zlog.GenerateWorkload(d, vm.Name)
+			workloads = append(workloads, zlogWorkload)
+		}
 	}
 
 	for idx, q := range d.QSFSs {
@@ -785,6 +826,7 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, sub *substrate.Sub
 	vmEnvironmentVariables := make(map[string]map[string]string)
 	vmRootFSSize := make(map[string]int)
 	vmDescription := make(map[string]string)
+	vmZlog := make(map[string][]Zlog)
 
 	stateOkWorkloads := make(map[string]bool)
 
@@ -838,6 +880,15 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, sub *substrate.Sub
 				zdbNamespace[string(w.Name)] = d.Namespace
 			} else if w.Type == zos.QuantumSafeFSType {
 				workloads[string(w.Name)] = &dl.Workloads[idx]
+			} else if w.Type == zos.ZLogsType {
+				d, err := w.WorkloadData()
+				if err != nil {
+					log.Printf("error loading machine data: %s\n", err)
+					continue
+				}
+				zmachine := d.(*zos.ZLogs).ZMachine.String()
+				output := d.(*zos.ZLogs).Output
+				vmZlog[zmachine] = append(vmZlog[zmachine], Zlog{output})
 			}
 		}
 	}
@@ -864,6 +915,19 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, sub *substrate.Sub
 		d.VMs[numOk].EnvVars = vmEnvironmentVariables[string(vm.Name)]
 		d.VMs[numOk].RootfsSize = vmRootFSSize[string(vm.Name)]
 		d.VMs[numOk].Description = vmDescription[string(vm.Name)]
+		okZlogs := 0
+		for zlogIdx, zlog := range d.VMs[numOk].Zlogs {
+			url := []byte(zlog.Output)
+			urlHash := md5.Sum([]byte(url))
+			name := hex.EncodeToString(urlHash[:])
+			if !stateOkWorkloads[name] {
+				continue
+			}
+			d.VMs[numOk].Zlogs[okZlogs] = d.VMs[numOk].Zlogs[zlogIdx]
+			okZlogs++
+		}
+		d.VMs[numOk].Zlogs = d.VMs[numOk].Zlogs[:okZlogs]
+
 		numOk++
 	}
 	d.VMs = d.VMs[:numOk]
@@ -967,6 +1031,10 @@ func (vm *VM) Dictify() map[string]interface{} {
 		}
 		mounts = append(mounts, mount)
 	}
+	zlogs := make([]string, 0)
+	for _, zlog := range vm.Zlogs {
+		zlogs = append(zlogs, zlog.Output)
+	}
 	res := make(map[string]interface{})
 	res["name"] = vm.Name
 	res["description"] = vm.Description
@@ -984,6 +1052,7 @@ func (vm *VM) Dictify() map[string]interface{} {
 	res["rootfs_size"] = vm.RootfsSize
 	res["env_vars"] = envVars
 	res["entrypoint"] = vm.Entrypoint
+	res["zlogs"] = zlogs
 	return res
 }
 func (d *Disk) Dictify() map[string]interface{} {
