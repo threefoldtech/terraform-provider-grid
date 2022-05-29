@@ -26,6 +26,7 @@ Deployment resource (zdbs + vms + disks + qsfs).
 - **ip_range** (String) IP range of the node (e.g. 10.1.2.0/24)
 - **network_name** (String) Network to use for Zmachines
 - **qsfs** (Block List) (see [below for nested schema](#nestedblock--qsfs))
+- **timeouts** (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 - **vms** (Block List) (see [below for nested schema](#nestedblock--vms))
 - **zdbs** (Block List) (see [below for nested schema](#nestedblock--zdbs))
 
@@ -112,6 +113,14 @@ Required:
 
 
 
+<a id="nestedblock--timeouts"></a>
+### Nested Schema for `timeouts`
+
+Optional:
+
+- **create** (String)
+
+
 <a id="nestedblock--vms"></a>
 ### Nested Schema for `vms`
 
@@ -134,6 +143,7 @@ Optional:
 - **publicip** (Boolean) true to enable public ip reservation
 - **publicip6** (Boolean) true to enable public ipv6 reservation
 - **rootfs_size** (Number) Rootfs size in MB
+- **zlogs** (List of String) Zlogs is a utility workload that allows you to stream `zmachine` logs to a remote location.
 
 Read-Only:
 
