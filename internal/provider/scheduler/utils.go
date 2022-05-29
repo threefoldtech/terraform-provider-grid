@@ -14,7 +14,7 @@ func freeCapacity(node *gridproxy.Node) Capacity {
 
 	res.Memory = uint64(node.TotalResources.MRU) - uint64(node.UsedResources.MRU)
 	res.Hru = uint64(node.TotalResources.HRU) - uint64(node.UsedResources.HRU)
-	res.Sru = 2*uint64(node.TotalResources.SRU) - uint64(node.UsedResources.SRU)
+	res.Sru = uint64(node.TotalResources.SRU) - uint64(node.UsedResources.SRU)
 
 	return res
 }

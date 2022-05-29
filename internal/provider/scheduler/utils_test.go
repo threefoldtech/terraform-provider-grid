@@ -27,7 +27,7 @@ var (
 func TestFreeCapacity(t *testing.T) {
 	cap := freeCapacity(&node)
 	assert.Equal(t, cap.Hru, uint64(3), "hru")
-	assert.Equal(t, cap.Sru, uint64(8), "sru")
+	assert.Equal(t, cap.Sru, uint64(3), "sru")
 	assert.Equal(t, cap.Memory, uint64(3), "mru")
 }
 
@@ -42,7 +42,7 @@ func TestFullfilsSuccess(t *testing.T) {
 	assert.Equal(t, fullfils(&nodeInfo, &Request{
 		Cap: Capacity{
 			Memory: 3,
-			Sru:    8,
+			Sru:    3,
 			Hru:    3,
 		},
 		farmID:    1,
