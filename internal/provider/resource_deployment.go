@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -845,86 +844,90 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, sub *substrate.Sub
 			}
 		}
 	}
+
+	numOk := 0
 	if _, ok := stateOkWorkloads[zos.ZMachineType.String()]; ok {
-		removeNotOkWorkloads(&d.VMs, stateOkWorkloads[zos.ZMachineType.String()])
-	} else {
-		d.VMs = []VM{}
+		okVms := stateOkWorkloads[zos.ZMachineType.String()]
+		for idx, vm := range d.VMs {
+			if _, ok := okVms[vm.Name]; !ok {
+				continue
+			}
+			d.VMs[numOk] = d.VMs[idx]
+			vmIPName := fmt.Sprintf("%sip", vm.Name)
+			d.VMs[numOk].ComputedIP = publicIPs[vmIPName]
+			d.VMs[numOk].PublicIP = publicIPs[vmIPName] != ""
+			d.VMs[numOk].ComputedIP6 = publicIP6s[vmIPName]
+			d.VMs[numOk].PublicIP6 = publicIP6s[vmIPName] != ""
+			d.VMs[numOk].IP = privateIPs[string(vm.Name)]
+			d.VMs[numOk].YggIP = yggIPs[string(vm.Name)]
+			d.VMs[numOk].Planetary = yggIPs[string(vm.Name)] != ""
+			d.VMs[numOk].Flist = vmFlist[string(vm.Name)]
+			d.VMs[numOk].Cpu = int(vmCpu[string(vm.Name)])
+			d.VMs[numOk].Memory = int(vmMemory[string(vm.Name)])
+			d.VMs[numOk].Mounts = vmMounts[string(vm.Name)]
+			d.VMs[numOk].Entrypoint = vmEntryPoint[string(vm.Name)]
+			d.VMs[numOk].EnvVars = vmEnvironmentVariables[string(vm.Name)]
+			d.VMs[numOk].RootfsSize = vmRootFSSize[string(vm.Name)]
+			d.VMs[numOk].Description = vmDescription[string(vm.Name)]
+			numOk++
+		}
 	}
+	d.VMs = d.VMs[:numOk]
 
-	if _, ok := stateOkWorkloads[zos.ZMountType.String()]; ok {
-		removeNotOkWorkloads(&d.VMs, stateOkWorkloads[zos.ZMountType.String()])
-	} else {
-		d.Disks = []Disk{}
-	}
-
+	numOk = 0
 	if _, ok := stateOkWorkloads[zos.ZDBType.String()]; ok {
-		removeNotOkWorkloads(&d.VMs, stateOkWorkloads[zos.ZDBType.String()])
-	} else {
-		d.ZDBs = []ZDB{}
+		okZDBs := stateOkWorkloads[zos.ZDBType.String()]
+		for idx, zdb := range d.ZDBs {
+			if _, ok := okZDBs[zdb.Name]; !ok {
+				continue
+			}
+			d.ZDBs[numOk] = d.ZDBs[idx]
+			if ips, ok := zdbIPs[zdb.Name]; ok {
+				d.ZDBs[numOk].IPs = ips
+				d.ZDBs[numOk].Port = uint32(zdbPort[zdb.Name])
+				d.ZDBs[numOk].Namespace = zdbNamespace[zdb.Name]
+			} else {
+				d.ZDBs[numOk].IPs = make([]string, 0)
+				d.ZDBs[numOk].Port = 0
+				d.ZDBs[numOk].Namespace = ""
+			}
+			numOk++
+		}
 	}
+	d.ZDBs = d.ZDBs[:numOk]
 
+	numOk = 0
 	if _, ok := stateOkWorkloads[zos.QuantumSafeFSType.String()]; ok {
-		removeNotOkWorkloads(&d.VMs, stateOkWorkloads[zos.QuantumSafeFSType.String()])
-	} else {
-		d.QSFSs = []QSFS{}
+		okQSFSs := stateOkWorkloads[zos.QuantumSafeFSType.String()]
+		for idx, qsfs := range d.QSFSs {
+			if _, ok := okQSFSs[qsfs.Name]; !ok {
+				continue
+			}
+			d.QSFSs[numOk] = d.QSFSs[idx]
+			name := string(qsfs.Name)
+			if err := d.QSFSs[numOk].updateFromWorkload(workloads[name]); err != nil {
+				log.Printf("couldn't update qsfs from workload: %s\n", err)
+			}
+			numOk++
+		}
 	}
+	d.QSFSs = d.QSFSs[:numOk]
 
-	for idx, vm := range d.VMs {
-		vmIPName := fmt.Sprintf("%sip", vm.Name)
-		d.VMs[idx].ComputedIP = publicIPs[vmIPName]
-		d.VMs[idx].PublicIP = publicIPs[vmIPName] != ""
-		d.VMs[idx].ComputedIP6 = publicIP6s[vmIPName]
-		d.VMs[idx].PublicIP6 = publicIP6s[vmIPName] != ""
-		d.VMs[idx].IP = privateIPs[string(vm.Name)]
-		d.VMs[idx].YggIP = yggIPs[string(vm.Name)]
-		d.VMs[idx].Planetary = yggIPs[string(vm.Name)] != ""
-		d.VMs[idx].Flist = vmFlist[string(vm.Name)]
-		d.VMs[idx].Cpu = int(vmCpu[string(vm.Name)])
-		d.VMs[idx].Memory = int(vmMemory[string(vm.Name)])
-		d.VMs[idx].Mounts = vmMounts[string(vm.Name)]
-		d.VMs[idx].Entrypoint = vmEntryPoint[string(vm.Name)]
-		d.VMs[idx].EnvVars = vmEnvironmentVariables[string(vm.Name)]
-		d.VMs[idx].RootfsSize = vmRootFSSize[string(vm.Name)]
-		d.VMs[idx].Description = vmDescription[string(vm.Name)]
-	}
-	for idx, zdb := range d.ZDBs {
-		if ips, ok := zdbIPs[zdb.Name]; ok {
-			d.ZDBs[idx].IPs = ips
-			d.ZDBs[idx].Port = uint32(zdbPort[zdb.Name])
-			d.ZDBs[idx].Namespace = zdbNamespace[zdb.Name]
-		} else {
-			d.ZDBs[idx].IPs = make([]string, 0)
-			d.ZDBs[idx].Port = 0
-			d.ZDBs[idx].Namespace = ""
+	numOk = 0
+	if _, ok := stateOkWorkloads[zos.ZMountType.String()]; ok {
+		okDisks := stateOkWorkloads[zos.ZMountType.String()]
+		for idx, disk := range d.Disks {
+			if _, ok := okDisks[disk.Name]; !ok {
+				continue
+			}
+			d.Disks[numOk] = d.Disks[idx]
+			numOk++
 		}
 	}
-	for idx := range d.QSFSs {
-		name := string(d.QSFSs[idx].Name)
-		if err := d.QSFSs[idx].updateFromWorkload(workloads[name]); err != nil {
-			log.Printf("couldn't update qsfs from workload: %s\n", err)
-		}
-	}
+	d.Disks = d.Disks[:numOk]
+
 	log.Printf("Current state after updatestate %v\n", d)
 	return nil
-}
-
-func removeNotOkWorkloads(workloadsInterface interface{}, mp map[string]bool) {
-	workloadsPtr := reflect.ValueOf(workloadsInterface)
-	if workloadsPtr.Kind() == reflect.Ptr {
-		workloads := reflect.Indirect(workloadsPtr)
-		n := workloads.Len()
-		for i := 0; i < n && n > 0; {
-			wlName := workloads.Index(i).FieldByName("Name").String()
-			if _, ok := mp[wlName]; !ok {
-				workloads.Index(i).Set(workloads.Index(n - 1))
-				workloads.SetLen(n - 1)
-				n--
-			} else {
-				i++
-			}
-		}
-		log.Printf("number of workloads after remove inside remove: %d", n)
-	}
 }
 
 func (d *DeploymentDeployer) validateChecksums() error {
