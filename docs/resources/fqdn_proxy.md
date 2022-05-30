@@ -17,19 +17,19 @@ Resource for deploying gateway domains.
 
 ### Required
 
-- **backends** (List of String) The backends of the gateway proxy (in the format (http|https)://ip:port), with tls_passthrough the scheme must be https
-- **fqdn** (String) The fully quallified domain name of the deployed workload
-- **node** (Number) The gateway's node id
+- `backends` (List of String) The backends of the gateway proxy (in the format (http|https)://ip:port), with tls_passthrough the scheme must be https
+- `fqdn` (String) The fully quallified domain name of the deployed workload
+- `node` (Number) The gateway's node id
 
 ### Optional
 
-- **description** (String) Description field
-- **id** (String) The ID of this resource.
-- **name** (String) Gateway workload name (of no actual significance)
-- **tls_passthrough** (Boolean) true to pass the tls as is to the backends
+- `description` (String) Description field
+- `name` (String) Gateway workload name (of no actual significance)
+- `tls_passthrough` (Boolean) true to pass the tls as is to the backends
 
 ### Read-Only
 
-- **node_deployment_id** (Map of Number) Mapping from each node to its deployment id
+- `id` (String) The ID of this resource.
+- `node_deployment_id` (Map of Number) Mapping from each node to its deployment id
 
 
