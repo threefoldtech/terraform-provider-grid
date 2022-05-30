@@ -236,6 +236,12 @@ func resourceDeployment() *schema.Resource {
 							Default:     false,
 							Description: "Enable Yggdrasil allocation",
 						},
+						"corex": {
+							Type:        schema.TypeBool,
+							Optional:    true,
+							Default:     false,
+							Description: "Enable corex",
+						},
 						"ygg_ip": {
 							Type:        schema.TypeString,
 							Computed:    true,
@@ -436,6 +442,7 @@ type VM struct {
 	PublicIP      bool
 	PublicIP6     bool
 	Planetary     bool
+	Corex         bool
 	ComputedIP    string
 	ComputedIP6   string
 	YggIP         string
@@ -540,6 +547,7 @@ func GetVMData(vm map[string]interface{}) VM {
 		Entrypoint:    vm["entrypoint"].(string),
 		Mounts:        mounts,
 		EnvVars:       envVars,
+		Corex:         vm["corex"].(bool),
 		Description:   vm["description"].(string),
 		Zlogs:         zlogs,
 	}
@@ -702,6 +710,7 @@ func (vm *VM) GenerateVMWorkload(deployer *DeploymentDeployer) []gridtypes.Workl
 			},
 			Size:       gridtypes.Unit(vm.RootfsSize) * gridtypes.Megabyte,
 			Entrypoint: vm.Entrypoint,
+			Corex:      vm.Corex,
 			Mounts:     mounts,
 			Env:        vm.EnvVars,
 		}),
@@ -1041,6 +1050,7 @@ func (vm *VM) Dictify() map[string]interface{} {
 	res["publicip"] = vm.PublicIP
 	res["publicip6"] = vm.PublicIP6
 	res["planetary"] = vm.Planetary
+	res["corex"] = vm.Corex
 	res["flist"] = vm.Flist
 	res["computedip"] = vm.ComputedIP
 	res["computedip6"] = vm.ComputedIP6
