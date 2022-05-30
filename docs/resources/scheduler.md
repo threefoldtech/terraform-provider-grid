@@ -17,32 +17,29 @@ Resource to dynamically assign resource requests to nodes.
 
 ### Required
 
-- **requests** (Block List, Min: 1) List of node assignment requests (see [below for nested schema](#nestedblock--requests))
-
-### Optional
-
-- **id** (String) The ID of this resource.
+- `requests` (Block List, Min: 1) List of node assignment requests (see [below for nested schema](#nestedblock--requests))
 
 ### Read-Only
 
-- **nodes** (Map of Number) Mapping from the request name to the node id
+- `id` (String) The ID of this resource.
+- `nodes` (Map of Number) Mapping from the request name to the node id
 
 <a id="nestedblock--requests"></a>
 ### Nested Schema for `requests`
 
 Required:
 
-- **name** (String) used as a key in the `nodes` dict to be used as a reference
+- `name` (String) used as a key in the `nodes` dict to be used as a reference
 
 Optional:
 
-- **certified** (Boolean) Pick only certified nodes (Not implemented)
-- **cru** (Number) Number of VCPUs
-- **domain** (Boolean) Pick only nodes with public config containing domain
-- **farm** (String) Farm name
-- **hru** (Number) Disk HDD size in MBs
-- **ipv4** (Boolean) Pick only nodes with public config containing ipv4
-- **mru** (Number) Memory size in MBs
-- **sru** (Number) Disk SSD size in MBs
+- `certified` (Boolean) Pick only certified nodes (Not implemented)
+- `cru` (Number) Number of VCPUs
+- `domain` (Boolean) Pick only nodes with public config containing domain
+- `farm` (String) Farm name
+- `hru` (Number) Disk HDD size in MBs
+- `ipv4` (Boolean) Pick only nodes with public config containing ipv4
+- `mru` (Number) Memory size in MBs
+- `sru` (Number) Disk SSD size in MBs
 
 

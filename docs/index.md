@@ -17,11 +17,11 @@ description: |-
 
 ### Optional
 
-- **key_type** (String) key type registered on substrate (ed25519 or sr25519)
-- **mnemonics** (String, Sensitive)
-- **network** (String) grid network, one of: dev test main
-- **rmb_proxy_url** (String) rmb proxy url, example: https://gridproxy.dev.grid.tf/
-- **rmb_redis_url** (String)
-- **substrate_url** (String) substrate url, example: wss://tfchain.dev.grid.tf/ws
-- **use_rmb_proxy** (Boolean) whether to use the rmb proxy or not
-- **verify_reply** (Boolean) whether to verify rmb replies (temporary for dev use only)
+- `key_type` (String) key type registered on substrate (ed25519 or sr25519)
+- `mnemonics` (String, Sensitive)
+- `network` (String) grid network, one of: dev test main
+- `rmb_proxy_url` (String) rmb proxy url, example: https://gridproxy.dev.grid.tf/
+- `rmb_redis_url` (String)
+- `substrate_url` (String) substrate url, example: wss://tfchain.dev.grid.tf/ws
+- `use_rmb_proxy` (Boolean) whether to use the rmb proxy or not
+- `verify_reply` (Boolean) whether to verify rmb replies (temporary for dev use only)
