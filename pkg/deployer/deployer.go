@@ -253,7 +253,6 @@ func (d *DeployerImpl) deploy(
 	return currentDeployments, nil
 }
 
-// func (d *DeployerImpl)
 // Validate is a best effort validation. it returns an error if it's very sure there's a problem
 //          errors that may arise because of dead nodes are ignored.
 //          if a real error dodges the validation, it'll be fail anyway in the deploying phase
