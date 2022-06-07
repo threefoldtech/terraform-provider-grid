@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
 	substrate "github.com/threefoldtech/substrate-client"
+	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
@@ -247,7 +248,7 @@ type K8sDeployer struct {
 	APIClient *apiClient
 
 	UsedIPs map[uint32][]string
-	ncPool  *NodeClientPool
+	ncPool  *client.NodeClientPool
 	d       *schema.ResourceData
 }
 
@@ -347,7 +348,7 @@ func NewK8sDeployer(d *schema.ResourceData, apiClient *apiClient) (K8sDeployer, 
 		UsedIPs:          usedIPs,
 		NodesIPRange:     nodesIPRange,
 		APIClient:        apiClient,
-		ncPool:           NewNodeClient(apiClient.rmb),
+		ncPool:           client.NewNodeClientPool(apiClient.rmb),
 		d:                d,
 	}
 	return deployer, nil

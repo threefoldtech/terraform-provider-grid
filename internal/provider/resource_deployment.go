@@ -17,6 +17,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/substrate-client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
@@ -476,6 +477,7 @@ type DeploymentDeployer struct {
 	NetworkName  string
 	NodesIPRange map[uint32]gridtypes.IPNet
 	APIClient    *apiClient
+	ncPool       *client.NodeClientPool
 }
 
 func getFreeIP(ipRange gridtypes.IPNet, usedIPs []string) (string, error) {
@@ -631,6 +633,7 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 		UsedIPs:     usedIPs,
 		NetworkName: d.Get("network_name").(string),
 		APIClient:   apiClient,
+		ncPool:      client.NewNodeClientPool(apiClient.rmb),
 	}
 	return deploymentDeployer, nil
 }
@@ -786,16 +789,6 @@ func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context)
 	return deployments, nil
 }
 
-// TODO: this can be removed
-func (d *DeploymentDeployer) getNodeClient(sub *substrate.Substrate, nodeID uint32) (*client.NodeClient, error) {
-	nodeInfo, err := sub.GetNode(nodeID)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get node")
-	}
-
-	cl := client.NewNodeClient(uint32(nodeInfo.TwinID), d.APIClient.rmb)
-	return cl, nil
-}
 func (d *DeploymentDeployer) GetOldDeployments(ctx context.Context) (map[uint32]uint64, error) {
 	deployments := make(map[uint32]uint64)
 	if d.Id != "" {
@@ -809,9 +802,9 @@ func (d *DeploymentDeployer) GetOldDeployments(ctx context.Context) (map[uint32]
 
 	return deployments, nil
 }
-func (d *DeploymentDeployer) updateState(ctx context.Context, sub *substrate.Substrate, currentDeploymentIDs map[uint32]uint64) error {
+func (d *DeploymentDeployer) updateState(ctx context.Context, sub subi.SubstrateClient, currentDeploymentIDs map[uint32]uint64) error {
 
-	currentDeployments, err := getDeploymentObjects(ctx, sub, currentDeploymentIDs, d)
+	currentDeployments, err := getDeploymentObjects(ctx, sub, currentDeploymentIDs, d.ncPool)
 	if err != nil {
 		return errors.Wrap(err, "failed to get deployments to update local state")
 	}
@@ -1009,7 +1002,7 @@ func (d *DeploymentDeployer) validateChecksums() error {
 	}
 	return nil
 }
-func (d *DeploymentDeployer) Deploy(ctx context.Context, sub *substrate.Substrate) (uint32, error) {
+func (d *DeploymentDeployer) Deploy(ctx context.Context, sub subi.SubstrateClient) (uint32, error) {
 	if err := d.validateChecksums(); err != nil {
 		return 0, err
 	}
@@ -1021,7 +1014,7 @@ func (d *DeploymentDeployer) Deploy(ctx context.Context, sub *substrate.Substrat
 	if err != nil {
 		return 0, errors.Wrap(err, "couldn't get old deployments data")
 	}
-	currentDeployments, err := deployDeployments(ctx, sub, oldDeployments, newDeployments, d, d.APIClient, true)
+	currentDeployments, err := deployDeployments(ctx, sub, oldDeployments, newDeployments, d.ncPool, d.APIClient, true)
 	if err := d.updateState(ctx, sub, currentDeployments); err != nil {
 		log.Printf("error updating state: %s\n", err)
 	}
@@ -1272,13 +1265,13 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 	return diags
 }
 
-func (d *DeploymentDeployer) Cancel(ctx context.Context, sub *substrate.Substrate) error {
+func (d *DeploymentDeployer) Cancel(ctx context.Context, sub subi.SubstrateClient) error {
 	newDeployments := make(map[uint32]gridtypes.Deployment)
 	oldDeployments, err := d.GetOldDeployments(ctx)
 	if err != nil {
 		return err
 	}
-	currentDeployments, err := deployDeployments(ctx, sub, oldDeployments, newDeployments, d, d.APIClient, true)
+	currentDeployments, err := deployDeployments(ctx, sub, oldDeployments, newDeployments, d.ncPool, d.APIClient, true)
 	if err := d.updateState(ctx, sub, currentDeployments); err != nil {
 		log.Printf("error updating state: %s\n", err)
 	}

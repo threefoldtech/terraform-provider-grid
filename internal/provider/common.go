@@ -14,18 +14,15 @@ import (
 	"github.com/cenkalti/backoff"
 	"github.com/pkg/errors"
 	gormb "github.com/threefoldtech/go-rmb"
-	substrate "github.com/threefoldtech/substrate-client"
 	"github.com/threefoldtech/terraform-provider-grid/internal/gridproxy"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/deployer"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
 const RMB_WORKERS = 10
-
-type NodeClientCollection interface {
-	getNodeClient(sub *substrate.Substrate, nodeID uint32) (*client.NodeClient, error)
-}
 
 type Progress struct {
 	time    time.Time
@@ -169,10 +166,10 @@ func hashDeployment(dl gridtypes.Deployment) (string, error) {
 	return hash, nil
 }
 
-func getDeploymentObjects(ctx context.Context, sub *substrate.Substrate, dls map[uint32]uint64, nc NodeClientCollection) (map[uint32]gridtypes.Deployment, error) {
+func getDeploymentObjects(ctx context.Context, sub subi.SubstrateClient, dls map[uint32]uint64, nc client.NodeClientCollection) (map[uint32]gridtypes.Deployment, error) {
 	res := make(map[uint32]gridtypes.Deployment)
 	for nodeID, dlID := range dls {
-		nc, err := nc.getNodeClient(sub, nodeID)
+		nc, err := nc.GetNodeClient(sub, nodeID)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to get node %d client", nodeID)
 		}
@@ -199,9 +196,9 @@ func isNodeUp(ctx context.Context, nc *client.NodeClient) error {
 	return nil
 }
 
-func isNodesUp(ctx context.Context, sub *substrate.Substrate, nodes []uint32, nc NodeClientCollection) error {
+func isNodesUp(ctx context.Context, sub subi.SubstrateClient, nodes []uint32, nc client.NodeClientCollection) error {
 	for _, node := range nodes {
-		cl, err := nc.getNodeClient(sub, node)
+		cl, err := nc.GetNodeClient(sub, node)
 		if err != nil {
 			return fmt.Errorf("couldn't get node %d client: %w", node, err)
 		}
@@ -256,7 +253,7 @@ func hasWorkload(dl *gridtypes.Deployment, wlType gridtypes.WorkloadType) bool {
 	return false
 }
 
-func ValidateDeployments(ctx context.Context, sub *substrate.Substrate, gridClient gridproxy.GridProxyClient, oldDeployments map[uint32]gridtypes.Deployment, newDeployments map[uint32]gridtypes.Deployment) error {
+func ValidateDeployments(ctx context.Context, sub subi.SubstrateClient, gridClient gridproxy.GridProxyClient, oldDeployments map[uint32]gridtypes.Deployment, newDeployments map[uint32]gridtypes.Deployment) error {
 	farmIPs := make(map[int]int)
 	nodeMap := make(map[uint32]gridproxy.NodeInfo)
 	for node := range oldDeployments {
@@ -367,7 +364,7 @@ func ValidateDeployments(ctx context.Context, sub *substrate.Substrate, gridClie
 
 // deployDeployments transforms oldDeployment to match newDeployment. In case of error,
 //                   it tries to revert to the old state. Whatever is done the current state is returned
-func deployDeployments(ctx context.Context, sub *substrate.Substrate, oldDeploymentIDs map[uint32]uint64, newDeployments map[uint32]gridtypes.Deployment, nc NodeClientCollection, api *apiClient, revertOnFailure bool) (map[uint32]uint64, error) {
+func deployDeployments(ctx context.Context, sub subi.SubstrateClient, oldDeploymentIDs map[uint32]uint64, newDeployments map[uint32]gridtypes.Deployment, nc client.NodeClientCollection, api *apiClient, revertOnFailure bool) (map[uint32]uint64, error) {
 	oldDeployments, oldErr := getDeploymentObjects(ctx, sub, oldDeploymentIDs, nc)
 	if oldErr == nil {
 		// check resources only when old deployments are readable
@@ -393,7 +390,7 @@ func deployDeployments(ctx context.Context, sub *substrate.Substrate, oldDeploym
 	return curentDeployments, err
 }
 
-func deployConsistentDeployments(ctx context.Context, sub *substrate.Substrate, oldDeployments map[uint32]uint64, newDeployments map[uint32]gridtypes.Deployment, nc NodeClientCollection, api *apiClient) (currentDeployments map[uint32]uint64, err error) {
+func deployConsistentDeployments(ctx context.Context, sub subi.SubstrateClient, oldDeployments map[uint32]uint64, newDeployments map[uint32]gridtypes.Deployment, nc client.NodeClientCollection, api *apiClient) (currentDeployments map[uint32]uint64, err error) {
 	currentDeployments = make(map[uint32]uint64)
 	for nodeID, contractID := range oldDeployments {
 		currentDeployments[nodeID] = contractID
@@ -401,12 +398,12 @@ func deployConsistentDeployments(ctx context.Context, sub *substrate.Substrate, 
 	// deletions
 	for node, contractID := range oldDeployments {
 		if _, ok := newDeployments[node]; !ok {
-			client, err := nc.getNodeClient(sub, node)
+			client, err := nc.GetNodeClient(sub, node)
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "failed to get node client")
 			}
 
-			err = sub.CancelContract(api.identity, contractID)
+			err = deployer.EnsureContractCanceled(sub, api.identity, contractID)
 
 			if err != nil && !strings.Contains(err.Error(), "ContractNotExists") {
 				return currentDeployments, errors.Wrap(err, "failed to delete deployment")
@@ -423,7 +420,7 @@ func deployConsistentDeployments(ctx context.Context, sub *substrate.Substrate, 
 	// creations
 	for node, dl := range newDeployments {
 		if _, ok := oldDeployments[node]; !ok {
-			client, err := nc.getNodeClient(sub, node)
+			client, err := nc.GetNodeClient(sub, node)
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "failed to get node client")
 			}
@@ -458,7 +455,7 @@ func deployConsistentDeployments(ctx context.Context, sub *substrate.Substrate, 
 			err = client.DeploymentDeploy(ctx2, dl)
 
 			if err != nil {
-				rerr := sub.CancelContract(api.identity, contractID)
+				rerr := deployer.EnsureContractCanceled(sub, api.identity, contractID)
 				log.Printf("failed to send deployment deploy request to node %s", err)
 				if rerr != nil {
 					return currentDeployments, fmt.Errorf("error sending deployment to the node: %w, error cancelling contract: %s; you must cancel it manually (id: %d)", err, rerr, contractID)
@@ -487,7 +484,7 @@ func deployConsistentDeployments(ctx context.Context, sub *substrate.Substrate, 
 				return currentDeployments, errors.Wrap(err, "couldn't get deployment hash")
 			}
 
-			client, err := nc.getNodeClient(sub, node)
+			client, err := nc.GetNodeClient(sub, node)
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "failed to get node client")
 			}
