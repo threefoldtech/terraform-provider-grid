@@ -19,11 +19,13 @@ var (
 	SUBSTRATE_URL = map[string]string{
 		"dev":  "wss://tfchain.dev.grid.tf/ws",
 		"test": "wss://tfchain.test.grid.tf/ws",
+		"qa":   "wss://tfchain.qa.grid.tf/ws",
 		"main": "wss://tfchain.grid.tf/ws",
 	}
 	RMB_PROXY_URL = map[string]string{
 		"dev":  "https://gridproxy.dev.grid.tf/",
 		"test": "https://gridproxy.test.grid.tf/",
+		"qa":   "https://gridproxy.qa.grid.tf/",
 		"main": "https://gridproxy.grid.tf/",
 	}
 )
@@ -63,7 +65,7 @@ func New(version string) func() *schema.Provider {
 				"network": {
 					Type:        schema.TypeString,
 					Required:    true,
-					Description: "grid network, one of: dev test main",
+					Description: "grid network, one of: dev test qa main",
 					DefaultFunc: schema.EnvDefaultFunc("NETWORK", "dev"),
 				},
 				"substrate_url": {
@@ -151,8 +153,8 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	}
 	apiClient.identity = identity
 	network := d.Get("network").(string)
-	if network != "dev" && network != "test" && network != "main" {
-		return nil, diag.Errorf("network must be one of dev, test, and main")
+	if network != "dev" && network != "qa" && network != "test" && network != "main" {
+		return nil, diag.Errorf("network must be one of dev, qa, test, and main")
 	}
 	apiClient.substrate_url = SUBSTRATE_URL[network]
 	rmb_proxy_url := RMB_PROXY_URL[network]
