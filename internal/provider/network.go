@@ -9,7 +9,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/terraform-provider-grid/internal/gridproxy"
+	proxy "github.com/threefoldtech/grid_proxy_server/pkg/client"
+	proxytypes "github.com/threefoldtech/grid_proxy_server/pkg/types"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
@@ -53,25 +54,25 @@ Endpoint = %s
 	`, Address, AccessPrivatekey, NodePublicKey, NetworkIPRange, NodeEndpoint)
 }
 
-func getPublicNode(ctx context.Context, gridClient gridproxy.GridProxyClient, preferedNodes []uint32) (uint32, error) {
-	preferedNodesSet := make(map[uint32]struct{})
+func getPublicNode(ctx context.Context, gridClient proxy.Client, preferedNodes []uint32) (uint32, error) {
+	preferedNodesSet := make(map[int]struct{})
 	for _, node := range preferedNodes {
-		preferedNodesSet[node] = struct{}{}
+		preferedNodesSet[int(node)] = struct{}{}
 	}
-	nodes, err := gridClient.Nodes(gridproxy.NodeFilter{
+	nodes, _, err := gridClient.Nodes(proxytypes.NodeFilter{
 		IPv4:   &trueVal,
 		Status: &statusUp,
-	}, gridproxy.Limit{})
+	}, proxytypes.Limit{})
 	if err != nil {
 		return 0, errors.Wrap(err, "couldn't fetch nodes from the rmb proxy")
 	}
 	// force add preferred nodes
-	nodeMap := make(map[uint32]struct{})
+	nodeMap := make(map[int]struct{})
 	for _, node := range nodes {
 		nodeMap[node.NodeID] = struct{}{}
 	}
 	for _, node := range preferedNodes {
-		if _, ok := nodeMap[uint32(node)]; ok {
+		if _, ok := nodeMap[int(node)]; ok {
 			continue
 		}
 		nodeInfo, err := gridClient.Node(node)
@@ -85,7 +86,7 @@ func getPublicNode(ctx context.Context, gridClient gridproxy.GridProxyClient, pr
 		if nodeInfo.Status != "up" {
 			continue
 		}
-		nodes = append(nodes, gridproxy.Node{
+		nodes = append(nodes, proxytypes.Node{
 			PublicConfig: nodeInfo.PublicConfig,
 		})
 	}
@@ -107,7 +108,7 @@ func getPublicNode(ctx context.Context, gridClient gridproxy.GridProxyClient, pr
 			log.Printf("public ip %s of node %d is private", node.PublicConfig.Ipv4, node.NodeID)
 			continue
 		}
-		return node.NodeID, nil
+		return uint32(node.NodeID), nil
 	}
 	return 0, errors.New("no nodes with public ipv4")
 }

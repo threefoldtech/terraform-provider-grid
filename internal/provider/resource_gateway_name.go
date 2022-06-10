@@ -69,7 +69,7 @@ func resourceGatewayNameProxy() *schema.Resource {
 	}
 }
 
-func resourceGatewayNameCreate(ctx context.Context, sub subi.SubstrateClient, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
+func resourceGatewayNameCreate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
 	deployer, err := NewGatewayNameDeployer(d, apiClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
@@ -82,7 +82,7 @@ func resourceGatewayNameCreate(ctx context.Context, sub subi.SubstrateClient, d 
 	return &deployer, err
 }
 
-func resourceGatewayNameUpdate(ctx context.Context, sub subi.SubstrateClient, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
+func resourceGatewayNameUpdate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
 	deployer, err := NewGatewayNameDeployer(d, apiClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
@@ -95,7 +95,7 @@ func resourceGatewayNameUpdate(ctx context.Context, sub subi.SubstrateClient, d 
 	return &deployer, deployer.Deploy(ctx, sub)
 }
 
-func resourceGatewayNameRead(ctx context.Context, sub subi.SubstrateClient, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
+func resourceGatewayNameRead(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
 	deployer, err := NewGatewayNameDeployer(d, apiClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
@@ -104,7 +104,7 @@ func resourceGatewayNameRead(ctx context.Context, sub subi.SubstrateClient, d *s
 	return &deployer, nil
 }
 
-func resourceGatewayNameDelete(ctx context.Context, sub subi.SubstrateClient, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
+func resourceGatewayNameDelete(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
 	deployer, err := NewGatewayNameDeployer(d, apiClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")

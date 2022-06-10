@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/threefoldtech/substrate-client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
-	"github.com/threefoldtech/terraform-provider-grid/pkg/deployer"
+	mock "github.com/threefoldtech/terraform-provider-grid/internal/provider/mocks"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -27,7 +27,7 @@ func TestValidateBadAccount(t *testing.T) {
 	// Assert that Bar() is invoked.
 	defer ctrl.Finish()
 
-	m := NewMockSubstrateClient(ctrl)
+	m := mock.NewMockSubstrateExt(ctrl)
 
 	identity, err := substrate.NewIdentityFromEd25519Phrase(Words)
 	assert.NoError(t, err)
@@ -48,9 +48,9 @@ func TestValidateEnoughMoneyNodeNotReachable(t *testing.T) {
 
 	defer ctrl.Finish()
 
-	sub := NewMockSubstrateClient(ctrl)
-	cl := NewMockClient(ctrl)
-	pool := NewMockNodeClientCollection(ctrl)
+	sub := mock.NewMockSubstrateExt(ctrl)
+	cl := mock.NewRMBMockClient(ctrl)
+	pool := mock.NewMockNodeClientCollection(ctrl)
 	identity, err := substrate.NewIdentityFromEd25519Phrase(Words)
 	assert.NoError(t, err)
 	sub.
@@ -100,9 +100,9 @@ func TestValidateEnoughMoneyNodeReachable(t *testing.T) {
 
 	defer ctrl.Finish()
 
-	sub := NewMockSubstrateClient(ctrl)
-	cl := NewMockClient(ctrl)
-	pool := NewMockNodeClientCollection(ctrl)
+	sub := mock.NewMockSubstrateExt(ctrl)
+	cl := mock.NewRMBMockClient(ctrl)
+	pool := mock.NewMockNodeClientCollection(ctrl)
 	identity, err := substrate.NewIdentityFromEd25519Phrase(Words)
 	assert.NoError(t, err)
 	sub.
@@ -199,8 +199,8 @@ func TestDeploy(t *testing.T) {
 
 	identity, err := substrate.NewIdentityFromEd25519Phrase(Words)
 	assert.NoError(t, err)
-	deployer := deployer.NewMockDeployer(ctrl)
-	sub := NewMockSubstrateClient(ctrl)
+	deployer := mock.NewMockDeployer(ctrl)
+	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayFQDNDeployer{
 		APIClient: &apiClient{
 			identity: identity,
@@ -235,8 +235,8 @@ func TestUpdate(t *testing.T) {
 
 	identity, err := substrate.NewIdentityFromEd25519Phrase(Words)
 	assert.NoError(t, err)
-	deployer := deployer.NewMockDeployer(ctrl)
-	sub := NewMockSubstrateClient(ctrl)
+	deployer := mock.NewMockDeployer(ctrl)
+	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayFQDNDeployer{
 		APIClient: &apiClient{
 			identity: identity,
@@ -271,8 +271,8 @@ func TestUpdateFailed(t *testing.T) {
 
 	identity, err := substrate.NewIdentityFromEd25519Phrase(Words)
 	assert.NoError(t, err)
-	deployer := deployer.NewMockDeployer(ctrl)
-	sub := NewMockSubstrateClient(ctrl)
+	deployer := mock.NewMockDeployer(ctrl)
+	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayFQDNDeployer{
 		APIClient: &apiClient{
 			identity: identity,
@@ -308,8 +308,8 @@ func TestCancel(t *testing.T) {
 
 	identity, err := substrate.NewIdentityFromEd25519Phrase(Words)
 	assert.NoError(t, err)
-	deployer := deployer.NewMockDeployer(ctrl)
-	sub := NewMockSubstrateClient(ctrl)
+	deployer := mock.NewMockDeployer(ctrl)
+	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayFQDNDeployer{
 		APIClient: &apiClient{
 			identity: identity,
@@ -343,8 +343,8 @@ func TestCancelFailed(t *testing.T) {
 
 	identity, err := substrate.NewIdentityFromEd25519Phrase(Words)
 	assert.NoError(t, err)
-	deployer := deployer.NewMockDeployer(ctrl)
-	sub := NewMockSubstrateClient(ctrl)
+	deployer := mock.NewMockDeployer(ctrl)
+	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayFQDNDeployer{
 		APIClient: &apiClient{
 			identity: identity,
@@ -378,7 +378,7 @@ func TestSyncContracts(t *testing.T) {
 
 	identity, err := substrate.NewIdentityFromEd25519Phrase(Words)
 	assert.NoError(t, err)
-	sub := NewMockSubstrateClient(ctrl)
+	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayFQDNDeployer{
 		ID: "123",
 		APIClient: &apiClient{
@@ -394,13 +394,9 @@ func TestSyncContracts(t *testing.T) {
 		},
 		NodeDeploymentID: map[uint32]uint64{10: 100},
 	}
-	sub.EXPECT().GetContract(
-		uint64(100),
-	).Return(&substrate.Contract{
-		State: substrate.ContractState{
-			IsCreated: true,
-		},
-	}, nil)
+	sub.EXPECT().DeleteInvalidContracts(
+		gw.NodeDeploymentID,
+	).Return(nil)
 	err = gw.syncContracts(context.Background(), sub)
 	assert.NoError(t, err)
 	assert.Equal(t, gw.NodeDeploymentID, map[uint32]uint64{10: 100})
@@ -414,7 +410,7 @@ func TestSyncDeletedContracts(t *testing.T) {
 
 	identity, err := substrate.NewIdentityFromEd25519Phrase(Words)
 	assert.NoError(t, err)
-	sub := NewMockSubstrateClient(ctrl)
+	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayFQDNDeployer{
 		ID: "123",
 		APIClient: &apiClient{
@@ -430,13 +426,13 @@ func TestSyncDeletedContracts(t *testing.T) {
 		},
 		NodeDeploymentID: map[uint32]uint64{10: 100},
 	}
-	sub.EXPECT().GetContract(
-		uint64(100),
-	).Return(&substrate.Contract{
-		State: substrate.ContractState{
-			IsCreated: false,
-		},
-	}, nil)
+
+	sub.EXPECT().DeleteInvalidContracts(
+		gw.NodeDeploymentID,
+	).DoAndReturn(func(contracts map[uint32]uint64) error {
+		delete(contracts, 10)
+		return nil
+	})
 	err = gw.syncContracts(context.Background(), sub)
 	assert.NoError(t, err)
 	assert.Equal(t, gw.NodeDeploymentID, map[uint32]uint64{})
@@ -450,7 +446,7 @@ func TestSyncContractsFailure(t *testing.T) {
 
 	identity, err := substrate.NewIdentityFromEd25519Phrase(Words)
 	assert.NoError(t, err)
-	sub := NewMockSubstrateClient(ctrl)
+	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayFQDNDeployer{
 		ID: "123",
 		APIClient: &apiClient{
@@ -466,9 +462,10 @@ func TestSyncContractsFailure(t *testing.T) {
 		},
 		NodeDeploymentID: map[uint32]uint64{10: 100},
 	}
-	sub.EXPECT().GetContract(
-		uint64(100),
-	).Return(nil, errors.New("123"))
+
+	sub.EXPECT().DeleteInvalidContracts(
+		gw.NodeDeploymentID,
+	).Return(errors.New("123"))
 	err = gw.syncContracts(context.Background(), sub)
 	assert.Error(t, err)
 	assert.Equal(t, gw.NodeDeploymentID, map[uint32]uint64{10: 100})
@@ -481,9 +478,9 @@ func TestSyncFailureInContract(t *testing.T) {
 	defer ctrl.Finish()
 
 	identity, err := substrate.NewIdentityFromEd25519Phrase(Words)
-	deployer := deployer.NewMockDeployer(ctrl)
+	deployer := mock.NewMockDeployer(ctrl)
 	assert.NoError(t, err)
-	sub := NewMockSubstrateClient(ctrl)
+	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayFQDNDeployer{
 		ID: "123",
 		APIClient: &apiClient{
@@ -500,9 +497,10 @@ func TestSyncFailureInContract(t *testing.T) {
 		NodeDeploymentID: map[uint32]uint64{10: 100},
 		deployer:         deployer,
 	}
-	sub.EXPECT().GetContract(
-		uint64(100),
-	).Return(nil, errors.New("123"))
+
+	sub.EXPECT().DeleteInvalidContracts(
+		gw.NodeDeploymentID,
+	).Return(errors.New("123"))
 	err = gw.sync(context.Background(), sub)
 	assert.Error(t, err)
 	assert.Equal(t, gw.NodeDeploymentID, map[uint32]uint64{10: 100})
@@ -515,11 +513,11 @@ func TestSync(t *testing.T) {
 	defer ctrl.Finish()
 
 	identity, err := substrate.NewIdentityFromEd25519Phrase(Words)
-	deployer := deployer.NewMockDeployer(ctrl)
-	pool := NewMockNodeClientCollection(ctrl)
-	cl := NewMockClient(ctrl)
+	deployer := mock.NewMockDeployer(ctrl)
+	pool := mock.NewMockNodeClientCollection(ctrl)
+	cl := mock.NewRMBMockClient(ctrl)
 	assert.NoError(t, err)
-	sub := NewMockSubstrateClient(ctrl)
+	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayFQDNDeployer{
 		ID: "123",
 		APIClient: &apiClient{
@@ -543,13 +541,10 @@ func TestSync(t *testing.T) {
 	dl.Workloads[0].Result.State = gridtypes.StateOk
 	dl.Workloads[0].Result.Data, err = json.Marshal(zos.GatewayFQDNResult{})
 	assert.NoError(t, err)
-	sub.EXPECT().GetContract(
-		uint64(100),
-	).Return(&substrate.Contract{
-		State: substrate.ContractState{
-			IsCreated: true,
-		},
-	}, nil)
+
+	sub.EXPECT().DeleteInvalidContracts(
+		gw.NodeDeploymentID,
+	).Return(nil)
 	pool.EXPECT().
 		GetNodeClient(sub, uint32(10)).
 		Return(client.NewNodeClient(12, cl), nil)
@@ -575,11 +570,11 @@ func TestSyncDeletedWorkload(t *testing.T) {
 	defer ctrl.Finish()
 
 	identity, err := substrate.NewIdentityFromEd25519Phrase(Words)
-	deployer := deployer.NewMockDeployer(ctrl)
-	pool := NewMockNodeClientCollection(ctrl)
-	cl := NewMockClient(ctrl)
+	deployer := mock.NewMockDeployer(ctrl)
+	pool := mock.NewMockNodeClientCollection(ctrl)
+	cl := mock.NewRMBMockClient(ctrl)
 	assert.NoError(t, err)
-	sub := NewMockSubstrateClient(ctrl)
+	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayFQDNDeployer{
 		ID: "123",
 		APIClient: &apiClient{
@@ -601,13 +596,10 @@ func TestSyncDeletedWorkload(t *testing.T) {
 	assert.NoError(t, err)
 	dl := dls[10]
 	// state is deleted
-	sub.EXPECT().GetContract(
-		uint64(100),
-	).Return(&substrate.Contract{
-		State: substrate.ContractState{
-			IsCreated: true,
-		},
-	}, nil)
+
+	sub.EXPECT().DeleteInvalidContracts(
+		gw.NodeDeploymentID,
+	).Return(nil)
 	pool.EXPECT().
 		GetNodeClient(sub, uint32(10)).
 		Return(client.NewNodeClient(12, cl), nil)

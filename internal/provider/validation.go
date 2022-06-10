@@ -15,7 +15,7 @@ import (
 )
 
 // validateAccount checks the mnemonics is associated with an account with key type ed25519
-func validateAccount(apiClient *apiClient, sub subi.SubstrateClient) error {
+func validateAccount(apiClient *apiClient, sub subi.Substrate) error {
 	_, err := sub.GetAccount(apiClient.identity)
 	if err != nil && !errors.Is(err, substrate.ErrAccountNotFound) {
 		return errors.Wrap(err, "failed to get account with the given mnemonics")
@@ -53,7 +53,7 @@ func validateRedis(apiClient *apiClient) error {
 	return nil
 }
 
-func validateYggdrasil(apiClient *apiClient, sub subi.SubstrateClient) error {
+func validateYggdrasil(apiClient *apiClient, sub subi.Substrate) error {
 	twin, err := sub.GetTwin(apiClient.twin_id)
 	if err != nil {
 		return errors.Wrapf(err, "coudln't get twin %d from substrate", apiClient.twin_id)
@@ -94,7 +94,7 @@ func validateYggdrasil(apiClient *apiClient, sub subi.SubstrateClient) error {
 	return nil
 }
 
-func validateRMB(apiClient *apiClient, sub subi.SubstrateClient) error {
+func validateRMB(apiClient *apiClient, sub subi.Substrate) error {
 	if err := validateRedis(apiClient); err != nil {
 		return err
 	}
@@ -115,7 +115,7 @@ func validateRMBProxy(apiClient *apiClient) error {
 	return nil
 }
 
-func preValidate(apiClient *apiClient, sub subi.SubstrateClient) error {
+func preValidate(apiClient *apiClient, sub subi.Substrate) error {
 	if apiClient.use_rmb_proxy {
 		return validateRMBProxy(apiClient)
 	} else {
@@ -123,7 +123,7 @@ func preValidate(apiClient *apiClient, sub subi.SubstrateClient) error {
 	}
 }
 
-func validateAccountMoneyForExtrinsics(sub subi.SubstrateClient, identity substrate.Identity) error {
+func validateAccountMoneyForExtrinsics(sub subi.Substrate, identity substrate.Identity) error {
 	acc, err := sub.GetAccount(identity)
 	if err != nil && !errors.Is(err, substrate.ErrAccountNotFound) {
 		return errors.Wrap(err, "failed to get account with the given mnemonics")

@@ -66,7 +66,7 @@ func NewGatewayNameDeployer(d *schema.ResourceData, apiClient *apiClient) (Gatew
 	return deployer, nil
 }
 
-func (k *GatewayNameDeployer) Validate(ctx context.Context, sub subi.SubstrateClient) error {
+func (k *GatewayNameDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error {
 	if err := validateAccountMoneyForExtrinsics(sub, k.APIClient.identity); err != nil {
 		return err
 	}
@@ -96,20 +96,25 @@ func (k *GatewayNameDeployer) GenerateVersionlessDeployments(ctx context.Context
 	deployments[k.Node] = deployment
 	return deployments, nil
 }
-
-func (k *GatewayNameDeployer) Deploy(ctx context.Context, sub subi.SubstrateClient) error {
-	newDeployments, err := k.GenerateVersionlessDeployments(ctx)
-	if err != nil {
-		return errors.Wrap(err, "couldn't generate deployments data")
+func (k *GatewayNameDeployer) InvalidateNameContract(ctx context.Context, sub subi.SubstrateExt) (err error) {
+	if k.NameContractID == 0 {
+		return
 	}
-	k.NameContractID, err = deployer.InvalidateNameContract(
+
+	k.NameContractID, err = sub.InvalidateNameContract(
 		ctx,
-		sub,
 		k.APIClient.identity,
 		k.NameContractID,
 		k.Gw.Name,
 	)
+	return
+}
+func (k *GatewayNameDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt) error {
+	newDeployments, err := k.GenerateVersionlessDeployments(ctx)
 	if err != nil {
+		return errors.Wrap(err, "couldn't generate deployments data")
+	}
+	if err := k.InvalidateNameContract(ctx, sub); err != nil {
 		return err
 	}
 	if k.NameContractID == 0 {
@@ -121,11 +126,11 @@ func (k *GatewayNameDeployer) Deploy(ctx context.Context, sub subi.SubstrateClie
 	k.NodeDeploymentID, err = k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)
 	return err
 }
-func (k *GatewayNameDeployer) syncContracts(ctx context.Context, sub subi.SubstrateClient) (err error) {
-	if err := deployer.DeleteInvalidContracts(sub, k.NodeDeploymentID); err != nil {
+func (k *GatewayNameDeployer) syncContracts(ctx context.Context, sub subi.SubstrateExt) (err error) {
+	if err := sub.DeleteInvalidContracts(k.NodeDeploymentID); err != nil {
 		return err
 	}
-	valid, err := deployer.IsValidContract(sub, k.NameContractID)
+	valid, err := sub.IsValidContract(k.NameContractID)
 	if err != nil {
 		return err
 	}
@@ -138,11 +143,11 @@ func (k *GatewayNameDeployer) syncContracts(ctx context.Context, sub subi.Substr
 	}
 	return nil
 }
-func (k *GatewayNameDeployer) sync(ctx context.Context, sub subi.SubstrateClient) (err error) {
+func (k *GatewayNameDeployer) sync(ctx context.Context, sub subi.SubstrateExt) (err error) {
 	if err := k.syncContracts(ctx, sub); err != nil {
 		return errors.Wrap(err, "couldn't sync contracts")
 	}
-	dls, err := getDeploymentObjects(ctx, sub, k.NodeDeploymentID, k.ncPool)
+	dls, err := deployer.GetDeploymentObjects(ctx, sub, k.NodeDeploymentID, k.ncPool)
 	if err != nil {
 		return errors.Wrap(err, "couldn't get deployment objects")
 	}
@@ -159,14 +164,14 @@ func (k *GatewayNameDeployer) sync(ctx context.Context, sub subi.SubstrateClient
 	return nil
 }
 
-func (k *GatewayNameDeployer) Cancel(ctx context.Context, sub subi.SubstrateClient) (err error) {
+func (k *GatewayNameDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt) (err error) {
 	newDeployments := make(map[uint32]gridtypes.Deployment)
 	k.NodeDeploymentID, err = k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)
 	if err != nil {
 		return err
 	}
 	if k.NameContractID != 0 {
-		if err := deployer.EnsureContractCanceled(sub, k.APIClient.identity, k.NameContractID); err != nil {
+		if err := sub.EnsureContractCanceled(k.APIClient.identity, k.NameContractID); err != nil {
 			return err
 		}
 		k.NameContractID = 0

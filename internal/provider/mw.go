@@ -11,10 +11,10 @@ import (
 
 type Marshalable interface {
 	Marshal(d *schema.ResourceData)
-	sync(ctx context.Context, sub subi.SubstrateClient) (err error)
+	sync(ctx context.Context, sub subi.SubstrateExt) (err error)
 }
 
-type Action func(context.Context, subi.SubstrateClient, *schema.ResourceData, *apiClient) (Marshalable, error)
+type Action func(context.Context, subi.SubstrateExt, *schema.ResourceData, *apiClient) (Marshalable, error)
 
 func ResourceFunc(a Action) func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
 	return func(ctx context.Context, d *schema.ResourceData, i interface{}) (diags diag.Diagnostics) {
@@ -43,7 +43,7 @@ func resourceFunc(a Action, reportSync bool) func(ctx context.Context, d *schema
 		rmbctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		go startRmbIfNeeded(rmbctx, cl)
-		sub, err := cl.manager.Substrate()
+		sub, err := cl.manager.SubstrateExt()
 		if err != nil {
 			return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
 		}

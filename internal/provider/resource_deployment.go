@@ -17,7 +17,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/substrate-client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/deployer"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
@@ -471,13 +473,14 @@ type DeploymentDeployer struct {
 	Disks        []Disk
 	ZDBs         []ZDB
 	VMs          []VM
-	QSFSs        []QSFS
+	QSFSs        []workloads.QSFS
 	IPRange      *gridtypes.IPNet
 	UsedIPs      []string
 	NetworkName  string
 	NodesIPRange map[uint32]gridtypes.IPNet
 	APIClient    *apiClient
 	ncPool       *client.NodeClientPool
+	deployer     deployer.Deployer
 }
 
 func getFreeIP(ipRange gridtypes.IPNet, usedIPs []string) (string, error) {
@@ -617,11 +620,12 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 		}
 	}
 
-	qsfs := make([]QSFS, 0)
+	qsfs := make([]workloads.QSFS, 0)
 	for _, q := range d.Get("qsfs").([]interface{}) {
-		data := NewQSFSFromSchema(q.(map[string]interface{}))
+		data := workloads.NewQSFSFromSchema(q.(map[string]interface{}))
 		qsfs = append(qsfs, data)
 	}
+	pool := client.NewNodeClientPool(apiClient.rmb)
 	deploymentDeployer := DeploymentDeployer{
 		Id:          d.Id(),
 		Node:        uint32(d.Get("node").(int)),
@@ -633,7 +637,8 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 		UsedIPs:     usedIPs,
 		NetworkName: d.Get("network_name").(string),
 		APIClient:   apiClient,
-		ncPool:      client.NewNodeClientPool(apiClient.rmb),
+		ncPool:      pool,
+		deployer:    deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true),
 	}
 	return deploymentDeployer, nil
 }
@@ -763,7 +768,7 @@ func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context)
 	}
 
 	for idx, q := range d.QSFSs {
-		qsfsWorkload, err := q.GenerateWorkload(d)
+		qsfsWorkload, err := q.ZosWorkload()
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to generate qsfs %d", idx)
 		}
@@ -802,9 +807,9 @@ func (d *DeploymentDeployer) GetOldDeployments(ctx context.Context) (map[uint32]
 
 	return deployments, nil
 }
-func (d *DeploymentDeployer) updateState(ctx context.Context, sub subi.SubstrateClient, currentDeploymentIDs map[uint32]uint64) error {
+func (d *DeploymentDeployer) updateState(ctx context.Context, sub subi.SubstrateExt, currentDeploymentIDs map[uint32]uint64) error {
 
-	currentDeployments, err := getDeploymentObjects(ctx, sub, currentDeploymentIDs, d.ncPool)
+	currentDeployments, err := deployer.GetDeploymentObjects(ctx, sub, currentDeploymentIDs, d.ncPool)
 	if err != nil {
 		return errors.Wrap(err, "failed to get deployments to update local state")
 	}
@@ -960,7 +965,7 @@ func (d *DeploymentDeployer) updateState(ctx context.Context, sub subi.Substrate
 		}
 		d.QSFSs[numOk] = d.QSFSs[idx]
 		name := string(qsfs.Name)
-		if err := d.QSFSs[numOk].updateFromWorkload(workloads[name]); err != nil {
+		if err := d.QSFSs[numOk].UpdateFromWorkload(workloads[name]); err != nil {
 			log.Printf("couldn't update qsfs from workload: %s\n", err)
 		}
 		numOk++
@@ -1002,7 +1007,7 @@ func (d *DeploymentDeployer) validateChecksums() error {
 	}
 	return nil
 }
-func (d *DeploymentDeployer) Deploy(ctx context.Context, sub subi.SubstrateClient) (uint32, error) {
+func (d *DeploymentDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt) (uint32, error) {
 	if err := d.validateChecksums(); err != nil {
 		return 0, err
 	}
@@ -1014,7 +1019,7 @@ func (d *DeploymentDeployer) Deploy(ctx context.Context, sub subi.SubstrateClien
 	if err != nil {
 		return 0, errors.Wrap(err, "couldn't get old deployments data")
 	}
-	currentDeployments, err := deployDeployments(ctx, sub, oldDeployments, newDeployments, d.ncPool, d.APIClient, true)
+	currentDeployments, err := d.deployer.Deploy(ctx, sub, oldDeployments, newDeployments)
 	if err := d.updateState(ctx, sub, currentDeployments); err != nil {
 		log.Printf("error updating state: %s\n", err)
 	}
@@ -1124,7 +1129,7 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 		return diag.FromErr(errors.Wrap(err, "error validating deployment"))
 	}
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.Substrate()
+	sub, err := apiClient.manager.SubstrateExt()
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
 	}
@@ -1158,7 +1163,7 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 	// use the meta valufreeIPe to retrieve your client from the provider configure method
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.Substrate()
+	sub, err := apiClient.manager.SubstrateExt()
 	if err != nil {
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Warning,
@@ -1240,7 +1245,7 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 		return diag.FromErr(errors.New("changing node is not supported, you need to destroy the deployment and reapply it again but you will lose your old data"))
 	}
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.Substrate()
+	sub, err := apiClient.manager.SubstrateExt()
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
 	}
@@ -1265,13 +1270,13 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 	return diags
 }
 
-func (d *DeploymentDeployer) Cancel(ctx context.Context, sub subi.SubstrateClient) error {
+func (d *DeploymentDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt) error {
 	newDeployments := make(map[uint32]gridtypes.Deployment)
 	oldDeployments, err := d.GetOldDeployments(ctx)
 	if err != nil {
 		return err
 	}
-	currentDeployments, err := deployDeployments(ctx, sub, oldDeployments, newDeployments, d.ncPool, d.APIClient, true)
+	currentDeployments, err := d.deployer.Deploy(ctx, sub, oldDeployments, newDeployments)
 	if err := d.updateState(ctx, sub, currentDeployments); err != nil {
 		log.Printf("error updating state: %s\n", err)
 	}
@@ -1281,7 +1286,7 @@ func (d *DeploymentDeployer) Cancel(ctx context.Context, sub subi.SubstrateClien
 
 func resourceDeploymentDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.Substrate()
+	sub, err := apiClient.manager.SubstrateExt()
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
 	}

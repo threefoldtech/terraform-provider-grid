@@ -62,7 +62,7 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 	return deployer, nil
 }
 
-func (k *GatewayFQDNDeployer) Validate(ctx context.Context, sub subi.SubstrateClient) error {
+func (k *GatewayFQDNDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error {
 	if err := validateAccountMoneyForExtrinsics(sub, k.APIClient.identity); err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func (k *GatewayFQDNDeployer) GenerateVersionlessDeployments(ctx context.Context
 	return deployments, nil
 }
 
-func (k *GatewayFQDNDeployer) Deploy(ctx context.Context, sub subi.SubstrateClient) error {
+func (k *GatewayFQDNDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt) error {
 	newDeployments, err := k.GenerateVersionlessDeployments(ctx)
 	if err != nil {
 		return errors.Wrap(err, "couldn't generate deployments data")
@@ -99,8 +99,8 @@ func (k *GatewayFQDNDeployer) Deploy(ctx context.Context, sub subi.SubstrateClie
 	return err
 }
 
-func (k *GatewayFQDNDeployer) syncContracts(ctx context.Context, sub subi.SubstrateClient) (err error) {
-	if err := deployer.DeleteInvalidContracts(sub, k.NodeDeploymentID); err != nil {
+func (k *GatewayFQDNDeployer) syncContracts(ctx context.Context, sub subi.SubstrateExt) (err error) {
+	if err := sub.DeleteInvalidContracts(k.NodeDeploymentID); err != nil {
 		return err
 	}
 	if len(k.NodeDeploymentID) == 0 {
@@ -109,7 +109,7 @@ func (k *GatewayFQDNDeployer) syncContracts(ctx context.Context, sub subi.Substr
 	}
 	return nil
 }
-func (k *GatewayFQDNDeployer) sync(ctx context.Context, sub subi.SubstrateClient) error {
+func (k *GatewayFQDNDeployer) sync(ctx context.Context, sub subi.SubstrateExt) error {
 	if err := k.syncContracts(ctx, sub); err != nil {
 		return errors.Wrap(err, "couldn't sync contracts")
 	}
@@ -130,7 +130,7 @@ func (k *GatewayFQDNDeployer) sync(ctx context.Context, sub subi.SubstrateClient
 	return nil
 }
 
-func (k *GatewayFQDNDeployer) Cancel(ctx context.Context, sub subi.SubstrateClient) (err error) {
+func (k *GatewayFQDNDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt) (err error) {
 	newDeployments := make(map[uint32]gridtypes.Deployment)
 
 	k.NodeDeploymentID, err = k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)

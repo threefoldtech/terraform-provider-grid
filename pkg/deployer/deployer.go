@@ -10,22 +10,21 @@ import (
 
 	"github.com/cenkalti/backoff"
 	"github.com/pkg/errors"
+	proxy "github.com/threefoldtech/grid_proxy_server/pkg/client"
 	"github.com/threefoldtech/substrate-client"
-	"github.com/threefoldtech/terraform-provider-grid/internal/gridproxy"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
-	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
 type Deployer interface {
-	Deploy(ctx context.Context, sub subi.SubstrateClient, oldDeployments map[uint32]uint64, newDeployments map[uint32]gridtypes.Deployment) (map[uint32]uint64, error)
+	Deploy(ctx context.Context, sub subi.SubstrateExt, oldDeployments map[uint32]uint64, newDeployments map[uint32]gridtypes.Deployment) (map[uint32]uint64, error)
 }
 
 type DeployerImpl struct {
 	identity        substrate.Identity
 	twinID          uint32
-	gridClient      gridproxy.GridProxyClient
+	validator       Validator
 	ncPool          client.NodeClientCollection
 	revertOnFailure bool
 }
@@ -33,26 +32,26 @@ type DeployerImpl struct {
 func NewDeployer(
 	identity substrate.Identity,
 	twinID uint32,
-	gridClient gridproxy.GridProxyClient,
+	gridClient proxy.Client,
 	ncPool client.NodeClientCollection,
 	revertOnFailure bool,
 ) Deployer {
 	return &DeployerImpl{
 		identity,
 		twinID,
-		gridClient,
+		&ValidatorImpl{gridClient: gridClient},
 		ncPool,
 		revertOnFailure,
 	}
 }
 
-func (d *DeployerImpl) Deploy(ctx context.Context, sub subi.SubstrateClient, oldDeploymentIDs map[uint32]uint64, newDeployments map[uint32]gridtypes.Deployment) (map[uint32]uint64, error) {
+func (d *DeployerImpl) Deploy(ctx context.Context, sub subi.SubstrateExt, oldDeploymentIDs map[uint32]uint64, newDeployments map[uint32]gridtypes.Deployment) (map[uint32]uint64, error) {
 	oldDeployments, oldErr := GetDeploymentObjects(ctx, sub, oldDeploymentIDs, d.ncPool)
 	if oldErr == nil {
 		// check resources only when old deployments are readable
 		// being readable means it's a fresh deployment or an update with good nodes
 		// this is done to avoid preventing deletion of deployments on dead nodes
-		if err := d.Validate(ctx, sub, oldDeployments, newDeployments); err != nil {
+		if err := d.validator.Validate(ctx, sub, oldDeployments, newDeployments); err != nil {
 			return oldDeploymentIDs, err
 		}
 	}
@@ -74,7 +73,7 @@ func (d *DeployerImpl) Deploy(ctx context.Context, sub subi.SubstrateClient, old
 
 func (d *DeployerImpl) deploy(
 	ctx context.Context,
-	sub subi.SubstrateClient,
+	sub subi.SubstrateExt,
 	oldDeployments map[uint32]uint64,
 	newDeployments map[uint32]gridtypes.Deployment,
 	revertOnFailure bool,
@@ -91,7 +90,7 @@ func (d *DeployerImpl) deploy(
 				return currentDeployments, errors.Wrap(err, "failed to get node client")
 			}
 
-			err = EnsureContractCanceled(sub, d.identity, contractID)
+			err = sub.EnsureContractCanceled(d.identity, contractID)
 
 			if err != nil && !strings.Contains(err.Error(), "ContractNotExists") {
 				return currentDeployments, errors.Wrap(err, "failed to delete deployment")
@@ -143,7 +142,7 @@ func (d *DeployerImpl) deploy(
 			err = client.DeploymentDeploy(ctx2, dl)
 
 			if err != nil {
-				rerr := EnsureContractCanceled(sub, d.identity, contractID)
+				rerr := sub.EnsureContractCanceled(d.identity, contractID)
 				log.Printf("failed to send deployment deploy request to node %s", err)
 				if rerr != nil {
 					return currentDeployments, fmt.Errorf("error sending deployment to the node: %w, error cancelling contract: %s; you must cancel it manually (id: %d)", err, rerr, contractID)
@@ -209,7 +208,6 @@ func (d *DeployerImpl) deploy(
 				}
 				newWorkloadsVersions[w.Name.String()] = dl.Workloads[idx].Version
 			}
-
 			if err := dl.Sign(d.twinID, d.identity); err != nil {
 				return currentDeployments, errors.Wrap(err, "error signing deployment")
 			}
@@ -218,6 +216,7 @@ func (d *DeployerImpl) deploy(
 				return currentDeployments, errors.Wrap(err, "deployment is invalid")
 			}
 
+			log.Printf("%+v", dl)
 			hash, err := dl.ChallengeHash()
 
 			if err != nil {
@@ -251,118 +250,6 @@ func (d *DeployerImpl) deploy(
 	}
 
 	return currentDeployments, nil
-}
-
-// Validate is a best effort validation. it returns an error if it's very sure there's a problem
-//          errors that may arise because of dead nodes are ignored.
-//          if a real error dodges the validation, it'll be fail anyway in the deploying phase
-func (d *DeployerImpl) Validate(ctx context.Context, sub subi.SubstrateClient, oldDeployments map[uint32]gridtypes.Deployment, newDeployments map[uint32]gridtypes.Deployment) error {
-	farmIPs := make(map[int]int)
-	nodeMap := make(map[uint32]gridproxy.NodeInfo)
-	for node := range oldDeployments {
-		nodeInfo, err := d.gridClient.Node(node)
-		if err != nil {
-			return errors.Wrapf(err, "couldn't get node %d data from the grid proxy", node)
-		}
-		nodeMap[node] = nodeInfo
-		farmIPs[nodeInfo.FarmID] = 0
-	}
-	for node := range newDeployments {
-		if _, ok := nodeMap[node]; ok {
-			continue
-		}
-		nodeInfo, err := d.gridClient.Node(node)
-		if err != nil {
-			return errors.Wrapf(err, "couldn't get node %d data from the grid proxy", node)
-		}
-		nodeMap[node] = nodeInfo
-		farmIPs[nodeInfo.FarmID] = 0
-	}
-	for farm := range farmIPs {
-		farmUint64 := uint64(farm)
-		farmInfo, err := d.gridClient.Farms(gridproxy.FarmFilter{
-			FarmID: &farmUint64,
-		}, gridproxy.Limit{
-			Page: 1,
-			Size: 1,
-		})
-		if err != nil {
-			return errors.Wrapf(err, "couldn't get farm %d data from the grid proxy", farm)
-		}
-		if len(farmInfo) == 0 {
-			return fmt.Errorf("farm %d not returned from the proxy", farm)
-		}
-		for _, ip := range farmInfo[0].PublicIps {
-			if ip.ContractID == 0 {
-				farmIPs[farm]++
-			}
-		}
-	}
-	for node, dl := range oldDeployments {
-		nodeData, ok := nodeMap[node]
-		if !ok {
-			return fmt.Errorf("node %d not returned from the grid proxy", node)
-		}
-		farmIPs[nodeData.FarmID] += int(countDeploymentPublicIPs(dl))
-	}
-	for node, dl := range newDeployments {
-		oldDl, alreadyExists := oldDeployments[node]
-		if err := dl.Valid(); err != nil {
-			return errors.Wrap(err, "invalid deployment")
-		}
-		needed, err := capacity(dl)
-		if err != nil {
-			return err
-		}
-
-		requiredIPs := int(countDeploymentPublicIPs(dl))
-		nodeInfo := nodeMap[node]
-		if alreadyExists {
-			oldCap, err := capacity(oldDl)
-			if err != nil {
-				return errors.Wrapf(err, "couldn't read old deployment %d of node %d capacity", oldDl.ContractID, node)
-			}
-			nodeInfo.Capacity.Total.Add(&oldCap)
-			contract, err := sub.GetContract(oldDl.ContractID)
-			if err != nil {
-				return errors.Wrapf(err, "couldn't get node contract %d", oldDl.ContractID)
-			}
-			current := int(contract.ContractType.NodeContract.PublicIPsCount)
-			if requiredIPs > current {
-				return fmt.Errorf(
-					"currently, it's not possible to increase the number of reserved public ips in a deployment, node: %d, current: %d, requested: %d",
-					node,
-					current,
-					requiredIPs,
-				)
-			}
-		}
-
-		farmIPs[nodeInfo.FarmID] -= requiredIPs
-		if farmIPs[nodeInfo.FarmID] < 0 {
-			return fmt.Errorf("farm %d doesn't have enough public ips", nodeInfo.FarmID)
-		}
-		if hasWorkload(&dl, zos.GatewayFQDNProxyType) && nodeInfo.PublicConfig.Ipv4 == "" {
-			return fmt.Errorf("node %d can't deploy a fqdn workload as it doesn't have a public ipv4 configured", node)
-		}
-		if hasWorkload(&dl, zos.GatewayNameProxyType) && nodeInfo.PublicConfig.Domain == "" {
-			return fmt.Errorf("node %d can't deploy a gateway name workload as it doesn't have a domain configured", node)
-		}
-		mrus := nodeInfo.Capacity.Total.MRU - nodeInfo.Capacity.Used.MRU
-		hrus := nodeInfo.Capacity.Total.HRU - nodeInfo.Capacity.Used.HRU
-		srus := 2*nodeInfo.Capacity.Total.SRU - nodeInfo.Capacity.Used.SRU
-		if mrus < needed.MRU ||
-			srus < needed.SRU ||
-			hrus < needed.HRU {
-			free := gridtypes.Capacity{
-				HRU: hrus,
-				MRU: mrus,
-				SRU: srus,
-			}
-			return fmt.Errorf("node %d doesn't have enough resources. needed: %v, free: %v", node, capacityPrettyPrint(needed), capacityPrettyPrint(free))
-		}
-	}
-	return nil
 }
 
 type Progress struct {

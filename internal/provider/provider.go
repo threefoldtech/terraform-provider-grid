@@ -9,9 +9,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
+	gridproxy "github.com/threefoldtech/grid_proxy_server/pkg/client"
 	substrate "github.com/threefoldtech/substrate-client"
-	gridproxy "github.com/threefoldtech/terraform-provider-grid/internal/gridproxy"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/rmb"
 )
 
@@ -121,9 +122,9 @@ type apiClient struct {
 	substrate_url string
 	rmb_redis_url string
 	use_rmb_proxy bool
-	grid_client   gridproxy.GridProxyClient
+	grid_client   gridproxy.Client
 	rmb           rmb.Client
-	manager       substrate.Manager
+	manager       subi.Manager
 	identity      substrate.Identity
 }
 
@@ -166,7 +167,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 		rmb_proxy_url = passed_rmb_proxy_url
 	}
 	log.Printf("substrate url: %s %s\n", apiClient.substrate_url, substrate_url)
-	apiClient.manager = substrate.NewManager(apiClient.substrate_url)
+	apiClient.manager = subi.NewManager(apiClient.substrate_url)
 	sub, err := apiClient.manager.Substrate()
 	if err != nil {
 		return nil, diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
@@ -200,8 +201,8 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	}
 	apiClient.rmb = cl
 
-	grid_client := gridproxy.NewGridProxyClient(rmb_proxy_url)
-	apiClient.grid_client = gridproxy.NewRetryingGridProxyClient(grid_client)
+	grid_client := gridproxy.NewClient(rmb_proxy_url)
+	apiClient.grid_client = gridproxy.NewRetryingClient(grid_client)
 	if err := preValidate(&apiClient, sub); err != nil {
 		return nil, diag.FromErr(err)
 	}

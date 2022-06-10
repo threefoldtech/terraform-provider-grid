@@ -2,7 +2,7 @@
 // Source: internal/node/client_pool.go
 
 // Package mock_client is a generated GoMock package.
-package provider
+package mock
 
 import (
 	reflect "reflect"
@@ -36,7 +36,7 @@ func (m *MockNodeClientCollection) EXPECT() *MockNodeClientCollectionMockRecorde
 }
 
 // GetNodeClient mocks base method.
-func (m *MockNodeClientCollection) GetNodeClient(sub subi.SubstrateClient, nodeID uint32) (*client.NodeClient, error) {
+func (m *MockNodeClientCollection) GetNodeClient(sub subi.Substrate, nodeID uint32) (*client.NodeClient, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetNodeClient", sub, nodeID)
 	ret0, _ := ret[0].(*client.NodeClient)

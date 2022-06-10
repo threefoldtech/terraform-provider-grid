@@ -2,7 +2,7 @@
 // Source: pkg/deployer/deployer.go
 
 // Package mock_deployer is a generated GoMock package.
-package deployer
+package mock
 
 import (
 	context "context"
@@ -37,7 +37,7 @@ func (m *MockDeployer) EXPECT() *MockDeployerMockRecorder {
 }
 
 // Deploy mocks base method.
-func (m *MockDeployer) Deploy(ctx context.Context, sub subi.SubstrateClient, oldDeployments map[uint32]uint64, newDeployments map[uint32]gridtypes.Deployment) (map[uint32]uint64, error) {
+func (m *MockDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt, oldDeployments map[uint32]uint64, newDeployments map[uint32]gridtypes.Deployment) (map[uint32]uint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Deploy", ctx, sub, oldDeployments, newDeployments)
 	ret0, _ := ret[0].(map[uint32]uint64)

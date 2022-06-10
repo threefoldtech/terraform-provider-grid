@@ -8,13 +8,14 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	proxytypes "github.com/threefoldtech/grid_proxy_server/pkg/types"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
-func GetDeploymentObjects(ctx context.Context, sub subi.SubstrateClient, dls map[uint32]uint64, nc client.NodeClientCollection) (map[uint32]gridtypes.Deployment, error) {
+func GetDeploymentObjects(ctx context.Context, sub subi.Substrate, dls map[uint32]uint64, nc client.NodeClientCollection) (map[uint32]gridtypes.Deployment, error) {
 	res := make(map[uint32]gridtypes.Deployment)
 	for nodeID, dlID := range dls {
 		nc, err := nc.GetNodeClient(sub, nodeID)
@@ -128,4 +129,11 @@ func hasWorkload(dl *gridtypes.Deployment, wlType gridtypes.WorkloadType) bool {
 
 func capacityPrettyPrint(cap gridtypes.Capacity) string {
 	return fmt.Sprintf("[mru: %d, sru: %d, hru: %d]", cap.MRU, cap.SRU, cap.HRU)
+}
+
+func addCapacity(cap *proxytypes.Capacity, add *gridtypes.Capacity) {
+	cap.CRU += add.CRU
+	cap.MRU += add.MRU
+	cap.SRU += add.SRU
+	cap.HRU += add.HRU
 }

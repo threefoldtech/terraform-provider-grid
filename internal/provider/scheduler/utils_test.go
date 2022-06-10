@@ -5,18 +5,17 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/threefoldtech/terraform-provider-grid/internal/gridproxy"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
+	proxytypes "github.com/threefoldtech/grid_proxy_server/pkg/types"
 )
 
 var (
-	node = gridproxy.Node{
-		UsedResources: gridtypes.Capacity{
+	node = proxytypes.Node{
+		UsedResources: proxytypes.Capacity{
 			HRU: 1,
 			SRU: 2,
 			MRU: 3,
 		},
-		TotalResources: gridtypes.Capacity{
+		TotalResources: proxytypes.Capacity{
 			HRU: 4,
 			SRU: 5,
 			MRU: 6,

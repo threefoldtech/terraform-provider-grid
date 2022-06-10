@@ -66,7 +66,7 @@ func resourceGatewayFQDNProxy() *schema.Resource {
 	}
 }
 
-func resourceGatewayFQDNCreate(ctx context.Context, sub subi.SubstrateClient, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
+func resourceGatewayFQDNCreate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
 	deployer, err := NewGatewayFQDNDeployer(ctx, d, apiClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
@@ -79,7 +79,7 @@ func resourceGatewayFQDNCreate(ctx context.Context, sub subi.SubstrateClient, d 
 	return &deployer, err
 }
 
-func resourceGatewayFQDNUpdate(ctx context.Context, sub subi.SubstrateClient, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
+func resourceGatewayFQDNUpdate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
 	deployer, err := NewGatewayFQDNDeployer(ctx, d, apiClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
@@ -92,7 +92,7 @@ func resourceGatewayFQDNUpdate(ctx context.Context, sub subi.SubstrateClient, d 
 	return &deployer, deployer.Deploy(ctx, sub)
 }
 
-func resourceGatewayFQDNRead(ctx context.Context, sub subi.SubstrateClient, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
+func resourceGatewayFQDNRead(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
 	deployer, err := NewGatewayFQDNDeployer(ctx, d, apiClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
@@ -100,7 +100,7 @@ func resourceGatewayFQDNRead(ctx context.Context, sub subi.SubstrateClient, d *s
 	return &deployer, nil
 }
 
-func resourceGatewayFQDNDelete(ctx context.Context, sub subi.SubstrateClient, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
+func resourceGatewayFQDNDelete(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
 	deployer, err := NewGatewayFQDNDeployer(ctx, d, apiClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")

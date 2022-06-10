@@ -12,6 +12,8 @@ import (
 	"github.com/pkg/errors"
 	substrate "github.com/threefoldtech/substrate-client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/deployer"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
@@ -114,6 +116,7 @@ type NetworkDeployer struct {
 	Keys      map[uint32]wgtypes.Key
 	APIClient *apiClient
 	ncPool    *client.NodeClientPool
+	deployer  deployer.Deployer
 }
 
 func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *apiClient) (NetworkDeployer, error) {
@@ -173,6 +176,7 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 	if err != nil {
 		return NetworkDeployer{}, errors.Wrap(err, "couldn't parse network ip range")
 	}
+	pool := client.NewNodeClientPool(apiClient.rmb)
 	deployer := NetworkDeployer{
 		Name:             d.Get("name").(string),
 		Description:      d.Get("description").(string),
@@ -188,13 +192,14 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 		Keys:             make(map[uint32]wgtypes.Key),
 		WGPort:           make(map[uint32]int),
 		APIClient:        apiClient,
-		ncPool:           client.NewNodeClientPool(apiClient.rmb),
+		ncPool:           pool,
+		deployer:         deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true),
 	}
 	return deployer, nil
 }
 
 // invalidateBrokenAttributes removes outdated attrs and deleted contracts
-func (k *NetworkDeployer) invalidateBrokenAttributes(sub *substrate.Substrate) error {
+func (k *NetworkDeployer) invalidateBrokenAttributes(sub subi.SubstrateExt) error {
 
 	for node, contractID := range k.NodeDeploymentID {
 		contract, err := sub.GetContract(contractID)
@@ -232,7 +237,7 @@ func (k *NetworkDeployer) invalidateBrokenAttributes(sub *substrate.Substrate) e
 	}
 	return nil
 }
-func (k *NetworkDeployer) Validate(ctx context.Context, sub *substrate.Substrate) error {
+func (k *NetworkDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error {
 	if err := validateAccountMoneyForExtrinsics(sub, k.APIClient.identity); err != nil {
 		return err
 	}
@@ -342,7 +347,7 @@ func (k *NetworkDeployer) assignNodesIPs(nodes []uint32) error {
 	k.NodesIPRange = ips
 	return nil
 }
-func (k *NetworkDeployer) assignNodesWGPort(ctx context.Context, sub *substrate.Substrate, nodes []uint32) error {
+func (k *NetworkDeployer) assignNodesWGPort(ctx context.Context, sub subi.SubstrateExt, nodes []uint32) error {
 	for _, node := range nodes {
 		if _, ok := k.WGPort[node]; !ok {
 			cl, err := k.ncPool.GetNodeClient(sub, node)
@@ -373,12 +378,12 @@ func (k *NetworkDeployer) assignNodesWGKey(nodes []uint32) error {
 
 	return nil
 }
-func (k *NetworkDeployer) readNodesConfig(ctx context.Context, sub *substrate.Substrate) error {
+func (k *NetworkDeployer) readNodesConfig(ctx context.Context, sub subi.SubstrateExt) error {
 	keys := make(map[uint32]wgtypes.Key)
 	WGPort := make(map[uint32]int)
 	nodesIPRange := make(map[uint32]gridtypes.IPNet)
 	log.Printf("reading node config")
-	nodeDeployments, err := getDeploymentObjects(ctx, sub, k.NodeDeploymentID, k.ncPool)
+	nodeDeployments, err := deployer.GetDeploymentObjects(ctx, sub, k.NodeDeploymentID, k.ncPool)
 	if err != nil {
 		return errors.Wrap(err, "failed to get deployment objects")
 	}
@@ -419,7 +424,7 @@ func (k *NetworkDeployer) readNodesConfig(ctx context.Context, sub *substrate.Su
 	return nil
 }
 
-func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, sub *substrate.Substrate) (map[uint32]gridtypes.Deployment, error) {
+func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, sub subi.SubstrateExt) (map[uint32]gridtypes.Deployment, error) {
 	log.Printf("nodes: %v\n", k.Nodes)
 	deployments := make(map[uint32]gridtypes.Deployment)
 	endpoints := make(map[uint32]string)
@@ -627,20 +632,20 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 	}
 	return deployments, nil
 }
-func (k *NetworkDeployer) Deploy(ctx context.Context, sub *substrate.Substrate) error {
+func (k *NetworkDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt) error {
 	newDeployments, err := k.GenerateVersionlessDeployments(ctx, sub)
 	if err != nil {
 		return errors.Wrap(err, "couldn't generate deployments data")
 	}
 	log.Printf("new deployments")
 	printDeployments(newDeployments)
-	currentDeployments, err := deployDeployments(ctx, sub, k.NodeDeploymentID, newDeployments, k.ncPool, k.APIClient, true)
+	currentDeployments, err := k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)
 	if err := k.updateState(ctx, sub, currentDeployments); err != nil {
 		log.Printf("error updating state: %s\n", err)
 	}
 	return err
 }
-func (k *NetworkDeployer) updateState(ctx context.Context, sub *substrate.Substrate, currentDeploymentIDs map[uint32]uint64) error {
+func (k *NetworkDeployer) updateState(ctx context.Context, sub subi.SubstrateExt, currentDeploymentIDs map[uint32]uint64) error {
 	k.NodeDeploymentID = currentDeploymentIDs
 	if err := k.readNodesConfig(ctx, sub); err != nil {
 		return errors.Wrap(err, "couldn't read node's data")
@@ -649,10 +654,10 @@ func (k *NetworkDeployer) updateState(ctx context.Context, sub *substrate.Substr
 	return nil
 }
 
-func (k *NetworkDeployer) Cancel(ctx context.Context, sub *substrate.Substrate) error {
+func (k *NetworkDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt) error {
 	newDeployments := make(map[uint32]gridtypes.Deployment)
 
-	currentDeployments, err := deployDeployments(ctx, sub, k.NodeDeploymentID, newDeployments, k.ncPool, k.APIClient, false)
+	currentDeployments, err := k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)
 	if err := k.updateState(ctx, sub, currentDeployments); err != nil {
 		log.Printf("error updating state: %s\n", err)
 	}
@@ -662,7 +667,7 @@ func (k *NetworkDeployer) Cancel(ctx context.Context, sub *substrate.Substrate) 
 func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.Substrate()
+	sub, err := apiClient.manager.SubstrateExt()
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
 	}
@@ -694,7 +699,7 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.Substrate()
+	sub, err := apiClient.manager.SubstrateExt()
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
 	}
@@ -725,7 +730,7 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.Substrate()
+	sub, err := apiClient.manager.SubstrateExt()
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
 	}
@@ -758,7 +763,7 @@ func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta inter
 func resourceNetworkDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.Substrate()
+	sub, err := apiClient.manager.SubstrateExt()
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
 	}
