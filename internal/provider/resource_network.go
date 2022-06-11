@@ -565,7 +565,7 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 			}),
 		}
 		deployment := gridtypes.Deployment{
-			Version: Version,
+			Version: 0,
 			TwinID:  k.APIClient.twin_id, //LocalTwin,
 			// this contract id must match the one on substrate
 			Workloads: []gridtypes.Workload{
@@ -612,9 +612,8 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 			}),
 		}
 		deployment := gridtypes.Deployment{
-			Version: Version,
-			TwinID:  k.APIClient.twin_id, //LocalTwin,
-			// this contract id must match the one on substrate
+			Version: 0,
+			TwinID:  k.APIClient.twin_id,
 			Workloads: []gridtypes.Workload{
 				workload,
 			},

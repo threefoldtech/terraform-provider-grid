@@ -63,9 +63,6 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 }
 
 func (k *GatewayFQDNDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error {
-	if err := validateAccountMoneyForExtrinsics(sub, k.APIClient.identity); err != nil {
-		return err
-	}
 	return isNodesUp(ctx, sub, []uint32{k.Node}, k.ncPool)
 }
 
@@ -91,11 +88,17 @@ func (k *GatewayFQDNDeployer) GenerateVersionlessDeployments(ctx context.Context
 }
 
 func (k *GatewayFQDNDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt) error {
+	if err := k.Validate(ctx, sub); err != nil {
+		return err
+	}
 	newDeployments, err := k.GenerateVersionlessDeployments(ctx)
 	if err != nil {
 		return errors.Wrap(err, "couldn't generate deployments data")
 	}
 	k.NodeDeploymentID, err = k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)
+	if k.ID == "" && k.NodeDeploymentID[k.Node] != 0 {
+		k.ID = strconv.FormatUint(k.NodeDeploymentID[k.Node], 10)
+	}
 	return err
 }
 
@@ -134,5 +137,6 @@ func (k *GatewayFQDNDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt)
 	newDeployments := make(map[uint32]gridtypes.Deployment)
 
 	k.NodeDeploymentID, err = k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)
+
 	return err
 }

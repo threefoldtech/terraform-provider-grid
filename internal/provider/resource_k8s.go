@@ -504,27 +504,27 @@ func (k *K8sDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[u
 	return deployments, nil
 }
 
-func (d *K8sDeployer) validateChecksums() error {
-	nodes := append(d.Workers, *d.Master)
-	for _, vm := range nodes {
-		if vm.FlistChecksum == "" {
-			continue
-		}
-		checksum, err := getFlistChecksum(vm.Flist)
-		if err != nil {
-			return errors.Wrapf(err, "couldn't get flist %s hash", vm.Flist)
-		}
-		if vm.FlistChecksum != checksum {
-			return fmt.Errorf("passed checksum %s of %s doesn't match %s returned from %s",
-				vm.FlistChecksum,
-				vm.Name,
-				checksum,
-				flistChecksumURL(vm.Flist),
-			)
-		}
-	}
-	return nil
-}
+// func (d *K8sDeployer) validateChecksums() error {
+// 	nodes := append(d.Workers, *d.Master)
+// 	for _, vm := range nodes {
+// 		if vm.FlistChecksum == "" {
+// 			continue
+// 		}
+// 		checksum, err := getFlistChecksum(vm.Flist)
+// 		if err != nil {
+// 			return errors.Wrapf(err, "couldn't get flist %s hash", vm.Flist)
+// 		}
+// 		if vm.FlistChecksum != checksum {
+// 			return fmt.Errorf("passed checksum %s of %s doesn't match %s returned from %s",
+// 				vm.FlistChecksum,
+// 				vm.Name,
+// 				checksum,
+// 				flistChecksumURL(vm.Flist),
+// 			)
+// 		}
+// 	}
+// 	return nil
+// }
 
 func (k *K8sDeployer) ValidateNames(ctx context.Context) error {
 
@@ -572,9 +572,9 @@ func (k *K8sDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error
 }
 
 func (k *K8sDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt) error {
-	if err := k.validateChecksums(); err != nil {
-		return err
-	}
+	// if err := k.validateChecksums(); err != nil {
+	// 	return err
+	// }
 	newDeployments, err := k.GenerateVersionlessDeployments(ctx)
 	if err != nil {
 		return errors.Wrap(err, "couldn't generate deployments data")
@@ -620,13 +620,14 @@ func (k *K8sDeployer) updateState(ctx context.Context, sub subi.SubstrateExt, cu
 	for _, dl := range currentDeployments {
 		for _, w := range dl.Workloads {
 			if w.Type == zos.PublicIPType {
-				d := PubIPData{}
+				d := zos.PublicIPResult{}
 				if err := json.Unmarshal(w.Result.Data, &d); err != nil {
 					log.Printf("error unmarshalling json: %s\n", err)
 					continue
 				}
-				publicIPs[string(w.Name)] = d.IP
-				publicIP6s[string(w.Name)] = d.IPv6
+				// FIXME: revise
+				publicIPs[string(w.Name)] = d.IP.String()
+				publicIP6s[string(w.Name)] = d.IPv6.String()
 			} else if w.Type == zos.ZMachineType {
 				d, err := w.WorkloadData()
 				if err != nil {
@@ -735,13 +736,14 @@ func (k *K8sDeployer) updateFromRemote(ctx context.Context, sub subi.SubstrateEx
 				workloadObj[string(w.Name)] = w
 
 			} else if w.Type == zos.PublicIPType {
-				d := PubIPData{}
+				d := zos.PublicIPResult{}
 				if err := json.Unmarshal(w.Result.Data, &d); err != nil {
 					log.Printf("failed to load pubip data %s", err)
 					continue
 				}
-				publicIPs[string(w.Name)] = d.IP
-				publicIP6s[string(w.Name)] = d.IPv6
+				// FIXME revise
+				publicIPs[string(w.Name)] = d.IP.String()
+				publicIP6s[string(w.Name)] = d.IPv6.String()
 			} else if w.Type == zos.ZMountType {
 				d, err := w.WorkloadData()
 				if err != nil {

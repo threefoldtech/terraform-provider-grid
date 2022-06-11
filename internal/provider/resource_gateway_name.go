@@ -74,9 +74,6 @@ func resourceGatewayNameCreate(ctx context.Context, sub subi.SubstrateExt, d *sc
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
 	}
-	if err := deployer.Validate(ctx, sub); err != nil {
-		return nil, err
-	}
 	err = deployer.Deploy(ctx, sub)
 	deployer.ID = uuid.New().String()
 	return &deployer, err
@@ -86,10 +83,6 @@ func resourceGatewayNameUpdate(ctx context.Context, sub subi.SubstrateExt, d *sc
 	deployer, err := NewGatewayNameDeployer(d, apiClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
-	}
-
-	if err := deployer.Validate(ctx, sub); err != nil {
-		return nil, err
 	}
 
 	return &deployer, deployer.Deploy(ctx, sub)

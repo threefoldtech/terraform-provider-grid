@@ -67,9 +67,6 @@ func NewGatewayNameDeployer(d *schema.ResourceData, apiClient *apiClient) (Gatew
 }
 
 func (k *GatewayNameDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error {
-	if err := validateAccountMoneyForExtrinsics(sub, k.APIClient.identity); err != nil {
-		return err
-	}
 	return isNodesUp(ctx, sub, []uint32{k.Node}, k.ncPool)
 }
 
@@ -110,6 +107,9 @@ func (k *GatewayNameDeployer) InvalidateNameContract(ctx context.Context, sub su
 	return
 }
 func (k *GatewayNameDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt) error {
+	if err := k.Validate(ctx, sub); err != nil {
+		return err
+	}
 	newDeployments, err := k.GenerateVersionlessDeployments(ctx)
 	if err != nil {
 		return errors.Wrap(err, "couldn't generate deployments data")

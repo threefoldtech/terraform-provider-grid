@@ -4,10 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"testing"
 
-	types "github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/golang/mock/gomock"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -19,30 +17,7 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
-func TestNameValidateBadAccount(t *testing.T) {
-	ctrl := gomock.NewController(t)
-
-	// Assert that Bar() is invoked.
-	defer ctrl.Finish()
-
-	m := mock.NewMockSubstrateExt(ctrl)
-
-	identity, err := substrate.NewIdentityFromEd25519Phrase(Words)
-	assert.NoError(t, err)
-	m.
-		EXPECT().
-		GetAccount(gomock.Eq(identity)).
-		Return(types.AccountInfo{}, errors.New("bad account"))
-	gw := GatewayNameDeployer{
-		APIClient: &apiClient{
-			identity: identity,
-		},
-	}
-	err = gw.Validate(context.TODO(), m)
-	assert.Error(t, err)
-}
-
-func TestNameValidateEnoughMoneyNodeNotReachable(t *testing.T) {
+func TestNameValidateNodeNotReachable(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	defer ctrl.Finish()
@@ -52,19 +27,6 @@ func TestNameValidateEnoughMoneyNodeNotReachable(t *testing.T) {
 	pool := mock.NewMockNodeClientCollection(ctrl)
 	identity, err := substrate.NewIdentityFromEd25519Phrase(Words)
 	assert.NoError(t, err)
-	sub.
-		EXPECT().
-		GetAccount(gomock.Eq(identity)).
-		Return(types.AccountInfo{
-			Data: struct {
-				Free       types.U128
-				Reserved   types.U128
-				MiscFrozen types.U128
-				FreeFrozen types.U128
-			}{
-				Free: types.NewU128(*big.NewInt(30000)),
-			},
-		}, nil)
 	cl.
 		EXPECT().
 		Call(
@@ -94,7 +56,7 @@ func TestNameValidateEnoughMoneyNodeNotReachable(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestNameValidateEnoughMoneyNodeReachable(t *testing.T) {
+func TestNameValidateNodeReachable(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	defer ctrl.Finish()
@@ -104,19 +66,6 @@ func TestNameValidateEnoughMoneyNodeReachable(t *testing.T) {
 	pool := mock.NewMockNodeClientCollection(ctrl)
 	identity, err := substrate.NewIdentityFromEd25519Phrase(Words)
 	assert.NoError(t, err)
-	sub.
-		EXPECT().
-		GetAccount(gomock.Eq(identity)).
-		Return(types.AccountInfo{
-			Data: struct {
-				Free       types.U128
-				Reserved   types.U128
-				MiscFrozen types.U128
-				FreeFrozen types.U128
-			}{
-				Free: types.NewU128(*big.NewInt(30000)),
-			},
-		}, nil)
 	cl.
 		EXPECT().
 		Call(
@@ -200,6 +149,9 @@ func TestNameDeploy(t *testing.T) {
 	assert.NoError(t, err)
 	deployer := mock.NewMockDeployer(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
+	cl := mock.NewRMBMockClient(ctrl)
+	pool := mock.NewMockNodeClientCollection(ctrl)
+
 	gw := GatewayNameDeployer{
 		APIClient: &apiClient{
 			identity: identity,
@@ -212,6 +164,7 @@ func TestNameDeploy(t *testing.T) {
 			Backends:       []zos.Backend{"https://1.1.1.1", "http://2.2.2.2"},
 			FQDN:           "name.com",
 		},
+		ncPool:   pool,
 		deployer: deployer,
 	}
 	dls, err := gw.GenerateVersionlessDeployments(context.Background())
@@ -225,6 +178,16 @@ func TestNameDeploy(t *testing.T) {
 	sub.EXPECT().
 		CreateNameContract(identity, "name").
 		Return(uint64(100), nil)
+	pool.EXPECT().
+		GetNodeClient(sub, uint32(10)).
+		Return(client.NewNodeClient(12, cl), nil)
+	cl.EXPECT().Call(
+		gomock.Any(),
+		uint32(12),
+		"zos.network.interfaces",
+		gomock.Any(),
+		gomock.Any(),
+	).Return(nil)
 	err = gw.Deploy(context.Background(), sub)
 	assert.NoError(t, err)
 	assert.Equal(t, gw.NodeDeploymentID, map[uint32]uint64{10: 100})
@@ -239,6 +202,8 @@ func TestNameUpdate(t *testing.T) {
 	assert.NoError(t, err)
 	deployer := mock.NewMockDeployer(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
+	cl := mock.NewRMBMockClient(ctrl)
+	pool := mock.NewMockNodeClientCollection(ctrl)
 	gw := GatewayNameDeployer{
 		APIClient: &apiClient{
 			identity: identity,
@@ -254,6 +219,7 @@ func TestNameUpdate(t *testing.T) {
 		deployer:         deployer,
 		NodeDeploymentID: map[uint32]uint64{10: 100},
 		NameContractID:   200,
+		ncPool:           pool,
 	}
 	dls, err := gw.GenerateVersionlessDeployments(context.Background())
 	assert.NoError(t, err)
@@ -266,6 +232,17 @@ func TestNameUpdate(t *testing.T) {
 	sub.EXPECT().
 		InvalidateNameContract(gomock.Any(), identity, uint64(200), gw.Gw.Name).
 		Return(uint64(200), nil)
+
+	pool.EXPECT().
+		GetNodeClient(sub, uint32(10)).
+		Return(client.NewNodeClient(12, cl), nil)
+	cl.EXPECT().Call(
+		gomock.Any(),
+		uint32(12),
+		"zos.network.interfaces",
+		gomock.Any(),
+		gomock.Any(),
+	).Return(nil)
 	err = gw.Deploy(context.Background(), sub)
 	assert.NoError(t, err)
 	assert.Equal(t, gw.NodeDeploymentID, map[uint32]uint64{uint32(10): uint64(100)})
@@ -280,6 +257,8 @@ func TestNameUpdateFailed(t *testing.T) {
 	assert.NoError(t, err)
 	deployer := mock.NewMockDeployer(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
+	cl := mock.NewRMBMockClient(ctrl)
+	pool := mock.NewMockNodeClientCollection(ctrl)
 	gw := GatewayNameDeployer{
 		APIClient: &apiClient{
 			identity: identity,
@@ -295,6 +274,7 @@ func TestNameUpdateFailed(t *testing.T) {
 		deployer:         deployer,
 		NodeDeploymentID: map[uint32]uint64{10: 100},
 		NameContractID:   200,
+		ncPool:           pool,
 	}
 	dls, err := gw.GenerateVersionlessDeployments(context.Background())
 	assert.NoError(t, err)
@@ -307,6 +287,16 @@ func TestNameUpdateFailed(t *testing.T) {
 	sub.EXPECT().
 		InvalidateNameContract(gomock.Any(), identity, uint64(200), gw.Gw.Name).
 		Return(uint64(200), nil)
+	pool.EXPECT().
+		GetNodeClient(sub, uint32(10)).
+		Return(client.NewNodeClient(12, cl), nil)
+	cl.EXPECT().Call(
+		gomock.Any(),
+		uint32(12),
+		"zos.network.interfaces",
+		gomock.Any(),
+		gomock.Any(),
+	).Return(nil)
 
 	err = gw.Deploy(context.Background(), sub)
 	assert.Error(t, err)

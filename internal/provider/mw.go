@@ -48,6 +48,10 @@ func resourceFunc(a Action, reportSync bool) func(ctx context.Context, d *schema
 			return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
 		}
 		defer sub.Close()
+		if err := validateAccountMoneyForExtrinsics(sub, cl.identity); err != nil {
+			return diag.FromErr(err)
+		}
+
 		obj, err := a(ctx, sub, d, cl)
 		if err != nil {
 			diags = diag.FromErr(err)

@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 
-	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
@@ -71,22 +70,13 @@ func resourceGatewayFQDNCreate(ctx context.Context, sub subi.SubstrateExt, d *sc
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
 	}
-	if err := deployer.Validate(ctx, sub); err != nil {
-		return nil, err
-	}
-	err = deployer.Deploy(ctx, sub)
-	deployer.ID = uuid.New().String()
-	return &deployer, err
+	return &deployer, deployer.Deploy(ctx, sub)
 }
 
 func resourceGatewayFQDNUpdate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
 	deployer, err := NewGatewayFQDNDeployer(ctx, d, apiClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
-	}
-
-	if err := deployer.Validate(ctx, sub); err != nil {
-		return nil, err
 	}
 
 	return &deployer, deployer.Deploy(ctx, sub)

@@ -3,15 +3,14 @@ package provider
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"log"
-	"net/http"
-	"strings"
 	"time"
 
 	gormb "github.com/threefoldtech/go-rmb"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
+	"github.com/threefoldtech/zos/pkg/gridtypes"
+	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
 const RMB_WORKERS = 10
@@ -27,18 +26,6 @@ func startRmbIfNeeded(ctx context.Context, api *apiClient) {
 	if err := rmbClient.Serve(ctx); err != nil {
 		log.Printf("error serving rmb %s\n", err)
 	}
-}
-
-func flistChecksumURL(url string) string {
-	return fmt.Sprintf("%s.md5", url)
-}
-func getFlistChecksum(url string) (string, error) {
-	response, err := http.Get(flistChecksumURL(url))
-	if err != nil {
-		return "", err
-	}
-	hash, err := ioutil.ReadAll(response.Body)
-	return strings.TrimSpace(string(hash)), err
 }
 
 func isNodeUp(ctx context.Context, nc *client.NodeClient) error {
@@ -65,4 +52,16 @@ func isNodesUp(ctx context.Context, sub subi.Substrate, nodes []uint32, nc clien
 	}
 
 	return nil
+}
+
+func constructPublicIPWorkload(workloadName string, ipv4 bool, ipv6 bool) gridtypes.Workload {
+	return gridtypes.Workload{
+		Version: 0,
+		Name:    gridtypes.Name(workloadName),
+		Type:    zos.PublicIPType,
+		Data: gridtypes.MustMarshal(zos.PublicIP{
+			V4: ipv4,
+			V6: ipv6,
+		}),
+	}
 }
