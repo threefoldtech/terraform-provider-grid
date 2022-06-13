@@ -446,25 +446,29 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 		}
 	}
 	needsIPv4Access := k.AddWGAccess || (len(hiddenNodes) != 0 && len(hiddenNodes)+len(accessibleNodes) > 1)
-	if needsIPv4Access && ipv4Node == 0 { // we need an ipv4, add one forcibly
-		publicNode, err := getPublicNode(ctx, k.APIClient.grid_client, []uint32{})
-		if err != nil {
-			return nil, errors.Wrap(err, "public node needed because you requested adding wg access or a hidden node is added to the network")
-		}
-		ipv4Node = publicNode
-		accessibleNodes = append(accessibleNodes, publicNode)
-		cl, err := k.ncPool.getNodeClient(sub, publicNode)
-		if err != nil {
-			return nil, errors.Wrapf(err, "couldn't get node %d client", publicNode)
-		}
-		endpoint, err := getNodeEndpoint(ctx, cl)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to get node %d endpoint", publicNode)
-		}
-		endpoints[publicNode] = endpoint.String()
-	}
 	if needsIPv4Access {
-		k.PublicNodeID = ipv4Node
+		if k.PublicNodeID != 0 { // it's set
+		} else if ipv4Node != 0 { // there's one in the network original nodes
+			k.PublicNodeID = ipv4Node
+		} else {
+			publicNode, err := getPublicNode(ctx, k.APIClient.grid_client, []uint32{})
+			if err != nil {
+				return nil, errors.Wrap(err, "public node needed because you requested adding wg access or a hidden node is added to the network")
+			}
+			k.PublicNodeID = publicNode
+			accessibleNodes = append(accessibleNodes, publicNode)
+		}
+		if endpoints[k.PublicNodeID] == "" { // old or new outsider
+			cl, err := k.ncPool.getNodeClient(sub, k.PublicNodeID)
+			if err != nil {
+				return nil, errors.Wrapf(err, "couldn't get node %d client", k.PublicNodeID)
+			}
+			endpoint, err := getNodeEndpoint(ctx, cl)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to get node %d endpoint", k.PublicNodeID)
+			}
+			endpoints[k.PublicNodeID] = endpoint.String()
+		}
 	}
 	all := append(hiddenNodes, accessibleNodes...)
 	if err := k.assignNodesIPs(all); err != nil {
@@ -488,7 +492,7 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 		nonAccessibleIPRanges = append(nonAccessibleIPRanges, wgIP(*r))
 	}
 	log.Printf("hidden nodes: %v\n", hiddenNodes)
-	log.Printf("public node: %v\n", ipv4Node)
+	log.Printf("public node: %v\n", k.PublicNodeID)
 	log.Printf("accessible nodes: %v\n", accessibleNodes)
 	log.Printf("non accessible ip ranges: %v\n", nonAccessibleIPRanges)
 
@@ -496,8 +500,8 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 		k.AccessWGConfig = generateWGConfig(
 			wgIP(*k.ExternalIP).IP.String(),
 			k.ExternalSK.String(),
-			k.Keys[ipv4Node].PublicKey().String(),
-			fmt.Sprintf("%s:%d", endpoints[ipv4Node], k.WGPort[k.PublicNodeID]),
+			k.Keys[k.PublicNodeID].PublicKey().String(),
+			fmt.Sprintf("%s:%d", endpoints[k.PublicNodeID], k.WGPort[k.PublicNodeID]),
 			k.IPRange.String(),
 		)
 	}
@@ -513,7 +517,7 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 				neighIPRange,
 				wgIP(neighIPRange),
 			}
-			if neigh == ipv4Node {
+			if neigh == k.PublicNodeID {
 				allowed_ips = append(allowed_ips, nonAccessibleIPRanges...)
 			}
 			peers = append(peers, zos.Peer{
@@ -523,7 +527,7 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 				AllowedIPs:  allowed_ips,
 			})
 		}
-		if node == ipv4Node {
+		if node == k.PublicNodeID {
 			// external node
 			if k.AddWGAccess {
 				peers = append(peers, zos.Peer{
@@ -582,15 +586,15 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 	for _, node := range hiddenNodes {
 		nodeIPRange := k.NodesIPRange[node]
 		peers := make([]zos.Peer, 0)
-		if ipv4Node != 0 {
+		if k.PublicNodeID != 0 {
 			peers = append(peers, zos.Peer{
-				WGPublicKey: k.Keys[ipv4Node].PublicKey().String(),
+				WGPublicKey: k.Keys[k.PublicNodeID].PublicKey().String(),
 				Subnet:      nodeIPRange,
 				AllowedIPs: []gridtypes.IPNet{
 					k.IPRange,
 					ipNet(100, 64, 0, 0, 16),
 				},
-				Endpoint: fmt.Sprintf("%s:%d", endpoints[ipv4Node], k.WGPort[ipv4Node]),
+				Endpoint: fmt.Sprintf("%s:%d", endpoints[k.PublicNodeID], k.WGPort[k.PublicNodeID]),
 			})
 		}
 		workload := gridtypes.Workload{
