@@ -2,8 +2,8 @@ package subi
 
 import (
 	"github.com/pkg/errors"
-	subv2 "github.com/threefoldtech/substrate-client/v2"
-	subv3 "github.com/threefoldtech/substrate-client/v3"
+	subv2 "github.com/threefoldtech/substrate-client-dev"
+	subv3 "github.com/threefoldtech/substrate-client-test"
 )
 
 var ErrNotFound = subv2.ErrNotFound

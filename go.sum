@@ -100,10 +100,6 @@ github.com/Microsoft/hcsshim v0.8.16/go.mod h1:o5/SZqmR7x9JNKsW3pu+nqHm0MF8vbA+V
 github.com/Microsoft/hcsshim/test v0.0.0-20201218223536-d3e5debf77da/go.mod h1:5hlzMzRKMLyo42nCZ9oml8AdTlq/0cvIaBv6tK1RehU=
 github.com/Microsoft/hcsshim/test v0.0.0-20210227013316-43a75bb4edd3/go.mod h1:mw7qgWloBUl75W/gVH3cQszUg1+gUITj7D6NY7ywVnY=
 github.com/NYTimes/gziphandler v0.0.0-20170623195520-56545f4a5d46/go.mod h1:3wb06e3pkSAbeQ52E9H9iFoQsEEwGN64994WTCIhntQ=
-github.com/OmarElawady/substrate-client/v2 v2.0.0 h1:RJt2lHxw29ctkyrFJX8bUL5xuoIBo2uL6clM2R8BucU=
-github.com/OmarElawady/substrate-client/v2 v2.0.0/go.mod h1:5MnsxAAiwUBBfKatDpC6/Nm014V29kEBn3BOplpjoSA=
-github.com/OmarElawady/substrate-client/v3 v3.0.0 h1:GeHsObf/ITY4DzgY0i19lKKp/39/hIiUWJ4UqzpsekU=
-github.com/OmarElawady/substrate-client/v3 v3.0.0/go.mod h1:F6Kl+a2PeX1qBYszTQ/sT5h+kKbdlP7CDs+TGniFhbY=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/ProtonMail/go-crypto v0.0.0-20210428141323-04723f9f07d7 h1:YoJbenK9C67SkzkDfmQuVln04ygHj3vjZfd9FL+GmQQ=
 github.com/ProtonMail/go-crypto v0.0.0-20210428141323-04723f9f07d7/go.mod h1:z4/9nQmJSSwwds7ejkxaJwO37dru3geImFUdJlaLzQo=

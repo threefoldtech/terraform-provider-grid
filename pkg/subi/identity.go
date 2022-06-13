@@ -1,7 +1,7 @@
 package subi
 
 import (
-	subv2 "github.com/threefoldtech/substrate-client/v2"
+	subv2 "github.com/threefoldtech/substrate-client-dev"
 )
 
 type Identity subv2.Identity

@@ -5,76 +5,51 @@ import (
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/pkg/errors"
-	subv2 "github.com/threefoldtech/substrate-client/v2"
+	subqa "github.com/threefoldtech/substrate-client-qa"
 )
 
-type Substrate interface {
-	CancelContract(identity Identity, contractID uint64) error
-	CreateNodeContract(identity Identity, node uint32, body []byte, hash string, publicIPs uint32) (uint64, error)
-	UpdateNodeContract(identity Identity, contract uint64, body []byte, hash string) (uint64, error)
-	Close()
-	GetTwinByPubKey(pk []byte) (uint32, error)
-}
-type SubstrateExt interface {
-	Substrate
-	EnsureContractCanceled(identity Identity, contractID uint64) error
-	DeleteInvalidContracts(contracts map[uint32]uint64) error
-	IsValidContract(contractID uint64) (bool, error)
-	InvalidateNameContract(
-		ctx context.Context,
-		identity Identity,
-		contractID uint64,
-		name string,
-	) (uint64, error)
-	GetContract(id uint64) (Contract, error)
-	GetNodeTwin(id uint32) (uint32, error)
-	CreateNameContract(identity Identity, name string) (uint64, error)
-	GetAccount(identity Identity) (types.AccountInfo, error)
-	GetTwinIP(twinID uint32) (string, error)
-	GetContractIDByNameRegistration(name string) (uint64, error)
-}
-type SubstrateImplV2 struct {
-	*subv2.Substrate
+type SubstrateQAImpl struct {
+	*subqa.Substrate
 }
 
-func (s *SubstrateImplV2) GetContractIDByNameRegistration(name string) (uint64, error) {
+func (s *SubstrateQAImpl) GetContractIDByNameRegistration(name string) (uint64, error) {
 	res, err := s.Substrate.GetContractIDByNameRegistration(name)
 	return res, terr(err)
 }
-func (s *SubstrateImplV2) GetTwinIP(id uint32) (string, error) {
+func (s *SubstrateQAImpl) GetTwinIP(id uint32) (string, error) {
 	twin, err := s.Substrate.GetTwin(id)
 	if err != nil {
 		return "", terr(err)
 	}
 	return twin.IP, nil
 }
-func (s *SubstrateImplV2) GetAccount(identity Identity) (types.AccountInfo, error) {
+func (s *SubstrateQAImpl) GetAccount(identity Identity) (types.AccountInfo, error) {
 	res, err := s.Substrate.GetAccount(identity)
 	return res, terr(err)
 }
-func (s *SubstrateImplV2) CreateNameContract(identity Identity, name string) (uint64, error) {
+func (s *SubstrateQAImpl) CreateNameContract(identity Identity, name string) (uint64, error) {
 	return s.Substrate.CreateNameContract(identity, name)
 }
-func (s *SubstrateImplV2) GetNodeTwin(id uint32) (uint32, error) {
+func (s *SubstrateQAImpl) GetNodeTwin(id uint32) (uint32, error) {
 	node, err := s.Substrate.GetNode(id)
 	if err != nil {
 		return 0, terr(err)
 	}
 	return uint32(node.TwinID), nil
 }
-func (s *SubstrateImplV2) UpdateNodeContract(identity Identity, contract uint64, body []byte, hash string) (uint64, error) {
+func (s *SubstrateQAImpl) UpdateNodeContract(identity Identity, contract uint64, body []byte, hash string) (uint64, error) {
 	res, err := s.Substrate.UpdateNodeContract(identity, contract, body, hash)
 	return res, terr(err)
 }
-func (s *SubstrateImplV2) CreateNodeContract(identity Identity, node uint32, body []byte, hash string, publicIPs uint32) (uint64, error) {
+func (s *SubstrateQAImpl) CreateNodeContract(identity Identity, node uint32, body []byte, hash string, publicIPs uint32) (uint64, error) {
 	res, err := s.Substrate.CreateNodeContract(identity, node, body, hash, publicIPs)
 	return res, terr(err)
 }
-func (s *SubstrateImplV2) GetContract(contractID uint64) (Contract, error) {
+func (s *SubstrateQAImpl) GetContract(contractID uint64) (Contract, error) {
 	contract, err := s.Substrate.GetContract(contractID)
-	return &ContractV2{contract}, terr(err)
+	return &QAContract{contract}, terr(err)
 }
-func (s *SubstrateImplV2) CancelContract(identity Identity, contractID uint64) error {
+func (s *SubstrateQAImpl) CancelContract(identity Identity, contractID uint64) error {
 	if contractID == 0 {
 		return nil
 	}
@@ -83,7 +58,7 @@ func (s *SubstrateImplV2) CancelContract(identity Identity, contractID uint64) e
 	}
 	return nil
 }
-func (s *SubstrateImplV2) EnsureContractCanceled(identity Identity, contractID uint64) error {
+func (s *SubstrateQAImpl) EnsureContractCanceled(identity Identity, contractID uint64) error {
 	if contractID == 0 {
 		return nil
 	}
@@ -93,7 +68,7 @@ func (s *SubstrateImplV2) EnsureContractCanceled(identity Identity, contractID u
 	return nil
 }
 
-func (s *SubstrateImplV2) DeleteInvalidContracts(contracts map[uint32]uint64) error {
+func (s *SubstrateQAImpl) DeleteInvalidContracts(contracts map[uint32]uint64) error {
 	for node, contractID := range contracts {
 		valid, err := s.IsValidContract(contractID)
 		// TODO: handle pause
@@ -107,7 +82,7 @@ func (s *SubstrateImplV2) DeleteInvalidContracts(contracts map[uint32]uint64) er
 	return nil
 }
 
-func (s *SubstrateImplV2) IsValidContract(contractID uint64) (bool, error) {
+func (s *SubstrateQAImpl) IsValidContract(contractID uint64) (bool, error) {
 	if contractID == 0 {
 		return false, nil
 	}
@@ -122,7 +97,7 @@ func (s *SubstrateImplV2) IsValidContract(contractID uint64) (bool, error) {
 	return true, nil
 }
 
-func (s *SubstrateImplV2) InvalidateNameContract(
+func (s *SubstrateQAImpl) InvalidateNameContract(
 	ctx context.Context,
 	identity Identity,
 	contractID uint64,

@@ -29,10 +29,10 @@ var (
 		"main": "https://gridproxy.grid.tf/",
 	}
 	SubstrateVersion = map[string]func(url ...string) subi.Manager{
-		"dev":  subi.NewManagerV3,
-		"qa":   subi.NewManagerV2,
-		"test": subi.NewManagerV2,
-		"main": subi.NewManagerV2,
+		"dev":  subi.NewDevManager,
+		"qa":   subi.NewQAManager,
+		"test": subi.NewTestManager,
+		"main": subi.NewMMainanager,
 	}
 )
 

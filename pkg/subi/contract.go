@@ -1,8 +1,10 @@
 package subi
 
 import (
-	subv2 "github.com/threefoldtech/substrate-client/v2"
-	subv3 "github.com/threefoldtech/substrate-client/v3"
+	subdev "github.com/threefoldtech/substrate-client-dev"
+	submain "github.com/threefoldtech/substrate-client-main"
+	subqa "github.com/threefoldtech/substrate-client-qa"
+	subtest "github.com/threefoldtech/substrate-client-test"
 )
 
 type Contract interface {
@@ -12,40 +14,78 @@ type Contract interface {
 	PublicIPCount() uint32
 }
 
-type ContractV2 struct {
-	*subv2.Contract
+type DevContract struct {
+	*subdev.Contract
 }
 
-func (c *ContractV2) IsDeleted() bool {
+func (c *DevContract) IsDeleted() bool {
 	return c.Contract.State.IsDeleted
 }
-func (c *ContractV2) IsCreated() bool {
+func (c *DevContract) IsCreated() bool {
 	return c.Contract.State.IsCreated
 }
 
-func (c *ContractV2) TwinID() uint32 {
+func (c *DevContract) TwinID() uint32 {
 	return uint32(c.Contract.TwinID)
 }
 
-func (c *ContractV2) PublicIPCount() uint32 {
+func (c *DevContract) PublicIPCount() uint32 {
 	return uint32(c.Contract.ContractType.NodeContract.PublicIPsCount)
 }
 
-type ContractV3 struct {
-	*subv3.Contract
+type QAContract struct {
+	*subqa.Contract
 }
 
-func (c *ContractV3) IsDeleted() bool {
+func (c *QAContract) IsDeleted() bool {
 	return c.Contract.State.IsDeleted
 }
-func (c *ContractV3) IsCreated() bool {
+func (c *QAContract) IsCreated() bool {
 	return c.Contract.State.IsCreated
 }
 
-func (c *ContractV3) TwinID() uint32 {
+func (c *QAContract) TwinID() uint32 {
 	return uint32(c.Contract.TwinID)
 }
 
-func (c *ContractV3) PublicIPCount() uint32 {
+func (c *QAContract) PublicIPCount() uint32 {
+	return uint32(c.Contract.ContractType.NodeContract.PublicIPsCount)
+}
+
+type TestContract struct {
+	*subtest.Contract
+}
+
+func (c *TestContract) IsDeleted() bool {
+	return c.Contract.State.IsDeleted
+}
+func (c *TestContract) IsCreated() bool {
+	return c.Contract.State.IsCreated
+}
+
+func (c *TestContract) TwinID() uint32 {
+	return uint32(c.Contract.TwinID)
+}
+
+func (c *TestContract) PublicIPCount() uint32 {
+	return uint32(c.Contract.ContractType.NodeContract.PublicIPsCount)
+}
+
+type MainContract struct {
+	*submain.Contract
+}
+
+func (c *MainContract) IsDeleted() bool {
+	return c.Contract.State.IsDeleted
+}
+func (c *MainContract) IsCreated() bool {
+	return c.Contract.State.IsCreated
+}
+
+func (c *MainContract) TwinID() uint32 {
+	return uint32(c.Contract.TwinID)
+}
+
+func (c *MainContract) PublicIPCount() uint32 {
 	return uint32(c.Contract.ContractType.NodeContract.PublicIPsCount)
 }
