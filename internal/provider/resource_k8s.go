@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
-	substrate "github.com/threefoldtech/substrate-client"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
@@ -372,12 +372,12 @@ func (k *K8sNodeData) Dictify() map[string]interface{} {
 }
 
 // invalidateBrokenAttributes removes outdated attrs and deleted contracts
-func (k *K8sDeployer) invalidateBrokenAttributes(sub *substrate.Substrate) error {
+func (k *K8sDeployer) invalidateBrokenAttributes(sub subi.SubstrateExt) error {
 	newWorkers := make([]K8sNodeData, 0)
 	validNodes := make(map[uint32]struct{})
 	for node, contractID := range k.NodeDeploymentID {
 		contract, err := sub.GetContract(contractID)
-		if (err == nil && !contract.State.IsCreated) || errors.Is(err, substrate.ErrNotFound) {
+		if (err == nil && !contract.IsCreated()) || errors.Is(err, subi.ErrNotFound) {
 			delete(k.NodeDeploymentID, node)
 			delete(k.NodesIPRange, node)
 		} else if err != nil {
@@ -519,7 +519,7 @@ func (d *K8sDeployer) validateChecksums() error {
 	}
 	return nil
 }
-func (k *K8sDeployer) GetOldDeployments(ctx context.Context, sub *substrate.Substrate) (map[uint32]gridtypes.Deployment, error) {
+func (k *K8sDeployer) GetOldDeployments(ctx context.Context, sub subi.SubstrateExt) (map[uint32]gridtypes.Deployment, error) {
 	return getDeploymentObjects(ctx, sub, k.NodeDeploymentID, k.ncPool)
 }
 
@@ -549,7 +549,7 @@ func (k *K8sDeployer) ValidateIPranges(ctx context.Context) error {
 	return nil
 }
 
-func (k *K8sDeployer) Validate(ctx context.Context, sub *substrate.Substrate) error {
+func (k *K8sDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error {
 	if err := validateAccountMoneyForExtrinsics(sub, k.APIClient.identity); err != nil {
 		return err
 	}
@@ -568,7 +568,7 @@ func (k *K8sDeployer) Validate(ctx context.Context, sub *substrate.Substrate) er
 	return isNodesUp(ctx, sub, nodes, k.ncPool)
 }
 
-func (k *K8sDeployer) Deploy(ctx context.Context, sub *substrate.Substrate) error {
+func (k *K8sDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt) error {
 	if err := k.validateChecksums(); err != nil {
 		return err
 	}
@@ -583,7 +583,7 @@ func (k *K8sDeployer) Deploy(ctx context.Context, sub *substrate.Substrate) erro
 	return err
 }
 
-func (k *K8sDeployer) Cancel(ctx context.Context, sub *substrate.Substrate) error {
+func (k *K8sDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt) error {
 	newDeployments := make(map[uint32]gridtypes.Deployment)
 
 	currentDeployments, err := deployDeployments(ctx, sub, k.NodeDeploymentID, newDeployments, k.ncPool, k.APIClient, false)
@@ -602,7 +602,7 @@ func printDeployments(dls map[uint32]gridtypes.Deployment) {
 	}
 }
 
-func (k *K8sDeployer) updateState(ctx context.Context, sub *substrate.Substrate, currentDeploymentIDs map[uint32]uint64) error {
+func (k *K8sDeployer) updateState(ctx context.Context, sub subi.SubstrateExt, currentDeploymentIDs map[uint32]uint64) error {
 	log.Printf("current deployments\n")
 	k.NodeDeploymentID = currentDeploymentIDs
 	currentDeployments, err := getDeploymentObjects(ctx, sub, currentDeploymentIDs, k.ncPool)
@@ -657,14 +657,14 @@ func (k *K8sDeployer) updateState(ctx context.Context, sub *substrate.Substrate,
 	return nil
 }
 
-func (k *K8sDeployer) removeDeletedContracts(ctx context.Context, sub *substrate.Substrate) error {
+func (k *K8sDeployer) removeDeletedContracts(ctx context.Context, sub subi.SubstrateExt) error {
 	nodeDeploymentID := make(map[uint32]uint64)
 	for nodeID, deploymentID := range k.NodeDeploymentID {
 		cont, err := sub.GetContract(deploymentID)
 		if err != nil {
 			return errors.Wrap(err, "failed to get deployments")
 		}
-		if !cont.State.IsDeleted {
+		if !cont.IsDeleted() {
 			nodeDeploymentID[nodeID] = deploymentID
 		}
 	}
@@ -672,7 +672,7 @@ func (k *K8sDeployer) removeDeletedContracts(ctx context.Context, sub *substrate
 	return nil
 }
 
-func (k *K8sDeployer) updateFromRemote(ctx context.Context, sub *substrate.Substrate) error {
+func (k *K8sDeployer) updateFromRemote(ctx context.Context, sub subi.SubstrateExt) error {
 	if err := k.removeDeletedContracts(ctx, sub); err != nil {
 		return errors.Wrap(err, "failed to remove deleted contracts")
 	}
@@ -899,7 +899,7 @@ func getK8sFreeIP(ipRange gridtypes.IPNet, usedIPs []string) (string, error) {
 func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.Substrate()
+	sub, err := apiClient.manager.SubstrateExt()
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
 	}
@@ -933,7 +933,7 @@ func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 func resourceK8sUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.Substrate()
+	sub, err := apiClient.manager.SubstrateExt()
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
 	}
@@ -965,7 +965,7 @@ func resourceK8sUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 func resourceK8sRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.Substrate()
+	sub, err := apiClient.manager.SubstrateExt()
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
 	}
@@ -1003,7 +1003,7 @@ func resourceK8sRead(ctx context.Context, d *schema.ResourceData, meta interface
 func resourceK8sDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.Substrate()
+	sub, err := apiClient.manager.SubstrateExt()
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
 	}

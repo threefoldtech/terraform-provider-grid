@@ -7,12 +7,11 @@ import (
 	"log"
 	"strconv"
 
-	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/substrate-client"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
@@ -124,7 +123,7 @@ func NewGatewayNameDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 	return deployer, nil
 }
 
-func (k *GatewayNameDeployer) Validate(ctx context.Context, sub *substrate.Substrate) error {
+func (k *GatewayNameDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error {
 	if err := validateAccountMoneyForExtrinsics(sub, k.APIClient.identity); err != nil {
 		return err
 	}
@@ -180,9 +179,9 @@ func (k *GatewayNameDeployer) GenerateVersionlessDeployments(ctx context.Context
 	return deployments, nil
 }
 
-func (k *GatewayNameDeployer) ensureNameContract(ctx context.Context, sub *substrate.Substrate, name string) (uint64, error) {
+func (k *GatewayNameDeployer) ensureNameContract(ctx context.Context, sub subi.SubstrateExt, name string) (uint64, error) {
 	contractID, err := sub.GetContractIDByNameRegistration(name)
-	if errors.Is(err, substrate.ErrNotFound) {
+	if errors.Is(err, subi.ErrNotFound) {
 		if k.NameContractID != 0 { // the name changed, remove the old one
 			if err := sub.CancelContract(k.APIClient.identity, k.NameContractID); err != nil {
 				return 0, errors.Wrap(err, "couldn't delete the old name contract")
@@ -200,13 +199,13 @@ func (k *GatewayNameDeployer) ensureNameContract(ctx context.Context, sub *subst
 	if err != nil {
 		return 0, errors.Wrapf(err, "couldn't get the owning contract of the name %s", name)
 	}
-	if contract.TwinID != types.U32(k.APIClient.twin_id) {
-		return 0, errors.Wrapf(err, "name already registered by twin id %d with contract id %d", contract.TwinID, contractID)
+	if contract.TwinID() != k.APIClient.twin_id {
+		return 0, errors.Wrapf(err, "name already registered by twin id %d with contract id %d", contract.TwinID(), contractID)
 	}
 	return contractID, nil
 }
 
-func (k *GatewayNameDeployer) Deploy(ctx context.Context, sub *substrate.Substrate) error {
+func (k *GatewayNameDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt) error {
 	newDeployments, err := k.GenerateVersionlessDeployments(ctx)
 	if err != nil {
 		return errors.Wrap(err, "couldn't generate deployments data")
@@ -222,7 +221,7 @@ func (k *GatewayNameDeployer) Deploy(ctx context.Context, sub *substrate.Substra
 	}
 	return err
 }
-func (k *GatewayNameDeployer) updateState(ctx context.Context, sub *substrate.Substrate, currentDeploymentIDs map[uint32]uint64) error {
+func (k *GatewayNameDeployer) updateState(ctx context.Context, sub subi.SubstrateExt, currentDeploymentIDs map[uint32]uint64) error {
 	k.NodeDeploymentID = currentDeploymentIDs
 	dls, err := getDeploymentObjects(ctx, sub, currentDeploymentIDs, k.ncPool)
 	if err != nil {
@@ -241,11 +240,11 @@ func (k *GatewayNameDeployer) updateState(ctx context.Context, sub *substrate.Su
 	return nil
 }
 
-func (k *GatewayNameDeployer) updateFromRemote(ctx context.Context, sub *substrate.Substrate) error {
+func (k *GatewayNameDeployer) updateFromRemote(ctx context.Context, sub subi.SubstrateExt) error {
 	return k.updateState(ctx, sub, k.NodeDeploymentID)
 }
 
-func (k *GatewayNameDeployer) Cancel(ctx context.Context, sub *substrate.Substrate) error {
+func (k *GatewayNameDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt) error {
 	newDeployments := make(map[uint32]gridtypes.Deployment)
 	currentDeployments, err := deployDeployments(ctx, sub, k.NodeDeploymentID, newDeployments, k.ncPool, k.APIClient, false)
 	// update even in case of error, then return the error after
@@ -264,7 +263,7 @@ func (k *GatewayNameDeployer) Cancel(ctx context.Context, sub *substrate.Substra
 func resourceGatewayNameCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.Substrate()
+	sub, err := apiClient.manager.SubstrateExt()
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
 	}
@@ -296,7 +295,7 @@ func resourceGatewayNameCreate(ctx context.Context, d *schema.ResourceData, meta
 func resourceGatewayNameUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.Substrate()
+	sub, err := apiClient.manager.SubstrateExt()
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
 	}
@@ -326,7 +325,7 @@ func resourceGatewayNameRead(ctx context.Context, d *schema.ResourceData, meta i
 
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.Substrate()
+	sub, err := apiClient.manager.SubstrateExt()
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
 	}
@@ -349,7 +348,7 @@ func resourceGatewayNameRead(ctx context.Context, d *schema.ResourceData, meta i
 		return diags
 	}
 	_, err = sub.GetContract(contractId)
-	if err != nil && errors.Is(err, substrate.ErrNotFound) {
+	if err != nil && errors.Is(err, subi.ErrNotFound) {
 		d.SetId("")
 		return diags
 	}
@@ -371,7 +370,7 @@ func resourceGatewayNameRead(ctx context.Context, d *schema.ResourceData, meta i
 func resourceGatewayNameDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.Substrate()
+	sub, err := apiClient.manager.SubstrateExt()
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
 	}

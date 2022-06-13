@@ -14,7 +14,9 @@ require (
 	github.com/stretchr/testify v1.7.1
 	github.com/threefoldtech/go-rmb v0.1.11-0.20220224131627-825c23c921d3
 	github.com/threefoldtech/substrate-client v0.0.0-20220530091709-ebbfbddb09a0
-	github.com/threefoldtech/zos v0.5.6-0.20220518100703-dac8846ca683
+	github.com/threefoldtech/substrate-client/v2 v2.0.0
+	github.com/threefoldtech/substrate-client/v3 v3.0.0
+	github.com/threefoldtech/zos v0.5.6-0.20220613090823-9413ae8c81e9
 	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2 // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20210803171230-4253848d036c
 )
@@ -103,3 +105,7 @@ require (
 )
 
 replace github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.0 => github.com/threefoldtech/go-substrate-rpc-client/v4 v4.0.1-0.20220224103912-af82b63a1bda
+
+replace github.com/threefoldtech/substrate-client/v2 v2.0.0 => github.com/OmarElawady/substrate-client/v2 v2.0.0
+
+replace github.com/threefoldtech/substrate-client/v3 v3.0.0 => github.com/OmarElawady/substrate-client/v3 v3.0.0

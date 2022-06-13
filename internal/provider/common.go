@@ -14,9 +14,9 @@ import (
 	"github.com/cenkalti/backoff"
 	"github.com/pkg/errors"
 	gormb "github.com/threefoldtech/go-rmb"
-	substrate "github.com/threefoldtech/substrate-client"
 	"github.com/threefoldtech/terraform-provider-grid/internal/gridproxy"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
@@ -24,7 +24,7 @@ import (
 const RMB_WORKERS = 10
 
 type NodeClientCollection interface {
-	getNodeClient(sub *substrate.Substrate, nodeID uint32) (*client.NodeClient, error)
+	getNodeClient(sub subi.SubstrateExt, nodeID uint32) (*client.NodeClient, error)
 }
 
 type Progress struct {
@@ -169,7 +169,7 @@ func hashDeployment(dl gridtypes.Deployment) (string, error) {
 	return hash, nil
 }
 
-func getDeploymentObjects(ctx context.Context, sub *substrate.Substrate, dls map[uint32]uint64, nc NodeClientCollection) (map[uint32]gridtypes.Deployment, error) {
+func getDeploymentObjects(ctx context.Context, sub subi.SubstrateExt, dls map[uint32]uint64, nc NodeClientCollection) (map[uint32]gridtypes.Deployment, error) {
 	res := make(map[uint32]gridtypes.Deployment)
 	for nodeID, dlID := range dls {
 		nc, err := nc.getNodeClient(sub, nodeID)
@@ -199,7 +199,7 @@ func isNodeUp(ctx context.Context, nc *client.NodeClient) error {
 	return nil
 }
 
-func isNodesUp(ctx context.Context, sub *substrate.Substrate, nodes []uint32, nc NodeClientCollection) error {
+func isNodesUp(ctx context.Context, sub subi.SubstrateExt, nodes []uint32, nc NodeClientCollection) error {
 	for _, node := range nodes {
 		cl, err := nc.getNodeClient(sub, node)
 		if err != nil {
@@ -256,7 +256,7 @@ func hasWorkload(dl *gridtypes.Deployment, wlType gridtypes.WorkloadType) bool {
 	return false
 }
 
-func ValidateDeployments(ctx context.Context, sub *substrate.Substrate, gridClient gridproxy.GridProxyClient, oldDeployments map[uint32]gridtypes.Deployment, newDeployments map[uint32]gridtypes.Deployment) error {
+func ValidateDeployments(ctx context.Context, sub subi.SubstrateExt, gridClient gridproxy.GridProxyClient, oldDeployments map[uint32]gridtypes.Deployment, newDeployments map[uint32]gridtypes.Deployment) error {
 	farmIPs := make(map[int]int)
 	nodeMap := make(map[uint32]gridproxy.NodeInfo)
 	for node := range oldDeployments {
@@ -327,7 +327,7 @@ func ValidateDeployments(ctx context.Context, sub *substrate.Substrate, gridClie
 			if err != nil {
 				return errors.Wrapf(err, "couldn't get node contract %d", oldDl.ContractID)
 			}
-			current := int(contract.ContractType.NodeContract.PublicIPsCount)
+			current := int(contract.PublicIPCount())
 			if requiredIPs > current {
 				return fmt.Errorf(
 					"currently, it's not possible to increase the number of reserved public ips in a deployment, node: %d, current: %d, requested: %d",
@@ -367,7 +367,7 @@ func ValidateDeployments(ctx context.Context, sub *substrate.Substrate, gridClie
 
 // deployDeployments transforms oldDeployment to match newDeployment. In case of error,
 //                   it tries to revert to the old state. Whatever is done the current state is returned
-func deployDeployments(ctx context.Context, sub *substrate.Substrate, oldDeploymentIDs map[uint32]uint64, newDeployments map[uint32]gridtypes.Deployment, nc NodeClientCollection, api *apiClient, revertOnFailure bool) (map[uint32]uint64, error) {
+func deployDeployments(ctx context.Context, sub subi.SubstrateExt, oldDeploymentIDs map[uint32]uint64, newDeployments map[uint32]gridtypes.Deployment, nc NodeClientCollection, api *apiClient, revertOnFailure bool) (map[uint32]uint64, error) {
 	oldDeployments, oldErr := getDeploymentObjects(ctx, sub, oldDeploymentIDs, nc)
 	if oldErr == nil {
 		// check resources only when old deployments are readable
@@ -393,7 +393,7 @@ func deployDeployments(ctx context.Context, sub *substrate.Substrate, oldDeploym
 	return curentDeployments, err
 }
 
-func deployConsistentDeployments(ctx context.Context, sub *substrate.Substrate, oldDeployments map[uint32]uint64, newDeployments map[uint32]gridtypes.Deployment, nc NodeClientCollection, api *apiClient) (currentDeployments map[uint32]uint64, err error) {
+func deployConsistentDeployments(ctx context.Context, sub subi.SubstrateExt, oldDeployments map[uint32]uint64, newDeployments map[uint32]gridtypes.Deployment, nc NodeClientCollection, api *apiClient) (currentDeployments map[uint32]uint64, err error) {
 	currentDeployments = make(map[uint32]uint64)
 	for nodeID, contractID := range oldDeployments {
 		currentDeployments[nodeID] = contractID
