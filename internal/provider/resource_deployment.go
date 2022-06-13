@@ -15,8 +15,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/substrate-client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
@@ -787,13 +787,13 @@ func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context)
 }
 
 // TODO: this can be removed
-func (d *DeploymentDeployer) getNodeClient(sub *substrate.Substrate, nodeID uint32) (*client.NodeClient, error) {
-	nodeInfo, err := sub.GetNode(nodeID)
+func (d *DeploymentDeployer) getNodeClient(sub subi.SubstrateExt, nodeID uint32) (*client.NodeClient, error) {
+	twin, err := sub.GetNodeTwin(nodeID)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get node")
 	}
 
-	cl := client.NewNodeClient(uint32(nodeInfo.TwinID), d.APIClient.rmb)
+	cl := client.NewNodeClient(twin, d.APIClient.rmb)
 	return cl, nil
 }
 func (d *DeploymentDeployer) GetOldDeployments(ctx context.Context) (map[uint32]uint64, error) {
@@ -809,7 +809,7 @@ func (d *DeploymentDeployer) GetOldDeployments(ctx context.Context) (map[uint32]
 
 	return deployments, nil
 }
-func (d *DeploymentDeployer) updateState(ctx context.Context, sub *substrate.Substrate, currentDeploymentIDs map[uint32]uint64) error {
+func (d *DeploymentDeployer) updateState(ctx context.Context, sub subi.SubstrateExt, currentDeploymentIDs map[uint32]uint64) error {
 
 	currentDeployments, err := getDeploymentObjects(ctx, sub, currentDeploymentIDs, d)
 	if err != nil {
@@ -1009,7 +1009,7 @@ func (d *DeploymentDeployer) validateChecksums() error {
 	}
 	return nil
 }
-func (d *DeploymentDeployer) Deploy(ctx context.Context, sub *substrate.Substrate) (uint32, error) {
+func (d *DeploymentDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt) (uint32, error) {
 	if err := d.validateChecksums(); err != nil {
 		return 0, err
 	}
@@ -1131,7 +1131,7 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 		return diag.FromErr(errors.Wrap(err, "error validating deployment"))
 	}
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.Substrate()
+	sub, err := apiClient.manager.SubstrateExt()
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
 	}
@@ -1165,7 +1165,7 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 	// use the meta valufreeIPe to retrieve your client from the provider configure method
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.Substrate()
+	sub, err := apiClient.manager.SubstrateExt()
 	if err != nil {
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Warning,
@@ -1198,7 +1198,7 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 		return diags
 	}
 	_, err = sub.GetContract(contractId)
-	if err != nil && errors.Is(err, substrate.ErrNotFound) {
+	if err != nil && errors.Is(err, subi.ErrNotFound) {
 		d.SetId("")
 		return diags
 	}
@@ -1247,7 +1247,7 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 		return diag.FromErr(errors.New("changing node is not supported, you need to destroy the deployment and reapply it again but you will lose your old data"))
 	}
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.Substrate()
+	sub, err := apiClient.manager.SubstrateExt()
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
 	}
@@ -1272,7 +1272,7 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 	return diags
 }
 
-func (d *DeploymentDeployer) Cancel(ctx context.Context, sub *substrate.Substrate) error {
+func (d *DeploymentDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt) error {
 	newDeployments := make(map[uint32]gridtypes.Deployment)
 	oldDeployments, err := d.GetOldDeployments(ctx)
 	if err != nil {
@@ -1288,7 +1288,7 @@ func (d *DeploymentDeployer) Cancel(ctx context.Context, sub *substrate.Substrat
 
 func resourceDeploymentDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.Substrate()
+	sub, err := apiClient.manager.SubstrateExt()
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
 	}

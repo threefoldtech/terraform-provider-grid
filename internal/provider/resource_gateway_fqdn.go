@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/substrate-client"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
@@ -117,14 +117,14 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 	return deployer, nil
 }
 
-func (k *GatewayFQDNDeployer) Validate(ctx context.Context, sub *substrate.Substrate) error {
+func (k *GatewayFQDNDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error {
 	if err := validateAccountMoneyForExtrinsics(sub, k.APIClient.identity); err != nil {
 		return err
 	}
 	return isNodesUp(ctx, sub, []uint32{k.Node}, k.ncPool)
 }
 
-func (k *GatewayFQDNDeployer) ValidateRead(ctx context.Context, sub *substrate.Substrate) error {
+func (k *GatewayFQDNDeployer) ValidateRead(ctx context.Context, sub subi.SubstrateExt) error {
 	nodes := make([]uint32, 0)
 	for node := range k.NodeDeploymentID {
 		nodes = append(nodes, node)
@@ -184,11 +184,11 @@ func (k *GatewayFQDNDeployer) GenerateVersionlessDeployments(ctx context.Context
 	return deployments, nil
 }
 
-func (k *GatewayFQDNDeployer) GetOldDeployments(ctx context.Context, sub *substrate.Substrate) (map[uint32]gridtypes.Deployment, error) {
+func (k *GatewayFQDNDeployer) GetOldDeployments(ctx context.Context, sub subi.SubstrateExt) (map[uint32]gridtypes.Deployment, error) {
 	return getDeploymentObjects(ctx, sub, k.NodeDeploymentID, k.ncPool)
 }
 
-func (k *GatewayFQDNDeployer) Deploy(ctx context.Context, sub *substrate.Substrate) error {
+func (k *GatewayFQDNDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt) error {
 	newDeployments, err := k.GenerateVersionlessDeployments(ctx)
 	if err != nil {
 		return errors.Wrap(err, "couldn't generate deployments data")
@@ -199,7 +199,7 @@ func (k *GatewayFQDNDeployer) Deploy(ctx context.Context, sub *substrate.Substra
 	}
 	return err
 }
-func (k *GatewayFQDNDeployer) updateState(ctx context.Context, sub *substrate.Substrate, currentDeploymentIDs map[uint32]uint64) error {
+func (k *GatewayFQDNDeployer) updateState(ctx context.Context, sub subi.SubstrateExt, currentDeploymentIDs map[uint32]uint64) error {
 	k.NodeDeploymentID = currentDeploymentIDs
 	dls, err := getDeploymentObjects(ctx, sub, currentDeploymentIDs, k.ncPool)
 	if err != nil {
@@ -218,11 +218,11 @@ func (k *GatewayFQDNDeployer) updateState(ctx context.Context, sub *substrate.Su
 	return nil
 }
 
-func (k *GatewayFQDNDeployer) updateFromRemote(ctx context.Context, sub *substrate.Substrate) error {
+func (k *GatewayFQDNDeployer) updateFromRemote(ctx context.Context, sub subi.SubstrateExt) error {
 	return k.updateState(ctx, sub, k.NodeDeploymentID)
 }
 
-func (k *GatewayFQDNDeployer) Cancel(ctx context.Context, sub *substrate.Substrate) error {
+func (k *GatewayFQDNDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt) error {
 	newDeployments := make(map[uint32]gridtypes.Deployment)
 
 	currentDeployments, err := deployDeployments(ctx, sub, k.NodeDeploymentID, newDeployments, k.ncPool, k.APIClient, false)
@@ -235,7 +235,7 @@ func (k *GatewayFQDNDeployer) Cancel(ctx context.Context, sub *substrate.Substra
 func resourceGatewayFQDNCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.Substrate()
+	sub, err := apiClient.manager.SubstrateExt()
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
 	}
@@ -268,7 +268,7 @@ func resourceGatewayFQDNUpdate(ctx context.Context, d *schema.ResourceData, meta
 
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.Substrate()
+	sub, err := apiClient.manager.SubstrateExt()
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
 	}
@@ -297,7 +297,7 @@ func resourceGatewayFQDNRead(ctx context.Context, d *schema.ResourceData, meta i
 
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.Substrate()
+	sub, err := apiClient.manager.SubstrateExt()
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
 	}
@@ -320,7 +320,7 @@ func resourceGatewayFQDNRead(ctx context.Context, d *schema.ResourceData, meta i
 		return diags
 	}
 	_, err = sub.GetContract(contractId)
-	if err != nil && errors.Is(err, substrate.ErrNotFound) {
+	if err != nil && errors.Is(err, subi.ErrNotFound) {
 		d.SetId("")
 		return diags
 	}
@@ -342,7 +342,7 @@ func resourceGatewayFQDNRead(ctx context.Context, d *schema.ResourceData, meta i
 func resourceGatewayFQDNDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.Substrate()
+	sub, err := apiClient.manager.SubstrateExt()
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
 	}

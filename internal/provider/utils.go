@@ -2,8 +2,8 @@ package provider
 
 import (
 	"github.com/pkg/errors"
-	substrate "github.com/threefoldtech/substrate-client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/rmb"
 )
 
@@ -19,17 +19,17 @@ func NewNodeClient(rmb rmb.Client) *NodeClientPool {
 	}
 }
 
-func (k *NodeClientPool) getNodeClient(sub *substrate.Substrate, nodeID uint32) (*client.NodeClient, error) {
+func (k *NodeClientPool) getNodeClient(sub subi.SubstrateExt, nodeID uint32) (*client.NodeClient, error) {
 	cl, ok := k.nodeClients[nodeID]
 	if ok {
 		return cl, nil
 	}
-	nodeInfo, err := sub.GetNode(nodeID)
+	twin, err := sub.GetNodeTwin(nodeID)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get node")
 	}
 
-	cl = client.NewNodeClient(uint32(nodeInfo.TwinID), k.rmb)
+	cl = client.NewNodeClient(twin, k.rmb)
 	k.nodeClients[nodeID] = cl
 	return cl, nil
 }

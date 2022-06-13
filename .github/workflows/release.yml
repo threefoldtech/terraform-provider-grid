@@ -21,6 +21,8 @@ jobs:
       -
         name: Checkout
         uses: actions/checkout@v3.0.2
+        with:
+          submodules: 'true'
       -
         name: Unshallow
         run: git fetch --prune --unshallow

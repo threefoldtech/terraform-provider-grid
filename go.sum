@@ -1155,12 +1155,11 @@ github.com/threefoldtech/go-rmb v0.1.11-0.20220224131627-825c23c921d3/go.mod h1:
 github.com/threefoldtech/go-substrate-rpc-client/v4 v4.0.1-0.20220224103912-af82b63a1bda h1:Arn9gaeEMsIF49J+Lmay6LQ6vvztG3+tn4kQ286TcnE=
 github.com/threefoldtech/go-substrate-rpc-client/v4 v4.0.1-0.20220224103912-af82b63a1bda/go.mod h1:Mo1w5OuYcq6hYiNQx+GCg8ot8UEXg4OHlej19kdFCZk=
 github.com/threefoldtech/substrate-client v0.0.0-20220224131248-f56a2e9fa1d4/go.mod h1:Lpsz7gVNSdbWD8erfVh1AZv2wnProc7g/QHJiYp5lP8=
-github.com/threefoldtech/substrate-client v0.0.0-20220513092006-992cef6e4dc1/go.mod h1:Lpsz7gVNSdbWD8erfVh1AZv2wnProc7g/QHJiYp5lP8=
 github.com/threefoldtech/substrate-client v0.0.0-20220530091709-ebbfbddb09a0 h1:wjqshpIzyzrmIVvMBd+auSMUF4Aj8i2pAX/FNc+Eek4=
 github.com/threefoldtech/substrate-client v0.0.0-20220530091709-ebbfbddb09a0/go.mod h1:Lpsz7gVNSdbWD8erfVh1AZv2wnProc7g/QHJiYp5lP8=
 github.com/threefoldtech/zbus v0.1.5/go.mod h1:ZtiRpcqzEBJetVQDsEbw0p48h/AF3O1kf0tvd30I0BU=
-github.com/threefoldtech/zos v0.5.6-0.20220518100703-dac8846ca683 h1:HFBNJ2W+bVwFB+2NiP73uENFhKpzSwxCelHmEVzCor4=
-github.com/threefoldtech/zos v0.5.6-0.20220518100703-dac8846ca683/go.mod h1:YhVjUDOApNIk5gm6OrFFHkqL2udbN3na46q7jTeJaGc=
+github.com/threefoldtech/zos v0.5.6-0.20220613090823-9413ae8c81e9 h1:5JuIemeacWY2eamRl++hCE+yeyZ641rOIVn3DUxjwXk=
+github.com/threefoldtech/zos v0.5.6-0.20220613090823-9413ae8c81e9/go.mod h1:B0GcK8GxKdF5ADQu3W7uRGBLYJBrJ93i+qNzCUEfodg=
 github.com/tinylib/msgp v1.0.2/go.mod h1:+d+yLhGm8mzTaHzB+wgMYrodPfmZrzkirds8fDWklFE=
 github.com/tinylib/msgp v1.1.2/go.mod h1:+d+yLhGm8mzTaHzB+wgMYrodPfmZrzkirds8fDWklFE=
 github.com/tinylib/msgp v1.1.5/go.mod h1:eQsjooMTnV42mHu917E26IogZ2930nFyBQdofk10Udg=
