@@ -41,7 +41,7 @@ func dataSourceGatewayDomain() *schema.Resource {
 // TODO: make this non failing
 func dataSourceGatewayRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.Substrate()
+	sub, err := apiClient.manager.SubstrateExt()
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
 	}

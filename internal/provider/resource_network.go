@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
-	substrate "github.com/threefoldtech/substrate-client"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
@@ -194,11 +194,11 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 }
 
 // invalidateBrokenAttributes removes outdated attrs and deleted contracts
-func (k *NetworkDeployer) invalidateBrokenAttributes(sub *substrate.Substrate) error {
+func (k *NetworkDeployer) invalidateBrokenAttributes(sub subi.SubstrateExt) error {
 
 	for node, contractID := range k.NodeDeploymentID {
 		contract, err := sub.GetContract(contractID)
-		if (err == nil && !contract.State.IsCreated) || errors.Is(err, substrate.ErrNotFound) {
+		if (err == nil && !contract.IsCreated()) || errors.Is(err, subi.ErrNotFound) {
 			delete(k.NodeDeploymentID, node)
 			delete(k.NodesIPRange, node)
 			delete(k.Keys, node)
@@ -232,7 +232,7 @@ func (k *NetworkDeployer) invalidateBrokenAttributes(sub *substrate.Substrate) e
 	}
 	return nil
 }
-func (k *NetworkDeployer) Validate(ctx context.Context, sub *substrate.Substrate) error {
+func (k *NetworkDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error {
 	if err := validateAccountMoneyForExtrinsics(sub, k.APIClient.identity); err != nil {
 		return err
 	}
@@ -342,7 +342,7 @@ func (k *NetworkDeployer) assignNodesIPs(nodes []uint32) error {
 	k.NodesIPRange = ips
 	return nil
 }
-func (k *NetworkDeployer) assignNodesWGPort(ctx context.Context, sub *substrate.Substrate, nodes []uint32) error {
+func (k *NetworkDeployer) assignNodesWGPort(ctx context.Context, sub subi.SubstrateExt, nodes []uint32) error {
 	for _, node := range nodes {
 		if _, ok := k.WGPort[node]; !ok {
 			cl, err := k.ncPool.getNodeClient(sub, node)
@@ -373,7 +373,7 @@ func (k *NetworkDeployer) assignNodesWGKey(nodes []uint32) error {
 
 	return nil
 }
-func (k *NetworkDeployer) readNodesConfig(ctx context.Context, sub *substrate.Substrate) error {
+func (k *NetworkDeployer) readNodesConfig(ctx context.Context, sub subi.SubstrateExt) error {
 	keys := make(map[uint32]wgtypes.Key)
 	WGPort := make(map[uint32]int)
 	nodesIPRange := make(map[uint32]gridtypes.IPNet)
@@ -419,7 +419,7 @@ func (k *NetworkDeployer) readNodesConfig(ctx context.Context, sub *substrate.Su
 	return nil
 }
 
-func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, sub *substrate.Substrate) (map[uint32]gridtypes.Deployment, error) {
+func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, sub subi.SubstrateExt) (map[uint32]gridtypes.Deployment, error) {
 	log.Printf("nodes: %v\n", k.Nodes)
 	deployments := make(map[uint32]gridtypes.Deployment)
 	endpoints := make(map[uint32]string)
@@ -631,7 +631,7 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 	}
 	return deployments, nil
 }
-func (k *NetworkDeployer) Deploy(ctx context.Context, sub *substrate.Substrate) error {
+func (k *NetworkDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt) error {
 	newDeployments, err := k.GenerateVersionlessDeployments(ctx, sub)
 	if err != nil {
 		return errors.Wrap(err, "couldn't generate deployments data")
@@ -644,7 +644,7 @@ func (k *NetworkDeployer) Deploy(ctx context.Context, sub *substrate.Substrate) 
 	}
 	return err
 }
-func (k *NetworkDeployer) updateState(ctx context.Context, sub *substrate.Substrate, currentDeploymentIDs map[uint32]uint64) error {
+func (k *NetworkDeployer) updateState(ctx context.Context, sub subi.SubstrateExt, currentDeploymentIDs map[uint32]uint64) error {
 	k.NodeDeploymentID = currentDeploymentIDs
 	if err := k.readNodesConfig(ctx, sub); err != nil {
 		return errors.Wrap(err, "couldn't read node's data")
@@ -653,7 +653,7 @@ func (k *NetworkDeployer) updateState(ctx context.Context, sub *substrate.Substr
 	return nil
 }
 
-func (k *NetworkDeployer) Cancel(ctx context.Context, sub *substrate.Substrate) error {
+func (k *NetworkDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt) error {
 	newDeployments := make(map[uint32]gridtypes.Deployment)
 
 	currentDeployments, err := deployDeployments(ctx, sub, k.NodeDeploymentID, newDeployments, k.ncPool, k.APIClient, false)
@@ -666,7 +666,7 @@ func (k *NetworkDeployer) Cancel(ctx context.Context, sub *substrate.Substrate) 
 func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.Substrate()
+	sub, err := apiClient.manager.SubstrateExt()
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
 	}
@@ -698,7 +698,7 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.Substrate()
+	sub, err := apiClient.manager.SubstrateExt()
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
 	}
@@ -729,7 +729,7 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.Substrate()
+	sub, err := apiClient.manager.SubstrateExt()
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
 	}
@@ -762,7 +762,7 @@ func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta inter
 func resourceNetworkDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.Substrate()
+	sub, err := apiClient.manager.SubstrateExt()
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
 	}
