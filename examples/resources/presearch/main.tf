@@ -47,6 +47,9 @@ resource "grid_deployment" "d1" {
       SSH_KEY                     = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDZnBgLQt77C1suFHsBH5sNdbTxcCCiowDPB+U8h0OsT7onOg/HCYGEguUh9yl5VlacODXSexBhg9LsFTDuO/nBTf/DQVpjqRGQs1QenoGrpaxxaI5Svo5GBLE3Jogva/fhbJtwK9yEgW+1zltO3rTp+sdQ7JFG3uZGnlLSN1U+PCJVzONM2BaAGkQ6XHHuCCiisMlNgWXUzN3T+DjkzHWbXyqPEoK/gSkV20QzWbDRzxM/FJNIOZZh70H+n3QcSl9Q5VTfhc2K1rMNnGRQrl2QHcBsPoO/8dYJxKGt/u9pZI3wkE5C0coYtNvfXIcNj7cSsSJIvCdYYl6x4LkxXhwrOomOwmtZTmJEewe0nhClDU4gMm4s3eET7j2GPe73Ft2OVuF9j+3z0K3jUFQ/2m3HmDDtNVYlB7IOL5479cLRfBBvvQuNpd0p1yBUopxoBureFdqgZYa5887BcUENOKiR58JgF1mZ15g4nnUrdkXqm7KhQgniAp9E68MdsJEg9t0= omar@jarvis",
       PRESEARCH_REGISTRATION_CODE = "",
 
+      # COMMENT the two env vars below to create a new node. 
+      # or uncomment and fill them from your old node to restore it. #
+
       # optional keys pair from the old node 
       # important to follow the schema ` <<-EOF ... EOF ` with no indentation
       PRESEARCH_BACKUP_PRI_KEY = <<EOF
