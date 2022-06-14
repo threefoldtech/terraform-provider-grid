@@ -7,7 +7,7 @@ import (
 )
 
 type NodeClientCollection interface {
-	GetNodeClient(sub subi.Substrate, nodeID uint32) (*NodeClient, error)
+	GetNodeClient(sub subi.SubstrateExt, nodeID uint32) (*NodeClient, error)
 }
 type NodeClientPool struct {
 	nodeClients map[uint32]*NodeClient
@@ -21,17 +21,17 @@ func NewNodeClientPool(rmb rmb.Client) *NodeClientPool {
 	}
 }
 
-func (k *NodeClientPool) GetNodeClient(sub subi.Substrate, nodeID uint32) (*NodeClient, error) {
+func (k *NodeClientPool) GetNodeClient(sub subi.SubstrateExt, nodeID uint32) (*NodeClient, error) {
 	cl, ok := k.nodeClients[nodeID]
 	if ok {
 		return cl, nil
 	}
-	nodeInfo, err := sub.GetNode(nodeID)
+	twinID, err := sub.GetNodeTwin(nodeID)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get node")
 	}
 
-	cl = NewNodeClient(uint32(nodeInfo.TwinID), k.rmb)
+	cl = NewNodeClient(uint32(twinID), k.rmb)
 	k.nodeClients[nodeID] = cl
 	return cl, nil
 }

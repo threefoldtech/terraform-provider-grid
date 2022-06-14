@@ -13,7 +13,7 @@ import (
 )
 
 type Validator interface {
-	Validate(ctx context.Context, sub subi.Substrate, oldDeployments map[uint32]gridtypes.Deployment, newDeployments map[uint32]gridtypes.Deployment) error
+	Validate(ctx context.Context, sub subi.SubstrateExt, oldDeployments map[uint32]gridtypes.Deployment, newDeployments map[uint32]gridtypes.Deployment) error
 }
 
 type ValidatorImpl struct {
@@ -23,7 +23,7 @@ type ValidatorImpl struct {
 // Validate is a best effort validation. it returns an error if it's very sure there's a problem
 //          errors that may arise because of dead nodes are ignored.
 //          if a real error dodges the validation, it'll be fail anyway in the deploying phase
-func (d *ValidatorImpl) Validate(ctx context.Context, sub subi.Substrate, oldDeployments map[uint32]gridtypes.Deployment, newDeployments map[uint32]gridtypes.Deployment) error {
+func (d *ValidatorImpl) Validate(ctx context.Context, sub subi.SubstrateExt, oldDeployments map[uint32]gridtypes.Deployment, newDeployments map[uint32]gridtypes.Deployment) error {
 	farmIPs := make(map[int]int)
 	nodeMap := make(map[uint32]proxytypes.NodeWithNestedCapacity)
 	for node := range oldDeployments {
@@ -94,7 +94,7 @@ func (d *ValidatorImpl) Validate(ctx context.Context, sub subi.Substrate, oldDep
 			if err != nil {
 				return errors.Wrapf(err, "couldn't get node contract %d", oldDl.ContractID)
 			}
-			current := int(contract.ContractType.NodeContract.PublicIPsCount)
+			current := int(contract.PublicIPCount())
 			if requiredIPs > current {
 				return fmt.Errorf(
 					"currently, it's not possible to increase the number of reserved public ips in a deployment, node: %d, current: %d, requested: %d",

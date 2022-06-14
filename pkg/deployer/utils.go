@@ -15,7 +15,7 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
-func GetDeploymentObjects(ctx context.Context, sub subi.Substrate, dls map[uint32]uint64, nc client.NodeClientCollection) (map[uint32]gridtypes.Deployment, error) {
+func GetDeploymentObjects(ctx context.Context, sub subi.SubstrateExt, dls map[uint32]uint64, nc client.NodeClientCollection) (map[uint32]gridtypes.Deployment, error) {
 	res := make(map[uint32]gridtypes.Deployment)
 	for nodeID, dlID := range dls {
 		nc, err := nc.GetNodeClient(sub, nodeID)

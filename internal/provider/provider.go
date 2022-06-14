@@ -9,8 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
-	gridproxy "github.com/threefoldtech/grid_proxy_server/pkg/client"
-	substrate "github.com/threefoldtech/substrate-client"
+	proxy "github.com/threefoldtech/grid_proxy_server/pkg/client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/rmb"
@@ -20,12 +19,20 @@ var (
 	SUBSTRATE_URL = map[string]string{
 		"dev":  "wss://tfchain.dev.grid.tf/ws",
 		"test": "wss://tfchain.test.grid.tf/ws",
+		"qa":   "wss://tfchain.qa.grid.tf/ws",
 		"main": "wss://tfchain.grid.tf/ws",
 	}
 	RMB_PROXY_URL = map[string]string{
 		"dev":  "https://gridproxy.dev.grid.tf/",
 		"test": "https://gridproxy.test.grid.tf/",
+		"qa":   "https://gridproxy.qa.grid.tf/",
 		"main": "https://gridproxy.grid.tf/",
+	}
+	SubstrateVersion = map[string]func(url ...string) subi.Manager{
+		"dev":  subi.NewDevManager,
+		"qa":   subi.NewQAManager,
+		"test": subi.NewTestManager,
+		"main": subi.NewMMainanager,
 	}
 )
 
@@ -64,7 +71,7 @@ func New(version string) func() *schema.Provider {
 				"network": {
 					Type:        schema.TypeString,
 					Required:    true,
-					Description: "grid network, one of: dev test main",
+					Description: "grid network, one of: dev test qa main",
 					DefaultFunc: schema.EnvDefaultFunc("NETWORK", "dev"),
 				},
 				"substrate_url": {
@@ -122,10 +129,10 @@ type apiClient struct {
 	substrate_url string
 	rmb_redis_url string
 	use_rmb_proxy bool
-	grid_client   gridproxy.Client
+	grid_client   proxy.Client
 	rmb           rmb.Client
 	manager       subi.Manager
-	identity      substrate.Identity
+	identity      subi.Identity
 }
 
 func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
@@ -135,11 +142,11 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	apiClient := apiClient{}
 	apiClient.mnemonics = d.Get("mnemonics").(string)
 	key_type := d.Get("key_type").(string)
-	var identity substrate.Identity
+	var identity subi.Identity
 	if key_type == "ed25519" {
-		identity, err = substrate.NewIdentityFromEd25519Phrase(string(apiClient.mnemonics))
+		identity, err = subi.NewIdentityFromEd25519Phrase(string(apiClient.mnemonics))
 	} else if key_type == "sr25519" {
-		identity, err = substrate.NewIdentityFromSr25519Phrase(string(apiClient.mnemonics))
+		identity, err = subi.NewIdentityFromSr25519Phrase(string(apiClient.mnemonics))
 	} else {
 		err = errors.New("key_type must be one of ed25519 and sr25519")
 	}
@@ -152,8 +159,8 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	}
 	apiClient.identity = identity
 	network := d.Get("network").(string)
-	if network != "dev" && network != "test" && network != "main" {
-		return nil, diag.Errorf("network must be one of dev, test, and main")
+	if network != "dev" && network != "qa" && network != "test" && network != "main" {
+		return nil, diag.Errorf("network must be one of dev, qa, test, and main")
 	}
 	apiClient.substrate_url = SUBSTRATE_URL[network]
 	rmb_proxy_url := RMB_PROXY_URL[network]
@@ -167,8 +174,8 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 		rmb_proxy_url = passed_rmb_proxy_url
 	}
 	log.Printf("substrate url: %s %s\n", apiClient.substrate_url, substrate_url)
-	apiClient.manager = subi.NewManager(apiClient.substrate_url)
-	sub, err := apiClient.manager.Substrate()
+	apiClient.manager = SubstrateVersion[network](apiClient.substrate_url)
+	sub, err := apiClient.manager.SubstrateExt()
 	if err != nil {
 		return nil, diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
 	}
@@ -182,7 +189,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	}
 	pub := sk.Public()
 	twin, err := sub.GetTwinByPubKey(pub)
-	if err != nil && errors.Is(err, substrate.ErrNotFound) {
+	if err != nil && errors.Is(err, subi.ErrNotFound) {
 		return nil, diag.Errorf("no twin associated with the accound with the given mnemonics")
 	}
 	if err != nil {
@@ -201,8 +208,8 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	}
 	apiClient.rmb = cl
 
-	grid_client := gridproxy.NewClient(rmb_proxy_url)
-	apiClient.grid_client = gridproxy.NewRetryingClient(grid_client)
+	grid_client := proxy.NewClient(rmb_proxy_url)
+	apiClient.grid_client = proxy.NewRetryingClient(grid_client)
 	if err := preValidate(&apiClient, sub); err != nil {
 		return nil, diag.FromErr(err)
 	}

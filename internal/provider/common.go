@@ -3,7 +3,10 @@ package provider
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"net/http"
+	"strings"
 	"time"
 
 	gormb "github.com/threefoldtech/go-rmb"
@@ -28,6 +31,18 @@ func startRmbIfNeeded(ctx context.Context, api *apiClient) {
 	}
 }
 
+func flistChecksumURL(url string) string {
+	return fmt.Sprintf("%s.md5", url)
+}
+func getFlistChecksum(url string) (string, error) {
+	response, err := http.Get(flistChecksumURL(url))
+	if err != nil {
+		return "", err
+	}
+	hash, err := ioutil.ReadAll(response.Body)
+	return strings.TrimSpace(string(hash)), err
+}
+
 func isNodeUp(ctx context.Context, nc *client.NodeClient) error {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
@@ -40,7 +55,7 @@ func isNodeUp(ctx context.Context, nc *client.NodeClient) error {
 	return nil
 }
 
-func isNodesUp(ctx context.Context, sub subi.Substrate, nodes []uint32, nc client.NodeClientCollection) error {
+func isNodesUp(ctx context.Context, sub subi.SubstrateExt, nodes []uint32, nc client.NodeClientCollection) error {
 	for _, node := range nodes {
 		cl, err := nc.GetNodeClient(sub, node)
 		if err != nil {
@@ -53,7 +68,6 @@ func isNodesUp(ctx context.Context, sub subi.Substrate, nodes []uint32, nc clien
 
 	return nil
 }
-
 func constructPublicIPWorkload(workloadName string, ipv4 bool, ipv6 bool) gridtypes.Workload {
 	return gridtypes.Workload{
 		Version: 0,
