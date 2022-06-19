@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -19,23 +20,21 @@ import (
 )
 
 type DeploymentDeployer struct {
-	Id           string
-	Node         uint32
-	Disks        []workloads.Disk
-	ZDBs         []workloads.ZDB
-	VMs          []workloads.VM
-	QSFSs        []workloads.QSFS
-	IPRange      string
-	UsedIPs      []string
-	NetworkName  string
-	NodesIPRange map[uint32]gridtypes.IPNet
-	APIClient    *apiClient
-	ncPool       *client.NodeClientPool
-	deployer     deployer.Deployer
+	Id          string
+	Node        uint32
+	Disks       []workloads.Disk
+	ZDBs        []workloads.ZDB
+	VMs         []workloads.VM
+	QSFSs       []workloads.QSFS
+	IPRange     string
+	NetworkName string
+	APIClient   *apiClient
+	ncPool      client.NodeClientCollection
+	deployer    deployer.Deployer
 }
 
 func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (DeploymentDeployer, error) {
-	usedIPs := make([]string, 0)
+	networkName := d.Get("network_name").(string)
 
 	disks := make([]workloads.Disk, 0)
 	for _, disk := range d.Get("disks").([]interface{}) {
@@ -51,11 +50,8 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 
 	vms := make([]workloads.VM, 0)
 	for _, vm := range d.Get("vms").([]interface{}) {
-		data := workloads.NewVMFromSchema(vm.(map[string]interface{}))
-		vms = append(vms, data)
-		if data.IP != "" {
-			usedIPs = append(usedIPs, data.IP)
-		}
+		data := workloads.NewVMFromSchema(vm.(map[string]interface{})).WithNetworkName(networkName)
+		vms = append(vms, *data)
 	}
 
 	qsfs := make([]workloads.QSFS, 0)
@@ -72,8 +68,7 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 		QSFSs:       qsfs,
 		ZDBs:        zdbs,
 		IPRange:     d.Get("ip_range").(string),
-		UsedIPs:     usedIPs,
-		NetworkName: d.Get("network_name").(string),
+		NetworkName: networkName,
 		APIClient:   apiClient,
 		ncPool:      pool,
 		deployer:    deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true),
@@ -161,6 +156,7 @@ func (d *DeploymentDeployer) Marshal(r *schema.ResourceData) {
 	r.Set("qsfs", qsfs)
 	r.Set("node", d.Node)
 	r.Set("network_name", d.NetworkName)
+	r.SetId(d.Id)
 }
 
 func (d *DeploymentDeployer) GetOldDeployments(ctx context.Context) (map[uint32]uint64, error) {
@@ -200,6 +196,7 @@ func (d *DeploymentDeployer) syncContract(sub subi.SubstrateExt) error {
 		return errors.Wrap(err, "error checking contract validity")
 	}
 	if !valid {
+		d.Id = ""
 		return nil
 	}
 	return nil
@@ -212,7 +209,7 @@ func (d *DeploymentDeployer) sync(ctx context.Context, sub subi.SubstrateExt) er
 		d.Nullify()
 		return nil
 	}
-	currentDeployments, err := deployer.GetDeploymentObjects(ctx, sub, map[uint32]uint64{d.Node: d.ID()}, d.ncPool)
+	currentDeployments, err := d.deployer.GetDeploymentObjects(ctx, sub, map[uint32]uint64{d.Node: d.ID()})
 	if err != nil {
 		return errors.Wrap(err, "failed to get deployments to update local state")
 	}
@@ -258,20 +255,59 @@ func (d *DeploymentDeployer) sync(ctx context.Context, sub subi.SubstrateExt) er
 
 		}
 	}
+	d.Match(disks, qsfs, zdbs, vms)
+	log.Printf("vms: %+v\n", len(vms))
 	d.Disks = disks
 	d.QSFSs = qsfs
 	d.ZDBs = zdbs
-	restoreVMChecksums(d.VMs, vms)
 	d.VMs = vms
 	return nil
 }
-func restoreVMChecksums(oldVMs, newVMs []workloads.VM) {
-	checksums := make(map[string]string)
-	for _, vm := range oldVMs {
-		checksums[vm.Name] = vm.FlistChecksum
+
+// Match objects to match the input
+//      already existing object are stored ordered the same way they are in the input
+//      others are pushed after
+func (d *DeploymentDeployer) Match(
+	disks []workloads.Disk,
+	qsfs []workloads.QSFS,
+	zdbs []workloads.ZDB,
+	vms []workloads.VM,
+) {
+	vmMap := make(map[string]*workloads.VM)
+	l := len(d.Disks) + len(d.QSFSs) + len(d.ZDBs) + len(d.VMs)
+	names := make(map[string]int)
+	for idx, o := range d.Disks {
+		names[o.Name] = idx - l
 	}
-	for idx := range newVMs {
-		newVMs[idx].FlistChecksum = checksums[newVMs[idx].Name]
+	for idx, o := range d.QSFSs {
+		names[o.Name] = idx - l
+	}
+	for idx, o := range d.ZDBs {
+		names[o.Name] = idx - l
+	}
+	for idx, o := range d.VMs {
+		names[o.Name] = idx - l
+		vmMap[o.Name] = &d.VMs[idx]
+	}
+	sort.Slice(disks, func(i, j int) bool {
+		return names[disks[i].Name] < names[disks[j].Name]
+	})
+	sort.Slice(qsfs, func(i, j int) bool {
+		return names[qsfs[i].Name] < names[qsfs[j].Name]
+	})
+	sort.Slice(zdbs, func(i, j int) bool {
+		return names[zdbs[i].Name] < names[zdbs[j].Name]
+	})
+	sort.Slice(vms, func(i, j int) bool {
+		return names[vms[i].Name] < names[vms[j].Name]
+	})
+	for idx := range vms {
+		vm, ok := vmMap[vms[idx].Name]
+		if ok {
+			vms[idx].Match(vm)
+			log.Printf("orig: %+v\n", vm)
+			log.Printf("new: %+v\n", vms[idx])
+		}
 	}
 }
 func (d *DeploymentDeployer) validate() error {
@@ -288,7 +324,7 @@ func (d *DeploymentDeployer) validate() error {
 		return errors.Wrap(err, "If you pass a vm, ip_range must be set to a valid ip range (e.g. 10.1.3.0/16)")
 	}
 	if len(d.VMs) != 0 && d.NetworkName == "" {
-		return errors.Wrap(err, "If you pass a vm, network_name must be non-empty")
+		return errors.New("If you pass a vm, network_name must be non-empty")
 	}
 
 	for _, vm := range d.VMs {
@@ -311,7 +347,9 @@ func (d *DeploymentDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt) 
 		return errors.Wrap(err, "couldn't get old deployments data")
 	}
 	currentDeployments, err := d.deployer.Deploy(ctx, sub, oldDeployments, newDeployments)
-	d.Id = fmt.Sprintf("%d", currentDeployments[d.Node])
+	if currentDeployments[d.Node] != 0 {
+		d.Id = fmt.Sprintf("%d", currentDeployments[d.Node])
+	}
 	return err
 }
 

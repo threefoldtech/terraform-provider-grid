@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -12,6 +11,7 @@ import (
 	"github.com/threefoldtech/substrate-client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	mock "github.com/threefoldtech/terraform-provider-grid/internal/provider/mocks"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -465,10 +465,9 @@ func TestSync(t *testing.T) {
 	defer ctrl.Finish()
 
 	identity, err := substrate.NewIdentityFromEd25519Phrase(Words)
+	assert.NoError(t, err)
 	deployer := mock.NewMockDeployer(ctrl)
 	pool := mock.NewMockNodeClientCollection(ctrl)
-	cl := mock.NewRMBMockClient(ctrl)
-	assert.NoError(t, err)
 	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayFQDNDeployer{
 		ID: "123",
@@ -497,16 +496,10 @@ func TestSync(t *testing.T) {
 	sub.EXPECT().DeleteInvalidContracts(
 		gw.NodeDeploymentID,
 	).Return(nil)
-	pool.EXPECT().
-		GetNodeClient(sub, uint32(10)).
-		Return(client.NewNodeClient(12, cl), nil)
-	cl.EXPECT().
-		Call(gomock.Any(), uint32(12), "zos.deployment.get", gomock.Any(), gomock.Any()).
-		DoAndReturn(func(ctx context.Context, twin uint32, fn string, data interface{}, result interface{}) error {
-			// TODO: check argument has correct deployment id
-			*result.(*gridtypes.Deployment) = dl
-			fmt.Printf("%+v", dl)
-			return nil
+	deployer.EXPECT().
+		GetDeploymentObjects(gomock.Any(), sub, map[uint32]uint64{10: 100}).
+		DoAndReturn(func(ctx context.Context, _ subi.SubstrateExt, _ map[uint32]uint64) (map[uint32]gridtypes.Deployment, error) {
+			return map[uint32]gridtypes.Deployment{10: dl}, nil
 		})
 	gw.Gw.FQDN = "123"
 	err = gw.sync(context.Background(), sub)
@@ -522,10 +515,9 @@ func TestSyncDeletedWorkload(t *testing.T) {
 	defer ctrl.Finish()
 
 	identity, err := substrate.NewIdentityFromEd25519Phrase(Words)
+	assert.NoError(t, err)
 	deployer := mock.NewMockDeployer(ctrl)
 	pool := mock.NewMockNodeClientCollection(ctrl)
-	cl := mock.NewRMBMockClient(ctrl)
-	assert.NoError(t, err)
 	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayFQDNDeployer{
 		ID: "123",
@@ -552,16 +544,10 @@ func TestSyncDeletedWorkload(t *testing.T) {
 	sub.EXPECT().DeleteInvalidContracts(
 		gw.NodeDeploymentID,
 	).Return(nil)
-	pool.EXPECT().
-		GetNodeClient(sub, uint32(10)).
-		Return(client.NewNodeClient(12, cl), nil)
-	cl.EXPECT().
-		Call(gomock.Any(), uint32(12), "zos.deployment.get", gomock.Any(), gomock.Any()).
-		DoAndReturn(func(ctx context.Context, twin uint32, fn string, data interface{}, result interface{}) error {
-			// TODO: check argument has correct deployment id
-			*result.(*gridtypes.Deployment) = dl
-			fmt.Printf("%+v", dl)
-			return nil
+	deployer.EXPECT().
+		GetDeploymentObjects(gomock.Any(), sub, map[uint32]uint64{10: 100}).
+		DoAndReturn(func(ctx context.Context, _ subi.SubstrateExt, _ map[uint32]uint64) (map[uint32]gridtypes.Deployment, error) {
+			return map[uint32]gridtypes.Deployment{10: dl}, nil
 		})
 	gw.Gw.FQDN = "123"
 	err = gw.sync(context.Background(), sub)

@@ -19,6 +19,7 @@ import (
 
 type Deployer interface {
 	Deploy(ctx context.Context, sub subi.SubstrateExt, oldDeployments map[uint32]uint64, newDeployments map[uint32]gridtypes.Deployment) (map[uint32]uint64, error)
+	GetDeploymentObjects(ctx context.Context, sub subi.SubstrateExt, dls map[uint32]uint64) (map[uint32]gridtypes.Deployment, error)
 }
 
 type DeployerImpl struct {
@@ -46,7 +47,7 @@ func NewDeployer(
 }
 
 func (d *DeployerImpl) Deploy(ctx context.Context, sub subi.SubstrateExt, oldDeploymentIDs map[uint32]uint64, newDeployments map[uint32]gridtypes.Deployment) (map[uint32]uint64, error) {
-	oldDeployments, oldErr := GetDeploymentObjects(ctx, sub, oldDeploymentIDs, d.ncPool)
+	oldDeployments, oldErr := d.GetDeploymentObjects(ctx, sub, oldDeploymentIDs)
 	if oldErr == nil {
 		// check resources only when old deployments are readable
 		// being readable means it's a fresh deployment or an update with good nodes

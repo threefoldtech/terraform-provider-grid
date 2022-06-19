@@ -382,7 +382,7 @@ func (k *NetworkDeployer) readNodesConfig(ctx context.Context, sub subi.Substrat
 	WGPort := make(map[uint32]int)
 	nodesIPRange := make(map[uint32]gridtypes.IPNet)
 	log.Printf("reading node config")
-	nodeDeployments, err := deployer.GetDeploymentObjects(ctx, sub, k.NodeDeploymentID, k.ncPool)
+	nodeDeployments, err := k.deployer.GetDeploymentObjects(ctx, sub, k.NodeDeploymentID)
 	if err != nil {
 		return errors.Wrap(err, "failed to get deployment objects")
 	}

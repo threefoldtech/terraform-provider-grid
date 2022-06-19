@@ -1,8 +1,6 @@
 package workloads
 
 import (
-	"encoding/json"
-
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -28,15 +26,10 @@ func NewDiskFromWorkload(wl *gridtypes.Workload) (Disk, error) {
 	}
 	// TODO: check ok?
 	data := dataI.(*zos.ZMount)
-	var result zos.ZMountResult
-
-	if err := json.Unmarshal(wl.Result.Data, &result); err != nil {
-		return Disk{}, errors.Wrap(err, "failed to get disk result")
-	}
 	return Disk{
 		Name:        wl.Name.String(),
 		Description: wl.Description,
-		Size:        int(data.Size),
+		Size:        int(data.Size / gridtypes.Gigabyte),
 	}, nil
 }
 
@@ -59,4 +52,8 @@ func (d *Disk) GenerateDiskWorkload() gridtypes.Workload {
 	}
 
 	return workload
+}
+
+func (d *Disk) GetName() string {
+	return d.Name
 }

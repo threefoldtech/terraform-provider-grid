@@ -65,7 +65,7 @@ func hash(dl *gridtypes.Deployment) string {
 
 type EmptyValidator struct{}
 
-func (d *EmptyValidator) Validate(ctx context.Context, sub subi.Substrate, oldDeployments map[uint32]gridtypes.Deployment, newDeployments map[uint32]gridtypes.Deployment) error {
+func (d *EmptyValidator) Validate(ctx context.Context, sub subi.SubstrateExt, oldDeployments map[uint32]gridtypes.Deployment, newDeployments map[uint32]gridtypes.Deployment) error {
 	return nil
 }
 func TestCreate(t *testing.T) {

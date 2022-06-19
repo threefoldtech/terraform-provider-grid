@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
+	"sort"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -48,7 +50,7 @@ type Zlog struct {
 	Output string
 }
 
-func NewVMFromSchema(vm map[string]interface{}) VM {
+func NewVMFromSchema(vm map[string]interface{}) *VM {
 	mounts := make([]Mount, 0)
 	mount_points := vm["mounts"].([]interface{})
 	for _, mount_point := range mount_points {
@@ -67,7 +69,7 @@ func NewVMFromSchema(vm map[string]interface{}) VM {
 		zlogs = append(zlogs, Zlog{v.(string)})
 	}
 
-	return VM{
+	return &VM{
 		Name:          vm["name"].(string),
 		PublicIP:      vm["publicip"].(bool),
 		PublicIP6:     vm["publicip6"].(bool),
@@ -97,39 +99,42 @@ func NewVMFromWorkloads(wl *gridtypes.Workload, dl *gridtypes.Deployment) (VM, e
 	// TODO: check ok?
 	data := dataI.(*zos.ZMachine)
 	var result zos.ZMachineResult
-
+	log.Printf("%+v\n", wl.Result)
 	if err := json.Unmarshal(wl.Result.Data, &result); err != nil {
 		return VM{}, errors.Wrap(err, "failed to get vm result")
 	}
 
 	pubip := pubIP(dl, data.Network.PublicIP)
-
+	var pubip4, pubip6 = "", ""
+	if !pubip.IP.Nil() {
+		pubip4 = pubip.IP.String()
+	}
+	if !pubip.IPv6.Nil() {
+		pubip6 = pubip.IPv6.String()
+	}
 	return VM{
-		Name:        wl.Name.String(),
-		Description: wl.Description,
-		Flist:       data.FList,
-		// FIXME how to handle checksums
+		Name:          wl.Name.String(),
+		Description:   wl.Description,
+		Flist:         data.FList,
 		FlistChecksum: "",
 		PublicIP:      !pubip.IP.Nil(),
-		ComputedIP:    pubip.IP.String(),
+		ComputedIP:    pubip4,
 		PublicIP6:     !pubip.IPv6.Nil(),
-		ComputedIP6:   pubip.IPv6.String(),
+		ComputedIP6:   pubip6,
 		Planetary:     result.YggIP != "",
 		Corex:         data.Corex,
 		YggIP:         result.YggIP,
-		// FIXME check serialization
-		IP:          data.Network.Interfaces[0].IP.String(),
-		Cpu:         int(data.ComputeCapacity.CPU),
-		Memory:      int(data.ComputeCapacity.Memory / gridtypes.Megabyte),
-		RootfsSize:  int(data.Size / gridtypes.Megabyte),
-		Entrypoint:  data.Entrypoint,
-		Mounts:      mounts(data.Mounts),
-		Zlogs:       zlogs(dl, wl.Name.String()),
-		EnvVars:     data.Env,
-		NetworkName: string(data.Network.Interfaces[0].Network),
+		IP:            data.Network.Interfaces[0].IP.String(),
+		Cpu:           int(data.ComputeCapacity.CPU),
+		Memory:        int(data.ComputeCapacity.Memory / gridtypes.Megabyte),
+		RootfsSize:    int(data.Size / gridtypes.Megabyte),
+		Entrypoint:    data.Entrypoint,
+		Mounts:        mounts(data.Mounts),
+		Zlogs:         zlogs(dl, wl.Name.String()),
+		EnvVars:       data.Env,
+		NetworkName:   string(data.Network.Interfaces[0].Network),
 	}, nil
 }
-
 func mounts(mounts []zos.MachineMount) []Mount {
 	var res []Mount
 	for _, mount := range mounts {
@@ -152,6 +157,9 @@ func zlogs(dl *gridtypes.Deployment, name string) []Zlog {
 			continue
 		}
 		data := dataI.(*zos.ZLogs)
+		if data.ZMachine.String() != name {
+			continue
+		}
 		res = append(res, Zlog{
 			Output: data.Output,
 		})
@@ -164,6 +172,7 @@ func pubIP(dl *gridtypes.Deployment, name gridtypes.Name) zos.PublicIPResult {
 	pubIPWl, err := dl.Get(name)
 	if err != nil || !pubIPWl.Workload.Result.State.IsOkay() {
 		pubIPWl = nil
+		return zos.PublicIPResult{}
 	}
 	var pubIPResult zos.PublicIPResult
 
@@ -237,14 +246,14 @@ func (vm *VM) Dictify() map[string]interface{} {
 	for key, value := range vm.EnvVars {
 		envVars[key] = value
 	}
-	mounts := make([]map[string]interface{}, 0)
+	mounts := make([]interface{}, 0)
 	for _, mountPoint := range vm.Mounts {
 		mount := map[string]interface{}{
 			"disk_name": mountPoint.DiskName, "mount_point": mountPoint.MountPoint,
 		}
 		mounts = append(mounts, mount)
 	}
-	zlogs := make([]string, 0)
+	zlogs := make([]interface{}, 0)
 	for _, zlog := range vm.Zlogs {
 		zlogs = append(zlogs, zlog.Output)
 	}
@@ -256,6 +265,7 @@ func (vm *VM) Dictify() map[string]interface{} {
 	res["planetary"] = vm.Planetary
 	res["corex"] = vm.Corex
 	res["flist"] = vm.Flist
+	res["flist_checksum"] = vm.FlistChecksum
 	res["computedip"] = vm.ComputedIP
 	res["computedip6"] = vm.ComputedIP6
 	res["ygg_ip"] = vm.YggIP
@@ -271,7 +281,7 @@ func (vm *VM) Dictify() map[string]interface{} {
 }
 func (v *VM) Validate() error {
 	if v.FlistChecksum != "" {
-		checksum, err := getFlistChecksum(flistChecksumURL(v.Flist))
+		checksum, err := getFlistChecksum(v.Flist)
 		if err != nil {
 			return errors.Wrap(err, "failed to get flist checksum")
 		}
@@ -292,6 +302,23 @@ func (v *VM) WithNetworkName(name string) *VM {
 	return v
 }
 
+func (v *VM) Match(vm *VM) {
+	l := len(vm.Zlogs) + len(vm.Mounts)
+	names := make(map[string]int)
+	for idx, zlog := range vm.Zlogs {
+		names[zlog.Output] = idx - l
+	}
+	for idx, mount := range vm.Mounts {
+		names[mount.DiskName] = idx - l
+	}
+	sort.Slice(v.Zlogs, func(i, j int) bool {
+		return names[v.Zlogs[i].Output] < names[v.Zlogs[j].Output]
+	})
+	sort.Slice(v.Mounts, func(i, j int) bool {
+		return names[v.Mounts[i].DiskName] < names[v.Mounts[j].DiskName]
+	})
+	v.FlistChecksum = vm.FlistChecksum
+}
 func constructPublicIPWorkload(workloadName string, ipv4 bool, ipv6 bool) gridtypes.Workload {
 	return gridtypes.Workload{
 		Version: 0,

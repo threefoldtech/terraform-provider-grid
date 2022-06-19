@@ -9,16 +9,15 @@ import (
 
 	"github.com/pkg/errors"
 	proxytypes "github.com/threefoldtech/grid_proxy_server/pkg/types"
-	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
-func GetDeploymentObjects(ctx context.Context, sub subi.SubstrateExt, dls map[uint32]uint64, nc client.NodeClientCollection) (map[uint32]gridtypes.Deployment, error) {
+func (d *DeployerImpl) GetDeploymentObjects(ctx context.Context, sub subi.SubstrateExt, dls map[uint32]uint64) (map[uint32]gridtypes.Deployment, error) {
 	res := make(map[uint32]gridtypes.Deployment)
 	for nodeID, dlID := range dls {
-		nc, err := nc.GetNodeClient(sub, nodeID)
+		nc, err := d.ncPool.GetNodeClient(sub, nodeID)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to get node %d client", nodeID)
 		}

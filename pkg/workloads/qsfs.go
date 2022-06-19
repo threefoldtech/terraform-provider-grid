@@ -258,6 +258,10 @@ func (q *QSFS) ZosWorkload() (gridtypes.Workload, error) {
 	return workload, nil
 }
 
+func (q *QSFS) GetName() string {
+	return q.Name
+}
+
 // TODO: no updates, should construct itself from the workload
 func (q *QSFS) UpdateFromWorkload(wl *gridtypes.Workload) error {
 	if wl == nil {

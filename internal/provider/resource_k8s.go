@@ -607,7 +607,7 @@ func printDeployments(dls map[uint32]gridtypes.Deployment) {
 func (k *K8sDeployer) updateState(ctx context.Context, sub subi.SubstrateExt, currentDeploymentIDs map[uint32]uint64) error {
 	log.Printf("current deployments\n")
 	k.NodeDeploymentID = currentDeploymentIDs
-	currentDeployments, err := deployer.GetDeploymentObjects(ctx, sub, currentDeploymentIDs, k.ncPool)
+	currentDeployments, err := k.deployer.GetDeploymentObjects(ctx, sub, currentDeploymentIDs)
 	if err != nil {
 		return errors.Wrap(err, "failed to get deployments to update local state")
 	}
@@ -624,7 +624,6 @@ func (k *K8sDeployer) updateState(ctx context.Context, sub subi.SubstrateExt, cu
 					log.Printf("error unmarshalling json: %s\n", err)
 					continue
 				}
-				// FIXME: revise
 				publicIPs[string(w.Name)] = d.IP.String()
 				publicIP6s[string(w.Name)] = d.IPv6.String()
 			} else if w.Type == zos.ZMachineType {
@@ -679,7 +678,7 @@ func (k *K8sDeployer) updateFromRemote(ctx context.Context, sub subi.SubstrateEx
 	if err := k.removeDeletedContracts(ctx, sub); err != nil {
 		return errors.Wrap(err, "failed to remove deleted contracts")
 	}
-	currentDeployments, err := deployer.GetDeploymentObjects(ctx, sub, k.NodeDeploymentID, k.ncPool)
+	currentDeployments, err := k.deployer.GetDeploymentObjects(ctx, sub, k.NodeDeploymentID)
 	if err != nil {
 		return errors.Wrap(err, "failed to fetch remote deployments")
 	}
@@ -740,7 +739,6 @@ func (k *K8sDeployer) updateFromRemote(ctx context.Context, sub subi.SubstrateEx
 					log.Printf("failed to load pubip data %s", err)
 					continue
 				}
-				// FIXME revise
 				publicIPs[string(w.Name)] = d.IP.String()
 				publicIP6s[string(w.Name)] = d.IPv6.String()
 			} else if w.Type == zos.ZMountType {

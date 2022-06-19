@@ -2,6 +2,7 @@ package workloads
 
 import (
 	"encoding/json"
+	"log"
 
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
@@ -21,6 +22,7 @@ type ZDB struct {
 }
 
 func GetZdbData(zdb map[string]interface{}) ZDB {
+	log.Printf("%+v\n", zdb)
 	ipsIf := zdb["ips"].([]interface{})
 	ips := make([]string, len(ipsIf))
 	for idx, ip := range ipsIf {
@@ -65,6 +67,9 @@ func NewZDBFromWorkload(wl *gridtypes.Workload) (ZDB, error) {
 	}, nil
 }
 
+func (z *ZDB) GetName() string {
+	return z.Name
+}
 func (z *ZDB) GenerateZDBWorkload() gridtypes.Workload {
 	workload := gridtypes.Workload{
 		Name:        gridtypes.Name(z.Name),
