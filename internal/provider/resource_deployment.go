@@ -435,6 +435,8 @@ func resourceDeploymentRead(ctx context.Context, sub subi.SubstrateExt, d *schem
 
 func resourceDeploymentUpdate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
 	if d.HasChange("node") {
+		old, _ := d.GetChange("node")
+		d.Set("node", old)
 		return nil, errors.New("changing node is not supported, you need to destroy the deployment and reapply it again but you will lose your old data")
 	}
 	deployer, err := getDeploymentDeployer(d, apiClient)

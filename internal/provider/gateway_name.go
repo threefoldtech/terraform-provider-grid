@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
@@ -122,6 +123,10 @@ func (k *GatewayNameDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt)
 		if err != nil {
 			return err
 		}
+	}
+	if k.ID == "" {
+		// create the resource if the contract is created
+		k.ID = uuid.New().String()
 	}
 	k.NodeDeploymentID, err = k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)
 	return err

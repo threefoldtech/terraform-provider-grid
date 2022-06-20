@@ -86,23 +86,11 @@ func (d *DeployerImpl) deploy(
 	// deletions
 	for node, contractID := range oldDeployments {
 		if _, ok := newDeployments[node]; !ok {
-			client, err := d.ncPool.GetNodeClient(sub, node)
-			if err != nil {
-				return currentDeployments, errors.Wrap(err, "failed to get node client")
-			}
-
 			err = sub.EnsureContractCanceled(d.identity, contractID)
-
 			if err != nil && !strings.Contains(err.Error(), "ContractNotExists") {
 				return currentDeployments, errors.Wrap(err, "failed to delete deployment")
 			}
 			delete(currentDeployments, node)
-			sub, cancel := context.WithTimeout(ctx, 1*time.Minute)
-			defer cancel()
-			err = client.DeploymentDelete(sub, contractID)
-			if err != nil {
-				log.Printf("failed to send deployment delete request to node %s", err)
-			}
 		}
 	}
 	// creations

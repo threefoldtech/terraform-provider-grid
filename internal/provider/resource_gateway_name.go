@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 
-	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
@@ -74,9 +73,7 @@ func resourceGatewayNameCreate(ctx context.Context, sub subi.SubstrateExt, d *sc
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
 	}
-	err = deployer.Deploy(ctx, sub)
-	deployer.ID = uuid.New().String()
-	return &deployer, err
+	return &deployer, deployer.Deploy(ctx, sub)
 }
 
 func resourceGatewayNameUpdate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {

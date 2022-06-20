@@ -77,6 +77,9 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 }
 
 func (d *DeploymentDeployer) assignNodesIPs() error {
+	if len(d.VMs) == 0 {
+		return nil
+	}
 	_, cidr, err := net.ParseCIDR(d.IPRange)
 	if err != nil {
 		return errors.Wrapf(err, "invalid ip %s", d.IPRange)

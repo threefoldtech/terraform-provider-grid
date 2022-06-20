@@ -57,8 +57,16 @@ func resourceFunc(a Action, reportSync bool) func(ctx context.Context, d *schema
 			diags = diag.FromErr(err)
 		}
 		if obj != nil {
-			if err := obj.sync(ctx, sub); err != nil && reportSync {
-				diags = append(diags, diag.FromErr(err)...)
+			if err := obj.sync(ctx, sub); err != nil {
+				if reportSync {
+					diags = append(diags, diag.FromErr(err)...)
+				} else {
+					diags = append(diags, diag.Diagnostic{
+						Severity: diag.Warning,
+						Summary:  "failed to read deployment data (terraform refresh might help)",
+						Detail:   err.Error(),
+					})
+				}
 			}
 			obj.Marshal(d)
 		}

@@ -149,6 +149,7 @@ func TestDeploy(t *testing.T) {
 	).Return(map[uint32]uint64{10: 100}, nil)
 	err = gw.Deploy(context.Background(), sub)
 	assert.NoError(t, err)
+	assert.NotEmpty(t, gw.ID)
 	assert.Equal(t, gw.NodeDeploymentID, map[uint32]uint64{uint32(10): uint64(100)})
 }
 
