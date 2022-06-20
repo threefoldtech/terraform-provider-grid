@@ -10,6 +10,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
+	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/deployer"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -112,7 +114,8 @@ type NetworkDeployer struct {
 	WGPort    map[uint32]int
 	Keys      map[uint32]wgtypes.Key
 	APIClient *apiClient
-	ncPool    *NodeClientPool
+	ncPool    *client.NodeClientPool
+	deployer  deployer.Deployer
 }
 
 func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *apiClient) (NetworkDeployer, error) {
@@ -147,7 +150,6 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 	}
 
 	// external node related data
-	ncPool := NewNodeClient(apiClient.rmb)
 	addWGAccess := d.Get("add_wg_access").(bool)
 
 	var externalIP *gridtypes.IPNet
@@ -173,6 +175,7 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 	if err != nil {
 		return NetworkDeployer{}, errors.Wrap(err, "couldn't parse network ip range")
 	}
+	pool := client.NewNodeClientPool(apiClient.rmb)
 	deployer := NetworkDeployer{
 		Name:             d.Get("name").(string),
 		Description:      d.Get("description").(string),
@@ -187,8 +190,9 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 		NodeDeploymentID: nodeDeploymentID,
 		Keys:             make(map[uint32]wgtypes.Key),
 		WGPort:           make(map[uint32]int),
-		ncPool:           ncPool,
 		APIClient:        apiClient,
+		ncPool:           pool,
+		deployer:         deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true),
 	}
 	return deployer, nil
 }
@@ -217,7 +221,7 @@ func (k *NetworkDeployer) invalidateBrokenAttributes(sub subi.SubstrateExt) erro
 	}
 	if k.PublicNodeID != 0 {
 		// TODO: add a check that the node is still public
-		cl, err := k.ncPool.getNodeClient(sub, k.PublicNodeID)
+		cl, err := k.ncPool.GetNodeClient(sub, k.PublicNodeID)
 		if err != nil {
 			// whatever the error, delete it and it will get reassigned later
 			k.PublicNodeID = 0
@@ -345,7 +349,7 @@ func (k *NetworkDeployer) assignNodesIPs(nodes []uint32) error {
 func (k *NetworkDeployer) assignNodesWGPort(ctx context.Context, sub subi.SubstrateExt, nodes []uint32) error {
 	for _, node := range nodes {
 		if _, ok := k.WGPort[node]; !ok {
-			cl, err := k.ncPool.getNodeClient(sub, node)
+			cl, err := k.ncPool.GetNodeClient(sub, node)
 			if err != nil {
 				return errors.Wrap(err, "coudln't get node client")
 			}
@@ -378,7 +382,7 @@ func (k *NetworkDeployer) readNodesConfig(ctx context.Context, sub subi.Substrat
 	WGPort := make(map[uint32]int)
 	nodesIPRange := make(map[uint32]gridtypes.IPNet)
 	log.Printf("reading node config")
-	nodeDeployments, err := getDeploymentObjects(ctx, sub, k.NodeDeploymentID, k.ncPool)
+	nodeDeployments, err := k.deployer.GetDeploymentObjects(ctx, sub, k.NodeDeploymentID)
 	if err != nil {
 		return errors.Wrap(err, "failed to get deployment objects")
 	}
@@ -427,7 +431,7 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 	var ipv4Node uint32
 	accessibleNodes := make([]uint32, 0)
 	for _, node := range k.Nodes {
-		cl, err := k.ncPool.getNodeClient(sub, node)
+		cl, err := k.ncPool.GetNodeClient(sub, node)
 		if err != nil {
 			return nil, errors.Wrapf(err, "couldn't get node %d client", node)
 		}
@@ -459,7 +463,7 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 			accessibleNodes = append(accessibleNodes, publicNode)
 		}
 		if endpoints[k.PublicNodeID] == "" { // old or new outsider
-			cl, err := k.ncPool.getNodeClient(sub, k.PublicNodeID)
+			cl, err := k.ncPool.GetNodeClient(sub, k.PublicNodeID)
 			if err != nil {
 				return nil, errors.Wrapf(err, "couldn't get node %d client", k.PublicNodeID)
 			}
@@ -564,7 +568,7 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 			}),
 		}
 		deployment := gridtypes.Deployment{
-			Version: Version,
+			Version: 0,
 			TwinID:  k.APIClient.twin_id, //LocalTwin,
 			// this contract id must match the one on substrate
 			Workloads: []gridtypes.Workload{
@@ -611,9 +615,8 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 			}),
 		}
 		deployment := gridtypes.Deployment{
-			Version: Version,
-			TwinID:  k.APIClient.twin_id, //LocalTwin,
-			// this contract id must match the one on substrate
+			Version: 0,
+			TwinID:  k.APIClient.twin_id,
 			Workloads: []gridtypes.Workload{
 				workload,
 			},
@@ -638,7 +641,7 @@ func (k *NetworkDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt) err
 	}
 	log.Printf("new deployments")
 	printDeployments(newDeployments)
-	currentDeployments, err := deployDeployments(ctx, sub, k.NodeDeploymentID, newDeployments, k.ncPool, k.APIClient, true)
+	currentDeployments, err := k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)
 	if err := k.updateState(ctx, sub, currentDeployments); err != nil {
 		log.Printf("error updating state: %s\n", err)
 	}
@@ -656,7 +659,7 @@ func (k *NetworkDeployer) updateState(ctx context.Context, sub subi.SubstrateExt
 func (k *NetworkDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt) error {
 	newDeployments := make(map[uint32]gridtypes.Deployment)
 
-	currentDeployments, err := deployDeployments(ctx, sub, k.NodeDeploymentID, newDeployments, k.ncPool, k.APIClient, false)
+	currentDeployments, err := k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)
 	if err := k.updateState(ctx, sub, currentDeployments); err != nil {
 		log.Printf("error updating state: %s\n", err)
 	}

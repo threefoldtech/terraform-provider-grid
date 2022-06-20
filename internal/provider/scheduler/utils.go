@@ -1,7 +1,7 @@
 package scheduler
 
 import (
-	"github.com/threefoldtech/terraform-provider-grid/internal/gridproxy"
+	proxytypes "github.com/threefoldtech/grid_proxy_server/pkg/types"
 )
 
 var (
@@ -9,7 +9,7 @@ var (
 	trueVal  = true
 )
 
-func freeCapacity(node *gridproxy.Node) Capacity {
+func freeCapacity(node *proxytypes.Node) Capacity {
 	var res Capacity
 
 	res.Memory = uint64(node.TotalResources.MRU) - uint64(node.UsedResources.MRU)
@@ -37,7 +37,7 @@ func subtract(node *Capacity, r *Request) {
 	node.Sru -= r.Cap.Sru
 }
 
-func constructFilter(r *Request, twinID uint64) (f gridproxy.NodeFilter) {
+func constructFilter(r *Request, twinID uint64) (f proxytypes.NodeFilter) {
 	f.Status = &StatusUP
 	f.AvailableFor = &twinID
 	if r.Farm != "" {

@@ -12,6 +12,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
+	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/deployer"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -246,9 +248,10 @@ type K8sDeployer struct {
 
 	APIClient *apiClient
 
-	UsedIPs map[uint32][]string
-	ncPool  *NodeClientPool
-	d       *schema.ResourceData
+	UsedIPs  map[uint32][]string
+	ncPool   *client.NodeClientPool
+	d        *schema.ResourceData
+	deployer deployer.Deployer
 }
 
 func NewK8sNodeData(m map[string]interface{}) K8sNodeData {
@@ -337,6 +340,7 @@ func NewK8sDeployer(d *schema.ResourceData, apiClient *apiClient) (K8sDeployer, 
 		nodeDeploymentID[uint32(nodeInt)] = deploymentID
 	}
 
+	pool := client.NewNodeClientPool(apiClient.rmb)
 	deployer := K8sDeployer{
 		Master:           &master,
 		Workers:          workers,
@@ -347,8 +351,9 @@ func NewK8sDeployer(d *schema.ResourceData, apiClient *apiClient) (K8sDeployer, 
 		UsedIPs:          usedIPs,
 		NodesIPRange:     nodesIPRange,
 		APIClient:        apiClient,
-		ncPool:           NewNodeClient(apiClient.rmb),
+		ncPool:           pool,
 		d:                d,
+		deployer:         deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true),
 	}
 	return deployer, nil
 }
@@ -519,9 +524,6 @@ func (d *K8sDeployer) validateChecksums() error {
 	}
 	return nil
 }
-func (k *K8sDeployer) GetOldDeployments(ctx context.Context, sub subi.SubstrateExt) (map[uint32]gridtypes.Deployment, error) {
-	return getDeploymentObjects(ctx, sub, k.NodeDeploymentID, k.ncPool)
-}
 
 func (k *K8sDeployer) ValidateNames(ctx context.Context) error {
 
@@ -576,7 +578,7 @@ func (k *K8sDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt) error {
 	if err != nil {
 		return errors.Wrap(err, "couldn't generate deployments data")
 	}
-	currentDeployments, err := deployDeployments(ctx, sub, k.NodeDeploymentID, newDeployments, k.ncPool, k.APIClient, true)
+	currentDeployments, err := k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)
 	if err := k.updateState(ctx, sub, currentDeployments); err != nil {
 		log.Printf("error updating state: %s\n", err)
 	}
@@ -586,7 +588,7 @@ func (k *K8sDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt) error {
 func (k *K8sDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt) error {
 	newDeployments := make(map[uint32]gridtypes.Deployment)
 
-	currentDeployments, err := deployDeployments(ctx, sub, k.NodeDeploymentID, newDeployments, k.ncPool, k.APIClient, false)
+	currentDeployments, err := k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)
 	if err := k.updateState(ctx, sub, currentDeployments); err != nil {
 		log.Printf("error updating state: %s\n", err)
 	}
@@ -605,7 +607,7 @@ func printDeployments(dls map[uint32]gridtypes.Deployment) {
 func (k *K8sDeployer) updateState(ctx context.Context, sub subi.SubstrateExt, currentDeploymentIDs map[uint32]uint64) error {
 	log.Printf("current deployments\n")
 	k.NodeDeploymentID = currentDeploymentIDs
-	currentDeployments, err := getDeploymentObjects(ctx, sub, currentDeploymentIDs, k.ncPool)
+	currentDeployments, err := k.deployer.GetDeploymentObjects(ctx, sub, currentDeploymentIDs)
 	if err != nil {
 		return errors.Wrap(err, "failed to get deployments to update local state")
 	}
@@ -617,13 +619,13 @@ func (k *K8sDeployer) updateState(ctx context.Context, sub subi.SubstrateExt, cu
 	for _, dl := range currentDeployments {
 		for _, w := range dl.Workloads {
 			if w.Type == zos.PublicIPType {
-				d := PubIPData{}
+				d := zos.PublicIPResult{}
 				if err := json.Unmarshal(w.Result.Data, &d); err != nil {
 					log.Printf("error unmarshalling json: %s\n", err)
 					continue
 				}
-				publicIPs[string(w.Name)] = d.IP
-				publicIP6s[string(w.Name)] = d.IPv6
+				publicIPs[string(w.Name)] = d.IP.String()
+				publicIP6s[string(w.Name)] = d.IPv6.String()
 			} else if w.Type == zos.ZMachineType {
 				d, err := w.WorkloadData()
 				if err != nil {
@@ -676,7 +678,7 @@ func (k *K8sDeployer) updateFromRemote(ctx context.Context, sub subi.SubstrateEx
 	if err := k.removeDeletedContracts(ctx, sub); err != nil {
 		return errors.Wrap(err, "failed to remove deleted contracts")
 	}
-	currentDeployments, err := getDeploymentObjects(ctx, sub, k.NodeDeploymentID, k.ncPool)
+	currentDeployments, err := k.deployer.GetDeploymentObjects(ctx, sub, k.NodeDeploymentID)
 	if err != nil {
 		return errors.Wrap(err, "failed to fetch remote deployments")
 	}
@@ -732,13 +734,13 @@ func (k *K8sDeployer) updateFromRemote(ctx context.Context, sub subi.SubstrateEx
 				workloadObj[string(w.Name)] = w
 
 			} else if w.Type == zos.PublicIPType {
-				d := PubIPData{}
+				d := zos.PublicIPResult{}
 				if err := json.Unmarshal(w.Result.Data, &d); err != nil {
 					log.Printf("failed to load pubip data %s", err)
 					continue
 				}
-				publicIPs[string(w.Name)] = d.IP
-				publicIP6s[string(w.Name)] = d.IPv6
+				publicIPs[string(w.Name)] = d.IP.String()
+				publicIP6s[string(w.Name)] = d.IPv6.String()
 			} else if w.Type == zos.ZMountType {
 				d, err := w.WorkloadData()
 				if err != nil {

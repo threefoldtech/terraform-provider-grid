@@ -1,4 +1,4 @@
-package provider
+package workloads
 
 import (
 	"encoding/hex"
@@ -210,7 +210,7 @@ func getBackends(backendsIf []interface{}) []Backend {
 	return backends
 }
 
-func (q *QSFS) GenerateWorkload(deployer *DeploymentDeployer) (gridtypes.Workload, error) {
+func (q *QSFS) ZosWorkload() (gridtypes.Workload, error) {
 	k, err := hex.DecodeString(q.EncryptionKey)
 	if err != nil {
 		return gridtypes.Workload{}, err
@@ -258,7 +258,12 @@ func (q *QSFS) GenerateWorkload(deployer *DeploymentDeployer) (gridtypes.Workloa
 	return workload, nil
 }
 
-func (q *QSFS) updateFromWorkload(wl *gridtypes.Workload) error {
+func (q *QSFS) GetName() string {
+	return q.Name
+}
+
+// TODO: no updates, should construct itself from the workload
+func (q *QSFS) UpdateFromWorkload(wl *gridtypes.Workload) error {
 	if wl == nil {
 		q.MetricsEndpoint = ""
 		return nil
