@@ -503,27 +503,27 @@ func (k *K8sDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[u
 	return deployments, nil
 }
 
-// func (d *K8sDeployer) validateChecksums() error {
-// 	nodes := append(d.Workers, *d.Master)
-// 	for _, vm := range nodes {
-// 		if vm.FlistChecksum == "" {
-// 			continue
-// 		}
-// 		checksum, err := getFlistChecksum(vm.Flist)
-// 		if err != nil {
-// 			return errors.Wrapf(err, "couldn't get flist %s hash", vm.Flist)
-// 		}
-// 		if vm.FlistChecksum != checksum {
-// 			return fmt.Errorf("passed checksum %s of %s doesn't match %s returned from %s",
-// 				vm.FlistChecksum,
-// 				vm.Name,
-// 				checksum,
-// 				flistChecksumURL(vm.Flist),
-// 			)
-// 		}
-// 	}
-// 	return nil
-// }
+func (d *K8sDeployer) validateChecksums() error {
+	nodes := append(d.Workers, *d.Master)
+	for _, vm := range nodes {
+		if vm.FlistChecksum == "" {
+			continue
+		}
+		checksum, err := getFlistChecksum(vm.Flist)
+		if err != nil {
+			return errors.Wrapf(err, "couldn't get flist %s hash", vm.Flist)
+		}
+		if vm.FlistChecksum != checksum {
+			return fmt.Errorf("passed checksum %s of %s doesn't match %s returned from %s",
+				vm.FlistChecksum,
+				vm.Name,
+				checksum,
+				flistChecksumURL(vm.Flist),
+			)
+		}
+	}
+	return nil
+}
 
 func (k *K8sDeployer) ValidateNames(ctx context.Context) error {
 
@@ -571,9 +571,9 @@ func (k *K8sDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error
 }
 
 func (k *K8sDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt) error {
-	// if err := k.validateChecksums(); err != nil {
-	// 	return err
-	// }
+	if err := k.validateChecksums(); err != nil {
+		return err
+	}
 	newDeployments, err := k.GenerateVersionlessDeployments(ctx)
 	if err != nil {
 		return errors.Wrap(err, "couldn't generate deployments data")
