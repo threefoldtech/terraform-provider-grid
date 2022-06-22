@@ -5,48 +5,47 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/threefoldtech/terraform-provider-grid/internal/gridproxy"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
+	proxytypes "github.com/threefoldtech/grid_proxy_server/pkg/types"
 )
 
 type GridProxyClientMock struct {
-	farms []gridproxy.Farm
-	nodes []gridproxy.Node
+	farms []proxytypes.Farm
+	nodes []proxytypes.Node
 }
 
 func (m *GridProxyClientMock) Ping() error {
 	return nil
 }
 
-func (m *GridProxyClientMock) Nodes(filter gridproxy.NodeFilter, pagination gridproxy.Limit) (res []gridproxy.Node, err error) {
+func (m *GridProxyClientMock) Nodes(filter proxytypes.NodeFilter, pagination proxytypes.Limit) (res []proxytypes.Node, totalCount int, err error) {
 	start, end := (pagination.Page-1)*pagination.Size, pagination.Page*pagination.Size
 	if int(end) > len(m.nodes) {
 		end = uint64(len(m.nodes))
 	}
 	if end <= start {
-		return make([]gridproxy.Node, 0), nil
+		return make([]proxytypes.Node, 0), 0, nil
 	}
 	res = m.nodes[start:end]
 	return
 }
 
-func (m *GridProxyClientMock) Farms(filter gridproxy.FarmFilter, pagination gridproxy.Limit) (res gridproxy.FarmResult, err error) {
+func (m *GridProxyClientMock) Farms(filter proxytypes.FarmFilter, pagination proxytypes.Limit) (res []proxytypes.Farm, totalCount int, err error) {
 	start, end := (pagination.Page-1)*pagination.Size, pagination.Page*pagination.Size
 	if int(end) > len(m.nodes) {
 		end = uint64(len(m.nodes))
 	}
 	if end <= start {
-		return make([]gridproxy.Farm, 0), nil
+		return make([]proxytypes.Farm, 0), 0, nil
 	}
 	res = m.farms[start:end]
 	return
 }
 
-func (m *GridProxyClientMock) Node(nodeID uint32) (res gridproxy.NodeInfo, err error) {
+func (m *GridProxyClientMock) Node(nodeID uint32) (res proxytypes.NodeWithNestedCapacity, err error) {
 	for _, node := range m.nodes {
-		if node.NodeID == nodeID {
-			res = gridproxy.NodeInfo{
-				Capacity: gridproxy.CapacityResult{
+		if uint32(node.NodeID) == nodeID {
+			res = proxytypes.NodeWithNestedCapacity{
+				Capacity: proxytypes.CapacityResult{
 					Total: node.TotalResources,
 					Used:  node.UsedResources,
 				},
@@ -58,18 +57,26 @@ func (m *GridProxyClientMock) Node(nodeID uint32) (res gridproxy.NodeInfo, err e
 	return
 }
 
-func (m *GridProxyClientMock) NodeStatus(nodeID uint32) (res gridproxy.NodeStatus, err error) {
+func (m *GridProxyClientMock) NodeStatus(nodeID uint32) (res proxytypes.NodeStatus, err error) {
 	return
 }
 
-func (m *GridProxyClientMock) AddFarm(farm gridproxy.Farm) {
+func (m *GridProxyClientMock) AddFarm(farm proxytypes.Farm) {
 	m.farms = append(m.farms, farm)
 }
 
-func (m *GridProxyClientMock) AddNode(id uint32, node gridproxy.Node) {
+func (m *GridProxyClientMock) AddNode(id uint32, node proxytypes.Node) {
 	m.nodes = append(m.nodes, node)
 }
-
+func (m *GridProxyClientMock) Contracts(filter proxytypes.ContractFilter, pagination proxytypes.Limit) (res []proxytypes.Contract, totalCount int, err error) {
+	return
+}
+func (m *GridProxyClientMock) Twins(filter proxytypes.TwinFilter, pagination proxytypes.Limit) (res []proxytypes.Twin, totalCount int, err error) {
+	return
+}
+func (m *GridProxyClientMock) Counters(filter proxytypes.StatsFilter) (res proxytypes.Counters, err error) {
+	return
+}
 func TestSchedulerEmpty(t *testing.T) {
 	proxy := &GridProxyClientMock{}
 	scheduler := NewScheduler(proxy, 1)
@@ -90,26 +97,26 @@ func TestSchedulerEmpty(t *testing.T) {
 
 func TestSchedulerSuccess(t *testing.T) {
 	proxy := &GridProxyClientMock{}
-	proxy.AddNode(1, gridproxy.Node{
+	proxy.AddNode(1, proxytypes.Node{
 		NodeID: 1,
-		TotalResources: gridtypes.Capacity{
+		TotalResources: proxytypes.Capacity{
 			HRU: 5,
 			SRU: 10,
 			MRU: 15,
 		},
-		UsedResources: gridtypes.Capacity{
+		UsedResources: proxytypes.Capacity{
 			HRU: 2,
 			SRU: 3,
 			MRU: 4,
 		},
 		FarmID: 1,
-		PublicConfig: gridproxy.PublicConfig{
+		PublicConfig: proxytypes.PublicConfig{
 			Domain: "a",
 			Ipv4:   "a",
 			Ipv6:   "d",
 		},
 	})
-	proxy.AddFarm(gridproxy.Farm{
+	proxy.AddFarm(proxytypes.Farm{
 		Name:   "freefarm",
 		FarmID: 1,
 	})
@@ -133,28 +140,28 @@ func TestSchedulerSuccess(t *testing.T) {
 func TestSchedulerSuccessOn4thPage(t *testing.T) {
 	proxy := &GridProxyClientMock{}
 	for i := uint32(2); i <= 30; i++ {
-		proxy.AddNode(i, gridproxy.Node{})
+		proxy.AddNode(i, proxytypes.Node{})
 	}
-	proxy.AddNode(1, gridproxy.Node{
+	proxy.AddNode(1, proxytypes.Node{
 		NodeID: 1,
-		TotalResources: gridtypes.Capacity{
+		TotalResources: proxytypes.Capacity{
 			HRU: 5,
 			SRU: 10,
 			MRU: 15,
 		},
-		UsedResources: gridtypes.Capacity{
+		UsedResources: proxytypes.Capacity{
 			HRU: 2,
 			SRU: 3,
 			MRU: 4,
 		},
 		FarmID: 1,
-		PublicConfig: gridproxy.PublicConfig{
+		PublicConfig: proxytypes.PublicConfig{
 			Domain: "a",
 			Ipv4:   "a",
 			Ipv6:   "d",
 		},
 	})
-	proxy.AddFarm(gridproxy.Farm{
+	proxy.AddFarm(proxytypes.Farm{
 		Name:   "freefarm",
 		FarmID: 1,
 	})
@@ -177,26 +184,26 @@ func TestSchedulerSuccessOn4thPage(t *testing.T) {
 
 func TestSchedulerFailure(t *testing.T) {
 	proxy := &GridProxyClientMock{}
-	proxy.AddNode(1, gridproxy.Node{
+	proxy.AddNode(1, proxytypes.Node{
 		NodeID: 1,
-		TotalResources: gridtypes.Capacity{
+		TotalResources: proxytypes.Capacity{
 			HRU: 5,
 			SRU: 10,
 			MRU: 15,
 		},
-		UsedResources: gridtypes.Capacity{
+		UsedResources: proxytypes.Capacity{
 			HRU: 2,
 			SRU: 3,
 			MRU: 4,
 		},
 		FarmID: 1,
-		PublicConfig: gridproxy.PublicConfig{
+		PublicConfig: proxytypes.PublicConfig{
 			Domain: "",
 			Ipv4:   "",
 			Ipv6:   "",
 		},
 	})
-	proxy.AddFarm(gridproxy.Farm{
+	proxy.AddFarm(proxytypes.Farm{
 		Name:   "freefarm",
 		FarmID: 1,
 	})
@@ -230,26 +237,26 @@ func TestSchedulerFailure(t *testing.T) {
 }
 func TestSchedulerFailureAfterSuccess(t *testing.T) {
 	proxy := &GridProxyClientMock{}
-	proxy.AddNode(1, gridproxy.Node{
+	proxy.AddNode(1, proxytypes.Node{
 		NodeID: 1,
-		TotalResources: gridtypes.Capacity{
+		TotalResources: proxytypes.Capacity{
 			HRU: 5,
 			SRU: 10,
 			MRU: 15,
 		},
-		UsedResources: gridtypes.Capacity{
+		UsedResources: proxytypes.Capacity{
 			HRU: 2,
 			SRU: 3,
 			MRU: 4,
 		},
 		FarmID: 1,
-		PublicConfig: gridproxy.PublicConfig{
+		PublicConfig: proxytypes.PublicConfig{
 			Domain: "a",
 			Ipv4:   "a",
 			Ipv6:   "d",
 		},
 	})
-	proxy.AddFarm(gridproxy.Farm{
+	proxy.AddFarm(proxytypes.Farm{
 		Name:   "freefarm",
 		FarmID: 1,
 	})
@@ -286,26 +293,26 @@ func TestSchedulerFailureAfterSuccess(t *testing.T) {
 
 func TestSchedulerSuccessAfterSuccess(t *testing.T) {
 	proxy := &GridProxyClientMock{}
-	proxy.AddNode(1, gridproxy.Node{
+	proxy.AddNode(1, proxytypes.Node{
 		NodeID: 1,
-		TotalResources: gridtypes.Capacity{
+		TotalResources: proxytypes.Capacity{
 			HRU: 5,
 			SRU: 10,
 			MRU: 15,
 		},
-		UsedResources: gridtypes.Capacity{
+		UsedResources: proxytypes.Capacity{
 			HRU: 2,
 			SRU: 3,
 			MRU: 4,
 		},
 		FarmID: 1,
-		PublicConfig: gridproxy.PublicConfig{
+		PublicConfig: proxytypes.PublicConfig{
 			Domain: "a",
 			Ipv4:   "a",
 			Ipv6:   "d",
 		},
 	})
-	proxy.AddFarm(gridproxy.Farm{
+	proxy.AddFarm(proxytypes.Farm{
 		Name:   "freefarm",
 		FarmID: 1,
 	})

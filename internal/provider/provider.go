@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
-	gridproxy "github.com/threefoldtech/terraform-provider-grid/internal/gridproxy"
+	proxy "github.com/threefoldtech/grid_proxy_server/pkg/client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/rmb"
@@ -129,7 +129,7 @@ type apiClient struct {
 	substrate_url string
 	rmb_redis_url string
 	use_rmb_proxy bool
-	grid_client   gridproxy.GridProxyClient
+	grid_client   proxy.Client
 	rmb           rmb.Client
 	manager       subi.Manager
 	identity      subi.Identity
@@ -208,8 +208,8 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	}
 	apiClient.rmb = cl
 
-	grid_client := gridproxy.NewGridProxyClient(rmb_proxy_url)
-	apiClient.grid_client = gridproxy.NewRetryingGridProxyClient(grid_client)
+	grid_client := proxy.NewClient(rmb_proxy_url)
+	apiClient.grid_client = proxy.NewRetryingClient(grid_client)
 	if err := preValidate(&apiClient, sub); err != nil {
 		return nil, diag.FromErr(err)
 	}

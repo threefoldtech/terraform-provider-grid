@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
+	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 )
 
 func dataSourceGatewayDomain() *schema.Resource {
@@ -49,8 +50,8 @@ func dataSourceGatewayRead(ctx context.Context, d *schema.ResourceData, meta int
 	go startRmbIfNeeded(ctx, apiClient)
 	nodeID := uint32(d.Get("node").(int))
 	name := d.Get("name").(string)
-	ncPool := NewNodeClient(apiClient.rmb)
-	nodeClient, err := ncPool.getNodeClient(sub, nodeID)
+	ncPool := client.NewNodeClientPool(apiClient.rmb)
+	nodeClient, err := ncPool.GetNodeClient(sub, nodeID)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "failed to get node client"))
 	}

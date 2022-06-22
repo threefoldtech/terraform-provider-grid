@@ -5,7 +5,8 @@ import (
 	"math/rand"
 
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/terraform-provider-grid/internal/gridproxy"
+	proxy "github.com/threefoldtech/grid_proxy_server/pkg/client"
+	proxytypes "github.com/threefoldtech/grid_proxy_server/pkg/types"
 )
 
 // NodeInfo related to scheduling
@@ -21,10 +22,10 @@ type Scheduler struct {
 	twinID uint64
 	// mapping from farm name to its id
 	farmIDS         map[string]int
-	gridProxyClient gridproxy.GridProxyClient
+	gridProxyClient proxy.Client
 }
 
-func NewScheduler(gridProxyClient gridproxy.GridProxyClient, twinID uint64) Scheduler {
+func NewScheduler(gridProxyClient proxy.Client, twinID uint64) Scheduler {
 	return Scheduler{
 		nodes:           map[uint32]nodeInfo{},
 		gridProxyClient: gridProxyClient,
@@ -38,9 +39,9 @@ func (n *Scheduler) getFarmID(farmName string) (int, error) {
 	if id, ok := n.farmIDS[farmName]; ok {
 		return id, nil
 	}
-	farm, err := n.gridProxyClient.Farms(gridproxy.FarmFilter{
+	farm, _, err := n.gridProxyClient.Farms(proxytypes.FarmFilter{
 		Name: &farmName,
-	}, gridproxy.Limit{
+	}, proxytypes.Limit{
 		Size: 1,
 		Page: 1,
 	})
@@ -70,11 +71,11 @@ func (n *Scheduler) getNode(r *Request) uint32 {
 	return 0
 }
 
-func (n *Scheduler) addNodes(nodes []gridproxy.Node) {
+func (n *Scheduler) addNodes(nodes []proxytypes.Node) {
 	for _, node := range nodes {
-		if _, ok := n.nodes[node.NodeID]; !ok {
+		if _, ok := n.nodes[uint32(node.NodeID)]; !ok {
 			cap := freeCapacity(&node)
-			n.nodes[node.NodeID] = nodeInfo{
+			n.nodes[uint32(node.NodeID)] = nodeInfo{
 				FreeCapacity: &cap,
 				HasIPv4:      node.PublicConfig.Ipv4 != "",
 				HasDomain:    node.PublicConfig.Domain != "",
@@ -87,7 +88,7 @@ func (n *Scheduler) addNodes(nodes []gridproxy.Node) {
 // Schedule makes sure there's at least one node that satisfies the given request
 func (n *Scheduler) Schedule(r *Request) (uint32, error) {
 	f := constructFilter(r, n.twinID)
-	l := gridproxy.Limit{
+	l := proxytypes.Limit{
 		Size:     10,
 		Page:     1,
 		RetCount: false,
@@ -101,7 +102,7 @@ func (n *Scheduler) Schedule(r *Request) (uint32, error) {
 	}
 	node := n.getNode(r)
 	for node == 0 {
-		nodes, err := n.gridProxyClient.Nodes(f, l)
+		nodes, _, err := n.gridProxyClient.Nodes(f, l)
 		if err != nil {
 			return 0, errors.Wrap(err, "couldn't list nodes from the grid proxy")
 		}
