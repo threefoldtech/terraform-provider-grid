@@ -277,10 +277,21 @@ func (d *DeployerImpl) Wait(
 
 		for idx, wl := range deploymentChanges {
 			if _, ok := workloadVersions[wl.Name.String()]; ok && wl.Version == workloadVersions[wl.Name.String()] {
-				if wl.Result.State == gridtypes.StateOk {
+				var errString string = ""
+				switch wl.Result.State {
+				case gridtypes.StateOk:
 					stateOk++
-				} else if wl.Result.State != gridtypes.StateInit {
-					return backoff.Permanent(errors.New(fmt.Sprintf("workload %d failed within deployment %d with error %s", idx, deploymentID, wl.Result.Error)))
+				case gridtypes.StateError:
+					errString = fmt.Sprintf("workload %d within deployment %d failed with error %s", idx, deploymentID, wl.Result.Error)
+				case gridtypes.StateDeleted:
+					errString = fmt.Sprintf("workload %d within deployment %d was deleted: %s", idx, deploymentID, wl.Result.Error)
+				case gridtypes.StatePaused:
+					errString = fmt.Sprintf("workload %d within deployment %d was paused: %s", idx, deploymentID, wl.Result.Error)
+				case gridtypes.StateUnChanged:
+					errString = fmt.Sprintf("worklaod %d within deployment %d was not udpated: %s", idx, deploymentID, wl.Result.Error)
+				}
+				if errString != "" {
+					return backoff.Permanent(errors.New(errString))
 				}
 			}
 		}
