@@ -266,23 +266,21 @@ func (d *DeployerImpl) Wait(
 	numberOfWorkloads := len(workloadVersions)
 
 	deploymentError := backoff.Retry(func() error {
-		var deploymentVersionError error = errors.New("deployment version not updated on node")
 		stateOk := 0
 		sub, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
-		dl, err := nodeClient.DeploymentGet(sub, deploymentID)
+
+		deploymentChanges, err := nodeClient.DeploymentChanges(sub, deploymentID)
 		if err != nil {
 			return backoff.Permanent(err)
 		}
-		if dl.Version == version {
-			deploymentVersionError = nil
-			for idx, wl := range dl.Workloads {
-				if _, ok := workloadVersions[wl.Name.String()]; ok && wl.Version == workloadVersions[wl.Name.String()] {
-					if wl.Result.State == gridtypes.StateOk {
-						stateOk++
-					} else if wl.Result.State == gridtypes.StateError {
-						return backoff.Permanent(errors.New(fmt.Sprintf("workload %d failed within deployment %d with error %s", idx, deploymentID, wl.Result.Error)))
-					}
+
+		for idx, wl := range deploymentChanges {
+			if _, ok := workloadVersions[wl.Name.String()]; ok && wl.Version == workloadVersions[wl.Name.String()] {
+				if wl.Result.State == gridtypes.StateOk {
+					stateOk++
+				} else if wl.Result.State != gridtypes.StateInit {
+					return backoff.Permanent(errors.New(fmt.Sprintf("workload %d failed within deployment %d with error %s", idx, deploymentID, wl.Result.Error)))
 				}
 			}
 		}
@@ -296,9 +294,6 @@ func (d *DeployerImpl) Wait(
 			lastProgress = currentProgress
 		} else if currentProgress.time.Sub(lastProgress.time) > 4*time.Minute {
 			timeoutError := fmt.Errorf("waiting for deployment %d timedout", deploymentID)
-			if deploymentVersionError != nil {
-				timeoutError = fmt.Errorf(timeoutError.Error()+": %w", deploymentVersionError)
-			}
 			return backoff.Permanent(timeoutError)
 		}
 
