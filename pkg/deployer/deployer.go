@@ -144,7 +144,7 @@ func (d *DeployerImpl) deploy(
 			for _, w := range dl.Workloads {
 				newWorkloadVersions[w.Name.String()] = 0
 			}
-			err = d.Wait(ctx, client, dl.ContractID, dl.Version, newWorkloadVersions)
+			err = d.Wait(ctx, client, dl.ContractID, newWorkloadVersions)
 
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "error waiting deployment")
@@ -231,7 +231,7 @@ func (d *DeployerImpl) deploy(
 			}
 			currentDeployments[node] = dl.ContractID
 
-			err = d.Wait(ctx, client, dl.ContractID, dl.Version, newWorkloadsVersions)
+			err = d.Wait(ctx, client, dl.ContractID, newWorkloadsVersions)
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "error waiting deployment")
 			}
@@ -259,7 +259,6 @@ func (d *DeployerImpl) Wait(
 	ctx context.Context,
 	nodeClient *client.NodeClient,
 	deploymentID uint64,
-	version uint32,
 	workloadVersions map[string]uint32,
 ) error {
 	lastProgress := Progress{time.Now(), 0}
@@ -275,20 +274,20 @@ func (d *DeployerImpl) Wait(
 			return backoff.Permanent(err)
 		}
 
-		for idx, wl := range deploymentChanges {
+		for _, wl := range deploymentChanges {
 			if _, ok := workloadVersions[wl.Name.String()]; ok && wl.Version == workloadVersions[wl.Name.String()] {
 				var errString string = ""
 				switch wl.Result.State {
 				case gridtypes.StateOk:
 					stateOk++
 				case gridtypes.StateError:
-					errString = fmt.Sprintf("workload %d within deployment %d failed with error %s", idx, deploymentID, wl.Result.Error)
+					errString = fmt.Sprintf("workload %s within deployment %d failed with error: %s", wl.Name, deploymentID, wl.Result.Error)
 				case gridtypes.StateDeleted:
-					errString = fmt.Sprintf("workload %d within deployment %d was deleted: %s", idx, deploymentID, wl.Result.Error)
+					errString = fmt.Sprintf("workload %s state within deployment %d is deleted: %s", wl.Name, deploymentID, wl.Result.Error)
 				case gridtypes.StatePaused:
-					errString = fmt.Sprintf("workload %d within deployment %d was paused: %s", idx, deploymentID, wl.Result.Error)
+					errString = fmt.Sprintf("workload %s state within deployment %d is paused: %s", wl.Name, deploymentID, wl.Result.Error)
 				case gridtypes.StateUnChanged:
-					errString = fmt.Sprintf("worklaod %d within deployment %d was not udpated: %s", idx, deploymentID, wl.Result.Error)
+					errString = fmt.Sprintf("worklaod %s within deployment %d was not updated: %s", wl.Name, deploymentID, wl.Result.Error)
 				}
 				if errString != "" {
 					return backoff.Permanent(errors.New(errString))
