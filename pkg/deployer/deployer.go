@@ -144,7 +144,7 @@ func (d *DeployerImpl) deploy(
 			for _, w := range dl.Workloads {
 				newWorkloadVersions[w.Name.String()] = 0
 			}
-			err = d.Wait(ctx, client, dl.ContractID, dl.Version, newWorkloadVersions)
+			err = d.Wait(ctx, client, dl.ContractID, newWorkloadVersions)
 
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "error waiting deployment")
@@ -231,7 +231,7 @@ func (d *DeployerImpl) deploy(
 			}
 			currentDeployments[node] = dl.ContractID
 
-			err = d.Wait(ctx, client, dl.ContractID, dl.Version, newWorkloadsVersions)
+			err = d.Wait(ctx, client, dl.ContractID, newWorkloadsVersions)
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "error waiting deployment")
 			}
@@ -259,30 +259,38 @@ func (d *DeployerImpl) Wait(
 	ctx context.Context,
 	nodeClient *client.NodeClient,
 	deploymentID uint64,
-	version uint32,
 	workloadVersions map[string]uint32,
 ) error {
 	lastProgress := Progress{time.Now(), 0}
 	numberOfWorkloads := len(workloadVersions)
 
 	deploymentError := backoff.Retry(func() error {
-		var deploymentVersionError error = errors.New("deployment version not updated on node")
 		stateOk := 0
 		sub, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
-		dl, err := nodeClient.DeploymentGet(sub, deploymentID)
+
+		deploymentChanges, err := nodeClient.DeploymentChanges(sub, deploymentID)
 		if err != nil {
 			return backoff.Permanent(err)
 		}
-		if dl.Version == version {
-			deploymentVersionError = nil
-			for idx, wl := range dl.Workloads {
-				if _, ok := workloadVersions[wl.Name.String()]; ok && wl.Version == workloadVersions[wl.Name.String()] {
-					if wl.Result.State == gridtypes.StateOk {
-						stateOk++
-					} else if wl.Result.State == gridtypes.StateError {
-						return backoff.Permanent(errors.New(fmt.Sprintf("workload %d failed within deployment %d with error %s", idx, deploymentID, wl.Result.Error)))
-					}
+
+		for _, wl := range deploymentChanges {
+			if _, ok := workloadVersions[wl.Name.String()]; ok && wl.Version == workloadVersions[wl.Name.String()] {
+				var errString string = ""
+				switch wl.Result.State {
+				case gridtypes.StateOk:
+					stateOk++
+				case gridtypes.StateError:
+					errString = fmt.Sprintf("workload %s within deployment %d failed with error: %s", wl.Name, deploymentID, wl.Result.Error)
+				case gridtypes.StateDeleted:
+					errString = fmt.Sprintf("workload %s state within deployment %d is deleted: %s", wl.Name, deploymentID, wl.Result.Error)
+				case gridtypes.StatePaused:
+					errString = fmt.Sprintf("workload %s state within deployment %d is paused: %s", wl.Name, deploymentID, wl.Result.Error)
+				case gridtypes.StateUnChanged:
+					errString = fmt.Sprintf("worklaod %s within deployment %d was not updated: %s", wl.Name, deploymentID, wl.Result.Error)
+				}
+				if errString != "" {
+					return backoff.Permanent(errors.New(errString))
 				}
 			}
 		}
@@ -296,9 +304,6 @@ func (d *DeployerImpl) Wait(
 			lastProgress = currentProgress
 		} else if currentProgress.time.Sub(lastProgress.time) > 4*time.Minute {
 			timeoutError := fmt.Errorf("waiting for deployment %d timedout", deploymentID)
-			if deploymentVersionError != nil {
-				timeoutError = fmt.Errorf(timeoutError.Error()+": %w", deploymentVersionError)
-			}
 			return backoff.Permanent(timeoutError)
 		}
 
