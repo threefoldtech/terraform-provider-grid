@@ -31,7 +31,7 @@ resource "grid_deployment" "d1" {
 
   vms {
     name       = "presearch"
-    flist      = "https://hub.grid.tf/omarabdul3ziz.3bot/omarabdul3ziz-presearch-v2.2.flist"
+    flist      = "https://hub.grid.tf/tf-official-apps/presearch-v2.2.flist"
     entrypoint = "/sbin/zinit init"
     publicip   = true
     planetary  = true

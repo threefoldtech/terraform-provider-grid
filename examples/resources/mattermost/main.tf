@@ -31,7 +31,7 @@
     ip_range = lookup(grid_network.net1.nodes_ip_range, 8, "")
     vms {
       name = "vm1"
-      flist = "https://hub.grid.tf/ashraf.3bot/ashraffouda-mattermost-latest.flist"
+      flist = "https://hub.grid.tf/tf-official-apps/mattermost-latest.flist"
       cpu = 2 
       entrypoint = "/sbin/zinit init"
       memory = 4096

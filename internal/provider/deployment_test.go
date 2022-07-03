@@ -71,7 +71,7 @@ func constructTestDeployer(ctrl *gomock.Controller) DeploymentDeployer {
 		VMs: []workloads.VM{
 			{
 				Name:          "vm1",
-				Flist:         "https://hub.grid.tf/rafybenjamin.3bot/threefolddev-discourse-v3.0.flist.md5",
+				Flist:         "https://hub.grid.tf/tf-official-apps/discourse-v4.0.flist",
 				FlistChecksum: "",
 				PublicIP:      true,
 				PublicIP6:     true,

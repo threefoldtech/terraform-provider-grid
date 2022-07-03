@@ -29,7 +29,7 @@ resource "grid_deployment" "node1" {
   }
   vms {
     name        = "taiga"
-    flist       = "https://hub.grid.tf/samehabouelsaad.3bot/abouelsaad-grid3_taiga_docker-latest.flist"
+    flist       = "https://hub.grid.tf/tf-official-apps/grid3_taiga_docker-latest.flist"
     entrypoint  = "/sbin/zinit init"
     cpu         = 4
     memory      = 8096
