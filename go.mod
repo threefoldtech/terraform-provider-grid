@@ -1,10 +1,10 @@
 module github.com/threefoldtech/terraform-provider-grid
 
-go 1.17
+go 1.18
 
 require (
 	github.com/cenkalti/backoff v2.2.1+incompatible
-	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.0
+	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.2
 	github.com/golang/mock v1.4.4
 	github.com/gomodule/redigo v2.0.0+incompatible
 	github.com/google/uuid v1.3.0
@@ -14,8 +14,7 @@ require (
 	github.com/stretchr/testify v1.7.1
 	github.com/threefoldtech/go-rmb v0.1.11-0.20220224131627-825c23c921d3
 	github.com/threefoldtech/grid_proxy_server v1.5.1
-	github.com/threefoldtech/substrate-client v0.0.0-20220530091709-ebbfbddb09a0
-	github.com/threefoldtech/substrate-client-dev v0.0.1
+	github.com/threefoldtech/substrate-client v0.0.0-20220629072807-544d41e5b81a
 	github.com/threefoldtech/substrate-client-main v0.0.1
 	github.com/threefoldtech/substrate-client-qa v0.0.1
 	github.com/threefoldtech/substrate-client-test v0.0.1
@@ -23,6 +22,8 @@ require (
 	golang.org/x/net v0.0.0-20220403103023-749bd193bc2b // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20210803171230-4253848d036c
 )
+
+require github.com/threefoldtech/substrate-client-dev v0.0.1
 
 require (
 	github.com/ChainSafe/go-schnorrkel v1.0.0 // indirect
@@ -108,7 +109,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
 
-replace github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.0 => github.com/threefoldtech/go-substrate-rpc-client/v4 v4.0.1-0.20220224103912-af82b63a1bda
+replace github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.2 => github.com/threefoldtech/go-substrate-rpc-client/v4 v4.0.3-0.20220629145942-1ef6a654b4b5
 
 replace github.com/threefoldtech/substrate-client-dev v0.0.1 => ./pkg/substrates/substrate-dev
 
