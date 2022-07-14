@@ -31,7 +31,7 @@ resource "grid_deployment" "d1" {
   ip_range = lookup(grid_network.net1.nodes_ip_range, 8, "")
   vms {
     name = "vm1"
-    flist = "https://hub.grid.tf/ashraf.3bot/strm-helloworld-http-latest.flist"
+    flist = "https://hub.grid.tf/tf-official-apps/strm-helloworld-http-latest.flist"
     cpu = 2 
     publicip = true
     memory = 1024

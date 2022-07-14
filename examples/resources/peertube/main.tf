@@ -31,7 +31,7 @@
     ip_range = lookup(grid_network.net1.nodes_ip_range, 7, "")
     vms {
       name = "vm1"
-      flist = "https://hub.grid.tf/omarabdul3ziz.3bot/threefoldtech-peertube-v3.0.2.flist"
+      flist = "https://hub.grid.tf/tf-official-apps/peertube-v3.1.1.flist"
       cpu = 2 
       # publicip = true
       entrypoint = "/usr/local/bin/entrypoint.sh"
