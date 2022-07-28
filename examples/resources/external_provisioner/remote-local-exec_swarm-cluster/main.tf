@@ -35,7 +35,7 @@ resource "grid_deployment" "swarm1" {
   }
   vms {
     name = "swarmWorker1"
-    flist = "https://hub.grid.tf/samehabouelsaad.3bot/abouelsaad-grid3_ubuntu20.04_debug-latest.flist"
+    flist = "https://hub.grid.tf/tf-official-apps/grid3_ubuntu20.04_debug-latest.flist"
     entrypoint = "/init.sh"
     cpu = 2 
     memory = 1024

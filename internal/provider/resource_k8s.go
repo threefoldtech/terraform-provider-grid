@@ -314,6 +314,9 @@ func NewK8sDeployer(d *schema.ResourceData, apiClient *apiClient) (K8sDeployer, 
 		if err != nil {
 			return K8sDeployer{}, errors.Wrap(err, "couldn't parse node id")
 		}
+		if r.(string) == "" {
+			return K8sDeployer{}, errors.New("node ip range is empty")
+		}
 		nodesIPRange[uint32(nodeInt)], err = gridtypes.ParseIPNet(r.(string))
 		if err != nil {
 			return K8sDeployer{}, errors.Wrap(err, "couldn't parse node ip range")
