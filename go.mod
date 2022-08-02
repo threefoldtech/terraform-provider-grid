@@ -28,7 +28,7 @@ require (
 	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e
 	github.com/threefoldtech/grid_proxy_server v1.5.5
 	github.com/threefoldtech/substrate-client-dev v0.0.1
-	golang.org/x/crypto v0.0.0-20220518034528-6f7dac969898
+	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 )
 
 require (
@@ -104,7 +104,7 @@ require (
 	github.com/vmihailenco/msgpack/v4 v4.3.12 // indirect
 	github.com/vmihailenco/tagparser v0.1.1 // indirect
 	github.com/zclconf/go-cty v1.10.0 // indirect
-	golang.org/x/sys v0.0.0-20220403020550-483a9cbc67c0 // indirect
+	golang.org/x/sys v0.0.0-20220731174439-a90be440212d // indirect
 	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20210917145530-b395a37504d4 // indirect

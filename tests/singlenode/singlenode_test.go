@@ -56,7 +56,7 @@ func TestSingleNodeDeployment(t *testing.T) {
 
 	pIP := strings.Split(publicIP, "/")[0]
 	status := false
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 100; i++ {
 		status = tests.Wait(pIP, "22")
 		if status {
 			break
@@ -71,6 +71,6 @@ func TestSingleNodeDeployment(t *testing.T) {
 	defer tests.DownWG()
 
 	// Check that env variables set successfully
-	res, _ := tests.RemoteRun("root", pIP, "printenv")
+	res, _ := tests.RemoteRun("root", pIP, "cat /proc/1/environ")
 	assert.Contains(t, string(res), "TEST_VAR=this value for test")
 }

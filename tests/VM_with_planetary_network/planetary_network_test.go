@@ -45,14 +45,14 @@ func TestSingleNodeDeployment(t *testing.T) {
 	assert.NotEmpty(t, yggIP)
 
 	status := false
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 100; i++ {
 		status = tests.Wait(yggIP, "22")
 		if status {
 			break
 		}
 	}
 	if status == false {
-		t.Errorf("public ip not reachable")
+		t.Errorf("Yggdrasil IP not reachable")
 	}
 
 	verifyIPs := []string{publicIP, yggIP}
@@ -60,6 +60,6 @@ func TestSingleNodeDeployment(t *testing.T) {
 	defer tests.DownWG()
 
 	// ssh to VM by ygg_ip
-	res, _ := tests.RemoteRun("root", yggIP, "printenv")
+	res, _ := tests.RemoteRun("root", yggIP, "cat /proc/1/environ")
 	assert.Contains(t, string(res), "TEST_VAR=this value for test")
 }

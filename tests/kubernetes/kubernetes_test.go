@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"testing"
+	"time"
 
 	"strings"
 
@@ -54,7 +55,7 @@ func TestKubernetesDeployment(t *testing.T) {
 	// Check that master is reachable
 	masterIP := strings.Split(masterPublicIP, "/")[0]
 	status := false
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 100; i++ {
 		status = tests.Wait(masterIP, "22")
 		if status {
 			break
@@ -68,16 +69,17 @@ func TestKubernetesDeployment(t *testing.T) {
 	assert.NotContains(t, string(out), "Destination Host Unreachable")
 
 	// ssh to master node
+	time.Sleep(30 * (time.Second))
 	res, errors := tests.RemoteRun("root", masterIP, "kubectl get node")
+	res = strings.Trim(res, "\n")
 	assert.Empty(t, errors)
 
 	// Check worker deployed number
-	nodes := strings.Split(string(res), "\n")
-	workers := nodes[1:]               // remove header
-	assert.Equal(t, len(workers)-1, 2) // assert that there are 1 worker and 1 master
+	nodes := strings.Split(string(res), "\n")[1:]
+	assert.Equal(t, 2, len(nodes)) // assert that there are 1 worker and 1 master
 
 	// Check that worker is ready
-	for i := 0; i < len(workers)-1; i++ {
-		assert.Contains(t, workers[i], "Ready")
+	for i := 0; i < len(nodes); i++ {
+		assert.Contains(t, nodes[i], "Ready")
 	}
 }

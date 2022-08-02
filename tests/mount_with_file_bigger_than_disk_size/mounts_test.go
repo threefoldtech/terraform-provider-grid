@@ -49,7 +49,7 @@ func TestMountWithBiggerFileDeployment(t *testing.T) {
 	// ssh to VM and try to create a file with size 1G.
 	pIP := strings.Split(publicIP, "/")[0]
 	status := false
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 100; i++ {
 		status = tests.Wait(pIP, "22")
 		if status {
 			break

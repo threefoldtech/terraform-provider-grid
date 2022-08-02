@@ -32,7 +32,7 @@ resource "grid_deployment" "d1" {
   }
   vms {
     name = "vm1"
-    flist = "https://hub.grid.tf/omar0.3bot/omarelawady-ubuntu-20.04.flist"
+    flist = "https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-20.04.flist"
     cpu = 1
     publicip = true
     memory = 1024
@@ -48,7 +48,7 @@ resource "grid_deployment" "d1" {
   }
   vms {
     name = "anothervm"
-    flist = "https://hub.grid.tf/omar0.3bot/omarelawady-ubuntu-20.04.flist"
+    flist = "https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-20.04.flist"
     cpu = 1
     memory = 1024
     entrypoint = "/init.sh"
