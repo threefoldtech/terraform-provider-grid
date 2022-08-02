@@ -13,6 +13,8 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/go-rmb"
+	"github.com/threefoldtech/substrate-client"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 )
 
 const (
@@ -20,18 +22,28 @@ const (
 )
 
 type ProxyBus struct {
-	endpoint string
-	twinID   uint32
+	signer      substrate.Identity
+	endpoint    string
+	twinID      uint32
+	verifyReply bool
+	resolver    rmb.TwinResolver
 }
 
-func NewProxyBus(endpoint string, twinID uint32) *ProxyBus {
+func NewProxyBus(endpoint string, twinID uint32, sub subi.Manager, signer substrate.Identity, verifyReply bool) (*ProxyBus, error) {
 	if len(endpoint) != 0 && endpoint[len(endpoint)-1] == '/' {
 		endpoint = endpoint[:len(endpoint)-1]
 	}
+	resolver, err := rmb.NewSubstrateResolver(sub)
+	if err != nil {
+		return nil, errors.Wrap(err, "couldn't get a client to explorer resolver")
+	}
 	return &ProxyBus{
+		signer,
 		endpoint,
 		twinID,
-	}
+		verifyReply,
+		rmb.NewCacheResolver(resolver, time.Second),
+	}, nil
 }
 
 func (r *ProxyBus) requestEndpoint(twinid uint32) string {
@@ -55,6 +67,11 @@ func (r *ProxyBus) Call(ctx context.Context, twin uint32, fn string, data interf
 		TwinSrc:    int(r.twinID),
 		TwinDst:    []int{int(twin)},
 		Data:       base64.StdEncoding.EncodeToString(bs),
+		Epoch:      time.Now().Unix(),
+		Proxy:      true,
+	}
+	if err := msg.Sign(r.signer); err != nil {
+		return err
 	}
 	bs, err = json.Marshal(msg)
 	if err != nil {
@@ -65,11 +82,7 @@ func (r *ProxyBus) Call(ctx context.Context, twin uint32, fn string, data interf
 		return errors.Wrap(err, "error sending request")
 	}
 	if resp.StatusCode != http.StatusOK {
-		bs, err := io.ReadAll(resp.Body)
-		if err != nil {
-			log.Printf("error parsing response body: %s", err.Error())
-		}
-		return fmt.Errorf("non ok return code: %d, body: %s", resp.StatusCode, string(bs))
+		return parseError(resp)
 	}
 	var res ProxyResponse
 	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
@@ -79,7 +92,18 @@ func (r *ProxyBus) Call(ctx context.Context, twin uint32, fn string, data interf
 	if err != nil {
 		return errors.Wrap(err, "couldn't poll response")
 	}
-	// errorred ?
+	pk, err := r.resolver.PublicKey(int(twin))
+	if err != nil {
+		return errors.Wrap(err, "couldn't get twin public key")
+	}
+	if r.verifyReply {
+
+		if err := msg.Verify(pk); err != nil {
+			return err
+		}
+	}
+
+	// errorred?
 	if len(msg.Err) != 0 {
 		return errors.New(msg.Err)
 	}
@@ -92,11 +116,24 @@ func (r *ProxyBus) Call(ctx context.Context, twin uint32, fn string, data interf
 	if len(msg.Data) == 0 {
 		return fmt.Errorf("no response body was returned")
 	}
-	if err := json.Unmarshal([]byte(msg.Data), result); err != nil {
+
+	//check if msg.Data is base64 encoded
+	msgDataBytes := getDecodedMsgData(msg.Data)
+
+	if err := json.Unmarshal(msgDataBytes, result); err != nil {
 		return errors.Wrap(err, "failed to decode response body")
 	}
 
 	return nil
+}
+
+func getDecodedMsgData(data string) []byte {
+	decoded := []byte(data)
+	b, err := base64.StdEncoding.DecodeString(data)
+	if err == nil {
+		decoded = b
+	}
+	return decoded
 }
 
 func (r *ProxyBus) pollResponse(ctx context.Context, twin uint32, retqueue string) (rmb.Message, error) {
@@ -121,12 +158,7 @@ func (r *ProxyBus) pollResponse(ctx context.Context, twin uint32, retqueue strin
 				continue
 			}
 			if resp.StatusCode != http.StatusOK {
-				bs, e := io.ReadAll(resp.Body)
-				if e != nil {
-					log.Printf("error parsing response body: %s", e.Error())
-				}
-				log.Printf("non ok status code: %d, body: %s", resp.StatusCode, bs)
-				err = fmt.Errorf("non ok return code: %d, body: %s", resp.StatusCode, bs)
+				err = parseError(resp)
 				errCount += 1
 				continue
 			}
@@ -145,6 +177,35 @@ func (r *ProxyBus) pollResponse(ctx context.Context, twin uint32, retqueue strin
 			return rmb.Message{}, errors.New("context cancelled")
 		}
 	}
+}
+
+func parseError(resp *http.Response) error {
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return errors.Wrapf(err, "failed to read error response (%d)", resp.StatusCode)
+	}
+
+	var errContent ErrorReply
+	if err := json.Unmarshal(bodyBytes, &errContent); err != nil {
+		return fmt.Errorf("(%d): %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	// just in case it was decided to unify grid proxy error messages
+	if errContent.Error != "" {
+		return fmt.Errorf("(%d): %s", resp.StatusCode, errContent.Error)
+	}
+
+	if errContent.Message != "" {
+		return fmt.Errorf("(%d): %s", resp.StatusCode, errContent.Message)
+	}
+
+	return fmt.Errorf("%s (%d)", http.StatusText(resp.StatusCode), resp.StatusCode)
+}
+
+type ErrorReply struct {
+	Status  string `json:",omitempty"`
+	Message string `json:",omitempty"`
+	Error   string `json:"error"`
 }
 
 type ProxyResponse struct {

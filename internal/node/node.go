@@ -186,6 +186,20 @@ func (n *NodeClient) NetworkListInterfaces(ctx context.Context) (map[string][]ne
 	return result, nil
 }
 
+// DeploymentGet gets a deployment via contract ID
+func (n *NodeClient) DeploymentChanges(ctx context.Context, contractID uint64) (changes []gridtypes.Workload, err error) {
+	const cmd = "zos.deployment.changes"
+	in := args{
+		"contract_id": contractID,
+	}
+
+	if err = n.bus.Call(ctx, n.nodeTwin, cmd, in, &changes); err != nil {
+		return changes, err
+	}
+
+	return changes, nil
+}
+
 // RandomFreePort query the node for used ports, then it tries to find a ramdom
 // port that is in not in the "taken" ports list, this can be used to set up
 // network wireguard ports

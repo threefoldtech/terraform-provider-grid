@@ -17,41 +17,46 @@ Kubernetes resource.
 
 ### Required
 
-- **master** (Block List, Min: 1, Max: 1) (see [below for nested schema](#nestedblock--master))
-- **nodes_ip_range** (Map of String) Network IP ranges of nodes in the cluster (usually assigned from grid_network.<network-resource-name>.nodes_ip_range)
-- **token** (String) The cluster secret token
+- `master` (Block List, Min: 1, Max: 1) (see [below for nested schema](#nestedblock--master))
+- `nodes_ip_range` (Map of String) Network IP ranges of nodes in the cluster (usually assigned from grid_network.<network-resource-name>.nodes_ip_range)
+- `token` (String) The cluster secret token
 
 ### Optional
 
-- **id** (String) The ID of this resource.
-- **network_name** (String) The network name to deploy the cluster on
-- **ssh_key** (String) SSH key to access the cluster nodes
-- **workers** (Block List) (see [below for nested schema](#nestedblock--workers))
+- `network_name` (String) The network name to deploy the cluster on
+- `ssh_key` (String) SSH key to access the cluster nodes
+- `workers` (Block List) (see [below for nested schema](#nestedblock--workers))
 
 ### Read-Only
 
-- **node_deployment_id** (Map of Number) Mapping from each node to its deployment id
+- `id` (String) The ID of this resource.
+- `node_deployment_id` (Map of Number) Mapping from each node to its deployment id
 
 <a id="nestedblock--master"></a>
 ### Nested Schema for `master`
 
 Required:
 
-- **cpu** (Number) Number of VCPUs
-- **disk_size** (Number) Data disk size in GBs
-- **memory** (Number) Memory size
-- **name** (String) Master name
-- **node** (Number) Node ID
+- `cpu` (Number) Number of VCPUs
+- `disk_size` (Number) Data disk size in GBs
+- `memory` (Number) Memory size
+- `name` (String) Master name
+- `node` (Number) Node ID
 
 Optional:
 
-- **flist** (String)
-- **publicip** (Boolean) true to enable public ip reservation
+- `flist` (String)
+- `flist_checksum` (String) if present, the flist is rejected if it has a different hash. the flist hash can be found by append
+- `planetary` (Boolean) Enable Yggdrasil allocation
+- `publicip` (Boolean) true to enable public ip reservation
+- `publicip6` (Boolean) true to enable public ipv6 reservation
 
 Read-Only:
 
-- **computedip** (String) The reserved public IP
-- **ip** (String) The private IP (computed from nodes_ip_range)
+- `computedip` (String) The reserved public IP
+- `computedip6` (String) The reserved public IPv6
+- `ip` (String) The private IP (computed from nodes_ip_range)
+- `ygg_ip` (String) Allocated Yggdrasil IP
 
 
 <a id="nestedblock--workers"></a>
@@ -59,20 +64,25 @@ Read-Only:
 
 Required:
 
-- **cpu** (Number) Number of VCPUs
-- **disk_size** (Number) Data disk size in GBs
-- **memory** (Number) Memory size
-- **name** (String)
-- **node** (Number) Node ID
+- `cpu` (Number) Number of VCPUs
+- `disk_size` (Number) Data disk size in GBs
+- `memory` (Number) Memory size
+- `name` (String)
+- `node` (Number) Node ID
 
 Optional:
 
-- **flist** (String)
-- **publicip** (Boolean) true to enable public ip reservation
+- `flist` (String)
+- `flist_checksum` (String) if present, the flist is rejected if it has a different hash. the flist hash can be found by append
+- `planetary` (Boolean) Enable Yggdrasil allocation
+- `publicip` (Boolean) true to enable public ip reservation
+- `publicip6` (Boolean) true to enable public ipv6 reservation
 
 Read-Only:
 
-- **computedip** (String) The reserved public ip
-- **ip** (String) The private IP (computed from nodes_ip_range)
+- `computedip` (String) The reserved public ip
+- `computedip6` (String) The reserved public ipv6
+- `ip` (String) The private IP (computed from nodes_ip_range)
+- `ygg_ip` (String) Allocated Yggdrasil IP
 
 

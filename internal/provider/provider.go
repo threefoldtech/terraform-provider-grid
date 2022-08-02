@@ -3,12 +3,15 @@ package provider
 import (
 	"context"
 	"log"
+	"math/rand"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
-	substrate "github.com/threefoldtech/substrate-client"
+	proxy "github.com/threefoldtech/grid_proxy_server/pkg/client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/rmb"
 )
 
@@ -16,14 +19,20 @@ var (
 	SUBSTRATE_URL = map[string]string{
 		"dev":  "wss://tfchain.dev.grid.tf/ws",
 		"test": "wss://tfchain.test.grid.tf/ws",
-	}
-	GRAPHQL_URL = map[string]string{
-		"dev":  "https://graphql.dev.grid.tf/graphql",
-		"test": "https://graphql.test.grid.tf/graphql",
+		"qa":   "wss://tfchain.qa.grid.tf/ws",
+		"main": "wss://tfchain.grid.tf/ws",
 	}
 	RMB_PROXY_URL = map[string]string{
 		"dev":  "https://gridproxy.dev.grid.tf/",
 		"test": "https://gridproxy.test.grid.tf/",
+		"qa":   "https://gridproxy.qa.grid.tf/",
+		"main": "https://gridproxy.grid.tf/",
+	}
+	SubstrateVersion = map[string]func(url ...string) subi.Manager{
+		"dev":  subi.NewDevManager,
+		"qa":   subi.NewQAManager,
+		"test": subi.NewTestManager,
+		"main": subi.NewMMainanager,
 	}
 )
 
@@ -62,7 +71,7 @@ func New(version string) func() *schema.Provider {
 				"network": {
 					Type:        schema.TypeString,
 					Required:    true,
-					Description: "grid network, one of: dev test",
+					Description: "grid network, one of: dev test qa main",
 					DefaultFunc: schema.EnvDefaultFunc("NETWORK", "dev"),
 				},
 				"substrate_url": {
@@ -70,12 +79,6 @@ func New(version string) func() *schema.Provider {
 					Optional:    true,
 					Description: "substrate url, example: wss://tfchain.dev.grid.tf/ws",
 					DefaultFunc: schema.EnvDefaultFunc("SUBSTRATE_URL", nil),
-				},
-				"graphql_url": {
-					Type:        schema.TypeString,
-					Optional:    true,
-					Description: "graphql url, example: https://graphql.dev.grid.tf/graphql",
-					DefaultFunc: schema.EnvDefaultFunc("GRAPHQL_URL", nil),
 				},
 				"rmb_redis_url": {
 					Type:        schema.TypeString,
@@ -93,6 +96,12 @@ func New(version string) func() *schema.Provider {
 					Optional:    true,
 					Description: "whether to use the rmb proxy or not",
 					DefaultFunc: schema.EnvDefaultFunc("USE_RMB_PROXY", true),
+				},
+				"verify_reply": {
+					Type:        schema.TypeBool,
+					Optional:    true,
+					Description: "whether to verify rmb replies (temporary for dev use only)",
+					DefaultFunc: schema.EnvDefaultFunc("VERIFY_REPLY", false),
 				},
 			},
 			DataSourcesMap: map[string]*schema.Resource{
@@ -117,27 +126,27 @@ func New(version string) func() *schema.Provider {
 type apiClient struct {
 	twin_id       uint32
 	mnemonics     string
-	graphql_url   string
 	substrate_url string
 	rmb_redis_url string
 	use_rmb_proxy bool
-	rmb_proxy_url string
+	grid_client   proxy.Client
 	rmb           rmb.Client
-	sub           *substrate.Substrate
-	identity      substrate.Identity
+	manager       subi.Manager
+	identity      subi.Identity
 }
 
 func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
+	rand.Seed(time.Now().UnixNano())
 	var err error
 
 	apiClient := apiClient{}
 	apiClient.mnemonics = d.Get("mnemonics").(string)
 	key_type := d.Get("key_type").(string)
-	var identity substrate.Identity
+	var identity subi.Identity
 	if key_type == "ed25519" {
-		identity, err = substrate.NewIdentityFromEd25519Phrase(string(apiClient.mnemonics))
+		identity, err = subi.NewIdentityFromEd25519Phrase(string(apiClient.mnemonics))
 	} else if key_type == "sr25519" {
-		identity, err = substrate.NewIdentityFromSr25519Phrase(string(apiClient.mnemonics))
+		identity, err = subi.NewIdentityFromSr25519Phrase(string(apiClient.mnemonics))
 	} else {
 		err = errors.New("key_type must be one of ed25519 and sr25519")
 	}
@@ -150,40 +159,37 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	}
 	apiClient.identity = identity
 	network := d.Get("network").(string)
-	if network != "dev" && network != "test" {
-		return nil, diag.Errorf("network must be one of dev and test")
+	if network != "dev" && network != "qa" && network != "test" && network != "main" {
+		return nil, diag.Errorf("network must be one of dev, qa, test, and main")
 	}
 	apiClient.substrate_url = SUBSTRATE_URL[network]
-	apiClient.graphql_url = GRAPHQL_URL[network]
-	apiClient.rmb_proxy_url = RMB_PROXY_URL[network]
+	rmb_proxy_url := RMB_PROXY_URL[network]
 	substrate_url := d.Get("substrate_url").(string)
-	graphql_url := d.Get("graphql_url").(string)
-	rmb_proxy_url := d.Get("rmb_proxy_url").(string)
+	passed_rmb_proxy_url := d.Get("rmb_proxy_url").(string)
 	if substrate_url != "" {
 		log.Printf("substrate url is not null %s", substrate_url)
 		apiClient.substrate_url = substrate_url
 	}
-	if graphql_url != "" {
-		apiClient.graphql_url = graphql_url
-	}
-	if rmb_proxy_url != "" {
-		apiClient.rmb_proxy_url = rmb_proxy_url
+	if passed_rmb_proxy_url != "" {
+		rmb_proxy_url = passed_rmb_proxy_url
 	}
 	log.Printf("substrate url: %s %s\n", apiClient.substrate_url, substrate_url)
-	apiClient.sub, err = substrate.NewSubstrate(apiClient.substrate_url)
+	apiClient.manager = SubstrateVersion[network](apiClient.substrate_url)
+	sub, err := apiClient.manager.SubstrateExt()
 	if err != nil {
-		return nil, diag.FromErr(errors.Wrap(err, "couldn't create substrate client"))
+		return nil, diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
 	}
+	defer sub.Close()
 	apiClient.use_rmb_proxy = d.Get("use_rmb_proxy").(bool)
 
 	apiClient.rmb_redis_url = d.Get("rmb_redis_url").(string)
 
-	if err := validateAccount(&apiClient); err != nil {
+	if err := validateAccount(&apiClient, sub); err != nil {
 		return nil, diag.FromErr(err)
 	}
 	pub := sk.Public()
-	twin, err := apiClient.sub.GetTwinByPubKey(pub)
-	if err != nil && errors.Is(err, substrate.ErrNotFound) {
+	twin, err := sub.GetTwinByPubKey(pub)
+	if err != nil && errors.Is(err, subi.ErrNotFound) {
 		return nil, diag.Errorf("no twin associated with the accound with the given mnemonics")
 	}
 	if err != nil {
@@ -192,7 +198,8 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	apiClient.twin_id = twin
 	var cl rmb.Client
 	if apiClient.use_rmb_proxy {
-		cl = client.NewProxyBus(apiClient.rmb_proxy_url, apiClient.twin_id)
+		verify_reply := d.Get("verify_reply").(bool)
+		cl, err = client.NewProxyBus(rmb_proxy_url, apiClient.twin_id, apiClient.manager, identity, verify_reply)
 	} else {
 		cl, err = rmb.NewClient(apiClient.rmb_redis_url)
 	}
@@ -200,7 +207,10 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 		return nil, diag.FromErr(errors.Wrap(err, "couldn't create rmb client"))
 	}
 	apiClient.rmb = cl
-	if err := preValidate(&apiClient); err != nil {
+
+	grid_client := proxy.NewClient(rmb_proxy_url)
+	apiClient.grid_client = proxy.NewRetryingClient(grid_client)
+	if err := preValidate(&apiClient, sub); err != nil {
 		return nil, diag.FromErr(err)
 	}
 	return &apiClient, nil

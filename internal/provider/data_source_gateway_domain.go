@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
+	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 )
 
 func dataSourceGatewayDomain() *schema.Resource {
@@ -38,19 +39,25 @@ func dataSourceGatewayDomain() *schema.Resource {
 	}
 }
 
+// TODO: make this non failing
 func dataSourceGatewayRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	apiClient := meta.(*apiClient)
+	sub, err := apiClient.manager.SubstrateExt()
+	if err != nil {
+		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
+	}
+	defer sub.Close()
 	go startRmbIfNeeded(ctx, apiClient)
 	nodeID := uint32(d.Get("node").(int))
 	name := d.Get("name").(string)
-	ncPool := NewNodeClient(apiClient.sub, apiClient.rmb)
-	nodeClient, err := ncPool.getNodeClient(nodeID)
+	ncPool := client.NewNodeClientPool(apiClient.rmb)
+	nodeClient, err := ncPool.GetNodeClient(sub, nodeID)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "failed to get node client"))
 	}
-	sub, cancel := context.WithTimeout(ctx, time.Minute)
+	ctx2, cancel := context.WithTimeout(ctx, time.Minute)
 	defer cancel()
-	cfg, err := nodeClient.NetworkGetPublicConfig(sub)
+	cfg, err := nodeClient.NetworkGetPublicConfig(ctx2)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't get node public config"))
 	}
