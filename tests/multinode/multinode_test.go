@@ -1,3 +1,6 @@
+//go:build integration
+// +build integration
+
 package test
 
 import (
@@ -58,12 +61,7 @@ func TestMultiNodeDeployment(t *testing.T) {
 
 	pIP := strings.Split(publicIP, "/")[0]
 	status := false
-	for i := 0; i < 100; i++ {
-		status = tests.Wait(pIP, "22")
-		if status {
-			break
-		}
-	}
+	status = tests.Wait(pIP, "22")
 	if status == false {
 		t.Errorf("ip not reachable")
 	}

@@ -1,3 +1,6 @@
+//go:build integration
+// +build integration
+
 package test
 
 import (
@@ -44,12 +47,7 @@ func TestMultiNodeDeployment(t *testing.T) {
 	assert.NotEmpty(t, ygg_ip)
 
 	status := false
-	for i := 0; i < 5; i++ {
-		status = tests.Wait(ygg_ip, "22")
-		if status {
-			break
-		}
-	}
+	status = tests.Wait(ygg_ip, "22")
 	if status == false {
 		t.Errorf("public ip not reachable")
 	}

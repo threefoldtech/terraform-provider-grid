@@ -1,3 +1,6 @@
+//go:build integration
+// +build integration
+
 package test
 
 import (
@@ -42,9 +45,10 @@ func TestMultiNodeDeployment(t *testing.T) {
 	ygg_ip := terraform.Output(t, terraformOptions, "ygg_ip")
 	assert.NotEmpty(t, ygg_ip)
 
-	status := tests.Wait(ygg_ip, "22")
-	for status == false {
-		status = tests.Wait(ygg_ip, "22")
+	status := false
+	status = tests.Wait(ygg_ip, "22")
+	if status == false {
+		t.Errorf("Yggdrasil IP not reachable")
 	}
 
 	verifyIPs := []string{ygg_ip, metrics}

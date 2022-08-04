@@ -1,3 +1,6 @@
+//go:build integration
+// +build integration
+
 package test
 
 import (
@@ -45,12 +48,7 @@ func TestSingleNodeDeployment(t *testing.T) {
 	assert.NotEmpty(t, yggIP)
 
 	status := false
-	for i := 0; i < 100; i++ {
-		status = tests.Wait(yggIP, "22")
-		if status {
-			break
-		}
-	}
+	status = tests.Wait(yggIP, "22")
 	if status == false {
 		t.Errorf("Yggdrasil IP not reachable")
 	}

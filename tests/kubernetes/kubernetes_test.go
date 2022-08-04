@@ -1,3 +1,6 @@
+//go:build integration
+// +build integration
+
 package test
 
 import (
@@ -55,12 +58,7 @@ func TestKubernetesDeployment(t *testing.T) {
 	// Check that master is reachable
 	masterIP := strings.Split(masterPublicIP, "/")[0]
 	status := false
-	for i := 0; i < 100; i++ {
-		status = tests.Wait(masterIP, "22")
-		if status {
-			break
-		}
-	}
+	status = tests.Wait(masterIP, "22")
 	if status == false {
 		t.Errorf("public ip not reachable")
 	}

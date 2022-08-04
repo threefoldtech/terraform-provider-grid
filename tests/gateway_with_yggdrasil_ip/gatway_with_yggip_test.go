@@ -1,3 +1,6 @@
+//go:build integration
+// +build integration
+
 package test
 
 import (
@@ -50,12 +53,7 @@ func TestSingleNodeDeployment(t *testing.T) {
 
 	// ssh to VM and check if yggdrasil is active
 	status := false
-	for i := 0; i < 5; i++ {
-		status = tests.Wait(yggIP, "22")
-		if status {
-			break
-		}
-	}
+	status = tests.Wait(yggIP, "22")
 	if status == false {
 		t.Errorf("ygg ip not reachable")
 	}

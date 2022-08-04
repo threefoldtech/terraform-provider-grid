@@ -46,9 +46,6 @@ Docs for resources and their arguments can be found [here](docs). For a thorough
 - [introducing new nodes to kuberentes deployment](https://github.com/threefoldtech/terraform-provider-grid/issues/13)
 - [multiple deployments on the same node](https://github.com/threefoldtech/terraform-provider-grid/issues/11)
 
-## Troubleshooting
-
-see [steps](https://github.com/threefoldtech/terraform-provider-grid/blob/development/TROUBLESHOOTING.md)
 
 ## Run tests
 To run the tests, export MNEMONICS and NETWORK
