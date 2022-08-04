@@ -225,8 +225,7 @@ func (k *NetworkDeployer) invalidateBrokenAttributes(sub subi.SubstrateExt) erro
 		if err != nil {
 			// whatever the error, delete it and it will get reassigned later
 			k.PublicNodeID = 0
-		}
-		if err := isNodeUp(context.Background(), cl); err != nil {
+		} else if err := isNodeUp(context.Background(), cl); err != nil {
 			k.PublicNodeID = 0
 		}
 	}
