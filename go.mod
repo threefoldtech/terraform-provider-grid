@@ -8,22 +8,28 @@ require (
 	github.com/golang/mock v1.4.4
 	github.com/gomodule/redigo v2.0.0+incompatible
 	github.com/google/uuid v1.3.0
+	github.com/gruntwork-io/terratest v0.37.7
 	github.com/hashicorp/terraform-plugin-docs v0.8.1
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.16.0
+	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.7.1
 	github.com/threefoldtech/go-rmb v0.1.11-0.20220224131627-825c23c921d3
-	github.com/threefoldtech/grid_proxy_server v1.5.1
 	github.com/threefoldtech/substrate-client v0.0.0-20220629072807-544d41e5b81a
 	github.com/threefoldtech/substrate-client-main v0.0.1
 	github.com/threefoldtech/substrate-client-qa v0.0.1
 	github.com/threefoldtech/substrate-client-test v0.0.1
-	github.com/threefoldtech/zos v0.5.6-0.20220613090823-9413ae8c81e9
+	github.com/threefoldtech/zos v0.5.6-0.20220629073825-73f495f28c80
 	golang.org/x/net v0.0.0-20220403103023-749bd193bc2b // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20210803171230-4253848d036c
 )
 
-require github.com/threefoldtech/substrate-client-dev v0.0.1
+require (
+	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e
+	github.com/threefoldtech/grid_proxy_server v1.5.5
+	github.com/threefoldtech/substrate-client-dev v0.0.1
+	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
+)
 
 require (
 	github.com/ChainSafe/go-schnorrkel v1.0.0 // indirect
@@ -74,6 +80,7 @@ require (
 	github.com/huandu/xstrings v1.3.2 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/jbenet/go-base58 v0.0.0-20150317085156-6237cf65f3a6 // indirect
+	github.com/jinzhu/copier v0.0.0-20190924061706-b57f9002281a // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mimoo/StrobeGo v0.0.0-20210601165009-122bf33a46e0 // indirect
@@ -84,7 +91,6 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/oklog/run v1.0.0 // indirect
-	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/pierrec/xxHash v0.1.5 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/posener/complete v1.2.3 // indirect
@@ -98,8 +104,7 @@ require (
 	github.com/vmihailenco/msgpack/v4 v4.3.12 // indirect
 	github.com/vmihailenco/tagparser v0.1.1 // indirect
 	github.com/zclconf/go-cty v1.10.0 // indirect
-	golang.org/x/crypto v0.0.0-20220518034528-6f7dac969898 // indirect
-	golang.org/x/sys v0.0.0-20220403020550-483a9cbc67c0 // indirect
+	golang.org/x/sys v0.0.0-20220731174439-a90be440212d // indirect
 	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20210917145530-b395a37504d4 // indirect
