@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
+        with:
+          submodules: 'true'
       - uses: actions/setup-go@v1
         with:
           go-version: 1.18
@@ -33,16 +35,10 @@ jobs:
           PEERS=$(curl https://raw.githubusercontent.com/threefoldtech/zos-config/main/development.json | jq '.yggdrasil.peers[]' -r | sed 's/\//\\\//g' | sed -z 's/\n/\\n/g')
           sudo  sed -i -- 's/Peers\: \[\]/Peers: [\n'"$PEERS"']/g' /etc/yggdrasil.conf
           sudo systemctl start yggdrasil
-      - name: Download Go Modules
-        working-directory: tests
-        run: |
-          go mod download
-          go get gotest.tools/gotestsum
-          go mod tidy
       - name: Run Go Tests
         env:
           MNEMONICS: ${{ secrets.MNEMONICS }}
           NETWORK: "test"
         working-directory: tests
-        run: go test ./tests/... -p 1 --tags=integration
+        run: go test ./... -p 1 --tags=integration
 
