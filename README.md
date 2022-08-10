@@ -57,6 +57,8 @@ go test ./tests/... -p 1 --tags=integration
 ```
 OR by using gotestsum
 ```
+sudo apt -y install gotestsum
+
 go install gotest.tools/gotestsum@latest
 
 gotestsum ./tests/... -p 1 --tags=integration
