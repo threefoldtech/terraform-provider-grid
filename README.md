@@ -59,5 +59,5 @@ OR by using gotestsum
 ```
 go install gotest.tools/gotestsum@latest
 
-gotestsum --format testname ./tests/... -p 1 --tags=integration
+gotestsum ./tests/... -p 1 --tags=integration
 ```

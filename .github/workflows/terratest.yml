@@ -48,5 +48,5 @@ jobs:
           MNEMONICS: ${{ secrets.MNEMONICS }}
           NETWORK: "test"
         working-directory: tests
-        run: gotestsum --format testname ./... -p 1 --tags=integration
+        run: gotestsum ./... -p 1 --tags=integration
 
