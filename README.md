@@ -53,10 +53,11 @@ export MNEMONICS="<mnemonics words>"
 export NETWORK="<network>" # dev or test
 run the following command
 ```bash
-go test ./... -p 1
+go test ./tests/... -p 1 --tags=integration
 ```
 OR by using gotestsum
 ```
-go get gotest.tools/gotestsum 
-gotestsum --format testname
+go install gotest.tools/gotestsum@latest
+
+gotestsum --format testname ./tests/... -p 1 --tags=integration
 ```

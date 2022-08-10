@@ -2,8 +2,9 @@ name: Run Tests
 
 
 on:
-  schedule:
-    - cron:  '0 0 * * *'
+  push:
+    branches:
+      - development_terratest_fixes
 
 jobs:
   go-tests:
@@ -35,10 +36,16 @@ jobs:
           PEERS=$(curl https://raw.githubusercontent.com/threefoldtech/zos-config/main/development.json | jq '.yggdrasil.peers[]' -r | sed 's/\//\\\//g' | sed -z 's/\n/\\n/g')
           sudo  sed -i -- 's/Peers\: \[\]/Peers: [\n'"$PEERS"']/g' /etc/yggdrasil.conf
           sudo systemctl start yggdrasil
+      - name: Download gotestsum
+        working-directory: tests
+        run: |
+          go mod download
+          go install gotest.tools/gotestsum@latest
+          go mod tidy
       - name: Run Go Tests
         env:
           MNEMONICS: ${{ secrets.MNEMONICS }}
           NETWORK: "test"
         working-directory: tests
-        run: go test ./... -p 1 --tags=integration
+        run: gotestsum --format testname ./... -p 1 --tags=integration
 
