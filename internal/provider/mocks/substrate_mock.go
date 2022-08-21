@@ -172,9 +172,9 @@ func (mr *MockSubstrateExtMockRecorder) CreateNameContract(identity, name interf
 }
 
 // CreateNodeContract mocks base method.
-func (m *MockSubstrateExt) CreateNodeContract(identity subi.Identity, node uint32, body []byte, hash string, publicIPs uint32) (uint64, error) {
+func (m *MockSubstrateExt) CreateNodeContract(identity subi.Identity, node uint32, body string, hash string, publicIPs uint32, solutionProviderID *uint64) (uint64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateNodeContract", identity, node, body, hash, publicIPs)
+	ret := m.ctrl.Call(m, "CreateNodeContract", identity, node, body, hash, publicIPs, solutionProviderID)
 	ret0, _ := ret[0].(uint64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1

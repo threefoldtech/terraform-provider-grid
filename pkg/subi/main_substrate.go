@@ -41,8 +41,8 @@ func (s *SubstrateMainImpl) UpdateNodeContract(identity Identity, contract uint6
 	res, err := s.Substrate.UpdateNodeContract(identity, contract, body, hash)
 	return res, terr(err)
 }
-func (s *SubstrateMainImpl) CreateNodeContract(identity Identity, node uint32, body []byte, hash string, publicIPs uint32) (uint64, error) {
-	res, err := s.Substrate.CreateNodeContract(identity, node, body, hash, publicIPs)
+func (s *SubstrateMainImpl) CreateNodeContract(identity Identity, node uint32, body string, hash string, publicIPs uint32, solutionProviderID *uint64) (uint64, error) {
+	res, err := s.Substrate.CreateNodeContract(identity, node, []byte(body), hash, publicIPs)
 	return res, terr(err)
 }
 func (s *SubstrateMainImpl) GetContract(contractID uint64) (Contract, error) {
