@@ -60,6 +60,13 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 		qsfs = append(qsfs, data)
 	}
 	pool := client.NewNodeClientPool(apiClient.rmb)
+	solutionProviderVal := uint64(d.Get("solution_provider").(int))
+	var solutionProvider *uint64
+	if solutionProviderVal == 0 {
+		solutionProvider = nil
+	} else {
+		solutionProvider = &solutionProviderVal
+	}
 	deploymentDeployer := DeploymentDeployer{
 		Id:          d.Id(),
 		Node:        uint32(d.Get("node").(int)),
@@ -71,7 +78,7 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 		NetworkName: networkName,
 		APIClient:   apiClient,
 		ncPool:      pool,
-		deployer:    deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true),
+		deployer:    deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, solutionProvider),
 	}
 	return deploymentDeployer, nil
 }

@@ -23,11 +23,12 @@ type Deployer interface {
 }
 
 type DeployerImpl struct {
-	identity        substrate.Identity
-	twinID          uint32
-	validator       Validator
-	ncPool          client.NodeClientCollection
-	revertOnFailure bool
+	identity         substrate.Identity
+	twinID           uint32
+	validator        Validator
+	ncPool           client.NodeClientCollection
+	revertOnFailure  bool
+	solutionProvider *uint64
 }
 
 func NewDeployer(
@@ -36,6 +37,7 @@ func NewDeployer(
 	gridClient proxy.Client,
 	ncPool client.NodeClientCollection,
 	revertOnFailure bool,
+	solutionProvider *uint64,
 ) Deployer {
 	return &DeployerImpl{
 		identity,
@@ -43,6 +45,7 @@ func NewDeployer(
 		&ValidatorImpl{gridClient: gridClient},
 		ncPool,
 		revertOnFailure,
+		solutionProvider,
 	}
 }
 
@@ -120,7 +123,7 @@ func (d *DeployerImpl) deploy(
 
 			publicIPCount := countDeploymentPublicIPs(dl)
 			log.Printf("Number of public ips: %d\n", publicIPCount)
-			contractID, err := sub.CreateNodeContract(d.identity, node, "", hashHex, publicIPCount, nil)
+			contractID, err := sub.CreateNodeContract(d.identity, node, "", hashHex, publicIPCount, d.solutionProvider)
 			log.Printf("CreateNodeContract returned id: %d\n", contractID)
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "failed to create contract")
