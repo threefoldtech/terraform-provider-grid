@@ -30,6 +30,12 @@ func resourceDeployment() *schema.Resource {
 				Required:    true,
 				Description: "Node id to place the deployment on",
 			},
+			"solution_provider": {
+				Type:        schema.TypeInt,
+				Optional:    true,
+				Default:     0,
+				Description: "Solution provider ID",
+			},
 			"ip_range": {
 				Type:        schema.TypeString,
 				Optional:    true,

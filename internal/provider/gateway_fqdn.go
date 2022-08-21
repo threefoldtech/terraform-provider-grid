@@ -57,7 +57,7 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 		NodeDeploymentID: nodeDeploymentID,
 		APIClient:        apiClient,
 		ncPool:           ncPool,
-		deployer:         deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, ncPool, true),
+		deployer:         deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, ncPool, true, nil),
 	}
 	return deployer, nil
 }

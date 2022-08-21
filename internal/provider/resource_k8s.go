@@ -356,7 +356,7 @@ func NewK8sDeployer(d *schema.ResourceData, apiClient *apiClient) (K8sDeployer, 
 		APIClient:        apiClient,
 		ncPool:           pool,
 		d:                d,
-		deployer:         deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true),
+		deployer:         deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, nil),
 	}
 	return deployer, nil
 }
