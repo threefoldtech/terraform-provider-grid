@@ -37,8 +37,8 @@ func (s *SubstrateTestImpl) GetNodeTwin(id uint32) (uint32, error) {
 	}
 	return uint32(node.TwinID), nil
 }
-func (s *SubstrateTestImpl) UpdateNodeContract(identity Identity, contract uint64, body []byte, hash string) (uint64, error) {
-	res, err := s.Substrate.UpdateNodeContract(identity, contract, body, hash)
+func (s *SubstrateTestImpl) UpdateNodeContract(identity Identity, contract uint64, body string, hash string) (uint64, error) {
+	res, err := s.Substrate.UpdateNodeContract(identity, contract, []byte(body), hash)
 	return res, terr(err)
 }
 func (s *SubstrateTestImpl) CreateNodeContract(identity Identity, node uint32, body string, hash string, publicIPs uint32, solutionProviderID *uint64) (uint64, error) {
