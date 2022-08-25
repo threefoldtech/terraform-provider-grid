@@ -62,7 +62,7 @@ func NewGatewayNameDeployer(d *schema.ResourceData, apiClient *apiClient) (Gatew
 
 		APIClient: apiClient,
 		ncPool:    pool,
-		deployer:  deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true),
+		deployer:  deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, nil),
 	}
 	return deployer, nil
 }

@@ -192,7 +192,7 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 		WGPort:           make(map[uint32]int),
 		APIClient:        apiClient,
 		ncPool:           pool,
-		deployer:         deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true),
+		deployer:         deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, nil),
 	}
 	return deployer, nil
 }

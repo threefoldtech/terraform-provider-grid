@@ -1,0 +1,51 @@
+name: Run Tests
+
+
+on:
+  schedule:
+    - cron:  '0 0 * * *'
+
+jobs:
+  go-tests:
+    name: Run Go Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+        with:
+          submodules: 'true'
+      - uses: actions/setup-go@v1
+        with:
+          go-version: 1.18
+      - uses: autero1/action-terraform@v0.1.0
+        env:
+          ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+        with:
+          terraform_version: 1.0.11
+      - name: install wg and yggdrasil and add peers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wireguard
+          sudo apt-get install dirmngr
+          gpg --fetch-keys https://neilalexander.s3.dualstack.eu-west-2.amazonaws.com/deb/key.txt
+          gpg --export 569130E8CA20FBC4CB3FDE555898470A764B32C9 | sudo apt-key add -
+          echo 'deb http://neilalexander.s3.dualstack.eu-west-2.amazonaws.com/deb/ debian yggdrasil' | sudo tee /etc/apt/sources.list.d/yggdrasil.list
+          sudo apt-get update
+          sudo apt-get install yggdrasil
+          sudo systemctl enable yggdrasil
+          PEERS=$(curl https://raw.githubusercontent.com/threefoldtech/zos-config/main/development.json | jq '.yggdrasil.peers[]' -r | sed 's/\//\\\//g' | sed -z 's/\n/\\n/g')
+          sudo  sed -i -- 's/Peers\: \[\]/Peers: [\n'"$PEERS"']/g' /etc/yggdrasil.conf
+          sudo systemctl start yggdrasil
+      - name: Download gotestsum
+        working-directory: tests
+        run: |
+          sudo apt -y install gotestsum
+          go mod download
+          go install gotest.tools/gotestsum@latest
+          go mod tidy
+      - name: Run Go Tests
+        env:
+          MNEMONICS: ${{ secrets.MNEMONICS }}
+          NETWORK: "test"
+        working-directory: tests
+        run: gotestsum ./... -p 1 --tags=integration
+

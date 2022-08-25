@@ -45,3 +45,21 @@ Docs for resources and their arguments can be found [here](docs). For a thorough
 - [increasing IPs in active deployment](https://github.com/threefoldtech/terraform-provider-grid/issues/15)
 - [introducing new nodes to kuberentes deployment](https://github.com/threefoldtech/terraform-provider-grid/issues/13)
 - [multiple deployments on the same node](https://github.com/threefoldtech/terraform-provider-grid/issues/11)
+
+
+## Run tests
+To run the tests, export MNEMONICS and NETWORK
+export MNEMONICS="<mnemonics words>"
+export NETWORK="<network>" # dev or test
+run the following command
+```bash
+go test ./tests/... -p 1 --tags=integration
+```
+OR by using gotestsum
+```
+sudo apt -y install gotestsum
+
+go install gotest.tools/gotestsum@latest
+
+gotestsum ./tests/... -p 1 --tags=integration
+```
