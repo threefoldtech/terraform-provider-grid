@@ -1255,11 +1255,11 @@ github.com/threefoldtech/go-substrate-rpc-client/v4 v4.0.3-0.20220629145942-1ef6
 github.com/threefoldtech/grid_proxy_server v1.5.5 h1:fK/CgZfbRfKJfpYPJxgzdKyqZnUNjVCy9Slp23IBBeU=
 github.com/threefoldtech/grid_proxy_server v1.5.5/go.mod h1:T8faHtrH+pJu03IVMngcvscSlZv9kaam9a839br0WD0=
 github.com/threefoldtech/substrate-client v0.0.0-20220224131248-f56a2e9fa1d4/go.mod h1:Lpsz7gVNSdbWD8erfVh1AZv2wnProc7g/QHJiYp5lP8=
-github.com/threefoldtech/substrate-client v0.0.0-20220818144851-6a557482fa7c h1:E92pMjBwkMn3HqgoxkJ8hUdOibdyoWhtNFKhD1SPnQ0=
-github.com/threefoldtech/substrate-client v0.0.0-20220818144851-6a557482fa7c/go.mod h1:XGsrSO/mdaDkP1ERv4+ccaNDsbU97u27f7p/iQpKrTA=
+github.com/threefoldtech/substrate-client v0.0.0-20220822132933-d0d75781793c h1:VgqHiHZeQpZumpR637yo85aTbjAqZ4hoqSyVVw5VvY8=
+github.com/threefoldtech/substrate-client v0.0.0-20220822132933-d0d75781793c/go.mod h1:XGsrSO/mdaDkP1ERv4+ccaNDsbU97u27f7p/iQpKrTA=
 github.com/threefoldtech/zbus v1.0.0/go.mod h1:E/v/xEvG/l6z/Oj0aDkuSUXFm/1RVJkhKBwDTAIdsHo=
-github.com/threefoldtech/zos v0.5.6-0.20220818145204-350d688fa1cf h1:5hF9lw3GgFqTGgiNdhojDLY1D9mIJn8bznQb9xfdiV4=
-github.com/threefoldtech/zos v0.5.6-0.20220818145204-350d688fa1cf/go.mod h1:LOJqi80NF3PX8pR5qTQpgQHrMHES23xnklHoXSASx+8=
+github.com/threefoldtech/zos v0.5.6-0.20220823125932-7df5043ab018 h1:0JxgxCDXyuthAPRhAY67UVtjId70TutKhr5hw7Kl9BU=
+github.com/threefoldtech/zos v0.5.6-0.20220823125932-7df5043ab018/go.mod h1:6A3xX+8U9S2B8j0GnEnwsM8K9BzOCGp7pBoqq6qRQ20=
 github.com/tinylib/msgp v1.0.2/go.mod h1:+d+yLhGm8mzTaHzB+wgMYrodPfmZrzkirds8fDWklFE=
 github.com/tinylib/msgp v1.1.2/go.mod h1:+d+yLhGm8mzTaHzB+wgMYrodPfmZrzkirds8fDWklFE=
 github.com/tinylib/msgp v1.1.5/go.mod h1:eQsjooMTnV42mHu917E26IogZ2930nFyBQdofk10Udg=

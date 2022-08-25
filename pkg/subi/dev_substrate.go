@@ -11,7 +11,7 @@ import (
 type Substrate interface {
 	CancelContract(identity Identity, contractID uint64) error
 	CreateNodeContract(identity Identity, node uint32, body string, hash string, publicIPs uint32, solutionProviderID *uint64) (uint64, error)
-	UpdateNodeContract(identity Identity, contract uint64, body []byte, hash string) (uint64, error)
+	UpdateNodeContract(identity Identity, contract uint64, body string, hash string) (uint64, error)
 	Close()
 	GetTwinByPubKey(pk []byte) (uint32, error)
 }
@@ -62,7 +62,7 @@ func (s *SubstrateDevImpl) GetNodeTwin(id uint32) (uint32, error) {
 	}
 	return uint32(node.TwinID), nil
 }
-func (s *SubstrateDevImpl) UpdateNodeContract(identity Identity, contract uint64, body []byte, hash string) (uint64, error) {
+func (s *SubstrateDevImpl) UpdateNodeContract(identity Identity, contract uint64, body string, hash string) (uint64, error) {
 	res, err := s.Substrate.UpdateNodeContract(identity, contract, body, hash)
 	return res, terr(err)
 }

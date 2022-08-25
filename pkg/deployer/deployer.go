@@ -219,7 +219,7 @@ func (d *DeployerImpl) deploy(
 			log.Printf("[DEBUG] HASH: %s", hashHex)
 			// TODO: Destroy and create if publicIPCount is changed
 			// publicIPCount := countDeploymentPublicIPs(dl)
-			contractID, err := sub.UpdateNodeContract(d.identity, dl.ContractID, nil, hashHex)
+			contractID, err := sub.UpdateNodeContract(d.identity, dl.ContractID, "", hashHex)
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "failed to update deployment")
 			}

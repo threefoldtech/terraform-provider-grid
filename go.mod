@@ -15,11 +15,11 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.7.1
 	github.com/threefoldtech/go-rmb v0.1.11-0.20220224131627-825c23c921d3
-	github.com/threefoldtech/substrate-client v0.0.0-20220818144851-6a557482fa7c
+	github.com/threefoldtech/substrate-client v0.0.0-20220822132933-d0d75781793c
 	github.com/threefoldtech/substrate-client-main v0.0.1
 	github.com/threefoldtech/substrate-client-qa v0.0.1
 	github.com/threefoldtech/substrate-client-test v0.0.1
-	github.com/threefoldtech/zos v0.5.6-0.20220818145204-350d688fa1cf
+	github.com/threefoldtech/zos v0.5.6-0.20220823125932-7df5043ab018
 	golang.org/x/net v0.0.0-20220403103023-749bd193bc2b // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20210803171230-4253848d036c
 )
