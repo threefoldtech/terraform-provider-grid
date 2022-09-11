@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/hashicorp/go-cty/cty"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
@@ -175,6 +177,21 @@ func resourceDeployment() *schema.Resource {
 							Optional:    true,
 							Default:     1,
 							Description: "Number of VCPUs",
+                            ValidateDiagFunc: func(i interface{}, p cty.Path) diag.Diagnostics {
+                                var diags diag.Diagnostics
+                                cpus := i.(int)
+                                if cpus < 0 || cpus > 15 {
+                                    diag := diag.Diagnostic{
+                                    	Severity:      diag.Error,
+                                    	Summary:       "Wrong input",
+                                    	Detail:        "CPUs must be less than 16",
+                                    	AttributePath: p,
+                                    }
+                                    diags = append(diags, diag)
+                                }
+
+                                return diags
+                            },
 						},
 						"description": {
 							Type:     schema.TypeString,
