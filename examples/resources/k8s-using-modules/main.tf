@@ -1,5 +1,5 @@
-module "ks-cluster" {
-    source = "./k8s-module"
+module "kubernetes" {
+    source = "github.com/IslamWalid/terraform-provider-grid/modules/k8s-module"
     ssh = local.ssh
     token = local.token
     network = local.network
@@ -74,4 +74,16 @@ locals {
             description = ""
         }
     ]
+}
+
+output "master_yggip" {
+    value = module.kubernetes.master.ygg_ip
+}
+
+output "w0_yggip" {
+    value = module.kubernetes.workers["w0"].ygg_ip
+}
+
+output "w1_yggip" {
+    value = module.kubernetes.workers["w1"].ygg_ip
 }
