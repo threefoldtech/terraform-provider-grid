@@ -1,7 +1,7 @@
 package test
 
 import (
-	"fmt"
+	"log"
 	"os"
 	"strings"
 	"testing"
@@ -15,9 +15,6 @@ import (
 func TestKubernetesDeployment(t *testing.T) {
 	tests.SshKeys()
 	sshKey := os.Getenv("PUBLICKEY")
-
-    file, _ := os.Create("verbose.txt")
-    defer file.Close()
 
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./",
@@ -55,7 +52,7 @@ func TestKubernetesDeployment(t *testing.T) {
 	})
 
 	terraform.InitAndApply(t, terraformOptions)
-    assertDeploymentStatus(t, terraformOptions, file)
+    assertDeploymentStatus(t, terraformOptions)
 
 	terraformOptions.Vars["workers"] = []map[string]interface{} {
         {
@@ -101,26 +98,27 @@ func TestKubernetesDeployment(t *testing.T) {
     }
 
 	terraform.Apply(t, terraformOptions)
-    assertDeploymentStatus(t, terraformOptions, file)
+    assertDeploymentStatus(t, terraformOptions)
 	terraform.Destroy(t, terraformOptions)
 }
 
-func assertDeploymentStatus(t *testing.T, terraformOptions *terraform.Options, file *os.File) {
+func assertDeploymentStatus(t *testing.T, terraformOptions *terraform.Options) {
     t.Helper()
 
 	masterYggIP := terraform.Output(t, terraformOptions, "master_yggip")
 	assert.NotEmpty(t, masterYggIP)
-    fmt.Fprintln(file, masterYggIP)
+    log.Printf("master_yggip: %s\n", masterYggIP)
 
+    time.Sleep(5 * time.Second)
 	res, err := tests.RemoteRun("root", masterYggIP, "kubectl get node")
+    res = strings.Trim(res, "\n")
 	assert.Empty(t, err)
 
-    time.Sleep(3 * time.Second)
 	nodes := strings.Split(res, "\n")[1:]
-    fmt.Fprintf(file, "All nodes: %#v\n\n", nodes)
+    log.Printf("All nodes: %#v\n\n", nodes)
 
 	for _, node := range nodes {
-        fmt.Fprintln(file, node)
+        log.Println(node)
 		assert.Contains(t, node, "Ready")
 	}
 }
