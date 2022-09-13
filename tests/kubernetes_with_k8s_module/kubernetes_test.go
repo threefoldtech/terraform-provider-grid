@@ -1,7 +1,6 @@
 package test
 
 import (
-	"log"
 	"os"
 	"strings"
 	"testing"
@@ -107,7 +106,6 @@ func assertDeploymentStatus(t *testing.T, terraformOptions *terraform.Options) {
 
 	masterYggIP := terraform.Output(t, terraformOptions, "master_yggip")
 	assert.NotEmpty(t, masterYggIP)
-    log.Printf("master_yggip: %s\n", masterYggIP)
 
     time.Sleep(5 * time.Second)
 	res, err := tests.RemoteRun("root", masterYggIP, "kubectl get node")
@@ -115,10 +113,8 @@ func assertDeploymentStatus(t *testing.T, terraformOptions *terraform.Options) {
 	assert.Empty(t, err)
 
 	nodes := strings.Split(res, "\n")[1:]
-    log.Printf("All nodes: %#v\n\n", nodes)
 
 	for _, node := range nodes {
-        log.Println(node)
 		assert.Contains(t, node, "Ready")
 	}
 }
