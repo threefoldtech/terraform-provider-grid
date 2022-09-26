@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -554,7 +555,22 @@ func (k *K8sDeployer) ValidateIPranges(ctx context.Context) error {
 	return nil
 }
 
+func (k *K8sDeployer) validateToken(ctx context.Context) error {
+	if k.Token == "" {
+		return errors.New("token has to be non empty")
+	}
+
+	if strings.ContainsAny(k.Token, " ") {
+		return errors.New("token must not contain spaces")
+	}
+
+	return nil
+}
+
 func (k *K8sDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error {
+	if err := k.validateToken(ctx); err != nil {
+		return err
+	}
 	if err := validateAccountMoneyForExtrinsics(sub, k.APIClient.identity); err != nil {
 		return err
 	}
