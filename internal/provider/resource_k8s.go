@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"regexp"
 	"strconv"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -560,8 +560,9 @@ func (k *K8sDeployer) validateToken(ctx context.Context) error {
 		return errors.New("token has to be non empty")
 	}
 
-	if strings.ContainsAny(k.Token, " ") {
-		return errors.New("token must not contain spaces")
+	is_alphanumeric := regexp.MustCompile(`^[a-zA-Z0-9]*$`).MatchString(k.Token)
+	if !is_alphanumeric {
+		return errors.New("token should be alphanumeric")
 	}
 
 	return nil
