@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"regexp"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -554,7 +555,23 @@ func (k *K8sDeployer) ValidateIPranges(ctx context.Context) error {
 	return nil
 }
 
+func (k *K8sDeployer) validateToken(ctx context.Context) error {
+	if k.Token == "" {
+		return errors.New("empty token is now allowed")
+	}
+
+	is_alphanumeric := regexp.MustCompile(`^[a-zA-Z0-9]*$`).MatchString(k.Token)
+	if !is_alphanumeric {
+		return errors.New("token should be alphanumeric")
+	}
+
+	return nil
+}
+
 func (k *K8sDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error {
+	if err := k.validateToken(ctx); err != nil {
+		return err
+	}
 	if err := validateAccountMoneyForExtrinsics(sub, k.APIClient.identity); err != nil {
 		return err
 	}
