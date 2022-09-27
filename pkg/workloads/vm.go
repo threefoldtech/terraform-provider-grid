@@ -280,6 +280,10 @@ func (vm *VM) Dictify() map[string]interface{} {
 	return res
 }
 func (v *VM) Validate() error {
+	if v.Cpu < 1 || v.Cpu > 32 {
+		return errors.Wrap(errors.New("Invalid CPU input"), "CPUs must be more than or equal to 1 and less than or equal to 32")
+	}
+
 	if v.FlistChecksum != "" {
 		checksum, err := getFlistChecksum(v.Flist)
 		if err != nil {
