@@ -175,16 +175,16 @@ func TestValidate(t *testing.T) {
 
 func TestValidateFailure(t *testing.T) {
 	t.Run("Invalid_flist", func (t *testing.T) {
-        vm := vmObj()
-        vm.FlistChecksum += "a"
-        assert.Error(t, vm.Validate())
-    })
+        	vm := vmObj()
+        	vm.FlistChecksum += "a"
+        	assert.Error(t, vm.Validate())
+    	})
 
-    t.Run("Invalid_CPU", func(t *testing.T) {
-        vm := vmObj()
-        vm.Cpu = 1000
-        assert.Error(t, vm.Validate())
-    })
+    	t.Run("Invalid_CPU", func(t *testing.T) {
+		vm := vmObj()
+		vm.Cpu = 1000
+		assert.Error(t, vm.Validate())
+    	})
 }
 
 func TestNewVMFromWorkloads(t *testing.T) {
