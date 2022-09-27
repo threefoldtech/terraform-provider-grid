@@ -557,7 +557,7 @@ func (k *K8sDeployer) ValidateIPranges(ctx context.Context) error {
 
 func (k *K8sDeployer) validateToken(ctx context.Context) error {
 	if k.Token == "" {
-		return errors.New("token has to be non empty")
+		return errors.New("empty token is now allowed")
 	}
 
 	is_alphanumeric := regexp.MustCompile(`^[a-zA-Z0-9]*$`).MatchString(k.Token)
