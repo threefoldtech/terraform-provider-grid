@@ -51,65 +51,65 @@ func TestKubernetesDeployment(t *testing.T) {
 	})
 
 	terraform.InitAndApply(t, terraformOptions)
-    assertDeploymentStatus(t, terraformOptions)
+	assertDeploymentStatus(t, terraformOptions)
 
-	terraformOptions.Vars["workers"] = []map[string]interface{} {
-        {
-            "name":        "w0",
-            "node":        49,
-            "cpu":         1,
-            "memory":      1024,
-            "disk_name":   "w0disk",
-            "mount_point": "/mydisk",
-            "publicip":    false,
-            "planetary":   true,
-        },
-        {
-            "name":        "w1",
-            "node":        49,
-            "cpu":         1,
-            "memory":      1024,
-            "disk_name":   "w1disk",
-            "mount_point": "/mydisk",
-            "publicip":    false,
-            "planetary":   true,
-        },
-    }
-	terraformOptions.Vars["disks"] = []map[string]interface{} {
-        {
-            "name":        "mrdisk",
-            "node":        45,
-            "size":        5,
-            "description": "",
-        },
-        {
-            "name":        "w0disk",
-            "node":        49,
-            "size":        2,
-            "description": "",
-        },
-        {
-            "name":        "w1disk",
-            "node":        49,
-            "size":        2,
-            "description": "",
-        },
-    }
+	terraformOptions.Vars["workers"] = []map[string]interface{}{
+		{
+			"name":        "w0",
+			"node":        49,
+			"cpu":         1,
+			"memory":      1024,
+			"disk_name":   "w0disk",
+			"mount_point": "/mydisk",
+			"publicip":    false,
+			"planetary":   true,
+		},
+		{
+			"name":        "w1",
+			"node":        49,
+			"cpu":         1,
+			"memory":      1024,
+			"disk_name":   "w1disk",
+			"mount_point": "/mydisk",
+			"publicip":    false,
+			"planetary":   true,
+		},
+	}
+	terraformOptions.Vars["disks"] = []map[string]interface{}{
+		{
+			"name":        "mrdisk",
+			"node":        45,
+			"size":        5,
+			"description": "",
+		},
+		{
+			"name":        "w0disk",
+			"node":        49,
+			"size":        2,
+			"description": "",
+		},
+		{
+			"name":        "w1disk",
+			"node":        49,
+			"size":        2,
+			"description": "",
+		},
+	}
 
 	terraform.Apply(t, terraformOptions)
-    assertDeploymentStatus(t, terraformOptions)
+	assertDeploymentStatus(t, terraformOptions)
 	terraform.Destroy(t, terraformOptions)
 }
 
 func assertDeploymentStatus(t *testing.T, terraformOptions *terraform.Options) {
-    t.Helper()
+	t.Helper()
 
 	masterYggIP := terraform.Output(t, terraformOptions, "master_yggip")
 	assert.NotEmpty(t, masterYggIP)
 
-    time.Sleep(5 * time.Second)
+	time.Sleep(5 * time.Second)
 	res, err := tests.RemoteRun("root", masterYggIP, "kubectl get node")
-    res = strings.Trim(res, "\n")
+	res = strings.Trim(res, "\n")
 	assert.Empty(t, err)
 
 	nodes := strings.Split(res, "\n")[1:]

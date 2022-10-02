@@ -1,89 +1,61 @@
 module "kubernetes" {
-    source = "github.com/threefoldtech/terraform-provider-grid/modules/k8s-module"
-    ssh = local.ssh
-    token = local.token
-    network = local.network
-    master = local.master
-    workers = local.workers
-    disks = local.disks
+  source  = "../../../modules/k8s-module"
+  ssh     = local.ssh
+  token   = local.token
+  network = local.network
+  master  = local.master
+  workers = local.workers
+  disks   = local.disks
 }
 
 locals {
-    ssh = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC+/mcyN8lmXYY0/8+irXsYpL6uSQHAG/Tulg4O610A3RnUOKt3F42SuTtGDu1uvQX/vdnb+MgXnwLy+zsOe3YISUgvXWJQJOgMvphkisHyfCFeYDE8NyGRpCmlsuKr0jsj3fmyuCAV5TXJWRCKEOxU7wdPUeGC3+VhOFTI7JOHLdT06IX1wznekj+bKUZKbQHV5d4MTHo9dmoQirQU4AyrIMC0K2jHUCMJByLs81evYaplfZmLNbtDW/3KbKa+lh2NovCAbtvu1mC+GgELnOSm7RQ7AEta+a5BEnCEg9sYjZ2PlVt3pihogWtnzkEkd7/cmTk3exrDX86emZSga+NWaI+/mQODpdDsWStetwVIo1WpVdmJLmviPGcwXXx5unDYqFqkJ9F+OnbedCFh/U/9+tSg1/2BsKo81N9zNpoprQCPCKtHgLDbEnHaL7D1Xx2b9/8GD84ADaRr55f34L9mLHvaBRRvZ8L4Jl845KuJ9GCEkmirBHCtdSoIZrWqAbE= islam@islam"
-    token = "838a6db4"
+  ssh   = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCs+AFNbOtMtWElFISu1NLke5dH3x+HKJ1Ef6qYpMzZlF9UfzKhcTSy+LQTxvk55dABBirsln03rRdsblmyCgJAPq/w75QVRJCoh8Ge47eOmvaIx6MLFKTVHbfdUTaqFUZ9B6OxnufPc/T/4uWuBHXGZHNu+6DFS6nx7d0hQJtke4fetEzu+6LjIup0V9Qvt2xSK7kTTuDqHbXzvqc8J9PWmhTr0Q5N3qNJ2g8RrTO3Whmb7Pr0qMA4gWuBPEQoDHnb0YuXqxd3L94bqf2dqo8zo1dVwAESe9OCjwFzSw/1XyPoHPzMxN5B1Uu0hgwGlUagRnDg/C/kA6RJBht91Q/fXDWdB/sLVMfGKZ8EiybRynMQcQMVGebVOw5dQyK5Jt069spBmlqZzJZ4Zpa6ktxwFW2foJxObVhm5fmFr6c7PYIyT03OkY83V9DJVFR+HiVi5in+0DOujMDoyQYV/6Zyvs1uMeJHARJTjvEYz6dbYcA7odp3Zi4Tmv+d+3nkx+k= superluigi@luigi"
+  token = "838a6db4"
 
-    network = {
-        nodes = [45, 33, 30]
-        ip_range = "10.1.0.0/16"
-        name = "test_network"
-        description = "new network for testing"
-        add_wg_access = true
-    }
+  network = {
+    nodes         = [45]
+    ip_range      = "10.1.0.0/16"
+    name          = "test_network"
+    description   = "new network for testing"
+    add_wg_access = false
+  }
 
-    master = {
-        name = "mr"
-        node = 45
-        cpu = 2
-        memory = 1024
-        disk_name = "mrdisk"
-        mount_point = "/mydisk"
-        publicip = false
-        planetary = true
-    }
+  master = {
+    name        = "mr"
+    node        = 45
+    cpu         = 2
+    memory      = 1024
+    disk_name   = "mrdisk"
+    mount_point = "/mydisk"
+    publicip    = true
+    planetary   = false
+  }
 
-    workers = [
-        {
-            name = "w0"
-            node = 33
-            cpu = 1
-            memory = 1024
-            disk_name = "w0disk"
-            mount_point = "/mydisk"
-            publicip = false
-            planetary = true
-        },
-        {
-            name = "w1"
-            node = 30
-            cpu = 1
-            memory = 2048
-            disk_name = "w1disk"
-            mount_point = "/mydisk"
-            publicip = false
-            planetary = true
-        }
-    ]
+  workers = [
+    {
+      name        = "w0"
+      node        = 45
+      cpu         = 1
+      memory      = 1024
+      disk_name   = "w0disk"
+      mount_point = "/mydisk"
+      publicip    = false
+      planetary   = false
+    },
+  ]
 
-    disks = [
-        {
-            name = "mrdisk"
-            node = 45
-            size = 5
-            description = ""
-        },
-        {
-            name = "w0disk"
-            node = 33
-            size = 2
-            description = ""
-        },
-        {
-            name = "w1disk"
-            node = 30
-            size = 3
-            description = ""
-        }
-    ]
-}
-
-output "master_yggip" {
-    value = module.kubernetes.master.ygg_ip
-}
-
-output "w0_yggip" {
-    value = module.kubernetes.workers["w0"].ygg_ip
-}
-
-output "w1_yggip" {
-    value = module.kubernetes.workers["w1"].ygg_ip
+  disks = [
+    {
+      name        = "mrdisk"
+      node        = 45
+      size        = 5
+      description = ""
+    },
+    {
+      name        = "w0disk"
+      node        = 45
+      size        = 2
+      description = ""
+    },
+  ]
 }
