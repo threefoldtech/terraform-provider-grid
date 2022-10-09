@@ -1,3 +1,8 @@
+  
+variable "public_key" {
+  type = string
+}
+
   terraform {
     required_providers {
       grid = {
@@ -16,7 +21,7 @@
   # - the backend can reference the vm ip directly 
   data "grid_gateway_domain" "domain" {
     node = 2
-    name = "khaledpeertube"
+    name = "ashrafpeertube"
   }
   resource "grid_network" "net1" {
       nodes = [2]
@@ -37,7 +42,8 @@
       entrypoint = "/sbin/zinit init"
       memory = 4096
       env_vars = {
-        SSH_KEY = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCnJiB+sXPfqMKx6g67qOONqD0Kme08OKPtvacRwP6o0T8b404YaBvJaAEnsTgNE5A8vl15LBHdI94MdNoNwV7xT9HWWlw6hQ8PzN0e6z5M5bsKH6R6cKVbg8iYUESWWkRBr8iN10KDmbysyIbpr1QVIUoAbET4XpkJMxw46L8ClBsfPY5YFd1Bdd1oLwHJD4+cZQdZf9iSV4EtVfOfgpmOqk5mTzJGEnVf2/NnwzvTeuiezqY9QeIpigHvCKuj4JMyxLYk7zz6/5qY85v1yIUlMQ7xO3OWQFboNYr8E1O6w3wNGp3kGzbI8YrXankz3jfR2tFQBk7f4uWFzjYeaFv04QP830I0l/OSNrM4xBQ8JAQ20PxG2xznfY45g/gDTA2KxKEHLcpxZvq1aLTiqXOay0a270QMVIRIbK69Pov4y94TAZnDqf0DJpDo+dauH/TfDbtA/xelProl7CncE8ZG+HKrkYaNQef8YTql+9jLZwY9IMViwGrKJky6B5lzhQc= khaled@khaled-Inspiron-3576"
+        TEST_VAR = "this value for test"
+        SSH_KEY = "${var.public_key}"
         PEERTUBE_DB_SUFFIX = "_prod"
         PEERTUBE_DB_USERNAME = "peertube"
         PEERTUBE_DB_PASSWORD = "peertube"
@@ -54,7 +60,7 @@
   }
   resource "grid_name_proxy" "p1" {
     node = 2
-    name = "khaledpeertube"
+    name = "ashrafpeertube"
     backends = [format("http://[%s]:9000", grid_deployment.d1.vms[0].ygg_ip)]
     tls_passthrough = false
   }

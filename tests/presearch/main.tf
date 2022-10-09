@@ -1,3 +1,8 @@
+
+variable "public_key" {
+  type = string
+}
+
 terraform {
   required_providers {
     grid = {
@@ -7,23 +12,10 @@ terraform {
 }
 
 provider "grid" {
-}   PRESEARCH_BACKUP_PRI_KEY = <<EOF
-# -----BEGIN PRIVATE KEY-----
-# MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDQjfuZ3uIGOXUP
-# Qqpw1K85LV6sZWOAntUnhL73GXTWcwBer06yPI1ush8Vj6tdP94hmUFfWW85vYRU
-# ...
-# -----END PRIVATE KEY-----
-#       EOF
-#       PRESEARCH_BACKUP_PUB_KEY = <<EOF
-# -----BEGIN PUBLIC KEY-----
-# MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0I37md7iBjl1D0KqcNSv
-# OS1erGVjgJ7VJ4S+9xl01nMAXq9OsjyNbrIfFY+rXT/eIZlBX1lvOb2EVJ93o1mz
-# ...
-# -----END PUBLIC KEY-----
-#       EOF
+}
 
 resource "grid_network" "net1" {
-  nodes         = [3]
+  nodes         = [2]
   ip_range      = "10.1.0.0/16"
   name          = "network"
   description   = "newer network"
@@ -32,9 +24,9 @@ resource "grid_network" "net1" {
 
 # Deployment specs
 resource "grid_deployment" "d1" {
-  node         = 3
+  node         = 2
   network_name = grid_network.net1.name
-  ip_range     = lookup(grid_network.net1.nodes_ip_range, 3, "")
+  ip_range     = lookup(grid_network.net1.nodes_ip_range, 2, "")
 
   disks {
     name        = "data"
@@ -57,8 +49,9 @@ resource "grid_deployment" "d1" {
     }
 
     env_vars = {
-      SSH_KEY                     = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDZnBgLQt77C1suFHsBH5sNdbTxcCCiowDPB+U8h0OsT7onOg/HCYGEguUh9yl5VlacODXSexBhg9LsFTDuO/nBTf/DQVpjqRGQs1QenoGrpaxxaI5Svo5GBLE3Jogva/fhbJtwK9yEgW+1zltO3rTp+sdQ7JFG3uZGnlLSN1U+PCJVzONM2BaAGkQ6XHHuCCiisMlNgWXUzN3T+DjkzHWbXyqPEoK/gSkV20QzWbDRzxM/FJNIOZZh70H+n3QcSl9Q5VTfhc2K1rMNnGRQrl2QHcBsPoO/8dYJxKGt/u9pZI3wkE5C0coYtNvfXIcNj7cSsSJIvCdYYl6x4LkxXhwrOomOwmtZTmJEewe0nhClDU4gMm4s3eET7j2GPe73Ft2OVuF9j+3z0K3jUFQ/2m3HmDDtNVYlB7IOL5479cLRfBBvvQuNpd0p1yBUopxoBureFdqgZYa5887BcUENOKiR58JgF1mZ15g4nnUrdkXqm7KhQgniAp9E68MdsJEg9t0= omar@jarvis",
-      PRESEARCH_REGISTRATION_CODE = "",
+      SSH_KEY                     = "${var.public_key}",
+      PRESEARCH_REGISTRATION_CODE = "e5083a8d0a6362c6cf7a3078bfac81e3",
+      
 
       # COMMENT the two env vars below to create a new node. 
       # or uncomment and fill them from your old node to restore it. #
@@ -79,7 +72,7 @@ resource "grid_deployment" "d1" {
 # ...
 # -----END PUBLIC KEY-----
 #       EOF
-    }
+     }
   }
 }
 
