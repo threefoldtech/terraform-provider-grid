@@ -444,7 +444,7 @@ func resourceDeploymentUpdate(ctx context.Context, sub subi.SubstrateExt, d *sch
 	if d.HasChange("node") {
 		oldContractID, err := strconv.ParseUint(d.Id(), 10, 64)
 		if err != nil {
-			return nil, errors.Wrapf(err, "couldn't parse deployment id %s", d.Id)
+			return nil, errors.Wrapf(err, "couldn't parse deployment id %s", d.Id())
 		}
 		err = sub.CancelContract(apiClient.identity, oldContractID)
 		if err != nil {
