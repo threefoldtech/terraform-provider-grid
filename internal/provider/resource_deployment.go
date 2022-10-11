@@ -38,8 +38,11 @@ func resourceDeployment() *schema.Resource {
 				Description: "Solution provider ID",
 			},
 			"ip_range": {
-				Type:        schema.TypeString,
-				Optional:    true,
+				Type:     schema.TypeString,
+				Optional: true,
+				DiffSuppressFunc: func(k, oldValue, newValue string, d *schema.ResourceData) bool {
+					return newValue == ""
+				},
 				Description: "IP range of the node (e.g. 10.1.2.0/24)",
 			},
 			"network_name": {
