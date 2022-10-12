@@ -48,7 +48,7 @@ resource "grid_deployment" "server1" {
   ip_range = lookup(grid_network.net1.nodes_ip_range, grid_scheduler.sched.nodes["server1"], "")
   vms {
     name = "firstserver"
-    flist = "https://hub.grid.tf/omar0.3bot/omarelawady-simple-http-server-latest.flist"
+    flist = "https://hub.grid.tf/tf-official-apps/simple-http-server-latest.flist"
     cpu = 1
     memory = 256
     rootfs_size = 256
