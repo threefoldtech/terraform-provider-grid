@@ -2,9 +2,12 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -83,6 +86,10 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 	return deploymentDeployer, nil
 }
 
+type SavedState struct {
+	NextIP byte
+}
+
 func (d *DeploymentDeployer) assignNodesIPs() error {
 	if len(d.VMs) == 0 {
 		return nil
@@ -98,6 +105,15 @@ func (d *DeploymentDeployer) assignNodesIPs() error {
 		}
 	}
 	cur := byte(2)
+	savedState := SavedState{}
+	if _, err := os.Stat("state.json"); err == nil {
+		if content, err := ioutil.ReadFile("state.json"); err == nil {
+			if err = json.Unmarshal(content, &savedState); err == nil {
+				cur = savedState.NextIP
+			}
+
+		}
+	}
 	for idx, vm := range d.VMs {
 		if vm.IP != "" && cidr.Contains(net.ParseIP(vm.IP)) {
 			continue
@@ -113,6 +129,17 @@ func (d *DeploymentDeployer) assignNodesIPs() error {
 		}
 		d.VMs[idx].IP = ip.String()
 		usedIPs = append(usedIPs, ip.String())
+	}
+	cur++
+	savedState.NextIP = cur
+	if content, err := json.Marshal(savedState); err == nil {
+		err = ioutil.WriteFile("state.json", content, 0644)
+		if err != nil {
+			return errors.Wrapf(err, "failed to write file: state.json")
+		}
+
+	} else {
+		return errors.Wrapf(err, "failed to save state.json file")
 	}
 	return nil
 }
