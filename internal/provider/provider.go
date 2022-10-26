@@ -110,12 +110,13 @@ func New(version string, st state.StateI) (func() *schema.Provider, subi.Substra
 				"grid_gateway_domain": dataSourceGatewayDomain(),
 			},
 			ResourcesMap: map[string]*schema.Resource{
-				"grid_scheduler":  ReourceScheduler(),
-				"grid_deployment": resourceDeployment(),
-				"grid_network":    resourceNetwork(),
-				"grid_kubernetes": resourceKubernetes(),
-				"grid_name_proxy": resourceGatewayNameProxy(),
-				"grid_fqdn_proxy": resourceGatewayFQDNProxy(),
+				"grid_scheduler":         ReourceScheduler(),
+				"grid_deployment":        resourceDeployment(),
+				"grid_network":           resourceNetwork(),
+				"grid_kubernetes":        resourceKubernetes(),
+				"grid_name_proxy":        resourceGatewayNameProxy(),
+				"grid_fqdn_proxy":        resourceGatewayFQDNProxy(),
+				"grid_capacity_reserver": resourceCapacityReserver(),
 			},
 		}
 		configFunc, sub := providerConfigure(st)
