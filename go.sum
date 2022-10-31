@@ -1252,11 +1252,12 @@ github.com/threefoldtech/go-rmb v0.1.11-0.20220224131627-825c23c921d3 h1:dbkEXzJ
 github.com/threefoldtech/go-rmb v0.1.11-0.20220224131627-825c23c921d3/go.mod h1:iTDlnSja/nUsQ9XyrpOhm8hwvPMooeh80+tGC9TYCV0=
 github.com/threefoldtech/go-substrate-rpc-client/v4 v4.0.3-0.20220629145942-1ef6a654b4b5 h1:qePr8J0r6j6KKDDtqhuJmypLZ0Onh1Gd0+Uo7w/lPVQ=
 github.com/threefoldtech/go-substrate-rpc-client/v4 v4.0.3-0.20220629145942-1ef6a654b4b5/go.mod h1:5g1oM4Zu3BOaLpsKQ+O8PAv2kNuq+kPcA1VzFbsSqxE=
-github.com/threefoldtech/grid_proxy_server v1.5.5 h1:fK/CgZfbRfKJfpYPJxgzdKyqZnUNjVCy9Slp23IBBeU=
-github.com/threefoldtech/grid_proxy_server v1.5.5/go.mod h1:T8faHtrH+pJu03IVMngcvscSlZv9kaam9a839br0WD0=
+github.com/threefoldtech/grid_proxy_server v1.6.2 h1:WuIiD7zzDiARhIbxxzR4bL7m91TEj2ro/7mhXVXhH8E=
+github.com/threefoldtech/grid_proxy_server v1.6.2/go.mod h1:CCj6+Y+8juSCp+FCtaYa1rZAYFAc+vrX3Mh+dzoc4m8=
 github.com/threefoldtech/substrate-client v0.0.0-20220224131248-f56a2e9fa1d4/go.mod h1:Lpsz7gVNSdbWD8erfVh1AZv2wnProc7g/QHJiYp5lP8=
-github.com/threefoldtech/substrate-client v0.0.0-20220822132933-d0d75781793c h1:VgqHiHZeQpZumpR637yo85aTbjAqZ4hoqSyVVw5VvY8=
 github.com/threefoldtech/substrate-client v0.0.0-20220822132933-d0d75781793c/go.mod h1:XGsrSO/mdaDkP1ERv4+ccaNDsbU97u27f7p/iQpKrTA=
+github.com/threefoldtech/substrate-client v0.0.0-20220927111941-026e0cf92661 h1:97p/xt7jRmsydqFbJ1XgpPUJKWfbHzTc5K6B3a6Lep8=
+github.com/threefoldtech/substrate-client v0.0.0-20220927111941-026e0cf92661/go.mod h1:U8sNNYpXyxEKuLUm4jTacuWu43vU0iu2l+K8GXIcbLo=
 github.com/threefoldtech/zbus v1.0.0/go.mod h1:E/v/xEvG/l6z/Oj0aDkuSUXFm/1RVJkhKBwDTAIdsHo=
 github.com/threefoldtech/zos v0.5.6-0.20220823125932-7df5043ab018 h1:0JxgxCDXyuthAPRhAY67UVtjId70TutKhr5hw7Kl9BU=
 github.com/threefoldtech/zos v0.5.6-0.20220823125932-7df5043ab018/go.mod h1:6A3xX+8U9S2B8j0GnEnwsM8K9BzOCGp7pBoqq6qRQ20=
@@ -1509,8 +1510,8 @@ golang.org/x/net v0.0.0-20210525063256-abc453219eb5/go.mod h1:9nx3DQGgdP8bBQD5qx
 golang.org/x/net v0.0.0-20210610132358-84b48f89b13b/go.mod h1:9nx3DQGgdP8bBQD5qxJ1jj9UTztislL4KSBs9R2vV5Y=
 golang.org/x/net v0.0.0-20210805182204-aaa1db679c0d/go.mod h1:9nx3DQGgdP8bBQD5qxJ1jj9UTztislL4KSBs9R2vV5Y=
 golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2/go.mod h1:9nx3DQGgdP8bBQD5qxJ1jj9UTztislL4KSBs9R2vV5Y=
-golang.org/x/net v0.0.0-20220403103023-749bd193bc2b h1:vI32FkLJNAWtGD4BwkThwEy6XS7ZLLMHkSkYfF8M0W0=
-golang.org/x/net v0.0.0-20220403103023-749bd193bc2b/go.mod h1:CfG3xpIq0wQ8r1q4Su4UZFWDARRcnwPjda9FqA0JpMk=
+golang.org/x/net v0.0.0-20220425223048-2871e0cb64e4 h1:HVyaeDAYux4pnY+D/SiwmLOR36ewZ4iGQIIrtnuCjFA=
+golang.org/x/net v0.0.0-20220425223048-2871e0cb64e4/go.mod h1:CfG3xpIq0wQ8r1q4Su4UZFWDARRcnwPjda9FqA0JpMk=
 golang.org/x/oauth2 v0.0.0-20180821212333-d2e6202438be/go.mod h1:N/0e6XlmueqKjAGxoOufVs8QHGRruUQn6yWY3a++T0U=
 golang.org/x/oauth2 v0.0.0-20190226205417-e64efc72b421/go.mod h1:gOpvHmFTYa4IltrdGE7lF6nIHvwfUNPOp7c8zoXwtLw=
 golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45/go.mod h1:gOpvHmFTYa4IltrdGE7lF6nIHvwfUNPOp7c8zoXwtLw=

@@ -15,18 +15,18 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.7.1
 	github.com/threefoldtech/go-rmb v0.1.11-0.20220224131627-825c23c921d3
-	github.com/threefoldtech/substrate-client v0.0.0-20220822132933-d0d75781793c
+	github.com/threefoldtech/substrate-client v0.0.0-20220927111941-026e0cf92661
 	github.com/threefoldtech/substrate-client-main v0.0.1
 	github.com/threefoldtech/substrate-client-qa v0.0.1
 	github.com/threefoldtech/substrate-client-test v0.0.1
 	github.com/threefoldtech/zos v0.5.6-0.20220823125932-7df5043ab018
-	golang.org/x/net v0.0.0-20220403103023-749bd193bc2b // indirect
+	golang.org/x/net v0.0.0-20220425223048-2871e0cb64e4 // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20210803171230-4253848d036c
 )
 
 require (
 	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e
-	github.com/threefoldtech/grid_proxy_server v1.5.5
+	github.com/threefoldtech/grid_proxy_server v1.6.2
 	github.com/threefoldtech/substrate-client-dev v0.0.1
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 )
