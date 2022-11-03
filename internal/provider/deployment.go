@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
@@ -31,6 +32,11 @@ type DeploymentDeployer struct {
 	APIClient   *apiClient
 	ncPool      client.NodeClientCollection
 	deployer    deployer.Deployer
+}
+type DeploymentData struct {
+	Type        string `json:"type"`
+	Name        string `json:"name"`
+	ProjectName string `json:"projectName"`
 }
 
 func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (DeploymentDeployer, error) {
@@ -67,6 +73,16 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 	} else {
 		solutionProvider = &solutionProviderVal
 	}
+	deploymentData := DeploymentData{
+		Name:        d.Get("name").(string),
+		Type:        "vm",
+		ProjectName: d.Get("solution_type").(string),
+	}
+	deploymentDataStr, err := json.Marshal(deploymentData)
+	if err != nil {
+		log.Printf("error parsing deploymentdata: %s", err.Error())
+	}
+
 	deploymentDeployer := DeploymentDeployer{
 		Id:          d.Id(),
 		Node:        uint32(d.Get("node").(int)),
@@ -78,7 +94,7 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 		NetworkName: networkName,
 		APIClient:   apiClient,
 		ncPool:      pool,
-		deployer:    deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, solutionProvider),
+		deployer:    deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, solutionProvider, string(deploymentDataStr)),
 	}
 	return deploymentDeployer, nil
 }
@@ -275,8 +291,9 @@ func (d *DeploymentDeployer) sync(ctx context.Context, sub subi.SubstrateExt) er
 }
 
 // Match objects to match the input
-//      already existing object are stored ordered the same way they are in the input
-//      others are pushed after
+//
+//	already existing object are stored ordered the same way they are in the input
+//	others are pushed after
 func (d *DeploymentDeployer) Match(
 	disks []workloads.Disk,
 	qsfs []workloads.QSFS,

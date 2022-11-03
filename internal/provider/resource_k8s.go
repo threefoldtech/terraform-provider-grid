@@ -31,6 +31,17 @@ func resourceKubernetes() *schema.Resource {
 		DeleteContext: resourceK8sDelete,
 
 		Schema: map[string]*schema.Schema{
+			"name": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "Instance name",
+			},
+			"solution_type": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Default:     "",
+				Description: "Kubernetes",
+			},
 			"node_deployment_id": {
 				Type:        schema.TypeMap,
 				Computed:    true,
@@ -345,6 +356,15 @@ func NewK8sDeployer(d *schema.ResourceData, apiClient *apiClient) (K8sDeployer, 
 	}
 
 	pool := client.NewNodeClientPool(apiClient.rmb)
+	deploymentData := DeploymentData{
+		Name:        d.Get("name").(string),
+		Type:        "kubernetes",
+		ProjectName: d.Get("solution_type").(string),
+	}
+	deploymentDataStr, err := json.Marshal(deploymentData)
+	if err != nil {
+		log.Printf("error parsing deploymentdata: %s", err.Error())
+	}
 	deployer := K8sDeployer{
 		Master:           &master,
 		Workers:          workers,
@@ -357,7 +377,7 @@ func NewK8sDeployer(d *schema.ResourceData, apiClient *apiClient) (K8sDeployer, 
 		APIClient:        apiClient,
 		ncPool:           pool,
 		d:                d,
-		deployer:         deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, nil),
+		deployer:         deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, nil, string(deploymentDataStr)),
 	}
 	return deployer, nil
 }
