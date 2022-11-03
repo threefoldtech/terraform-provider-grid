@@ -2,7 +2,9 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"log"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -47,6 +49,15 @@ func NewGatewayNameDeployer(d *schema.ResourceData, apiClient *apiClient) (Gatew
 		nodeDeploymentID[uint32(nodeInt)] = deploymentID
 	}
 	pool := client.NewNodeClientPool(apiClient.rmb)
+	deploymentData := DeploymentData{
+		Name:        d.Get("name").(string),
+		Type:        "gateway",
+		ProjectName: d.Get("solution_type").(string),
+	}
+	deploymentDataStr, err := json.Marshal(deploymentData)
+	if err != nil {
+		log.Printf("error parsing deploymentdata: %s", err.Error())
+	}
 	deployer := GatewayNameDeployer{
 		Gw: workloads.GatewayNameProxy{
 			Name:           d.Get("name").(string),
@@ -62,7 +73,7 @@ func NewGatewayNameDeployer(d *schema.ResourceData, apiClient *apiClient) (Gatew
 
 		APIClient: apiClient,
 		ncPool:    pool,
-		deployer:  deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, nil),
+		deployer:  deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, nil, string(deploymentDataStr)),
 	}
 	return deployer, nil
 }

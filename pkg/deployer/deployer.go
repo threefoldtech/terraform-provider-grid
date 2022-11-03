@@ -29,6 +29,7 @@ type DeployerImpl struct {
 	ncPool           client.NodeClientCollection
 	revertOnFailure  bool
 	solutionProvider *uint64
+	deploymentData   string
 }
 
 func NewDeployer(
@@ -38,6 +39,7 @@ func NewDeployer(
 	ncPool client.NodeClientCollection,
 	revertOnFailure bool,
 	solutionProvider *uint64,
+	deploymentData string,
 ) Deployer {
 	return &DeployerImpl{
 		identity,
@@ -46,6 +48,7 @@ func NewDeployer(
 		ncPool,
 		revertOnFailure,
 		solutionProvider,
+		deploymentData,
 	}
 }
 
@@ -123,7 +126,7 @@ func (d *DeployerImpl) deploy(
 
 			publicIPCount := countDeploymentPublicIPs(dl)
 			log.Printf("Number of public ips: %d\n", publicIPCount)
-			contractID, err := sub.CreateNodeContract(d.identity, node, "", hashHex, publicIPCount, d.solutionProvider)
+			contractID, err := sub.CreateNodeContract(d.identity, node, d.deploymentData, hashHex, publicIPCount, d.solutionProvider)
 			log.Printf("CreateNodeContract returned id: %d\n", contractID)
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "failed to create contract")

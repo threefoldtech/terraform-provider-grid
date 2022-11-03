@@ -31,6 +31,16 @@ func resourceDeployment() *schema.Resource {
 				Required:    true,
 				Description: "Node id to place the deployment on",
 			},
+			"name": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "vm",
+			},
+			"solution_type": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "Virtual Machine",
+			},
 			"solution_provider": {
 				Type:        schema.TypeInt,
 				Optional:    true,

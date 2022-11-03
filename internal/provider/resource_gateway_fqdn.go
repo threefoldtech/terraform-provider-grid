@@ -25,6 +25,12 @@ func resourceGatewayFQDNProxy() *schema.Resource {
 				Default:     "name",
 				Description: "Gateway workload name (of no actual significance)",
 			},
+			"solution_type": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "Gateway name (the fqdn will be <name>.<gateway-domain>)",
+				Default:     "Gateway",
+			},
 			"description": {
 				Type:        schema.TypeString,
 				Optional:    true,

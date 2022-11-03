@@ -82,6 +82,7 @@ func TestCreate(t *testing.T) {
 		ncPool,
 		true,
 		nil,
+		"",
 	)
 	dl1, dl2 := deployment1(identity, true, 0), deployment2(identity)
 	newDls := map[uint32]gridtypes.Deployment{
@@ -160,6 +161,7 @@ func TestUpdate(t *testing.T) {
 		ncPool,
 		true,
 		nil,
+		"",
 	)
 	dl1, dl2 := deployment1(identity, false, 0), deployment1(identity, true, 1)
 	newDls := map[uint32]gridtypes.Deployment{
@@ -216,6 +218,7 @@ func TestCancel(t *testing.T) {
 		ncPool,
 		true,
 		nil,
+		"",
 	)
 	dl1 := deployment1(identity, false, 0)
 	dl1.ContractID = 100
@@ -257,6 +260,7 @@ func TestCocktail(t *testing.T) {
 		ncPool,
 		true,
 		nil,
+		"",
 	)
 	g := workloads.GatewayFQDNProxy{Name: "f", FQDN: "test.com", Backends: []zos.Backend{"http://1.1.1.1:10"}}
 	dl1 := deployment1(identity, false, 0)

@@ -2,7 +2,9 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"log"
 	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -44,6 +46,15 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 		nodeDeploymentID[uint32(nodeInt)] = deploymentID
 	}
 	ncPool := client.NewNodeClientPool(apiClient.rmb)
+	deploymentData := DeploymentData{
+		Name:        d.Get("name").(string),
+		Type:        "gateway",
+		ProjectName: d.Get("solution_type").(string),
+	}
+	deploymentDataStr, err := json.Marshal(deploymentData)
+	if err != nil {
+		log.Printf("error parsing deploymentdata: %s", err.Error())
+	}
 	deployer := GatewayFQDNDeployer{
 		Gw: workloads.GatewayFQDNProxy{
 			Name:           d.Get("name").(string),
@@ -57,7 +68,7 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 		NodeDeploymentID: nodeDeploymentID,
 		APIClient:        apiClient,
 		ncPool:           ncPool,
-		deployer:         deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, ncPool, true, nil),
+		deployer:         deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, ncPool, true, nil, string(deploymentDataStr)),
 	}
 	return deployer, nil
 }

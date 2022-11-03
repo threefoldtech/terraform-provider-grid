@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"strconv"
@@ -35,6 +36,12 @@ func resourceNetwork() *schema.Resource {
 				Type:        schema.TypeString,
 				Required:    true,
 				Description: "Network Name",
+			},
+			"solution_type": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "Project Name",
+				Default:     "Network",
 			},
 			"description": {
 				Type:     schema.TypeString,
@@ -176,6 +183,15 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 		return NetworkDeployer{}, errors.Wrap(err, "couldn't parse network ip range")
 	}
 	pool := client.NewNodeClientPool(apiClient.rmb)
+	deploymentData := DeploymentData{
+		Name:        d.Get("name").(string),
+		Type:        "network",
+		ProjectName: d.Get("solution_type").(string),
+	}
+	deploymentDataStr, err := json.Marshal(deploymentData)
+	if err != nil {
+		log.Printf("error parsing deploymentdata: %s", err.Error())
+	}
 	deployer := NetworkDeployer{
 		Name:             d.Get("name").(string),
 		Description:      d.Get("description").(string),
@@ -192,7 +208,7 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 		WGPort:           make(map[uint32]int),
 		APIClient:        apiClient,
 		ncPool:           pool,
-		deployer:         deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, nil),
+		deployer:         deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, nil, string(deploymentDataStr)),
 	}
 	return deployer, nil
 }
