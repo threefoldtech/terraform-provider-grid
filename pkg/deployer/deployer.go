@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log"
+	"net"
+	"strconv"
 	"strings"
 	"time"
 
@@ -103,7 +105,7 @@ func (d *DeployerImpl) deploy(
 			}
 			for _, w := range old[node].Workloads {
 				if w.Type == zos.ZMachineType {
-					err := DeleteUsedIP(ctx, sub, w)
+					err := d.DeleteUsedIP(ctx, sub, w)
 					if err != nil {
 						return currentDeployments, err
 					}
@@ -262,7 +264,50 @@ func (d *DeployerImpl) deploy(
 }
 
 func (d *DeployerImpl) DeleteUsedIP(ctx context.Context, sub subi.SubstrateExt, wl gridtypes.Workload) error {
+	dataI, err := wl.WorkloadData()
+	if err != nil {
+		return err
+	}
+	data := dataI.(*zos.ZMachine)
+	networkName := data.Network.Interfaces[0].Network
 
+	key := generateKVNetworkName(networkName.String())
+	value, err := sub.KVStoreGet(d.identity.PublicKey(), key)
+	if err != nil {
+		return err
+	}
+	value, err = removeIP(value, data.Network.Interfaces[0].IP)
+	if err != nil {
+		return err
+	}
+	err = sub.KVStoreSet(d.identity, key, value)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func removeIP(val string, ip net.IP) (string, error) {
+	// val: 2,3,4,5
+	toRemove := ip[3]
+	used := strings.Split(val, ",")
+	result := []string{}
+	for _, i := range used {
+		x, err := strconv.Atoi(i)
+		if err != nil {
+			return "", err
+		}
+		if x == int(toRemove) {
+			continue
+		}
+		result = append(result, strconv.Itoa(x))
+	}
+	return strings.Join(result, ","), nil
+}
+
+func generateKVNetworkName(networkName string) string {
+	// key: terraform.net.name
+	return fmt.Sprintf("terraform.net.%s", networkName)
 }
 
 type Progress struct {
