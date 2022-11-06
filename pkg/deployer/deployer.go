@@ -15,6 +15,7 @@ import (
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
+	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
 type Deployer interface {
@@ -95,6 +96,19 @@ func (d *DeployerImpl) deploy(
 			err = sub.EnsureContractCanceled(d.identity, contractID)
 			if err != nil && !strings.Contains(err.Error(), "ContractNotExists") {
 				return currentDeployments, errors.Wrap(err, "failed to delete deployment")
+			}
+			old, err := d.GetDeploymentObjects(ctx, sub, map[uint32]uint64{node: contractID})
+			if err != nil {
+				return currentDeployments, err
+			}
+			for _, w := range old[node].Workloads {
+				if w.Type == zos.ZMachineType {
+					err := DeleteUsedIP(ctx, sub, w)
+					if err != nil {
+						return currentDeployments, err
+					}
+				}
+
 			}
 			delete(currentDeployments, node)
 		}
@@ -245,6 +259,10 @@ func (d *DeployerImpl) deploy(
 	}
 
 	return currentDeployments, nil
+}
+
+func (d *DeployerImpl) DeleteUsedIP(ctx context.Context, sub subi.SubstrateExt, wl gridtypes.Workload) error {
+
 }
 
 type Progress struct {

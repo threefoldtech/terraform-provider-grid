@@ -128,3 +128,27 @@ func (s *SubstrateTestImpl) InvalidateNameContract(
 
 	return contractID, nil
 }
+
+func (s *SubstrateTestImpl) KVStoreSet(identity Identity, key string, value string) error {
+	err := s.KVStoreSet(identity, key, value)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *SubstrateTestImpl) KVStoreDelete(identity Identity, key string) error {
+	err := s.KVStoreDelete(identity, key)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *SubstrateTestImpl) KVStoreGet(pk []byte, key string) (string, error) {
+	value, err := s.KVStoreGet(pk, key)
+	if err != nil {
+		return "", err
+	}
+	return value, nil
+}

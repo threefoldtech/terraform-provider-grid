@@ -32,6 +32,9 @@ type SubstrateExt interface {
 	GetAccount(identity Identity) (types.AccountInfo, error)
 	GetTwinIP(twinID uint32) (string, error)
 	GetContractIDByNameRegistration(name string) (uint64, error)
+	KVStoreDelete(identity Identity, key string) error
+	KVStoreSet(identity Identity, key, value string) error
+	KVStoreGet(pk []byte, key string) (string, error)
 }
 type SubstrateDevImpl struct {
 	*subdev.Substrate
@@ -152,4 +155,28 @@ func (s *SubstrateDevImpl) InvalidateNameContract(
 	}
 
 	return contractID, nil
+}
+
+func (s *SubstrateDevImpl) KVStoreSet(identity Identity, key string, value string) error {
+	err := s.KVStoreSet(identity, key, value)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *SubstrateDevImpl) KVStoreDelete(identity Identity, key string) error {
+	err := s.KVStoreDelete(identity, key)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *SubstrateDevImpl) KVStoreGet(pk []byte, key string) (string, error) {
+	value, err := s.KVStoreGet(pk, key)
+	if err != nil {
+		return "", err
+	}
+	return value, nil
 }
