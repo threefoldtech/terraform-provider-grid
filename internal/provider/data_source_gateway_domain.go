@@ -42,16 +42,11 @@ func dataSourceGatewayDomain() *schema.Resource {
 // TODO: make this non failing
 func dataSourceGatewayRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.SubstrateExt()
-	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
-	}
-	defer sub.Close()
 	go startRmbIfNeeded(ctx, apiClient)
 	nodeID := uint32(d.Get("node").(int))
 	name := d.Get("name").(string)
 	ncPool := client.NewNodeClientPool(apiClient.rmb)
-	nodeClient, err := ncPool.GetNodeClient(sub, nodeID)
+	nodeClient, err := ncPool.GetNodeClient(apiClient.substrateConn, nodeID)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "failed to get node client"))
 	}

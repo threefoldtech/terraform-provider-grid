@@ -178,5 +178,5 @@ func (s *SubstrateDevImpl) KVStoreGet(pk []byte, key string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return value, nil
+	return string(value), nil
 }

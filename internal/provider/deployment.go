@@ -99,17 +99,13 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 	return deploymentDeployer, nil
 }
 
-func (d *DeploymentDeployer) assignNodesIPs() error {
+func (d *DeploymentDeployer) assignNodesIPs(sub subi.SubstrateExt) error {
 	if len(d.VMs) == 0 {
 		return nil
 	}
 	_, cidr, err := net.ParseCIDR(d.IPRange)
 	if err != nil {
 		return errors.Wrapf(err, "invalid ip %s", d.IPRange)
-	}
-	sub, err := d.APIClient.manager.SubstrateExt()
-	if err != nil {
-		return errors.Wrap(err, "failed to get substrate client")
 	}
 	networkKey := deployer.GetNetworkKey(d.NetworkName)
 	usedIPs, err := deployer.GetUsedIps(sub, d.APIClient.identity.PublicKey(), networkKey)
@@ -138,9 +134,9 @@ func (d *DeploymentDeployer) assignNodesIPs() error {
 	}
 	return nil
 }
-func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
+func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context, sub subi.SubstrateExt) (map[uint32]gridtypes.Deployment, error) {
 	dl := workloads.NewDeployment(d.APIClient.twin_id)
-	err := d.assignNodesIPs()
+	err := d.assignNodesIPs(sub)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to assign node ips")
 	}
@@ -371,7 +367,7 @@ func (d *DeploymentDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt) 
 	if err := d.validate(); err != nil {
 		return err
 	}
-	newDeployments, err := d.GenerateVersionlessDeployments(ctx)
+	newDeployments, err := d.GenerateVersionlessDeployments(ctx, sub)
 	if err != nil {
 		return errors.Wrap(err, "couldn't generate deployments data")
 	}

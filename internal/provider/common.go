@@ -26,7 +26,7 @@ func startRmbIfNeeded(ctx context.Context, api *apiClient) {
 	if err != nil {
 		log.Fatalf("couldn't start server %s\n", err)
 	}
-	if err := rmbClient.Serve(ctx); err != nil {
+	if err := rmbClient.Serve(ctx, api.manager); err != nil {
 		log.Printf("error serving rmb %s\n", err)
 	}
 }

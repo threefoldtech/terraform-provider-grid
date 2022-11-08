@@ -941,11 +941,6 @@ func getK8sFreeIP(ipRange gridtypes.IPNet, usedIPs []string) (string, error) {
 func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.SubstrateExt()
-	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
-	}
-	defer sub.Close()
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	go startRmbIfNeeded(rmbctx, apiClient)
@@ -954,11 +949,11 @@ func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	if err := deployer.Validate(ctx, sub); err != nil {
+	if err := deployer.Validate(ctx, apiClient.substrateConn); err != nil {
 		return diag.FromErr(err)
 	}
 
-	err = deployer.Deploy(ctx, sub)
+	err = deployer.Deploy(ctx, apiClient.substrateConn)
 	if err != nil {
 		if len(deployer.NodeDeploymentID) != 0 {
 			// failed to deploy and failed to revert, store the current state locally
@@ -975,11 +970,6 @@ func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 func resourceK8sUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.SubstrateExt()
-	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
-	}
-	defer sub.Close()
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	go startRmbIfNeeded(rmbctx, apiClient)
@@ -988,15 +978,15 @@ func resourceK8sUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	if err := deployer.Validate(ctx, sub); err != nil {
+	if err := deployer.Validate(ctx, apiClient.substrateConn); err != nil {
 		return diag.FromErr(err)
 	}
 
-	if err := deployer.invalidateBrokenAttributes(sub); err != nil {
+	if err := deployer.invalidateBrokenAttributes(apiClient.substrateConn); err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't invalidate broken attributes"))
 	}
 
-	err = deployer.Deploy(ctx, sub)
+	err = deployer.Deploy(ctx, apiClient.substrateConn)
 	if err != nil {
 		diags = diag.FromErr(err)
 	}
@@ -1007,11 +997,6 @@ func resourceK8sUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 func resourceK8sRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.SubstrateExt()
-	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
-	}
-	defer sub.Close()
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	go startRmbIfNeeded(rmbctx, apiClient)
@@ -1020,15 +1005,15 @@ func resourceK8sRead(ctx context.Context, d *schema.ResourceData, meta interface
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	if err := deployer.Validate(ctx, sub); err != nil {
+	if err := deployer.Validate(ctx, apiClient.substrateConn); err != nil {
 		return diag.FromErr(err)
 	}
 
-	if err := deployer.invalidateBrokenAttributes(sub); err != nil {
+	if err := deployer.invalidateBrokenAttributes(apiClient.substrateConn); err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't invalidate broken attributes"))
 	}
 
-	err = deployer.updateFromRemote(ctx, sub)
+	err = deployer.updateFromRemote(ctx, apiClient.substrateConn)
 	log.Printf("read updateFromRemote err: %s\n", err)
 	if err != nil {
 		diags = append(diags, diag.Diagnostic{
@@ -1045,11 +1030,6 @@ func resourceK8sRead(ctx context.Context, d *schema.ResourceData, meta interface
 func resourceK8sDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.SubstrateExt()
-	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
-	}
-	defer sub.Close()
 	rmbctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	go startRmbIfNeeded(rmbctx, apiClient)
@@ -1058,7 +1038,7 @@ func resourceK8sDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	err = deployer.Cancel(ctx, sub)
+	err = deployer.Cancel(ctx, apiClient.substrateConn)
 	if err != nil {
 		diags = diag.FromErr(err)
 	}
