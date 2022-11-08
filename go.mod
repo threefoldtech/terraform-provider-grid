@@ -114,9 +114,9 @@ require (
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
 
-replace github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.5 => github.com/threefoldtech/go-substrate-rpc-client/v4 v4.0.3-0.20220629145942-1ef6a654b4b5
+replace github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.5 => github.com/threefoldtech/go-substrate-rpc-client/v4 v4.0.6-0.20220927094755-0f0d22c73cc7
 
-replace github.com/threefoldtech/substrate-client-dev v0.0.1 => ./pkg/substrates/substrate-dev
+replace github.com/threefoldtech/substrate-client-dev v0.0.1 => ../substrate-client
 
 replace github.com/threefoldtech/substrate-client-test v0.0.1 => ./pkg/substrates/substrate-test
 

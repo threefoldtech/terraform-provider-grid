@@ -158,7 +158,7 @@ func (s *SubstrateDevImpl) InvalidateNameContract(
 }
 
 func (s *SubstrateDevImpl) KVStoreSet(identity Identity, key string, value string) error {
-	err := s.KVStoreSet(identity, key, value)
+	err := s.Substrate.KVStoreSet(identity, key, value)
 	if err != nil {
 		return err
 	}
@@ -166,7 +166,7 @@ func (s *SubstrateDevImpl) KVStoreSet(identity Identity, key string, value strin
 }
 
 func (s *SubstrateDevImpl) KVStoreDelete(identity Identity, key string) error {
-	err := s.KVStoreDelete(identity, key)
+	err := s.Substrate.KVStoreDelete(identity, key)
 	if err != nil {
 		return err
 	}
@@ -174,7 +174,7 @@ func (s *SubstrateDevImpl) KVStoreDelete(identity Identity, key string) error {
 }
 
 func (s *SubstrateDevImpl) KVStoreGet(pk []byte, key string) (string, error) {
-	value, err := s.KVStoreGet(pk, key)
+	value, err := s.Substrate.KVStoreGet(pk, key)
 	if err != nil {
 		return "", err
 	}

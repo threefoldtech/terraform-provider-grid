@@ -348,3 +348,15 @@ func (mr *MockSubstrateExtMockRecorder) UpdateNodeContract(identity, contract, b
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateNodeContract", reflect.TypeOf((*MockSubstrateExt)(nil).UpdateNodeContract), identity, contract, body, hash)
 }
+
+func (s *MockSubstrateExt) KVStoreSet(identity subi.Identity, key string, value string) error {
+	panic("not implemented")
+}
+
+func (s *MockSubstrateExt) KVStoreDelete(identity subi.Identity, key string) error {
+	panic("not implemented")
+}
+
+func (s *MockSubstrateExt) KVStoreGet(pk []byte, key string) (string, error) {
+	panic("not implemented")
+}

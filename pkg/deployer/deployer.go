@@ -95,19 +95,20 @@ func (d *DeployerImpl) deploy(
 	// deletions
 	for node, contractID := range oldDeployments {
 		if _, ok := newDeployments[node]; !ok {
-			err = sub.EnsureContractCanceled(d.identity, contractID)
-			if err != nil && !strings.Contains(err.Error(), "ContractNotExists") {
-				return currentDeployments, errors.Wrap(err, "failed to delete deployment")
-			}
 			old, err := d.GetDeploymentObjects(ctx, sub, map[uint32]uint64{node: contractID})
 			if err != nil {
 				return currentDeployments, err
 			}
+
+			err = sub.EnsureContractCanceled(d.identity, contractID)
+			if err != nil && !strings.Contains(err.Error(), "ContractNotExists") {
+				return currentDeployments, errors.Wrap(err, "failed to delete deployment")
+			}
+
 			for _, w := range old[node].Workloads {
 				if w.Type == zos.ZMachineType {
-					err := d.DeleteUsedIP(ctx, sub, w)
-					if err != nil {
-						return currentDeployments, err
+					if err := d.DeleteUsedIP(ctx, sub, w); err != nil {
+						return currentDeployments, errors.Wrap(err, "failed to delete unused ips")
 					}
 				}
 
@@ -166,6 +167,16 @@ func (d *DeployerImpl) deploy(
 			for _, w := range dl.Workloads {
 				newWorkloadVersions[w.Name.String()] = 0
 			}
+			// Add ip to the used ips in kvstore
+			for _, w := range dl.Workloads {
+				if w.Type == zos.ZMachineType {
+					if err := d.AddUsedIP(ctx, sub, w); err != nil {
+						return currentDeployments, errors.Wrap(err, "failed to add used ips")
+					}
+				}
+
+			}
+
 			err = d.Wait(ctx, client, dl.ContractID, newWorkloadVersions)
 
 			if err != nil {
@@ -214,10 +225,27 @@ func (d *DeployerImpl) deploy(
 				oldHash, ok := oldHashes[string(w.Name)]
 				if !ok || newHash != oldHash {
 					dl.Workloads[idx].Version = dl.Version
+					if err = d.AddUsedIP(ctx, sub, w); err != nil {
+						return currentDeployments, errors.Wrap(err, "failed to add used ips")
+					}
+
 				} else if ok && newHash == oldHash {
+					// nothing to update
 					dl.Workloads[idx].Version = oldWorkloadsVersions[string(w.Name)]
 				}
 				newWorkloadsVersions[w.Name.String()] = dl.Workloads[idx].Version
+			}
+			// for deleted workloads delete corresponding ips from kvstore
+			for _, w := range oldDl.Workloads {
+				if w.Type == zos.ZMachineType {
+					if _, ok := newHashes[string(w.Name)]; !ok {
+						if err = d.DeleteUsedIP(ctx, sub, w); err != nil {
+							return currentDeployments, errors.Wrap(err, "failed to remove unused ips")
+						}
+
+					}
+				}
+
 			}
 			if err := dl.Sign(d.twinID, d.identity); err != nil {
 				return currentDeployments, errors.Wrap(err, "error signing deployment")
@@ -262,50 +290,95 @@ func (d *DeployerImpl) deploy(
 
 	return currentDeployments, nil
 }
-
-func (d *DeployerImpl) DeleteUsedIP(ctx context.Context, sub subi.SubstrateExt, wl gridtypes.Workload) error {
+func getNetworkIPPair(wl gridtypes.Workload) (string, net.IP, error) {
 	dataI, err := wl.WorkloadData()
 	if err != nil {
-		return err
+		return "", nil, err
 	}
 	data := dataI.(*zos.ZMachine)
 	networkName := data.Network.Interfaces[0].Network
+	key := GetNetworkKey(networkName.String())
+	ip := data.Network.Interfaces[0].IP.To4()
+	return key, ip, nil
+}
 
-	key := generateKVNetworkName(networkName.String())
-	value, err := sub.KVStoreGet(d.identity.PublicKey(), key)
+func GetUsedIps(sub subi.SubstrateExt, pub []byte, key string) ([]string, error) {
+	used := make([]string, 0)
+	currentIPs, err := sub.KVStoreGet(pub, key)
+	if err != nil {
+		if strings.Contains(err.Error(), "key not found") {
+			currentIPs = ""
+		} else {
+			return used, err
+		}
+	}
+
+	if currentIPs != "" {
+		used = strings.Split(currentIPs, ",")
+	}
+	return used, nil
+}
+
+func (d *DeployerImpl) AddUsedIP(ctx context.Context, sub subi.SubstrateExt, wl gridtypes.Workload) error {
+	key, ip, err := getNetworkIPPair(wl)
 	if err != nil {
 		return err
 	}
-	value, err = removeIP(value, data.Network.Interfaces[0].IP)
+	toAdd := int(ip[3])
+	used, err := GetUsedIps(sub, d.identity.PublicKey(), key)
 	if err != nil {
 		return err
 	}
-	err = sub.KVStoreSet(d.identity, key, value)
+	for _, element := range used {
+		if x, err := strconv.Atoi(element); err == nil {
+			if x == toAdd {
+				log.Printf("ip already exists: %s ip", ip)
+				return nil
+			}
+		}
+	}
+	used = append(used, strconv.Itoa(toAdd))
+	updatedIps := strings.Join(used, ",")
+
+	err = sub.KVStoreSet(d.identity, key, updatedIps)
+	if err != nil {
+		return err
+	}
+	return nil
+
+}
+func (d *DeployerImpl) DeleteUsedIP(ctx context.Context, sub subi.SubstrateExt, wl gridtypes.Workload) error {
+	key, ip, err := getNetworkIPPair(wl)
+	if err != nil {
+		return err
+	}
+	toRemove := int(ip[3])
+	used, err := GetUsedIps(sub, d.identity.PublicKey(), key)
+	if err != nil {
+		return err
+	}
+	result := []string{}
+	for _, i := range used {
+		x, err := strconv.Atoi(i)
+		if err != nil {
+			return err
+		}
+		if x == toRemove {
+			continue
+		}
+		result = append(result, strconv.Itoa(x))
+	}
+
+	updatedIps := strings.Join(result, ",")
+
+	err = sub.KVStoreSet(d.identity, key, updatedIps)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func removeIP(val string, ip net.IP) (string, error) {
-	// val: 2,3,4,5
-	toRemove := ip[3]
-	used := strings.Split(val, ",")
-	result := []string{}
-	for _, i := range used {
-		x, err := strconv.Atoi(i)
-		if err != nil {
-			return "", err
-		}
-		if x == int(toRemove) {
-			continue
-		}
-		result = append(result, strconv.Itoa(x))
-	}
-	return strings.Join(result, ","), nil
-}
-
-func generateKVNetworkName(networkName string) string {
+func GetNetworkKey(networkName string) string {
 	// key: terraform.net.name
 	return fmt.Sprintf("terraform.net.%s", networkName)
 }

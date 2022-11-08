@@ -107,10 +107,16 @@ func (d *DeploymentDeployer) assignNodesIPs() error {
 	if err != nil {
 		return errors.Wrapf(err, "invalid ip %s", d.IPRange)
 	}
-	var usedIPs []string
+	sub, err := d.APIClient.manager.SubstrateExt()
+	if err != nil {
+		return errors.Wrap(err, "failed to get substrate client")
+	}
+	networkKey := deployer.GetNetworkKey(d.NetworkName)
+	usedIPs, err := deployer.GetUsedIps(sub, d.APIClient.identity.PublicKey(), networkKey)
+	// user defined ips
 	for _, vm := range d.VMs {
 		if vm.IP != "" && cidr.Contains(net.ParseIP(vm.IP)) {
-			usedIPs = append(usedIPs, vm.IP)
+			usedIPs = append(usedIPs, string(net.ParseIP(vm.IP)[3]))
 		}
 	}
 	cur := byte(2)
@@ -120,7 +126,7 @@ func (d *DeploymentDeployer) assignNodesIPs() error {
 		}
 		ip := cidr.IP
 		ip[3] = cur
-		for isInStr(usedIPs, ip.String()) {
+		for isInStr(usedIPs, strconv.Itoa(int(ip[3]))) {
 			if cur == 254 {
 				return errors.New("all 253 ips of the network are exhausted")
 			}
