@@ -130,7 +130,7 @@ func (d *DeploymentDeployer) assignNodesIPs(sub subi.SubstrateExt) error {
 			ip[3] = cur
 		}
 		d.VMs[idx].IP = ip.String()
-		usedIPs = append(usedIPs, ip.String())
+		usedIPs = append(usedIPs, strconv.Itoa(int(ip[3])))
 	}
 	return nil
 }
