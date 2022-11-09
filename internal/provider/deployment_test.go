@@ -290,7 +290,8 @@ func TestDeploymentGenerateDeployment(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	d := constructTestDeployer(ctrl)
-	dl, err := d.GenerateVersionlessDeployments(context.Background())
+	sub := mock.NewMockSubstrateExt(ctrl)
+	dl, err := d.GenerateVersionlessDeployments(context.Background(), sub)
 	assert.NoError(t, err)
 	var wls []gridtypes.Workload
 	wls = append(wls, d.VMs[0].GenerateVMWorkload()...)
@@ -320,7 +321,7 @@ func TestDeploymentSync(t *testing.T) {
 	subI, err := d.APIClient.manager.SubstrateExt()
 	assert.NoError(t, err)
 	sub := subI.(*mock.MockSubstrateExt)
-	dls, err := d.GenerateVersionlessDeployments(context.Background())
+	dls, err := d.GenerateVersionlessDeployments(context.Background(), sub)
 	assert.NoError(t, err)
 	dl := dls[d.Node]
 	json.NewEncoder(log.Writer()).Encode(dl.Workloads)

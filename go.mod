@@ -116,7 +116,7 @@ require (
 
 replace github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.5 => github.com/threefoldtech/go-substrate-rpc-client/v4 v4.0.6-0.20220927094755-0f0d22c73cc7
 
-replace github.com/threefoldtech/substrate-client-dev v0.0.1 => ../substrate-client
+replace github.com/threefoldtech/substrate-client-dev v0.0.1 => ./pkg/substrates/substrate-dev
 
 replace github.com/threefoldtech/substrate-client-test v0.0.1 => ./pkg/substrates/substrate-test
 
