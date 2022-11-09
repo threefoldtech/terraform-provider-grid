@@ -11,37 +11,45 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/go-rmb"
 	"github.com/threefoldtech/substrate-client"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 )
 
 const (
 	errThreshold = 4 // return error after failed 4 polls
 )
 
+type TwinResolver struct {
+	cache  *cache.Cache
+	client subi.SubstrateExt
+}
+
 type ProxyBus struct {
 	signer      substrate.Identity
 	endpoint    string
 	twinID      uint32
 	verifyReply bool
-	resolver    rmb.TwinResolver
+	resolver    TwinResolver
+	// resolver    rmb.TwinResolver
 }
 
-func NewProxyBus(endpoint string, twinID uint32, sub *substrate.Substrate, signer substrate.Identity, verifyReply bool) (*ProxyBus, error) {
+func NewProxyBus(endpoint string, twinID uint32, sub subi.SubstrateExt, signer substrate.Identity, verifyReply bool) (*ProxyBus, error) {
 	if len(endpoint) != 0 && endpoint[len(endpoint)-1] == '/' {
 		endpoint = endpoint[:len(endpoint)-1]
-	}
-	resolver, err := rmb.NewSubstrateResolver(sub)
-	if err != nil {
-		return nil, errors.Wrap(err, "couldn't get a client to explorer resolver")
 	}
 	return &ProxyBus{
 		signer,
 		endpoint,
 		twinID,
 		verifyReply,
-		rmb.NewCacheResolver(resolver, time.Second),
+		TwinResolver{
+			cache:  cache.New(time.Minute*5, time.Minute),
+			client: sub,
+		},
+		// rmb.NewCacheResolver(resolver, time.Second),
 	}, nil
 }
 
@@ -124,6 +132,21 @@ func (r *ProxyBus) Call(ctx context.Context, twin uint32, fn string, data interf
 	}
 
 	return nil
+}
+
+func (r TwinResolver) PublicKey(twin int) ([]byte, error) {
+	key := fmt.Sprintf("pk:%d", twin)
+	cached, ok := r.cache.Get(key)
+	if ok {
+		return cached.([]byte), nil
+	}
+	pk, err := r.client.GetTwinPK(uint32(twin))
+	if err != nil {
+		return nil, err
+	}
+
+	r.cache.Set(key, pk, cache.DefaultExpiration)
+	return pk, nil
 }
 
 func getDecodedMsgData(data string) []byte {

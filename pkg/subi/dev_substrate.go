@@ -31,6 +31,7 @@ type SubstrateExt interface {
 	CreateNameContract(identity Identity, name string) (uint64, error)
 	GetAccount(identity Identity) (types.AccountInfo, error)
 	GetTwinIP(twinID uint32) (string, error)
+	GetTwinPK(twinID uint32) ([]byte, error)
 	GetContractIDByNameRegistration(name string) (uint64, error)
 	KVStoreDelete(identity Identity, key string) error
 	KVStoreSet(identity Identity, key, value string) error
@@ -50,6 +51,13 @@ func (s *SubstrateDevImpl) GetTwinIP(id uint32) (string, error) {
 		return "", terr(err)
 	}
 	return twin.IP, nil
+}
+func (s *SubstrateDevImpl) GetTwinPK(id uint32) ([]byte, error) {
+	twin, err := s.Substrate.GetTwin(id)
+	if err != nil {
+		return nil, terr(err)
+	}
+	return twin.Account.PublicKey(), nil
 }
 func (s *SubstrateDevImpl) GetAccount(identity Identity) (types.AccountInfo, error) {
 	res, err := s.Substrate.GetAccount(identity)

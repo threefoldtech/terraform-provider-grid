@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
-	"github.com/threefoldtech/substrate-client"
 	"github.com/threefoldtech/terraform-provider-grid/internal/provider"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 )
@@ -50,12 +49,7 @@ func main() {
 		log.Fatal(err)
 	}
 	defer subext.Close()
-	rmbSubstrate, err := substrate.NewManager(provider.SUBSTRATE_URL[network]).Substrate()
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer rmbSubstrate.Close()
-	opts := &plugin.ServeOpts{ProviderFunc: provider.New(version, subext, rmbSubstrate), ProviderAddr: providerNetwork[network]}
+	opts := &plugin.ServeOpts{ProviderFunc: provider.New(version, subext), ProviderAddr: providerNetwork[network]}
 
 	if debugMode {
 		// TODO: update this string with the full name of your provider as used in your configs

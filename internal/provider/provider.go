@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
 	proxy "github.com/threefoldtech/grid_proxy_server/pkg/client"
-	"github.com/threefoldtech/substrate-client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/rmb"
@@ -53,7 +52,7 @@ func init() {
 	// }
 }
 
-func New(version string, subext subi.SubstrateExt, rmbSubstrate *substrate.Substrate) func() *schema.Provider {
+func New(version string, subext subi.SubstrateExt) func() *schema.Provider {
 	return func() *schema.Provider {
 		p := &schema.Provider{
 			Schema: map[string]*schema.Schema{
@@ -118,7 +117,7 @@ func New(version string, subext subi.SubstrateExt, rmbSubstrate *substrate.Subst
 			},
 		}
 
-		p.ConfigureContextFunc = providerConfigure(subext, rmbSubstrate)
+		p.ConfigureContextFunc = providerConfigure(subext)
 
 		return p
 	}
@@ -137,7 +136,7 @@ type apiClient struct {
 	identity      subi.Identity
 }
 
-func providerConfigure(sub subi.SubstrateExt, rmbSubstrate *substrate.Substrate) func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
+func providerConfigure(sub subi.SubstrateExt) func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 	return func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 		rand.Seed(time.Now().UnixNano())
 		var err error
@@ -198,7 +197,7 @@ func providerConfigure(sub subi.SubstrateExt, rmbSubstrate *substrate.Substrate)
 		var cl rmb.Client
 		if apiClient.use_rmb_proxy {
 			verify_reply := d.Get("verify_reply").(bool)
-			cl, err = client.NewProxyBus(rmb_proxy_url, apiClient.twin_id, rmbSubstrate, identity, verify_reply)
+			cl, err = client.NewProxyBus(rmb_proxy_url, apiClient.twin_id, apiClient.substrateConn, identity, verify_reply)
 		} else {
 			cl, err = rmb.NewClient(apiClient.rmb_redis_url)
 		}

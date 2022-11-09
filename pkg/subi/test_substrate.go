@@ -23,6 +23,13 @@ func (s *SubstrateTestImpl) GetTwinIP(id uint32) (string, error) {
 	}
 	return twin.IP, nil
 }
+func (s *SubstrateTestImpl) GetTwinPK(id uint32) ([]byte, error) {
+	twin, err := s.Substrate.GetTwin(id)
+	if err != nil {
+		return nil, terr(err)
+	}
+	return twin.Account.PublicKey(), nil
+}
 func (s *SubstrateTestImpl) GetAccount(identity Identity) (types.AccountInfo, error) {
 	res, err := s.Substrate.GetAccount(identity)
 	return res, terr(err)
