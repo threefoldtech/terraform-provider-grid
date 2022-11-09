@@ -10,6 +10,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	mock "github.com/threefoldtech/terraform-provider-grid/internal/provider/mocks"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/deployer"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -17,13 +18,15 @@ import (
 
 func constructTestDeployer(ctrl *gomock.Controller) DeploymentDeployer {
 	pool := mock.NewMockNodeClientCollection(ctrl)
-	deployer := mock.NewMockDeployer(ctrl)
+	deployerMock := mock.NewMockDeployer(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
 	manager := mock.NewMockManager(ctrl)
+	identity := mock.NewMockIdentity(ctrl)
+	identity.EXPECT().PublicKey().Return([]byte("")).AnyTimes()
 	manager.EXPECT().SubstrateExt().Return(sub, nil).AnyTimes()
 	return DeploymentDeployer{
 		ncPool:   pool,
-		deployer: deployer,
+		deployer: deployerMock,
 		Id:       "100",
 		Node:     10,
 		Disks: []workloads.Disk{
@@ -225,8 +228,9 @@ func constructTestDeployer(ctrl *gomock.Controller) DeploymentDeployer {
 		IPRange:     "10.10.0.0/16",
 		NetworkName: "network",
 		APIClient: &apiClient{
-			twin_id: 20,
-			manager: manager,
+			twin_id:  20,
+			manager:  manager,
+			identity: identity,
 		},
 	}
 }
@@ -286,11 +290,13 @@ func TestDeploymentSyncDeletedContract(t *testing.T) {
 	assert.Empty(t, d.QSFSs)
 	assert.Empty(t, d.ZDBs)
 }
+
 func TestDeploymentGenerateDeployment(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	d := constructTestDeployer(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
+	sub.EXPECT().KVStoreGet([]byte(""), deployer.GetNetworkKey(d.NetworkName)).Return("1", nil).AnyTimes()
 	dl, err := d.GenerateVersionlessDeployments(context.Background(), sub)
 	assert.NoError(t, err)
 	var wls []gridtypes.Workload
@@ -321,6 +327,7 @@ func TestDeploymentSync(t *testing.T) {
 	subI, err := d.APIClient.manager.SubstrateExt()
 	assert.NoError(t, err)
 	sub := subI.(*mock.MockSubstrateExt)
+	sub.EXPECT().KVStoreGet([]byte(""), deployer.GetNetworkKey(d.NetworkName)).Return("1", nil).AnyTimes()
 	dls, err := d.GenerateVersionlessDeployments(context.Background(), sub)
 	assert.NoError(t, err)
 	dl := dls[d.Node]
