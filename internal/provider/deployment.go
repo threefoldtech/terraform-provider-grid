@@ -107,7 +107,7 @@ func (d *DeploymentDeployer) assignNodesIPs(sub subi.SubstrateExt) error {
 	if err != nil {
 		return errors.Wrapf(err, "invalid ip %s", d.IPRange)
 	}
-	networkKey := deployer.GetNetworkKey(d.NetworkName)
+	networkKey := deployer.GetNetworkKey(d.NetworkName, d.Node)
 	usedIPs, err := deployer.GetUsedIps(sub, d.APIClient.identity.PublicKey(), networkKey)
 	// user defined ips
 	for _, vm := range d.VMs {

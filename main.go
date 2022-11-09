@@ -8,7 +8,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
 	"github.com/threefoldtech/terraform-provider-grid/internal/provider"
-	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 )
 
 // Run "go generate" to format example terraform files and generate the docs for the registry/website
@@ -29,12 +28,6 @@ var (
 	// goreleaser can also pass the specific commit if you want
 	// commit  string = ""
 )
-var (
-	substrateConn   *subi.SubstrateExt
-	providerNetwork = map[string]string{
-		"dev": "https://registry.terraform.io/providers/threefoldtech/grid/1.5.7",
-	}
-)
 
 func main() {
 	var debugMode bool
@@ -49,7 +42,7 @@ func main() {
 		log.Fatal(err)
 	}
 	defer subext.Close()
-	opts := &plugin.ServeOpts{ProviderFunc: provider.New(version, subext), ProviderAddr: providerNetwork[network]}
+	opts := &plugin.ServeOpts{ProviderFunc: provider.New(version, subext)}
 
 	if debugMode {
 		// TODO: update this string with the full name of your provider as used in your configs

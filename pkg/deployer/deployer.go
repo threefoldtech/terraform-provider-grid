@@ -107,7 +107,7 @@ func (d *DeployerImpl) deploy(
 
 			for _, w := range old[node].Workloads {
 				if w.Type == zos.ZMachineType {
-					if err := d.DeleteUsedIP(ctx, sub, w); err != nil {
+					if err := d.DeleteUsedIP(ctx, sub, w, node); err != nil {
 						return currentDeployments, errors.Wrap(err, "failed to delete unused ips")
 					}
 				}
@@ -170,7 +170,7 @@ func (d *DeployerImpl) deploy(
 			// Add ip to the used ips in kvstore
 			for _, w := range dl.Workloads {
 				if w.Type == zos.ZMachineType {
-					if err := d.AddUsedIP(ctx, sub, w); err != nil {
+					if err := d.AddUsedIP(ctx, sub, w, node); err != nil {
 						return currentDeployments, errors.Wrap(err, "failed to add used ips")
 					}
 				}
@@ -225,7 +225,7 @@ func (d *DeployerImpl) deploy(
 				oldHash, ok := oldHashes[string(w.Name)]
 				if !ok || newHash != oldHash {
 					dl.Workloads[idx].Version = dl.Version
-					if err = d.AddUsedIP(ctx, sub, w); err != nil {
+					if err = d.AddUsedIP(ctx, sub, w, node); err != nil {
 						return currentDeployments, errors.Wrap(err, "failed to add used ips")
 					}
 
@@ -239,7 +239,7 @@ func (d *DeployerImpl) deploy(
 			for _, w := range oldDl.Workloads {
 				if w.Type == zos.ZMachineType {
 					if _, ok := newHashes[string(w.Name)]; !ok {
-						if err = d.DeleteUsedIP(ctx, sub, w); err != nil {
+						if err = d.DeleteUsedIP(ctx, sub, w, node); err != nil {
 							return currentDeployments, errors.Wrap(err, "failed to remove unused ips")
 						}
 
@@ -290,14 +290,14 @@ func (d *DeployerImpl) deploy(
 
 	return currentDeployments, nil
 }
-func getNetworkIPPair(wl gridtypes.Workload) (string, net.IP, error) {
+func getNetworkIPPair(wl gridtypes.Workload, nodeID uint32) (string, net.IP, error) {
 	dataI, err := wl.WorkloadData()
 	if err != nil {
 		return "", nil, err
 	}
 	data := dataI.(*zos.ZMachine)
 	networkName := data.Network.Interfaces[0].Network
-	key := GetNetworkKey(networkName.String())
+	key := GetNetworkKey(networkName.String(), nodeID)
 	ip := data.Network.Interfaces[0].IP.To4()
 	return key, ip, nil
 }
@@ -319,8 +319,8 @@ func GetUsedIps(sub subi.SubstrateExt, pub []byte, key string) ([]string, error)
 	return used, nil
 }
 
-func (d *DeployerImpl) AddUsedIP(ctx context.Context, sub subi.SubstrateExt, wl gridtypes.Workload) error {
-	key, ip, err := getNetworkIPPair(wl)
+func (d *DeployerImpl) AddUsedIP(ctx context.Context, sub subi.SubstrateExt, wl gridtypes.Workload, nodeID uint32) error {
+	key, ip, err := getNetworkIPPair(wl, nodeID)
 	if err != nil {
 		return err
 	}
@@ -347,8 +347,8 @@ func (d *DeployerImpl) AddUsedIP(ctx context.Context, sub subi.SubstrateExt, wl 
 	return nil
 
 }
-func (d *DeployerImpl) DeleteUsedIP(ctx context.Context, sub subi.SubstrateExt, wl gridtypes.Workload) error {
-	key, ip, err := getNetworkIPPair(wl)
+func (d *DeployerImpl) DeleteUsedIP(ctx context.Context, sub subi.SubstrateExt, wl gridtypes.Workload, nodeID uint32) error {
+	key, ip, err := getNetworkIPPair(wl, nodeID)
 	if err != nil {
 		return err
 	}
@@ -378,9 +378,9 @@ func (d *DeployerImpl) DeleteUsedIP(ctx context.Context, sub subi.SubstrateExt, 
 	return nil
 }
 
-func GetNetworkKey(networkName string) string {
-	// key: terraform.net.name
-	return fmt.Sprintf("terraform.net.%s", networkName)
+func GetNetworkKey(networkName string, nodeID uint32) string {
+	// key: terraform.net.name.nodeID
+	return fmt.Sprintf("terraform.net.%s.%d", networkName, nodeID)
 }
 
 type Progress struct {

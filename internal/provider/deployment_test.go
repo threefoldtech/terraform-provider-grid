@@ -296,7 +296,7 @@ func TestDeploymentGenerateDeployment(t *testing.T) {
 	defer ctrl.Finish()
 	d := constructTestDeployer(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
-	sub.EXPECT().KVStoreGet([]byte(""), deployer.GetNetworkKey(d.NetworkName)).Return("1", nil).AnyTimes()
+	sub.EXPECT().KVStoreGet([]byte(""), deployer.GetNetworkKey(d.NetworkName, d.Node)).Return("1", nil).AnyTimes()
 	dl, err := d.GenerateVersionlessDeployments(context.Background(), sub)
 	assert.NoError(t, err)
 	var wls []gridtypes.Workload
@@ -327,7 +327,7 @@ func TestDeploymentSync(t *testing.T) {
 	subI, err := d.APIClient.manager.SubstrateExt()
 	assert.NoError(t, err)
 	sub := subI.(*mock.MockSubstrateExt)
-	sub.EXPECT().KVStoreGet([]byte(""), deployer.GetNetworkKey(d.NetworkName)).Return("1", nil).AnyTimes()
+	sub.EXPECT().KVStoreGet([]byte(""), deployer.GetNetworkKey(d.NetworkName, d.Node)).Return("1", nil).AnyTimes()
 	dls, err := d.GenerateVersionlessDeployments(context.Background(), sub)
 	assert.NoError(t, err)
 	dl := dls[d.Node]
