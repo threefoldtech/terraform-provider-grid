@@ -8,7 +8,6 @@ import (
 	"net"
 	"sort"
 	"strconv"
-	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
@@ -32,6 +31,7 @@ type DeploymentDeployer struct {
 	APIClient   *apiClient
 	ncPool      client.NodeClientCollection
 	deployer    deployer.Deployer
+	usedIPs     []byte
 }
 type DeploymentData struct {
 	Type        string `json:"type"`
@@ -41,7 +41,7 @@ type DeploymentData struct {
 
 func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (DeploymentDeployer, error) {
 	networkName := d.Get("network_name").(string)
-
+	nodeID := uint32(d.Get("node").(int))
 	disks := make([]workloads.Disk, 0)
 	for _, disk := range d.Get("disks").([]interface{}) {
 		data := workloads.GetDiskData(disk.(map[string]interface{}))
@@ -83,17 +83,26 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 		log.Printf("error parsing deploymentdata: %s", err.Error())
 	}
 
+	localNetworkState, err := getNetworkLocalState()
+	if err != nil {
+		log.Printf("error getting local network state: %+v", err)
+	}
+	networkState := localNetworkState[networkName]
+	ipRange := networkState.NodesSubnets[nodeID]
+	usedIPs := networkState.getNodeUsedIPs(nodeID)
+
 	deploymentDeployer := DeploymentDeployer{
 		Id:          d.Id(),
-		Node:        uint32(d.Get("node").(int)),
+		Node:        nodeID,
 		Disks:       disks,
 		VMs:         vms,
 		QSFSs:       qsfs,
 		ZDBs:        zdbs,
-		IPRange:     d.Get("ip_range").(string),
+		IPRange:     ipRange,
 		NetworkName: networkName,
 		APIClient:   apiClient,
 		ncPool:      pool,
+		usedIPs:     usedIPs,
 		deployer:    deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, solutionProvider, string(deploymentDataStr)),
 	}
 	return deploymentDeployer, nil
@@ -107,12 +116,10 @@ func (d *DeploymentDeployer) assignNodesIPs(sub subi.SubstrateExt) error {
 	if err != nil {
 		return errors.Wrapf(err, "invalid ip %s", d.IPRange)
 	}
-	networkKey := deployer.GetNetworkKey(d.NetworkName, d.Node)
-	usedIPs, err := deployer.GetUsedIps(sub, d.APIClient.identity.PublicKey(), networkKey)
 	// user defined ips
 	for _, vm := range d.VMs {
-		if vm.IP != "" && cidr.Contains(net.ParseIP(vm.IP)) {
-			usedIPs = append(usedIPs, string(net.ParseIP(vm.IP)[3]))
+		if vm.IP != "" && cidr.Contains(net.ParseIP(vm.IP)) && !isInByte(d.usedIPs, net.ParseIP(vm.IP)[3]) {
+			d.usedIPs = append(d.usedIPs, net.ParseIP(vm.IP)[3])
 		}
 	}
 	cur := byte(2)
@@ -122,7 +129,7 @@ func (d *DeploymentDeployer) assignNodesIPs(sub subi.SubstrateExt) error {
 		}
 		ip := cidr.IP
 		ip[3] = cur
-		for isInStr(usedIPs, strconv.Itoa(int(ip[3]))) {
+		for isInByte(d.usedIPs, ip[3]) {
 			if cur == 254 {
 				return errors.New("all 253 ips of the network are exhausted")
 			}
@@ -130,7 +137,7 @@ func (d *DeploymentDeployer) assignNodesIPs(sub subi.SubstrateExt) error {
 			ip[3] = cur
 		}
 		d.VMs[idx].IP = ip.String()
-		usedIPs = append(usedIPs, strconv.Itoa(int(ip[3])))
+		d.usedIPs = append(d.usedIPs, ip[3])
 	}
 	return nil
 }
@@ -184,6 +191,7 @@ func (d *DeploymentDeployer) Marshal(r *schema.ResourceData) {
 	r.Set("qsfs", qsfs)
 	r.Set("node", d.Node)
 	r.Set("network_name", d.NetworkName)
+	r.Set("ip_range", d.IPRange)
 	r.SetId(d.Id)
 }
 
@@ -247,6 +255,9 @@ func (d *DeploymentDeployer) sync(ctx context.Context, sub subi.SubstrateExt) er
 	var qsfs []workloads.QSFS
 	var disks []workloads.Disk
 
+	localNetworkState, _ := getNetworkLocalState()
+	networkState := localNetworkState[d.NetworkName]
+	networkState.removeDeploymentUsedIPs(d.Node, d.Id)
 	for _, w := range dl.Workloads {
 		if !w.Result.State.IsOkay() {
 			continue
@@ -259,6 +270,7 @@ func (d *DeploymentDeployer) sync(ctx context.Context, sub subi.SubstrateExt) er
 				continue
 			}
 			vms = append(vms, vm)
+			localNetworkState.appendUsedIP(vm.IP, d)
 		case zos.ZDBType:
 			zdb, err := workloads.NewZDBFromWorkload(&w)
 			if err != nil {
@@ -283,8 +295,11 @@ func (d *DeploymentDeployer) sync(ctx context.Context, sub subi.SubstrateExt) er
 
 		}
 	}
+	err = localNetworkState.saveLocalState()
+	if err != nil {
+		log.Printf("error saving network local state: %+v", err)
+	}
 	d.Match(disks, qsfs, zdbs, vms)
-	log.Printf("vms: %+v\n", len(vms))
 	d.Disks = disks
 	d.QSFSs = qsfs
 	d.ZDBs = zdbs
@@ -340,18 +355,6 @@ func (d *DeploymentDeployer) Match(
 	}
 }
 func (d *DeploymentDeployer) validate() error {
-	if len(d.VMs) != 0 && d.IPRange == "" {
-		return errors.New("empty ip_range was passed," +
-			" you probably used the wrong node id in the expression `lookup(grid_network.net1.nodes_ip_range, 4, \"\")`" +
-			" the node id in the lookup must match the node property of the resource.")
-	}
-	if len(d.VMs) != 0 && strings.TrimSpace(d.IPRange) != d.IPRange {
-		return errors.New("ip_range must not contain trailing or leading spaces")
-	}
-	_, _, err := net.ParseCIDR(d.IPRange)
-	if len(d.VMs) != 0 && err != nil {
-		return errors.Wrap(err, "If you pass a vm, ip_range must be set to a valid ip range (e.g. 10.1.3.0/16)")
-	}
 	if len(d.VMs) != 0 && d.NetworkName == "" {
 		return errors.New("If you pass a vm, network_name must be non-empty")
 	}
@@ -389,6 +392,19 @@ func (d *DeploymentDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt) 
 		return err
 	}
 	currentDeployments, err := d.deployer.Deploy(ctx, sub, oldDeployments, newDeployments)
+	if err == nil {
+		localNetworkState, err := getNetworkLocalState()
+		if err != nil {
+			log.Printf("error getting local network state: %+v", err)
+		}
+		state := localNetworkState[d.NetworkName]
+		state.removeDeploymentUsedIPs(d.Node, d.Id)
+		localNetworkState[d.NetworkName] = state
+		err = localNetworkState.saveLocalState()
+		if err != nil {
+			log.Printf("error saving local network state: %+v", err)
+		}
+	}
 	id := currentDeployments[d.Node]
 	if id != 0 {
 		d.Id = fmt.Sprintf("%d", id)

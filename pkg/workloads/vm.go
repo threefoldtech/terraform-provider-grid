@@ -5,8 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"log"
+	"io"
 	"net"
 	"net/http"
 	"sort"
@@ -99,7 +98,7 @@ func NewVMFromWorkloads(wl *gridtypes.Workload, dl *gridtypes.Deployment) (VM, e
 	// TODO: check ok?
 	data := dataI.(*zos.ZMachine)
 	var result zos.ZMachineResult
-	log.Printf("%+v\n", wl.Result)
+
 	if err := json.Unmarshal(wl.Result.Data, &result); err != nil {
 		return VM{}, errors.Wrap(err, "failed to get vm result")
 	}
@@ -343,6 +342,6 @@ func getFlistChecksum(url string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	hash, err := ioutil.ReadAll(response.Body)
+	hash, err := io.ReadAll(response.Body)
 	return strings.TrimSpace(string(hash)), err
 }

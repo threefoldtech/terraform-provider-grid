@@ -294,6 +294,19 @@ func (k *NetworkDeployer) storeState(d *schema.ResourceData) {
 			nodes = append(nodes, node)
 		}
 	}
+	// update network local status
+	localNetworkState, err := getNetworkLocalState()
+	if err != nil {
+		log.Printf("error getting network local state: %+v", err)
+	}
+	networkState := localNetworkState[k.Name]
+	networkState.updateNodesSubnets(k.NodesIPRange)
+	localNetworkState[k.Name] = networkState
+	err = localNetworkState.saveLocalState()
+	if err != nil {
+		log.Printf("error saving local network state: %+v", err)
+	}
+
 	log.Printf("setting deployer object nodes: %v\n", nodes)
 
 	k.Nodes = nodes
@@ -402,7 +415,6 @@ func (k *NetworkDeployer) readNodesConfig(ctx context.Context, sub subi.Substrat
 	if err != nil {
 		return errors.Wrap(err, "failed to get deployment objects")
 	}
-	printDeployments(nodeDeployments)
 	WGAccess := false
 	for node, dl := range nodeDeployments {
 		for _, wl := range dl.Workloads {
@@ -655,8 +667,6 @@ func (k *NetworkDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt) err
 	if err != nil {
 		return errors.Wrap(err, "couldn't generate deployments data")
 	}
-	log.Printf("new deployments")
-	printDeployments(newDeployments)
 	currentDeployments, err := k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)
 	if err := k.updateState(ctx, sub, currentDeployments); err != nil {
 		log.Printf("error updating state: %s\n", err)
@@ -781,6 +791,10 @@ func resourceNetworkDelete(ctx context.Context, d *schema.ResourceData, meta int
 		d.SetId("")
 	} else {
 		deployer.storeState(d)
+	}
+	err = deleteNetworkLocalState()
+	if err != nil {
+		log.Printf("error deleting local network state: %+v", err)
 	}
 	return diags
 }

@@ -635,14 +635,14 @@ func (k *K8sDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt) error {
 	return err
 }
 
-func printDeployments(dls map[uint32]gridtypes.Deployment) {
-	for node, dl := range dls {
-		log.Printf("node id: %d\n", node)
-		enc := json.NewEncoder(log.Writer())
-		enc.SetIndent("", "  ")
-		enc.Encode(dl)
-	}
-}
+// func printDeployments(dls map[uint32]gridtypes.Deployment) {
+// 	for node, dl := range dls {
+// 		log.Printf("node id: %d\n", node)
+// 		enc := json.NewEncoder(log.Writer())
+// 		enc.SetIndent("", "  ")
+// 		enc.Encode(dl)
+// 	}
+// }
 
 func (k *K8sDeployer) updateState(ctx context.Context, sub subi.SubstrateExt, currentDeploymentIDs map[uint32]uint64) error {
 	log.Printf("current deployments\n")
@@ -651,7 +651,7 @@ func (k *K8sDeployer) updateState(ctx context.Context, sub subi.SubstrateExt, cu
 	if err != nil {
 		return errors.Wrap(err, "failed to get deployments to update local state")
 	}
-	printDeployments(currentDeployments)
+	// printDeployments(currentDeployments)
 	publicIPs := make(map[string]string)
 	publicIP6s := make(map[string]string)
 	yggIPs := make(map[string]string)
@@ -723,7 +723,7 @@ func (k *K8sDeployer) updateFromRemote(ctx context.Context, sub subi.SubstrateEx
 		return errors.Wrap(err, "failed to fetch remote deployments")
 	}
 	log.Printf("calling updateFromRemote")
-	printDeployments(currentDeployments)
+	// printDeployments(currentDeployments)
 	keyUpdated, tokenUpdated, networkUpdated := false, false, false
 	// calculate k's properties from the currently deployed deployments
 	for _, dl := range currentDeployments {

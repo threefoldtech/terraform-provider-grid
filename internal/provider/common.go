@@ -3,7 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -39,7 +39,7 @@ func getFlistChecksum(url string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	hash, err := ioutil.ReadAll(response.Body)
+	hash, err := io.ReadAll(response.Body)
 	return strings.TrimSpace(string(hash)), err
 }
 

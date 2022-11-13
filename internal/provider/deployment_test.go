@@ -10,7 +10,6 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	mock "github.com/threefoldtech/terraform-provider-grid/internal/provider/mocks"
-	"github.com/threefoldtech/terraform-provider-grid/pkg/deployer"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -253,18 +252,18 @@ func TestValidate(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	d := constructTestDeployer(ctrl)
-	ipRange := d.IPRange
+	// ipRange := d.IPRange
 	network := d.NetworkName
 	checksum := d.VMs[0].FlistChecksum
-	d.IPRange = ""
-	assert.Error(t, d.validate())
-	d.IPRange = ipRange + " "
-	assert.Error(t, d.validate())
-	d.IPRange = "asdasd"
-	assert.Error(t, d.validate())
-	d.IPRange = ipRange
-	d.NetworkName = ""
-	assert.Error(t, d.validate())
+	// d.IPRange = ""
+	// assert.Error(t, d.validate())
+	// d.IPRange = ipRange + " "
+	// assert.Error(t, d.validate())
+	// d.IPRange = "asdasd"
+	// assert.Error(t, d.validate())
+	// d.IPRange = ipRange
+	// d.NetworkName = ""
+	// assert.Error(t, d.validate())
 	d.NetworkName = network
 	d.VMs[0].FlistChecksum += " "
 	assert.Error(t, d.validate())
@@ -296,7 +295,6 @@ func TestDeploymentGenerateDeployment(t *testing.T) {
 	defer ctrl.Finish()
 	d := constructTestDeployer(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
-	sub.EXPECT().KVStoreGet([]byte(""), deployer.GetNetworkKey(d.NetworkName, d.Node)).Return("1", nil).AnyTimes()
 	dl, err := d.GenerateVersionlessDeployments(context.Background(), sub)
 	assert.NoError(t, err)
 	var wls []gridtypes.Workload
@@ -327,7 +325,6 @@ func TestDeploymentSync(t *testing.T) {
 	subI, err := d.APIClient.manager.SubstrateExt()
 	assert.NoError(t, err)
 	sub := subI.(*mock.MockSubstrateExt)
-	sub.EXPECT().KVStoreGet([]byte(""), deployer.GetNetworkKey(d.NetworkName, d.Node)).Return("1", nil).AnyTimes()
 	dls, err := d.GenerateVersionlessDeployments(context.Background(), sub)
 	assert.NoError(t, err)
 	dl := dls[d.Node]
