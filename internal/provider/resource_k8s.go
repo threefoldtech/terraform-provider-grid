@@ -66,7 +66,7 @@ func resourceKubernetes() *schema.Resource {
 			},
 			"nodes_ip_range": {
 				Type:        schema.TypeMap,
-				Required:    true,
+				Computed:    true,
 				Elem:        &schema.Schema{Type: schema.TypeString},
 				Description: "Network IP ranges of nodes in the cluster (usually assigned from grid_network.<network-resource-name>.nodes_ip_range)",
 			},
@@ -260,10 +260,10 @@ type K8sDeployer struct {
 
 	APIClient *apiClient
 
-	UsedIPs  map[uint32][]string
-	ncPool   *client.NodeClientPool
-	d        *schema.ResourceData
-	deployer deployer.Deployer
+	NodeUsedIPs map[uint32][]byte
+	ncPool      *client.NodeClientPool
+	d           *schema.ResourceData
+	deployer    deployer.Deployer
 }
 
 func NewK8sNodeData(m map[string]interface{}) K8sNodeData {
@@ -316,32 +316,41 @@ func NewK8sNodeDataFromWorkload(w gridtypes.Workload, nodeID uint32, diskSize in
 }
 
 func NewK8sDeployer(d *schema.ResourceData, apiClient *apiClient) (K8sDeployer, error) {
+	networkName := d.Get("network_name").(string)
+	localNetworkState, err := getNetworkLocalState()
+	if err != nil {
+		log.Printf("error getting local network state: %+v", err)
+	}
+	networkState := localNetworkState[networkName]
 	master := NewK8sNodeData(d.Get("master").([]interface{})[0].(map[string]interface{}))
 	workers := make([]K8sNodeData, 0)
-	usedIPs := make(map[uint32][]string)
-	nodesIPRange := make(map[uint32]gridtypes.IPNet)
-	nodesIPRangeIf := d.Get("nodes_ip_range").(map[string]interface{})
-	for node, r := range nodesIPRangeIf {
-		nodeInt, err := strconv.ParseUint(node, 10, 32)
-		if err != nil {
-			return K8sDeployer{}, errors.Wrap(err, "couldn't parse node id")
-		}
-		if r.(string) == "" {
-			return K8sDeployer{}, errors.New("node ip range is empty")
-		}
-		nodesIPRange[uint32(nodeInt)], err = gridtypes.ParseIPNet(r.(string))
-		if err != nil {
-			return K8sDeployer{}, errors.Wrap(err, "couldn't parse node ip range")
-		}
-	}
+	usedIPs := make(map[uint32][]byte)
+
 	if master.IP != "" {
-		usedIPs[master.Node] = append(usedIPs[master.Node], master.IP)
+		usedIPs[master.Node] = append(usedIPs[master.Node], net.ParseIP(master.IP)[3])
 	}
+	usedIPs[master.Node] = append(usedIPs[master.Node], networkState.getNodeUsedIPs(master.Node)...)
+
 	for _, w := range d.Get("workers").([]interface{}) {
 		data := NewK8sNodeData(w.(map[string]interface{}))
 		workers = append(workers, data)
 		if data.IP != "" {
-			usedIPs[data.Node] = append(usedIPs[data.Node], data.IP)
+			usedIPs[data.Node] = append(usedIPs[data.Node], net.ParseIP(data.IP)[3])
+			usedIPs[data.Node] = append(usedIPs[data.Node], networkState.getNodeUsedIPs(data.Node)...)
+		}
+	}
+	nodesIPRange := make(map[uint32]gridtypes.IPNet)
+	if networkState.NodesSubnets == nil {
+		return K8sDeployer{}, errors.New("couldn't get nodes ip ranges from local state")
+	}
+	nodesIPRange[master.Node], err = gridtypes.ParseIPNet(networkState.NodesSubnets[master.Node])
+	if err != nil {
+		return K8sDeployer{}, errors.Wrap(err, "couldn't parse master node ip range")
+	}
+	for _, worker := range workers {
+		nodesIPRange[worker.Node], err = gridtypes.ParseIPNet(networkState.NodesSubnets[worker.Node])
+		if err != nil {
+			return K8sDeployer{}, errors.Wrapf(err, "couldn't parse worker node (%d) ip range", worker.Node)
 		}
 	}
 	nodeDeploymentIDIf := d.Get("node_deployment_id").(map[string]interface{})
@@ -372,7 +381,7 @@ func NewK8sDeployer(d *schema.ResourceData, apiClient *apiClient) (K8sDeployer, 
 		SSHKey:           d.Get("ssh_key").(string),
 		NetworkName:      d.Get("network_name").(string),
 		NodeDeploymentID: nodeDeploymentID,
-		UsedIPs:          usedIPs,
+		NodeUsedIPs:      usedIPs,
 		NodesIPRange:     nodesIPRange,
 		APIClient:        apiClient,
 		ncPool:           pool,
@@ -457,6 +466,47 @@ func (k *K8sDeployer) storeState(d *schema.ResourceData) {
 	}
 	master := k.Master.Dictify()
 	k.retainChecksums(workers, master)
+	localNetworkState, err := getNetworkLocalState()
+	if err != nil {
+		log.Printf("couldn't get network local state: %+v", err)
+	}
+	networkState := localNetworkState[k.NetworkName]
+	// remove old ips
+	networkState.removeDeploymentUsedIPs(k.Master.Node, fmt.Sprint(k.NodeDeploymentID[k.Master.Node]))
+	for _, worker := range k.Workers {
+		networkState.removeDeploymentUsedIPs(worker.Node, fmt.Sprint(k.NodeDeploymentID[worker.Node]))
+	}
+	log.Printf("network state: %+v", networkState)
+	// append new ips
+	masterNodeIPs := networkState.NodesUsedIPs[k.Master.Node]
+
+	masterIP := net.ParseIP(k.Master.IP)
+	log.Printf("master ip: %+v", masterIP)
+	if masterIP == nil {
+		log.Printf("couldn't parse master ip")
+	} else {
+		masterNodeIPs[fmt.Sprint(k.NodeDeploymentID[k.Master.Node])] = append(masterNodeIPs[fmt.Sprint(k.NodeDeploymentID[k.Master.Node])], masterIP.To4()[3])
+	}
+	networkState.NodesUsedIPs[k.Master.Node] = masterNodeIPs
+	log.Printf("network state: %+v", networkState)
+	for _, worker := range k.Workers {
+		workerNodeIPs := networkState.NodesUsedIPs[worker.Node]
+		workerIP := net.ParseIP(worker.IP)
+		log.Printf("wroker ip: %+v", workerIP)
+		if workerIP == nil {
+			log.Printf("couldn't parse worker ip at node (%d)", worker.Node)
+		} else {
+			workerNodeIPs[fmt.Sprint(k.NodeDeploymentID[worker.Node])] = append(workerNodeIPs[fmt.Sprint(k.NodeDeploymentID[worker.Node])], workerIP.To4()[3])
+		}
+		networkState.NodesUsedIPs[worker.Node] = workerNodeIPs
+	}
+	log.Printf("network state: %+v", networkState)
+	localNetworkState[k.NetworkName] = networkState
+	log.Printf("local network state: %+v", localNetworkState)
+	err = localNetworkState.saveLocalState()
+	if err != nil {
+		log.Printf("error saving local network state: %+v", err)
+	}
 
 	l := []interface{}{master}
 	d.Set("master", l)
@@ -471,24 +521,23 @@ func (k *K8sDeployer) assignNodesIPs() error {
 	// TODO: when a k8s node changes its zos node, remove its ip from the used ones. better at the beginning
 	masterNodeRange := k.NodesIPRange[k.Master.Node]
 	if k.Master.IP == "" || !masterNodeRange.Contains(net.ParseIP(k.Master.IP)) {
-		ip, err := getK8sFreeIP(masterNodeRange, k.UsedIPs[k.Master.Node])
+		ip, err := k.getK8sFreeIP(masterNodeRange, k.Master.Node)
 		if err != nil {
 			return errors.Wrap(err, "failed to find free ip for master")
 		}
 		k.Master.IP = ip
-		k.UsedIPs[k.Master.Node] = append(k.UsedIPs[k.Master.Node], ip)
+
 	}
 	for idx, w := range k.Workers {
 		workerNodeRange := k.NodesIPRange[w.Node]
 		if w.IP != "" && workerNodeRange.Contains(net.ParseIP(w.IP)) {
 			continue
 		}
-		ip, err := getK8sFreeIP(workerNodeRange, k.UsedIPs[w.Node])
+		ip, err := k.getK8sFreeIP(workerNodeRange, w.Node)
 		if err != nil {
 			return errors.Wrap(err, "failed to find free ip for worker")
 		}
 		k.Workers[idx].IP = ip
-		k.UsedIPs[w.Node] = append(k.UsedIPs[w.Node], ip)
 	}
 	return nil
 }
@@ -629,6 +678,25 @@ func (k *K8sDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt) error {
 	newDeployments := make(map[uint32]gridtypes.Deployment)
 
 	currentDeployments, err := k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)
+	if err != nil {
+		return errors.Wrapf(err, "couldn't cancel k8s deployment")
+	}
+	// remove used ips
+	localNetworkState, err := getNetworkLocalState()
+	if err != nil {
+		log.Printf("error getting local network state: %+v", err)
+	}
+	state := localNetworkState[k.NetworkName]
+	delete(state.NodesUsedIPs[k.Master.Node], fmt.Sprint(k.NodeDeploymentID[k.Master.Node]))
+	for _, worker := range k.Workers {
+		delete(state.NodesUsedIPs[worker.Node], fmt.Sprint(k.NodeDeploymentID[worker.Node]))
+	}
+	localNetworkState[k.NetworkName] = state
+	err = localNetworkState.saveLocalState()
+	if err != nil {
+		log.Printf("error saving local network state: %+v", err)
+	}
+
 	if err := k.updateState(ctx, sub, currentDeployments); err != nil {
 		log.Printf("error updating state: %s\n", err)
 	}
@@ -923,17 +991,14 @@ func (k *K8sNodeData) GenerateK8sWorkload(deployer *K8sDeployer, masterIP string
 	return workloads
 }
 
-func getK8sFreeIP(ipRange gridtypes.IPNet, usedIPs []string) (string, error) {
-	i := 254
-	l := len(ipRange.IP)
-	for i >= 2 {
-		ip := ipNet(ipRange.IP[l-4], ipRange.IP[l-3], ipRange.IP[l-2], byte(i), 32)
-		ipStr := fmt.Sprintf("%d.%d.%d.%d", ip.IP[l-4], ip.IP[l-3], ip.IP[l-2], ip.IP[l-1])
-		log.Printf("ip string: %s\n", ipStr)
-		if !isInStr(usedIPs, ipStr) {
-			return ipStr, nil
+func (k *K8sDeployer) getK8sFreeIP(ipRange gridtypes.IPNet, nodeID uint32) (string, error) {
+	for i := byte(2); i <= byte(255); i++ {
+		if !isInByte(k.NodeUsedIPs[nodeID], i) {
+			k.NodeUsedIPs[nodeID] = append(k.NodeUsedIPs[nodeID], i)
+			ip := ipRange.IP.To4()
+			ip[3] = i
+			return ip.String(), nil
 		}
-		i -= 1
 	}
 	return "", errors.New("all ips are used")
 }
