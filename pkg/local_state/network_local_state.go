@@ -1,10 +1,9 @@
-package provider
+package local_state
 
 import (
 	"encoding/json"
 	// "io/ioutil"
 
-	"net"
 	"os"
 
 	"github.com/pkg/errors"
@@ -13,16 +12,18 @@ import (
 
 type LocalNetworkState map[string]NetworkState
 
+type NodesUsedIPs map[uint32]DeploymentUsedIPs
+
 type NetworkState struct {
-	NodesSubnets map[uint32]string            `json:"nodes_subnets"`
-	NodesUsedIPs map[uint32]DeploymentUsedIPs `json:"nodes_used_ips"`
+	NodesSubnets map[uint32]string `json:"nodes_subnets"`
+	NodesUsedIPs NodesUsedIPs      `json:"nodes_used_ips"`
 }
 
 type DeploymentUsedIPs map[string][]byte
 
 const FILE_NAME = "network_state.json"
 
-func getNetworkLocalState() (LocalNetworkState, error) {
+func GetNetworkLocalState() (LocalNetworkState, error) {
 	localNetworkState := LocalNetworkState{}
 	_, err := os.Stat(FILE_NAME)
 	if err != nil {
@@ -40,7 +41,19 @@ func getNetworkLocalState() (LocalNetworkState, error) {
 	return localNetworkState, nil
 }
 
-func (l LocalNetworkState) saveLocalState() error {
+func (l LocalNetworkState) GetNetworkState(networkName string) NetworkState {
+	state := l[networkName]
+	if state.NodesSubnets == nil {
+		state.NodesSubnets = map[uint32]string{}
+	}
+	if state.NodesUsedIPs == nil {
+		state.NodesUsedIPs = NodesUsedIPs{}
+	}
+	l[networkName] = state
+	return state
+}
+
+func (l LocalNetworkState) SaveLocalState() error {
 	if content, err := json.Marshal(&l); err == nil {
 		err = os.WriteFile(FILE_NAME, content, 0644)
 		if err != nil {
@@ -52,23 +65,7 @@ func (l LocalNetworkState) saveLocalState() error {
 	return nil
 }
 
-func (l LocalNetworkState) appendUsedIP(ipStr string, d *DeploymentDeployer) {
-	networkState := l[d.NetworkName]
-
-	if networkState.NodesUsedIPs == nil {
-		networkState.NodesUsedIPs = map[uint32]DeploymentUsedIPs{}
-	}
-	deploymentUsedIPs := networkState.NodesUsedIPs[d.Node]
-	if deploymentUsedIPs == nil {
-		deploymentUsedIPs = map[string][]byte{}
-	}
-	ip := net.ParseIP(ipStr).To4()
-	deploymentUsedIPs[d.Id] = append(deploymentUsedIPs[d.Id], ip[3])
-	networkState.NodesUsedIPs[d.Node] = deploymentUsedIPs
-	l[d.NetworkName] = networkState
-}
-
-func (n *NetworkState) getNodeUsedIPs(nodeID uint32) []byte {
+func (n *NetworkState) AccumulateNodeUsedIPs(nodeID uint32) []byte {
 	usedIPs := []byte{}
 	for node, deploymentUsedIPs := range n.NodesUsedIPs {
 		if node == nodeID {
@@ -80,25 +77,33 @@ func (n *NetworkState) getNodeUsedIPs(nodeID uint32) []byte {
 	return usedIPs
 }
 
-func (n *NetworkState) removeDeploymentUsedIPs(nodeID uint32, deploymentID string) {
-	if n.NodesUsedIPs == nil {
-		n.NodesUsedIPs = map[uint32]DeploymentUsedIPs{}
-	}
+func (n *NetworkState) GetDeploymentUsedIPs(nodeID uint32) DeploymentUsedIPs {
 	if n.NodesUsedIPs[nodeID] == nil {
 		n.NodesUsedIPs[nodeID] = DeploymentUsedIPs{}
 	}
-	delete(n.NodesUsedIPs[nodeID], deploymentID)
+	return n.NodesUsedIPs[nodeID]
 }
 
-func (n *NetworkState) updateNodesSubnets(ranges map[uint32]gridtypes.IPNet) {
-	if n.NodesSubnets == nil {
-		n.NodesSubnets = map[uint32]string{}
-	}
+func (n *NetworkState) SetDeploymentUsedIPs(nodeID uint32, d DeploymentUsedIPs) {
+	n.NodesUsedIPs[nodeID] = d
+}
+
+func (n *NetworkState) GetNodeSubnet(nodeID uint32) string {
+	return n.NodesSubnets[nodeID]
+}
+
+func (n *NetworkState) RemoveDeploymentUsedIPs(nodeID uint32, deploymentID string) {
+	deploymentUsedIPs := n.GetDeploymentUsedIPs(nodeID)
+	delete(deploymentUsedIPs, deploymentID)
+	n.NodesUsedIPs[nodeID] = deploymentUsedIPs
+}
+
+func (n *NetworkState) UpdateNodesSubnets(ranges map[uint32]gridtypes.IPNet) {
 	for node, subnet := range ranges {
 		n.NodesSubnets[node] = subnet.String()
 	}
 }
 
-func deleteNetworkLocalState() error {
+func DeleteNetworkLocalState() error {
 	return os.Remove(FILE_NAME)
 }

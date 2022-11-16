@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/deployer"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/local_state"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -295,17 +296,7 @@ func (k *NetworkDeployer) storeState(d *schema.ResourceData) {
 		}
 	}
 	// update network local status
-	localNetworkState, err := getNetworkLocalState()
-	if err != nil {
-		log.Printf("error getting network local state: %+v", err)
-	}
-	networkState := localNetworkState[k.Name]
-	networkState.updateNodesSubnets(k.NodesIPRange)
-	localNetworkState[k.Name] = networkState
-	err = localNetworkState.saveLocalState()
-	if err != nil {
-		log.Printf("error saving local network state: %+v", err)
-	}
+	k.updateNetworkLocalState()
 
 	log.Printf("setting deployer object nodes: %v\n", nodes)
 
@@ -326,6 +317,20 @@ func (k *NetworkDeployer) storeState(d *schema.ResourceData) {
 	// plural or singular?
 	d.Set("nodes_ip_range", nodesIPRange)
 	d.Set("node_deployment_id", nodeDeploymentID)
+}
+
+func (k *NetworkDeployer) updateNetworkLocalState() {
+	localNetworkState, err := local_state.GetNetworkLocalState()
+	if err != nil {
+		log.Printf("error getting local network state: %+v", err)
+	}
+	networkState := localNetworkState.GetNetworkState(k.Name)
+	networkState.UpdateNodesSubnets(k.NodesIPRange)
+	localNetworkState[k.Name] = networkState
+	err = localNetworkState.SaveLocalState()
+	if err != nil {
+		log.Printf("error saving local network state: %+v", err)
+	}
 }
 
 func nextFreeOctet(used []byte, start *byte) error {
@@ -792,7 +797,7 @@ func resourceNetworkDelete(ctx context.Context, d *schema.ResourceData, meta int
 	} else {
 		deployer.storeState(d)
 	}
-	err = deleteNetworkLocalState()
+	err = local_state.DeleteNetworkLocalState()
 	if err != nil {
 		log.Printf("error deleting local network state: %+v", err)
 	}

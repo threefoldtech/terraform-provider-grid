@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/deployer"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/local_state"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
@@ -83,13 +84,13 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 		log.Printf("error parsing deploymentdata: %s", err.Error())
 	}
 
-	localNetworkState, err := getNetworkLocalState()
+	localNetworkState, err := local_state.GetNetworkLocalState()
 	if err != nil {
 		log.Printf("error getting local network state: %+v", err)
 	}
-	networkState := localNetworkState[networkName]
-	ipRange := networkState.NodesSubnets[nodeID]
-	usedIPs := networkState.getNodeUsedIPs(nodeID)
+	networkState := localNetworkState.GetNetworkState(networkName)
+	ipRange := networkState.GetNodeSubnet(nodeID)
+	usedIPs := networkState.AccumulateNodeUsedIPs(nodeID)
 
 	deploymentDeployer := DeploymentDeployer{
 		Id:          d.Id(),
@@ -255,9 +256,12 @@ func (d *DeploymentDeployer) sync(ctx context.Context, sub subi.SubstrateExt) er
 	var qsfs []workloads.QSFS
 	var disks []workloads.Disk
 
-	localNetworkState, _ := getNetworkLocalState()
-	networkState := localNetworkState[d.NetworkName]
-	networkState.removeDeploymentUsedIPs(d.Node, d.Id)
+	localNetworkState, err := local_state.GetNetworkLocalState()
+	if err != nil {
+		log.Printf("error getting local network state: %+v", err)
+	}
+	networkState := localNetworkState.GetNetworkState(d.NetworkName)
+	networkState.RemoveDeploymentUsedIPs(d.Node, d.Id)
 	for _, w := range dl.Workloads {
 		if !w.Result.State.IsOkay() {
 			continue
@@ -270,7 +274,7 @@ func (d *DeploymentDeployer) sync(ctx context.Context, sub subi.SubstrateExt) er
 				continue
 			}
 			vms = append(vms, vm)
-			localNetworkState.appendUsedIP(vm.IP, d)
+			d.appendUsedIP(localNetworkState, vm.IP)
 		case zos.ZDBType:
 			zdb, err := workloads.NewZDBFromWorkload(&w)
 			if err != nil {
@@ -295,7 +299,7 @@ func (d *DeploymentDeployer) sync(ctx context.Context, sub subi.SubstrateExt) er
 
 		}
 	}
-	err = localNetworkState.saveLocalState()
+	err = localNetworkState.SaveLocalState()
 	if err != nil {
 		log.Printf("error saving network local state: %+v", err)
 	}
@@ -305,6 +309,15 @@ func (d *DeploymentDeployer) sync(ctx context.Context, sub subi.SubstrateExt) er
 	d.ZDBs = zdbs
 	d.VMs = vms
 	return nil
+}
+
+func (d *DeploymentDeployer) appendUsedIP(l local_state.LocalNetworkState, ipStr string) {
+	networkState := l.GetNetworkState(d.NetworkName)
+	deploymentUsedIPs := networkState.GetDeploymentUsedIPs(d.Node)
+	ip := net.ParseIP(ipStr).To4()
+	deploymentUsedIPs[d.Id] = append(deploymentUsedIPs[d.Id], ip[3])
+	networkState.SetDeploymentUsedIPs(d.Node, deploymentUsedIPs)
+	l[d.NetworkName] = networkState
 }
 
 // Match objects to match the input
@@ -392,18 +405,10 @@ func (d *DeploymentDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt) 
 		return err
 	}
 	currentDeployments, err := d.deployer.Deploy(ctx, sub, oldDeployments, newDeployments)
+	// error should be checked and if not nil should have fallback
 	if err == nil {
-		localNetworkState, err := getNetworkLocalState()
-		if err != nil {
-			log.Printf("error getting local network state: %+v", err)
-		}
-		state := localNetworkState[d.NetworkName]
-		state.removeDeploymentUsedIPs(d.Node, d.Id)
-		localNetworkState[d.NetworkName] = state
-		err = localNetworkState.saveLocalState()
-		if err != nil {
-			log.Printf("error saving local network state: %+v", err)
-		}
+		// update network local state
+		d.removeDeploymentIPsFromLocalState()
 	}
 	id := currentDeployments[d.Node]
 	if id != 0 {
@@ -412,4 +417,18 @@ func (d *DeploymentDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt) 
 		d.Id = ""
 	}
 	return err
+}
+
+func (d *DeploymentDeployer) removeDeploymentIPsFromLocalState() {
+	localNetworkState, err := local_state.GetNetworkLocalState()
+	if err != nil {
+		log.Printf("error getting local network state: %+v", err)
+	}
+	state := localNetworkState.GetNetworkState(d.NetworkName)
+	state.RemoveDeploymentUsedIPs(d.Node, d.Id)
+	localNetworkState[d.NetworkName] = state
+	err = localNetworkState.SaveLocalState()
+	if err != nil {
+		log.Printf("error saving local network state: %+v", err)
+	}
 }
