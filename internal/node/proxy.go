@@ -27,9 +27,10 @@ type ProxyBus struct {
 	twinID      uint32
 	verifyReply bool
 	resolver    rmb.TwinResolver
+	proxyFlag   bool
 }
 
-func NewProxyBus(endpoint string, twinID uint32, sub subi.Manager, signer substrate.Identity, verifyReply bool) (*ProxyBus, error) {
+func NewProxyBus(endpoint string, twinID uint32, sub subi.Manager, signer substrate.Identity, verifyReply bool, proxyFlag bool) (*ProxyBus, error) {
 	if len(endpoint) != 0 && endpoint[len(endpoint)-1] == '/' {
 		endpoint = endpoint[:len(endpoint)-1]
 	}
@@ -43,6 +44,7 @@ func NewProxyBus(endpoint string, twinID uint32, sub subi.Manager, signer substr
 		twinID,
 		verifyReply,
 		rmb.NewCacheResolver(resolver, time.Second),
+		proxyFlag,
 	}, nil
 }
 
@@ -68,7 +70,7 @@ func (r *ProxyBus) Call(ctx context.Context, twin uint32, fn string, data interf
 		TwinDst:    []int{int(twin)},
 		Data:       base64.StdEncoding.EncodeToString(bs),
 		Epoch:      time.Now().Unix(),
-		Proxy:      true,
+		Proxy:      r.proxyFlag,
 	}
 	if err := msg.Sign(r.signer); err != nil {
 		return err

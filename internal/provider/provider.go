@@ -34,6 +34,13 @@ var (
 		"test": subi.NewTestManager,
 		"main": subi.NewMMainanager,
 	}
+	// proxy flag in rmb message (for using rmb-rs)
+	ProxyFlag = map[string]bool{
+		"dev":  false,
+		"test": true,
+		"qa":   true,
+		"main": true,
+	}
 )
 
 func init() {
@@ -199,7 +206,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	var cl rmb.Client
 	if apiClient.use_rmb_proxy {
 		verify_reply := d.Get("verify_reply").(bool)
-		cl, err = client.NewProxyBus(rmb_proxy_url, apiClient.twin_id, apiClient.manager, identity, verify_reply)
+		cl, err = client.NewProxyBus(rmb_proxy_url, apiClient.twin_id, apiClient.manager, identity, verify_reply, ProxyFlag[network])
 	} else {
 		cl, err = rmb.NewClient(apiClient.rmb_redis_url)
 	}
