@@ -1,8 +1,7 @@
 terraform {
   required_providers {
     grid = {
-      source  = "threefoldtechdev.com/providers/grid"
-      version = "0.2"
+      source  = "threefoldtech/grid"
     }
   }
 }
@@ -36,7 +35,6 @@ resource "grid_deployment" "d1" {
   solution_type = local.solution_type
   name          = local.name
   network_name  = grid_network.net1.name
-  ip_range      = lookup(grid_network.net1.nodes_ip_range, local.node, "")
   vms {
     name  = "vm1"
     flist = "https://hub.grid.tf/tf-official-apps/peertube-v3.1.1.flist"

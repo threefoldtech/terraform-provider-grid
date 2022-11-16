@@ -29,7 +29,6 @@ resource "grid_deployment" "d1" {
   name          = local.name
   node          = 8
   network_name  = grid_network.net1.name
-  ip_range      = lookup(grid_network.net1.nodes_ip_range, 8, "")
 
   disks {
     name        = "data"

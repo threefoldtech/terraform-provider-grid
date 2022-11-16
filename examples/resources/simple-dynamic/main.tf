@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     grid = {
-      source = "threefoldtechdev.com/providers/grid"
+      source = "threefoldtech/grid"
     }
   }
 }
@@ -45,7 +45,6 @@ resource "grid_network" "net1" {
 resource "grid_deployment" "server1" {
   node = grid_scheduler.sched.nodes["server1"]
   network_name = grid_network.net1.name
-  ip_range = lookup(grid_network.net1.nodes_ip_range, grid_scheduler.sched.nodes["server1"], "")
   vms {
     name = "firstserver"
     flist = "https://hub.grid.tf/omar0.3bot/omarelawady-simple-http-server-latest.flist"

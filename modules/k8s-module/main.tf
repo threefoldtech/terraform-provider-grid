@@ -29,7 +29,6 @@ resource "grid_network" "net" {
 resource "grid_deployment" "master" {
   node         = var.master.node
   network_name = grid_network.net.name
-  ip_range     = lookup(grid_network.net.nodes_ip_range, var.master.node, "")
   vms {
     name       = var.master.name
     flist      = "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist"
@@ -63,7 +62,6 @@ resource "grid_deployment" "workers" {
   for_each     = { for w in var.workers : w.node => w... }
   node         = tonumber(each.key)
   network_name = grid_network.net.name
-  ip_range     = lookup(grid_network.net.nodes_ip_range, tonumber(each.key), "")
 
   dynamic "vms" {
     for_each = each.value
