@@ -468,6 +468,10 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 	needsIPv4Access := k.AddWGAccess || (len(hiddenNodes) != 0 && len(hiddenNodes)+len(accessibleNodes) > 1)
 	if needsIPv4Access {
 		if k.PublicNodeID != 0 { // it's set
+			// if public node id is already set, it should be added to accessible nodes
+			if !isInUint32(accessibleNodes, k.PublicNodeID) {
+				accessibleNodes = append(accessibleNodes, k.PublicNodeID)
+			}
 		} else if ipv4Node != 0 { // there's one in the network original nodes
 			k.PublicNodeID = ipv4Node
 		} else {
