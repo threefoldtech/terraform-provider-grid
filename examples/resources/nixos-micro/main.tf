@@ -20,7 +20,6 @@ resource "grid_network" "net1" {
   # add_wg_access = true
 }
 resource "grid_deployment" "d1" {
-  name         = local.name
   node         = 34
   network_name = grid_network.net1.name
   ip_range     = lookup(grid_network.net1.nodes_ip_range, 34, "")
