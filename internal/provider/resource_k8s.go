@@ -15,6 +15,7 @@ import (
 	"github.com/pkg/errors"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/deployer"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/state"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -66,7 +67,7 @@ func resourceKubernetes() *schema.Resource {
 			},
 			"nodes_ip_range": {
 				Type:        schema.TypeMap,
-				Required:    true,
+				Computed:    true,
 				Elem:        &schema.Schema{Type: schema.TypeString},
 				Description: "Network IP ranges of nodes in the cluster (usually assigned from grid_network.<network-resource-name>.nodes_ip_range)",
 			},
@@ -260,10 +261,10 @@ type K8sDeployer struct {
 
 	APIClient *apiClient
 
-	UsedIPs  map[uint32][]string
-	ncPool   *client.NodeClientPool
-	d        *schema.ResourceData
-	deployer deployer.Deployer
+	NodeUsedIPs map[uint32][]byte
+	ncPool      *client.NodeClientPool
+	d           *schema.ResourceData
+	deployer    deployer.Deployer
 }
 
 func NewK8sNodeData(m map[string]interface{}) K8sNodeData {
@@ -316,32 +317,36 @@ func NewK8sNodeDataFromWorkload(w gridtypes.Workload, nodeID uint32, diskSize in
 }
 
 func NewK8sDeployer(d *schema.ResourceData, apiClient *apiClient) (K8sDeployer, error) {
+	networkName := d.Get("network_name").(string)
+	ns := apiClient.state.GetNetworkState()
+	network := ns.GetNetwork(networkName)
+
 	master := NewK8sNodeData(d.Get("master").([]interface{})[0].(map[string]interface{}))
 	workers := make([]K8sNodeData, 0)
-	usedIPs := make(map[uint32][]string)
-	nodesIPRange := make(map[uint32]gridtypes.IPNet)
-	nodesIPRangeIf := d.Get("nodes_ip_range").(map[string]interface{})
-	for node, r := range nodesIPRangeIf {
-		nodeInt, err := strconv.ParseUint(node, 10, 32)
-		if err != nil {
-			return K8sDeployer{}, errors.Wrap(err, "couldn't parse node id")
-		}
-		if r.(string) == "" {
-			return K8sDeployer{}, errors.New("node ip range is empty")
-		}
-		nodesIPRange[uint32(nodeInt)], err = gridtypes.ParseIPNet(r.(string))
-		if err != nil {
-			return K8sDeployer{}, errors.Wrap(err, "couldn't parse node ip range")
-		}
-	}
+	usedIPs := make(map[uint32][]byte)
+
 	if master.IP != "" {
-		usedIPs[master.Node] = append(usedIPs[master.Node], master.IP)
+		usedIPs[master.Node] = append(usedIPs[master.Node], net.ParseIP(master.IP)[3])
 	}
+	usedIPs[master.Node] = append(usedIPs[master.Node], network.GetNodeIPsList(master.Node)...)
 	for _, w := range d.Get("workers").([]interface{}) {
 		data := NewK8sNodeData(w.(map[string]interface{}))
 		workers = append(workers, data)
 		if data.IP != "" {
-			usedIPs[data.Node] = append(usedIPs[data.Node], data.IP)
+			usedIPs[data.Node] = append(usedIPs[data.Node], net.ParseIP(data.IP)[3])
+			usedIPs[data.Node] = append(usedIPs[data.Node], network.GetNodeIPsList(data.Node)...)
+		}
+	}
+	nodesIPRange := make(map[uint32]gridtypes.IPNet)
+	var err error
+	nodesIPRange[master.Node], err = gridtypes.ParseIPNet(network.GetNodeSubnet(master.Node))
+	if err != nil {
+		return K8sDeployer{}, errors.Wrap(err, "couldn't parse master node ip range")
+	}
+	for _, worker := range workers {
+		nodesIPRange[worker.Node], err = gridtypes.ParseIPNet(network.GetNodeSubnet(worker.Node))
+		if err != nil {
+			return K8sDeployer{}, errors.Wrapf(err, "couldn't parse worker node (%d) ip range", worker.Node)
 		}
 	}
 	nodeDeploymentIDIf := d.Get("node_deployment_id").(map[string]interface{})
@@ -372,7 +377,7 @@ func NewK8sDeployer(d *schema.ResourceData, apiClient *apiClient) (K8sDeployer, 
 		SSHKey:           d.Get("ssh_key").(string),
 		NetworkName:      d.Get("network_name").(string),
 		NodeDeploymentID: nodeDeploymentID,
-		UsedIPs:          usedIPs,
+		NodeUsedIPs:      usedIPs,
 		NodesIPRange:     nodesIPRange,
 		APIClient:        apiClient,
 		ncPool:           pool,
@@ -442,7 +447,7 @@ func (d *K8sDeployer) retainChecksums(workers []interface{}, master interface{})
 	}
 }
 
-func (k *K8sDeployer) storeState(d *schema.ResourceData) {
+func (k *K8sDeployer) storeState(d *schema.ResourceData, cl *apiClient) {
 	workers := make([]interface{}, 0)
 	for _, w := range k.Workers {
 		workers = append(workers, w.Dictify())
@@ -459,6 +464,7 @@ func (k *K8sDeployer) storeState(d *schema.ResourceData) {
 	k.retainChecksums(workers, master)
 
 	l := []interface{}{master}
+	k.updateNetworkState(d, cl.state)
 	d.Set("master", l)
 	d.Set("workers", workers)
 	d.Set("token", k.Token)
@@ -467,28 +473,66 @@ func (k *K8sDeployer) storeState(d *schema.ResourceData) {
 	d.Set("node_deployment_id", nodeDeploymentID)
 }
 
+func (k *K8sDeployer) updateNetworkState(d *schema.ResourceData, state state.StateI) {
+	ns := state.GetNetworkState()
+	network := ns.GetNetwork(k.NetworkName)
+	before, _ := d.GetChange("node_deployment_id")
+	for node, deploymentID := range before.(map[string]interface{}) {
+		nodeID, err := strconv.Atoi(node)
+		if err != nil {
+			log.Printf("error converting node id string to int: %+v", err)
+			continue
+		}
+		deploymentIDStr := fmt.Sprint(deploymentID.(int))
+		network.DeleteDeployment(uint32(nodeID), deploymentIDStr)
+	}
+	// remove old ips
+	network.DeleteDeployment(k.Master.Node, fmt.Sprint(k.NodeDeploymentID[k.Master.Node]))
+	for _, worker := range k.Workers {
+		network.DeleteDeployment(worker.Node, fmt.Sprint(k.NodeDeploymentID[worker.Node]))
+	}
+
+	// append new ips
+	masterNodeIPs := network.GetDeploymentIPs(k.Master.Node, fmt.Sprint(k.NodeDeploymentID[k.Master.Node]))
+	masterIP := net.ParseIP(k.Master.IP)
+	if masterIP == nil {
+		log.Printf("couldn't parse master ip")
+	} else {
+		masterNodeIPs = append(masterNodeIPs, masterIP.To4()[3])
+	}
+	network.SetDeploymentIPs(k.Master.Node, fmt.Sprint(k.NodeDeploymentID[k.Master.Node]), masterNodeIPs)
+	for _, worker := range k.Workers {
+		workerNodeIPs := network.GetDeploymentIPs(worker.Node, fmt.Sprint(k.NodeDeploymentID[worker.Node]))
+		workerIP := net.ParseIP(worker.IP)
+		if workerIP == nil {
+			log.Printf("couldn't parse worker ip at node (%d)", worker.Node)
+		} else {
+			workerNodeIPs = append(workerNodeIPs, workerIP.To4()[3])
+		}
+		network.SetDeploymentIPs(worker.Node, fmt.Sprint(k.NodeDeploymentID[worker.Node]), workerNodeIPs)
+	}
+}
+
 func (k *K8sDeployer) assignNodesIPs() error {
 	// TODO: when a k8s node changes its zos node, remove its ip from the used ones. better at the beginning
 	masterNodeRange := k.NodesIPRange[k.Master.Node]
 	if k.Master.IP == "" || !masterNodeRange.Contains(net.ParseIP(k.Master.IP)) {
-		ip, err := getK8sFreeIP(masterNodeRange, k.UsedIPs[k.Master.Node])
+		ip, err := k.getK8sFreeIP(masterNodeRange, k.Master.Node)
 		if err != nil {
 			return errors.Wrap(err, "failed to find free ip for master")
 		}
 		k.Master.IP = ip
-		k.UsedIPs[k.Master.Node] = append(k.UsedIPs[k.Master.Node], ip)
 	}
 	for idx, w := range k.Workers {
 		workerNodeRange := k.NodesIPRange[w.Node]
 		if w.IP != "" && workerNodeRange.Contains(net.ParseIP(w.IP)) {
 			continue
 		}
-		ip, err := getK8sFreeIP(workerNodeRange, k.UsedIPs[w.Node])
+		ip, err := k.getK8sFreeIP(workerNodeRange, w.Node)
 		if err != nil {
 			return errors.Wrap(err, "failed to find free ip for worker")
 		}
 		k.Workers[idx].IP = ip
-		k.UsedIPs[w.Node] = append(k.UsedIPs[w.Node], ip)
 	}
 	return nil
 }
@@ -610,7 +654,7 @@ func (k *K8sDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error
 	return isNodesUp(ctx, sub, nodes, k.ncPool)
 }
 
-func (k *K8sDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt) error {
+func (k *K8sDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, cl *apiClient) error {
 	if err := k.validateChecksums(); err != nil {
 		return err
 	}
@@ -619,17 +663,23 @@ func (k *K8sDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt) error {
 		return errors.Wrap(err, "couldn't generate deployments data")
 	}
 	currentDeployments, err := k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)
-	if err := k.updateState(ctx, sub, currentDeployments); err != nil {
+	if err := k.updateState(ctx, sub, currentDeployments, d, cl); err != nil {
 		log.Printf("error updating state: %s\n", err)
 	}
 	return err
 }
 
-func (k *K8sDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt) error {
+func (k *K8sDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, cl *apiClient) error {
 	newDeployments := make(map[uint32]gridtypes.Deployment)
 
 	currentDeployments, err := k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)
-	if err := k.updateState(ctx, sub, currentDeployments); err != nil {
+	if err != nil {
+		return errors.Wrapf(err, "couldn't cancel k8s deployment")
+	}
+	// remove used ips
+	k.removeUsedIPsFromLocalState(cl)
+
+	if err := k.updateState(ctx, sub, currentDeployments, d, cl); err != nil {
 		log.Printf("error updating state: %s\n", err)
 	}
 	return err
@@ -644,7 +694,17 @@ func printDeployments(dls map[uint32]gridtypes.Deployment) {
 	}
 }
 
-func (k *K8sDeployer) updateState(ctx context.Context, sub subi.SubstrateExt, currentDeploymentIDs map[uint32]uint64) error {
+func (k *K8sDeployer) removeUsedIPsFromLocalState(cl *apiClient) {
+	ns := cl.state.GetNetworkState()
+	network := ns.GetNetwork(k.NetworkName)
+
+	network.DeleteDeployment(k.Master.Node, fmt.Sprint(k.NodeDeploymentID[k.Master.Node]))
+	for _, worker := range k.Workers {
+		network.DeleteDeployment(worker.Node, fmt.Sprint(k.NodeDeploymentID[worker.Node]))
+	}
+}
+
+func (k *K8sDeployer) updateState(ctx context.Context, sub subi.SubstrateExt, currentDeploymentIDs map[uint32]uint64, d *schema.ResourceData, cl *apiClient) error {
 	log.Printf("current deployments\n")
 	k.NodeDeploymentID = currentDeploymentIDs
 	currentDeployments, err := k.deployer.GetDeploymentObjects(ctx, sub, currentDeploymentIDs)
@@ -695,6 +755,7 @@ func (k *K8sDeployer) updateState(ctx context.Context, sub subi.SubstrateExt, cu
 		k.Workers[idx].IP = privateIPs[string(w.Name)]
 		k.Workers[idx].YggIP = yggIPs[string(w.Name)]
 	}
+	k.updateNetworkState(d, cl.state)
 	log.Printf("Current state after updatestate %v\n", k)
 	return nil
 }
@@ -923,17 +984,14 @@ func (k *K8sNodeData) GenerateK8sWorkload(deployer *K8sDeployer, masterIP string
 	return workloads
 }
 
-func getK8sFreeIP(ipRange gridtypes.IPNet, usedIPs []string) (string, error) {
-	i := 254
-	l := len(ipRange.IP)
-	for i >= 2 {
-		ip := ipNet(ipRange.IP[l-4], ipRange.IP[l-3], ipRange.IP[l-2], byte(i), 32)
-		ipStr := fmt.Sprintf("%d.%d.%d.%d", ip.IP[l-4], ip.IP[l-3], ip.IP[l-2], ip.IP[l-1])
-		log.Printf("ip string: %s\n", ipStr)
-		if !isInStr(usedIPs, ipStr) {
-			return ipStr, nil
+func (k *K8sDeployer) getK8sFreeIP(ipRange gridtypes.IPNet, nodeID uint32) (string, error) {
+	for i := byte(2); i <= byte(255); i++ {
+		if !isInByte(k.NodeUsedIPs[nodeID], i) {
+			k.NodeUsedIPs[nodeID] = append(k.NodeUsedIPs[nodeID], i)
+			ip := ipRange.IP.To4()
+			ip[3] = i
+			return ip.String(), nil
 		}
-		i -= 1
 	}
 	return "", errors.New("all ips are used")
 }
@@ -958,7 +1016,7 @@ func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 		return diag.FromErr(err)
 	}
 
-	err = deployer.Deploy(ctx, sub)
+	err = deployer.Deploy(ctx, sub, d, apiClient)
 	if err != nil {
 		if len(deployer.NodeDeploymentID) != 0 {
 			// failed to deploy and failed to revert, store the current state locally
@@ -967,7 +1025,7 @@ func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 			return diag.FromErr(err)
 		}
 	}
-	deployer.storeState(d)
+	deployer.storeState(d, apiClient)
 	d.SetId(uuid.New().String())
 	return diags
 }
@@ -996,11 +1054,11 @@ func resourceK8sUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		return diag.FromErr(errors.Wrap(err, "couldn't invalidate broken attributes"))
 	}
 
-	err = deployer.Deploy(ctx, sub)
+	err = deployer.Deploy(ctx, sub, d, apiClient)
 	if err != nil {
 		diags = diag.FromErr(err)
 	}
-	deployer.storeState(d)
+	deployer.storeState(d, apiClient)
 	return diags
 }
 
@@ -1038,7 +1096,7 @@ func resourceK8sRead(ctx context.Context, d *schema.ResourceData, meta interface
 		})
 		return diags
 	}
-	deployer.storeState(d)
+	deployer.storeState(d, apiClient)
 	return diags
 }
 
@@ -1058,14 +1116,14 @@ func resourceK8sDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	err = deployer.Cancel(ctx, sub)
+	err = deployer.Cancel(ctx, sub, d, apiClient)
 	if err != nil {
 		diags = diag.FromErr(err)
 	}
 	if err == nil {
 		d.SetId("")
 	} else {
-		deployer.storeState(d)
+		deployer.storeState(d, apiClient)
 	}
 	return diags
 }

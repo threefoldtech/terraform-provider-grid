@@ -2,10 +2,13 @@ package provider
 
 import (
 	"testing"
+
+	"github.com/threefoldtech/terraform-provider-grid/pkg/state"
 )
 
 func TestProvider(t *testing.T) {
-	if err := New("dev")().InternalValidate(); err != nil {
+	st := state.NewState()
+	if err := New("dev", &st)().InternalValidate(); err != nil {
 		t.Fatalf("err: %s", err)
 	}
 }

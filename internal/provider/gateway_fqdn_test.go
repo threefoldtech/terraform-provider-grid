@@ -454,7 +454,7 @@ func TestSyncFailureInContract(t *testing.T) {
 	sub.EXPECT().DeleteInvalidContracts(
 		gw.NodeDeploymentID,
 	).Return(errors.New("123"))
-	err = gw.sync(context.Background(), sub)
+	err = gw.sync(context.Background(), sub, gw.APIClient)
 	assert.Error(t, err)
 	assert.Equal(t, gw.NodeDeploymentID, map[uint32]uint64{10: 100})
 	assert.Equal(t, gw.ID, "123")
@@ -503,7 +503,7 @@ func TestSync(t *testing.T) {
 			return map[uint32]gridtypes.Deployment{10: dl}, nil
 		})
 	gw.Gw.FQDN = "123"
-	err = gw.sync(context.Background(), sub)
+	err = gw.sync(context.Background(), sub, gw.APIClient)
 	assert.NoError(t, err)
 	assert.Equal(t, gw.NodeDeploymentID, map[uint32]uint64{10: 100})
 	assert.Equal(t, gw.ID, "123")
@@ -551,7 +551,7 @@ func TestSyncDeletedWorkload(t *testing.T) {
 			return map[uint32]gridtypes.Deployment{10: dl}, nil
 		})
 	gw.Gw.FQDN = "123"
-	err = gw.sync(context.Background(), sub)
+	err = gw.sync(context.Background(), sub, gw.APIClient)
 	assert.NoError(t, err)
 	assert.Equal(t, gw.NodeDeploymentID, map[uint32]uint64{10: 100})
 	assert.Equal(t, gw.ID, "123")

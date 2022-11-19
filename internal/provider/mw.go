@@ -11,7 +11,7 @@ import (
 
 type Marshalable interface {
 	Marshal(d *schema.ResourceData)
-	sync(ctx context.Context, sub subi.SubstrateExt) (err error)
+	sync(ctx context.Context, sub subi.SubstrateExt, cl *apiClient) (err error)
 }
 
 type Action func(context.Context, subi.SubstrateExt, *schema.ResourceData, *apiClient) (Marshalable, error)
@@ -57,7 +57,7 @@ func resourceFunc(a Action, reportSync bool) func(ctx context.Context, d *schema
 			diags = diag.FromErr(err)
 		}
 		if obj != nil {
-			if err := obj.sync(ctx, sub); err != nil {
+			if err := obj.sync(ctx, sub, cl); err != nil {
 				if reportSync {
 					diags = append(diags, diag.FromErr(err)...)
 				} else {
