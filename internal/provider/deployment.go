@@ -31,7 +31,6 @@ type DeploymentDeployer struct {
 	APIClient   *apiClient
 	ncPool      client.NodeClientCollection
 	deployer    deployer.Deployer
-	usedIPs     []byte
 }
 type DeploymentData struct {
 	Type        string `json:"type"`
@@ -85,7 +84,6 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 
 	networkingState := apiClient.state.GetNetworkState()
 	net := networkingState.GetNetwork(networkName)
-	usedIPs := net.GetNodeIPsList(nodeID)
 	ipRange := net.GetNodeSubnet(nodeID)
 
 	deploymentDeployer := DeploymentDeployer{
@@ -98,7 +96,6 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 		IPRange:     ipRange,
 		NetworkName: networkName,
 		APIClient:   apiClient,
-		usedIPs:     usedIPs,
 		ncPool:      pool,
 		deployer:    deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, solutionProvider, string(deploymentDataStr)),
 	}
@@ -106,6 +103,9 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 }
 
 func (d *DeploymentDeployer) assignNodesIPs() error {
+	networkingState := d.APIClient.state.GetNetworkState()
+	network := networkingState.GetNetwork(d.NetworkName)
+	usedIPs := network.GetNodeIPsList(d.Node)
 	if len(d.VMs) == 0 {
 		return nil
 	}
@@ -114,8 +114,8 @@ func (d *DeploymentDeployer) assignNodesIPs() error {
 		return errors.Wrapf(err, "invalid ip %s", d.IPRange)
 	}
 	for _, vm := range d.VMs {
-		if vm.IP != "" && cidr.Contains(net.ParseIP(vm.IP)) && !isInByte(d.usedIPs, net.ParseIP(vm.IP)[3]) {
-			d.usedIPs = append(d.usedIPs, net.ParseIP(vm.IP)[3])
+		if vm.IP != "" && cidr.Contains(net.ParseIP(vm.IP)) && !isInByte(usedIPs, net.ParseIP(vm.IP)[3]) {
+			usedIPs = append(usedIPs, net.ParseIP(vm.IP)[3])
 		}
 	}
 	cur := byte(2)
@@ -125,7 +125,7 @@ func (d *DeploymentDeployer) assignNodesIPs() error {
 		}
 		ip := cidr.IP
 		ip[3] = cur
-		for isInByte(d.usedIPs, ip[3]) {
+		for isInByte(usedIPs, ip[3]) {
 			if cur == 254 {
 				return errors.New("all 253 ips of the network are exhausted")
 			}
@@ -133,7 +133,7 @@ func (d *DeploymentDeployer) assignNodesIPs() error {
 			ip[3] = cur
 		}
 		d.VMs[idx].IP = ip.String()
-		d.usedIPs = append(d.usedIPs, ip[3])
+		usedIPs = append(usedIPs, ip[3])
 	}
 	return nil
 }

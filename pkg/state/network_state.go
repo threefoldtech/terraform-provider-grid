@@ -70,11 +70,3 @@ func (n *network) DeleteDeployment(nodeID uint32, deploymentID string) {
 	}
 	delete(n.NodeIPs[nodeID], deploymentID)
 }
-
-func (n *network) GetSubnets() map[uint32]string {
-	return n.Subnets
-}
-
-func (n *network) GetNodeIPs() NodeIPs {
-	return n.NodeIPs
-}

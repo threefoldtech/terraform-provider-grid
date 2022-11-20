@@ -21,8 +21,6 @@ type DB interface {
 	Delete() error
 }
 
-// implementors (file, dbms, ...)
-
 type StateI interface {
 	// GetNetworks retrieves network state from local state
 	GetNetworkState() NetworkState
@@ -54,15 +52,11 @@ type Network interface {
 	SetDeploymentIPs(nodeID uint32, deploymentID string, ips []byte)
 	// RemoveDeployment deletes deployment entry
 	DeleteDeployment(nodeID uint32, deploymentID string)
-	//
-	GetSubnets() map[uint32]string
-	GetNodeIPs() NodeIPs
 }
 
 func NewLocalStateDB(t DBType) (DB, error) {
 	if t == TypeFile {
 		return &fileDB{}, nil
 	}
-	// TODO
 	return nil, ErrWrongDBType
 }

@@ -1,6 +1,7 @@
 package state
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,5 +21,14 @@ func TestState(t *testing.T) {
 	network.DeleteDeployment(32, "12345")
 	network.DeleteNodeSubnet(32)
 	err = f.Save()
+	state := NewState()
+	state.Networks["abc"] = NewNetwork()
+	state.Networks["abc"].Subnets[15] = "10.1.1.0/24"
+	state.Networks["abc"].NodeIPs[32] = make(deploymentIPs)
+	bt1, err := st.Marshal()
+	assert.NoError(t, err)
+	bt2, err := json.Marshal(state)
+	assert.NoError(t, err)
+	assert.Equal(t, bt1, bt2)
 	assert.NoError(t, err)
 }
