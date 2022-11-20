@@ -27,7 +27,6 @@ resource "grid_deployment" "node1" {
   name          = local.name
   node          = 1
   network_name  = grid_network.net2.name
-  ip_range      = lookup(grid_network.net2.nodes_ip_range, 1, "")
   disks {
     name = "data0"
     # will hold images, volumes etc. modify the size according to your needs

@@ -48,7 +48,6 @@ resource "grid_deployment" "d1" {
 resource "grid_deployment" "qsfs" {
   node = 7
   network_name = grid_network.net1.name
-  ip_range = lookup(grid_network.net1.nodes_ip_range, 7, "")
   qsfs {
     name = "qsfs"
     description = "description6"

@@ -8,8 +8,12 @@ terraform {
 
 provider "grid" {
 }
+locals {
+  name = "mydisk"
+}
 
 resource "grid_deployment" "d1" {
+  name = local.name
   node = 4 
   
   zdbs{
