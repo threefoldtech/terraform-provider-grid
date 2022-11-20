@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
 	"github.com/threefoldtech/terraform-provider-grid/internal/provider"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/state"
 )
 
 // Run "go generate" to format example terraform files and generate the docs for the registry/website
@@ -34,7 +35,15 @@ func main() {
 	flag.BoolVar(&debugMode, "debug", false, "set to true to run the provider with support for debuggers like delve")
 	flag.Parse()
 
-	opts := &plugin.ServeOpts{ProviderFunc: provider.New(version)}
+	db, err := state.NewLocalStateDB(state.TypeFile)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	err = db.Load()
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	opts := &plugin.ServeOpts{ProviderFunc: provider.New(version, db.GetState())}
 
 	if debugMode {
 		// TODO: update this string with the full name of your provider as used in your configs
@@ -46,4 +55,8 @@ func main() {
 	}
 
 	plugin.Serve(opts)
+	err = db.Save()
+	if err != nil {
+		log.Fatal(err.Error())
+	}
 }

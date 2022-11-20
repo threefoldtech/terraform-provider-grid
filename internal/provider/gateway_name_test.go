@@ -580,7 +580,7 @@ func TestNameSync(t *testing.T) {
 			return map[uint32]gridtypes.Deployment{10: dl}, nil
 		})
 	gw.Gw.FQDN = "123"
-	err = gw.sync(context.Background(), sub)
+	err = gw.sync(context.Background(), sub, gw.APIClient)
 	assert.NoError(t, err)
 	assert.Equal(t, gw.NodeDeploymentID, map[uint32]uint64{10: 100})
 	assert.Equal(t, gw.NameContractID, uint64(200))
@@ -633,7 +633,7 @@ func TestNameSyncDeletedWorkload(t *testing.T) {
 			return map[uint32]gridtypes.Deployment{10: dl}, nil
 		})
 	gw.Gw.FQDN = "123"
-	err = gw.sync(context.Background(), sub)
+	err = gw.sync(context.Background(), sub, gw.APIClient)
 	assert.NoError(t, err)
 	assert.Equal(t, gw.NodeDeploymentID, map[uint32]uint64{10: 100})
 	assert.Equal(t, gw.ID, "123")

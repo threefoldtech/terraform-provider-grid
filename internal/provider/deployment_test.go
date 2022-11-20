@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"net"
 	"sort"
 	"testing"
 
@@ -20,6 +21,7 @@ func constructTestDeployer(ctrl *gomock.Controller) DeploymentDeployer {
 	deployer := mock.NewMockDeployer(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
 	manager := mock.NewMockManager(ctrl)
+	state := mock.NewMockStateI(ctrl)
 	manager.EXPECT().SubstrateExt().Return(sub, nil).AnyTimes()
 	return DeploymentDeployer{
 		ncPool:   pool,
@@ -227,6 +229,7 @@ func constructTestDeployer(ctrl *gomock.Controller) DeploymentDeployer {
 		APIClient: &apiClient{
 			twin_id: 20,
 			manager: manager,
+			state:   state,
 		},
 	}
 }
@@ -249,18 +252,8 @@ func TestValidate(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	d := constructTestDeployer(ctrl)
-	ipRange := d.IPRange
 	network := d.NetworkName
 	checksum := d.VMs[0].FlistChecksum
-	d.IPRange = ""
-	assert.Error(t, d.validate())
-	d.IPRange = ipRange + " "
-	assert.Error(t, d.validate())
-	d.IPRange = "asdasd"
-	assert.Error(t, d.validate())
-	d.IPRange = ipRange
-	d.NetworkName = ""
-	assert.Error(t, d.validate())
 	d.NetworkName = network
 	d.VMs[0].FlistChecksum += " "
 	assert.Error(t, d.validate())
@@ -279,7 +272,7 @@ func TestDeploymentSyncDeletedContract(t *testing.T) {
 	assert.NoError(t, d.syncContract(sub))
 	assert.Empty(t, d.Id)
 	d.Id = id
-	assert.NoError(t, d.sync(context.Background(), sub))
+	assert.NoError(t, d.sync(context.Background(), sub, d.APIClient))
 	assert.Empty(t, d.Id)
 	assert.Empty(t, d.VMs)
 	assert.Empty(t, d.Disks)
@@ -290,6 +283,12 @@ func TestDeploymentGenerateDeployment(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	d := constructTestDeployer(ctrl)
+	state := d.APIClient.state.(*mock.MockStateI)
+	netState := mock.NewMockNetworkState(ctrl)
+	state.EXPECT().GetNetworkState().Return(netState)
+	network := mock.NewMockNetwork(ctrl)
+	netState.EXPECT().GetNetwork(d.NetworkName).Return(network)
+	network.EXPECT().GetNodeIPsList(d.Node).Return([]byte{})
 	dl, err := d.GenerateVersionlessDeployments(context.Background())
 	assert.NoError(t, err)
 	var wls []gridtypes.Workload
@@ -320,6 +319,12 @@ func TestDeploymentSync(t *testing.T) {
 	subI, err := d.APIClient.manager.SubstrateExt()
 	assert.NoError(t, err)
 	sub := subI.(*mock.MockSubstrateExt)
+	state := d.APIClient.state.(*mock.MockStateI)
+	netState := mock.NewMockNetworkState(ctrl)
+	state.EXPECT().GetNetworkState().AnyTimes().Return(netState)
+	network := mock.NewMockNetwork(ctrl)
+	netState.EXPECT().GetNetwork(d.NetworkName).AnyTimes().Return(network)
+	network.EXPECT().GetNodeIPsList(d.Node).Return([]byte{})
 	dls, err := d.GenerateVersionlessDeployments(context.Background())
 	assert.NoError(t, err)
 	dl := dls[d.Node]
@@ -415,11 +420,34 @@ func TestDeploymentSync(t *testing.T) {
 		}, nil)
 	var cp DeploymentDeployer
 	musUnmarshal(mustMarshal(d), &cp)
-	assert.NoError(t, d.sync(context.Background(), sub))
+	network.EXPECT().DeleteDeployment(d.Node, d.Id)
+	usedIPs := getUsedIPs(dl)
+	network.EXPECT().SetDeploymentIPs(d.Node, d.Id, usedIPs)
+	assert.NoError(t, d.sync(context.Background(), sub, d.APIClient))
 	assert.Equal(t, d.VMs, cp.VMs)
 	assert.Equal(t, d.Disks, cp.Disks)
 	assert.Equal(t, d.QSFSs, cp.QSFSs)
 	assert.Equal(t, d.ZDBs, cp.ZDBs)
 	assert.Equal(t, d.Id, cp.Id)
 	assert.Equal(t, d.Node, cp.Node)
+}
+
+func getUsedIPs(dl gridtypes.Deployment) []byte {
+	usedIPs := []byte{}
+	for _, w := range dl.Workloads {
+		if !w.Result.State.IsOkay() {
+			continue
+		}
+		if w.Type == zos.ZMachineType {
+			vm, err := workloads.NewVMFromWorkloads(&w, &dl)
+			if err != nil {
+				log.Printf("error parsing vm: %s", err.Error())
+				continue
+			}
+
+			ip := net.ParseIP(vm.IP).To4()
+			usedIPs = append(usedIPs, ip[3])
+		}
+	}
+	return usedIPs
 }

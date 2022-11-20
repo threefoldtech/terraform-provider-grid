@@ -159,7 +159,7 @@ func (k *GatewayNameDeployer) syncContracts(ctx context.Context, sub subi.Substr
 	}
 	return nil
 }
-func (k *GatewayNameDeployer) sync(ctx context.Context, sub subi.SubstrateExt) (err error) {
+func (k *GatewayNameDeployer) sync(ctx context.Context, sub subi.SubstrateExt, cl *apiClient) (err error) {
 	if err := k.syncContracts(ctx, sub); err != nil {
 		return errors.Wrap(err, "couldn't sync contracts")
 	}

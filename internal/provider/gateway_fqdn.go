@@ -124,7 +124,7 @@ func (k *GatewayFQDNDeployer) syncContracts(ctx context.Context, sub subi.Substr
 	}
 	return nil
 }
-func (k *GatewayFQDNDeployer) sync(ctx context.Context, sub subi.SubstrateExt) error {
+func (k *GatewayFQDNDeployer) sync(ctx context.Context, sub subi.SubstrateExt, cl *apiClient) error {
 	if err := k.syncContracts(ctx, sub); err != nil {
 		return errors.Wrap(err, "couldn't sync contracts")
 	}

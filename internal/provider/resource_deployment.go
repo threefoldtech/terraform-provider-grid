@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
 func resourceDeployment() *schema.Resource {
@@ -49,7 +48,7 @@ func resourceDeployment() *schema.Resource {
 			},
 			"ip_range": {
 				Type:        schema.TypeString,
-				Optional:    true,
+				Computed:    true,
 				Description: "IP range of the node (e.g. 10.1.2.0/24)",
 			},
 			"network_name": {
@@ -417,20 +416,6 @@ func resourceDeployment() *schema.Resource {
 			},
 		},
 	}
-}
-
-func getFreeIP(ipRange gridtypes.IPNet, usedIPs []string) (string, error) {
-	i := byte(2)
-	ip := ipRange.IP
-	ip[3] = i
-	for isInStr(usedIPs, ip.String()) {
-		i += 1
-		if i >= 255 {
-			return "", errors.New("all ips are used")
-		}
-		ip[3] = i
-	}
-	return ip.String(), nil
 }
 
 func resourceDeploymentCreate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {

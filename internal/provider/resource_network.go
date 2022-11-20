@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/deployer"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/state"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -268,7 +269,7 @@ func (k *NetworkDeployer) ValidateDelete(ctx context.Context) error {
 	return nil
 }
 
-func (k *NetworkDeployer) storeState(d *schema.ResourceData) {
+func (k *NetworkDeployer) storeState(d *schema.ResourceData, state state.StateI) {
 
 	nodeDeploymentID := make(map[string]interface{})
 	for node, id := range k.NodeDeploymentID {
@@ -295,6 +296,8 @@ func (k *NetworkDeployer) storeState(d *schema.ResourceData) {
 		}
 	}
 	log.Printf("setting deployer object nodes: %v\n", nodes)
+	// update network local status
+	k.updateNetworkLocalState(state)
 
 	k.Nodes = nodes
 
@@ -313,6 +316,15 @@ func (k *NetworkDeployer) storeState(d *schema.ResourceData) {
 	// plural or singular?
 	d.Set("nodes_ip_range", nodesIPRange)
 	d.Set("node_deployment_id", nodeDeploymentID)
+}
+
+func (k *NetworkDeployer) updateNetworkLocalState(state state.StateI) {
+	ns := state.GetNetworkState()
+	ns.DeleteNetwork(k.Name)
+	network := ns.GetNetwork(k.Name)
+	for nodeID, subnet := range k.NodesIPRange {
+		network.SetNodeSubnet(nodeID, subnet.String())
+	}
 }
 
 func nextFreeOctet(used []byte, start *byte) error {
@@ -713,7 +725,7 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 			return diag.FromErr(err)
 		}
 	}
-	deployer.storeState(d)
+	deployer.storeState(d, apiClient.state)
 	d.SetId(uuid.New().String())
 	return diags
 }
@@ -745,7 +757,7 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 	if err != nil {
 		diags = diag.FromErr(err)
 	}
-	deployer.storeState(d)
+	deployer.storeState(d, apiClient.state)
 	return diags
 }
 
@@ -778,7 +790,7 @@ func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta inter
 		})
 		return diags
 	}
-	deployer.storeState(d)
+	deployer.storeState(d, apiClient.state)
 	return diags
 }
 
@@ -803,8 +815,10 @@ func resourceNetworkDelete(ctx context.Context, d *schema.ResourceData, meta int
 	}
 	if err == nil {
 		d.SetId("")
+		ns := apiClient.state.GetNetworkState()
+		ns.DeleteNetwork(deployer.Name)
 	} else {
-		deployer.storeState(d)
+		deployer.storeState(d, apiClient.state)
 	}
 	return diags
 }
