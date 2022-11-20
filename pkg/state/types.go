@@ -56,7 +56,7 @@ type Network interface {
 	DeleteDeployment(nodeID uint32, deploymentID string)
 	//
 	GetSubnets() map[uint32]string
-	GetNodeIPs() nodeIPs
+	GetNodeIPs() NodeIPs
 }
 
 func NewLocalStateDB(t DBType) (DB, error) {

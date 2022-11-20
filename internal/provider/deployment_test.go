@@ -279,6 +279,14 @@ func TestDeploymentSyncDeletedContract(t *testing.T) {
 	assert.NoError(t, d.syncContract(sub))
 	assert.Empty(t, d.Id)
 	d.Id = id
+	state := mock.NewMockStateI(ctrl)
+	netState := mock.NewMockNetworkState(ctrl)
+	state.EXPECT().GetNetworkState().AnyTimes().Return(netState)
+	network := mock.NewMockNetwork(ctrl)
+	netState.EXPECT().GetNetwork(d.NetworkName).AnyTimes().Return(network)
+	network.EXPECT().DeleteDeployment(d.Node, d.Id).AnyTimes()
+	network.EXPECT().SetDeploymentIPs(d.Node, d.Id, gomock.Any()).AnyTimes()
+	d.APIClient.state = state
 	assert.NoError(t, d.sync(context.Background(), sub, d.APIClient))
 	assert.Empty(t, d.Id)
 	assert.Empty(t, d.VMs)
@@ -415,6 +423,14 @@ func TestDeploymentSync(t *testing.T) {
 		}, nil)
 	var cp DeploymentDeployer
 	musUnmarshal(mustMarshal(d), &cp)
+	state := mock.NewMockStateI(ctrl)
+	netState := mock.NewMockNetworkState(ctrl)
+	state.EXPECT().GetNetworkState().AnyTimes().Return(netState)
+	network := mock.NewMockNetwork(ctrl)
+	netState.EXPECT().GetNetwork(d.NetworkName).AnyTimes().Return(network)
+	network.EXPECT().DeleteDeployment(d.Node, d.Id).AnyTimes()
+	network.EXPECT().SetDeploymentIPs(d.Node, d.Id, gomock.Any()).AnyTimes()
+	d.APIClient.state = state
 	assert.NoError(t, d.sync(context.Background(), sub, d.APIClient))
 	assert.Equal(t, d.VMs, cp.VMs)
 	assert.Equal(t, d.Disks, cp.Disks)

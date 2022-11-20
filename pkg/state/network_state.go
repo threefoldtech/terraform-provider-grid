@@ -4,17 +4,17 @@ type networkingState map[string]network
 
 type network struct {
 	Subnets map[uint32]string `json:"subnets"`
-	NodeIPs nodeIPs           `json:"node_ips"`
+	NodeIPs NodeIPs           `json:"node_ips"`
 }
 
-type nodeIPs map[uint32]deploymentIPs
+type NodeIPs map[uint32]deploymentIPs
 
 type deploymentIPs map[string][]byte
 
 func NewNetwork() network {
 	return network{
 		Subnets: map[uint32]string{},
-		NodeIPs: nodeIPs{},
+		NodeIPs: NodeIPs{},
 	}
 }
 
@@ -75,6 +75,6 @@ func (n *network) GetSubnets() map[uint32]string {
 	return n.Subnets
 }
 
-func (n *network) GetNodeIPs() nodeIPs {
+func (n *network) GetNodeIPs() NodeIPs {
 	return n.NodeIPs
 }
