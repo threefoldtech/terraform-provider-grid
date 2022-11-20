@@ -121,7 +121,6 @@ func parseRequests(d *schema.ResourceData, assignment map[string]uint32) []sched
 
 func schedule(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	apiClient := meta.(*apiClient)
-	go startRmbIfNeeded(ctx, apiClient)
 	assignment := parseAssignment(d)
 	reqs := parseRequests(d, assignment)
 	scheduler := scheduler.NewScheduler(apiClient.grid_client, uint64(apiClient.twin_id))

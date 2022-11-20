@@ -701,22 +701,14 @@ func (k *NetworkDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt) err
 func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.SubstrateExt()
-	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
-	}
-	defer sub.Close()
-	rmbctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := NewNetworkDeployer(ctx, d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
-	if err := deployer.Validate(ctx, sub); err != nil {
+	if err := deployer.Validate(ctx, apiClient.substrateConn); err != nil {
 		return diag.FromErr(err)
 	}
-	err = deployer.Deploy(ctx, sub)
+	err = deployer.Deploy(ctx, apiClient.substrateConn)
 	if err != nil {
 		if len(deployer.NodeDeploymentID) != 0 {
 			// failed to deploy and failed to revert, store the current state locally
@@ -733,27 +725,19 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.SubstrateExt()
-	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
-	}
-	defer sub.Close()
-	rmbctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := NewNetworkDeployer(ctx, d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	if err := deployer.Validate(ctx, sub); err != nil {
+	if err := deployer.Validate(ctx, apiClient.substrateConn); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := deployer.invalidateBrokenAttributes(sub); err != nil {
+	if err := deployer.invalidateBrokenAttributes(apiClient.substrateConn); err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't invalidate broken attributes"))
 	}
 
-	err = deployer.Deploy(ctx, sub)
+	err = deployer.Deploy(ctx, apiClient.substrateConn)
 	if err != nil {
 		diags = diag.FromErr(err)
 	}
@@ -764,24 +748,16 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.SubstrateExt()
-	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
-	}
-	defer sub.Close()
-	rmbctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := NewNetworkDeployer(ctx, d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	if err := deployer.invalidateBrokenAttributes(sub); err != nil {
+	if err := deployer.invalidateBrokenAttributes(apiClient.substrateConn); err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't invalidate broken attributes"))
 	}
 
-	err = deployer.readNodesConfig(ctx, sub)
+	err = deployer.readNodesConfig(ctx, apiClient.substrateConn)
 	if err != nil {
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Warning,
@@ -797,19 +773,11 @@ func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta inter
 func resourceNetworkDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.SubstrateExt()
-	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
-	}
-	defer sub.Close()
-	rmbctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := NewNetworkDeployer(ctx, d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
-	err = deployer.Cancel(ctx, sub)
+	err = deployer.Cancel(ctx, apiClient.substrateConn)
 	if err != nil {
 		diags = diag.FromErr(err)
 	}
