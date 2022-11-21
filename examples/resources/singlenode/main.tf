@@ -1,8 +1,7 @@
 terraform {
   required_providers {
     grid = {
-      source  = "threefoldtechdev.com/providers/grid"
-      version = "0.2"
+      source  = "threefoldtech/grid"
     }
   }
 }
@@ -24,7 +23,6 @@ resource "grid_deployment" "d1" {
   name         = local.name
   node         = 34
   network_name = grid_network.net1.name
-  ip_range     = lookup(grid_network.net1.nodes_ip_range, 34, "")
   vms {
     name  = "vm1"
     flist = "https://hub.grid.tf/tf-official-apps/base:latest.flist"

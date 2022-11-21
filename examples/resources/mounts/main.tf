@@ -9,16 +9,21 @@ terraform {
 provider "grid" {
 }
 
+locals {
+  name = "mountDeployment"
+}
+
+
 resource "grid_network" "net1" {
     nodes = [2, 4]
     ip_range = "10.1.0.0/16"
-    name = "network"
+    name = local.name
     description = "newer network"
 }
 resource "grid_deployment" "d1" {
+  name = local.name
   node = 2
   network_name = grid_network.net1.name
-  ip_range = lookup(grid_network.net1.nodes_ip_range, 2, "")
   disks {
     name = "data"
     size = 10
