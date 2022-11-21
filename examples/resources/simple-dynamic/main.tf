@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     grid = {
-      source = "threefoldtechdev.com/providers/grid"
+      source = "threefoldtech/grid"
     }
   }
 }
@@ -45,10 +45,9 @@ resource "grid_network" "net1" {
 resource "grid_deployment" "server1" {
   node = grid_scheduler.sched.nodes["server1"]
   network_name = grid_network.net1.name
-  ip_range = lookup(grid_network.net1.nodes_ip_range, grid_scheduler.sched.nodes["server1"], "")
   vms {
     name = "firstserver"
-    flist = "https://hub.grid.tf/omar0.3bot/omarelawady-simple-http-server-latest.flist"
+    flist = "https://hub.grid.tf/tf-official-apps/simple-http-server-latest.flist"
     cpu = 1
     memory = 256
     rootfs_size = 256
@@ -69,7 +68,6 @@ resource "grid_deployment" "server1" {
 resource "grid_deployment" "server2" {
   node = grid_scheduler.sched.nodes["server2"]
   network_name = grid_network.net1.name
-  ip_range = lookup(grid_network.net1.nodes_ip_range, grid_scheduler.sched.nodes["server2"], "")
   vms {
     name = "secondserver"
     flist = "https://hub.grid.tf/tf-official-apps/simple-http-server-latest.flist"

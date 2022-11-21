@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"strconv"
@@ -12,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/deployer"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/state"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -35,6 +37,12 @@ func resourceNetwork() *schema.Resource {
 				Type:        schema.TypeString,
 				Required:    true,
 				Description: "Network Name",
+			},
+			"solution_type": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "Project Name",
+				Default:     "Network",
 			},
 			"description": {
 				Type:     schema.TypeString,
@@ -176,6 +184,15 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 		return NetworkDeployer{}, errors.Wrap(err, "couldn't parse network ip range")
 	}
 	pool := client.NewNodeClientPool(apiClient.rmb)
+	deploymentData := DeploymentData{
+		Name:        d.Get("name").(string),
+		Type:        "network",
+		ProjectName: d.Get("solution_type").(string),
+	}
+	deploymentDataStr, err := json.Marshal(deploymentData)
+	if err != nil {
+		log.Printf("error parsing deploymentdata: %s", err.Error())
+	}
 	deployer := NetworkDeployer{
 		Name:             d.Get("name").(string),
 		Description:      d.Get("description").(string),
@@ -192,7 +209,7 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 		WGPort:           make(map[uint32]int),
 		APIClient:        apiClient,
 		ncPool:           pool,
-		deployer:         deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, nil),
+		deployer:         deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, nil, string(deploymentDataStr)),
 	}
 	return deployer, nil
 }
@@ -252,7 +269,7 @@ func (k *NetworkDeployer) ValidateDelete(ctx context.Context) error {
 	return nil
 }
 
-func (k *NetworkDeployer) storeState(d *schema.ResourceData) {
+func (k *NetworkDeployer) storeState(d *schema.ResourceData, state state.StateI) {
 
 	nodeDeploymentID := make(map[string]interface{})
 	for node, id := range k.NodeDeploymentID {
@@ -279,6 +296,8 @@ func (k *NetworkDeployer) storeState(d *schema.ResourceData) {
 		}
 	}
 	log.Printf("setting deployer object nodes: %v\n", nodes)
+	// update network local status
+	k.updateNetworkLocalState(state)
 
 	k.Nodes = nodes
 
@@ -297,6 +316,15 @@ func (k *NetworkDeployer) storeState(d *schema.ResourceData) {
 	// plural or singular?
 	d.Set("nodes_ip_range", nodesIPRange)
 	d.Set("node_deployment_id", nodeDeploymentID)
+}
+
+func (k *NetworkDeployer) updateNetworkLocalState(state state.StateI) {
+	ns := state.GetNetworkState()
+	ns.DeleteNetwork(k.Name)
+	network := ns.GetNetwork(k.Name)
+	for nodeID, subnet := range k.NodesIPRange {
+		network.SetNodeSubnet(nodeID, subnet.String())
+	}
 }
 
 func nextFreeOctet(used []byte, start *byte) error {
@@ -452,6 +480,10 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 	needsIPv4Access := k.AddWGAccess || (len(hiddenNodes) != 0 && len(hiddenNodes)+len(accessibleNodes) > 1)
 	if needsIPv4Access {
 		if k.PublicNodeID != 0 { // it's set
+			// if public node id is already set, it should be added to accessible nodes
+			if !isInUint32(accessibleNodes, k.PublicNodeID) {
+				accessibleNodes = append(accessibleNodes, k.PublicNodeID)
+			}
 		} else if ipv4Node != 0 { // there's one in the network original nodes
 			k.PublicNodeID = ipv4Node
 		} else {
@@ -669,22 +701,14 @@ func (k *NetworkDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt) err
 func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.SubstrateExt()
-	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
-	}
-	defer sub.Close()
-	rmbctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := NewNetworkDeployer(ctx, d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
-	if err := deployer.Validate(ctx, sub); err != nil {
+	if err := deployer.Validate(ctx, apiClient.substrateConn); err != nil {
 		return diag.FromErr(err)
 	}
-	err = deployer.Deploy(ctx, sub)
+	err = deployer.Deploy(ctx, apiClient.substrateConn)
 	if err != nil {
 		if len(deployer.NodeDeploymentID) != 0 {
 			// failed to deploy and failed to revert, store the current state locally
@@ -693,7 +717,7 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 			return diag.FromErr(err)
 		}
 	}
-	deployer.storeState(d)
+	deployer.storeState(d, apiClient.state)
 	d.SetId(uuid.New().String())
 	return diags
 }
@@ -701,55 +725,39 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.SubstrateExt()
-	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
-	}
-	defer sub.Close()
-	rmbctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := NewNetworkDeployer(ctx, d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	if err := deployer.Validate(ctx, sub); err != nil {
+	if err := deployer.Validate(ctx, apiClient.substrateConn); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := deployer.invalidateBrokenAttributes(sub); err != nil {
+	if err := deployer.invalidateBrokenAttributes(apiClient.substrateConn); err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't invalidate broken attributes"))
 	}
 
-	err = deployer.Deploy(ctx, sub)
+	err = deployer.Deploy(ctx, apiClient.substrateConn)
 	if err != nil {
 		diags = diag.FromErr(err)
 	}
-	deployer.storeState(d)
+	deployer.storeState(d, apiClient.state)
 	return diags
 }
 
 func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.SubstrateExt()
-	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
-	}
-	defer sub.Close()
-	rmbctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := NewNetworkDeployer(ctx, d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	if err := deployer.invalidateBrokenAttributes(sub); err != nil {
+	if err := deployer.invalidateBrokenAttributes(apiClient.substrateConn); err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't invalidate broken attributes"))
 	}
 
-	err = deployer.readNodesConfig(ctx, sub)
+	err = deployer.readNodesConfig(ctx, apiClient.substrateConn)
 	if err != nil {
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Warning,
@@ -758,33 +766,27 @@ func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta inter
 		})
 		return diags
 	}
-	deployer.storeState(d)
+	deployer.storeState(d, apiClient.state)
 	return diags
 }
 
 func resourceNetworkDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	sub, err := apiClient.manager.SubstrateExt()
-	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
-	}
-	defer sub.Close()
-	rmbctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	go startRmbIfNeeded(rmbctx, apiClient)
 	deployer, err := NewNetworkDeployer(ctx, d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
-	err = deployer.Cancel(ctx, sub)
+	err = deployer.Cancel(ctx, apiClient.substrateConn)
 	if err != nil {
 		diags = diag.FromErr(err)
 	}
 	if err == nil {
 		d.SetId("")
+		ns := apiClient.state.GetNetworkState()
+		ns.DeleteNetwork(deployer.Name)
 	} else {
-		deployer.storeState(d)
+		deployer.storeState(d, apiClient.state)
 	}
 	return diags
 }

@@ -20,7 +20,7 @@ make
 terraform {
   required_providers {
     grid = {
-      source = "threefoldtech.com/providers/grid"
+      source = "threefoldtech/grid"
     }
   }
 }

@@ -2,12 +2,12 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
 	"sort"
 	"strconv"
-	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
@@ -32,10 +32,15 @@ type DeploymentDeployer struct {
 	ncPool      client.NodeClientCollection
 	deployer    deployer.Deployer
 }
+type DeploymentData struct {
+	Type        string `json:"type"`
+	Name        string `json:"name"`
+	ProjectName string `json:"projectName"`
+}
 
 func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (DeploymentDeployer, error) {
 	networkName := d.Get("network_name").(string)
-
+	nodeID := uint32(d.Get("node").(int))
 	disks := make([]workloads.Disk, 0)
 	for _, disk := range d.Get("disks").([]interface{}) {
 		data := workloads.GetDiskData(disk.(map[string]interface{}))
@@ -67,23 +72,40 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 	} else {
 		solutionProvider = &solutionProviderVal
 	}
+	deploymentData := DeploymentData{
+		Name:        d.Get("name").(string),
+		Type:        "vm",
+		ProjectName: d.Get("solution_type").(string),
+	}
+	deploymentDataStr, err := json.Marshal(deploymentData)
+	if err != nil {
+		log.Printf("error parsing deploymentdata: %s", err.Error())
+	}
+
+	networkingState := apiClient.state.GetNetworkState()
+	net := networkingState.GetNetwork(networkName)
+	ipRange := net.GetNodeSubnet(nodeID)
+
 	deploymentDeployer := DeploymentDeployer{
 		Id:          d.Id(),
-		Node:        uint32(d.Get("node").(int)),
+		Node:        nodeID,
 		Disks:       disks,
 		VMs:         vms,
 		QSFSs:       qsfs,
 		ZDBs:        zdbs,
-		IPRange:     d.Get("ip_range").(string),
+		IPRange:     ipRange,
 		NetworkName: networkName,
 		APIClient:   apiClient,
 		ncPool:      pool,
-		deployer:    deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, solutionProvider),
+		deployer:    deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, solutionProvider, string(deploymentDataStr)),
 	}
 	return deploymentDeployer, nil
 }
 
 func (d *DeploymentDeployer) assignNodesIPs() error {
+	networkingState := d.APIClient.state.GetNetworkState()
+	network := networkingState.GetNetwork(d.NetworkName)
+	usedIPs := network.GetNodeIPsList(d.Node)
 	if len(d.VMs) == 0 {
 		return nil
 	}
@@ -91,10 +113,9 @@ func (d *DeploymentDeployer) assignNodesIPs() error {
 	if err != nil {
 		return errors.Wrapf(err, "invalid ip %s", d.IPRange)
 	}
-	var usedIPs []string
 	for _, vm := range d.VMs {
-		if vm.IP != "" && cidr.Contains(net.ParseIP(vm.IP)) {
-			usedIPs = append(usedIPs, vm.IP)
+		if vm.IP != "" && cidr.Contains(net.ParseIP(vm.IP)) && !isInByte(usedIPs, net.ParseIP(vm.IP)[3]) {
+			usedIPs = append(usedIPs, net.ParseIP(vm.IP)[3])
 		}
 	}
 	cur := byte(2)
@@ -104,7 +125,7 @@ func (d *DeploymentDeployer) assignNodesIPs() error {
 		}
 		ip := cidr.IP
 		ip[3] = cur
-		for isInStr(usedIPs, ip.String()) {
+		for isInByte(usedIPs, ip[3]) {
 			if cur == 254 {
 				return errors.New("all 253 ips of the network are exhausted")
 			}
@@ -112,7 +133,7 @@ func (d *DeploymentDeployer) assignNodesIPs() error {
 			ip[3] = cur
 		}
 		d.VMs[idx].IP = ip.String()
-		usedIPs = append(usedIPs, ip.String())
+		usedIPs = append(usedIPs, ip[3])
 	}
 	return nil
 }
@@ -166,6 +187,7 @@ func (d *DeploymentDeployer) Marshal(r *schema.ResourceData) {
 	r.Set("qsfs", qsfs)
 	r.Set("node", d.Node)
 	r.Set("network_name", d.NetworkName)
+	r.Set("ip_range", d.IPRange)
 	r.SetId(d.Id)
 }
 
@@ -211,7 +233,7 @@ func (d *DeploymentDeployer) syncContract(sub subi.SubstrateExt) error {
 	}
 	return nil
 }
-func (d *DeploymentDeployer) sync(ctx context.Context, sub subi.SubstrateExt) error {
+func (d *DeploymentDeployer) sync(ctx context.Context, sub subi.SubstrateExt, cl *apiClient) error {
 	if err := d.syncContract(sub); err != nil {
 		return err
 	}
@@ -229,6 +251,11 @@ func (d *DeploymentDeployer) sync(ctx context.Context, sub subi.SubstrateExt) er
 	var qsfs []workloads.QSFS
 	var disks []workloads.Disk
 
+	ns := cl.state.GetNetworkState()
+	network := ns.GetNetwork(d.NetworkName)
+	network.DeleteDeployment(d.Node, d.Id)
+
+	usedIPs := []byte{}
 	for _, w := range dl.Workloads {
 		if !w.Result.State.IsOkay() {
 			continue
@@ -241,6 +268,9 @@ func (d *DeploymentDeployer) sync(ctx context.Context, sub subi.SubstrateExt) er
 				continue
 			}
 			vms = append(vms, vm)
+
+			ip := net.ParseIP(vm.IP).To4()
+			usedIPs = append(usedIPs, ip[3])
 		case zos.ZDBType:
 			zdb, err := workloads.NewZDBFromWorkload(&w)
 			if err != nil {
@@ -265,6 +295,7 @@ func (d *DeploymentDeployer) sync(ctx context.Context, sub subi.SubstrateExt) er
 
 		}
 	}
+	network.SetDeploymentIPs(d.Node, d.Id, usedIPs)
 	d.Match(disks, qsfs, zdbs, vms)
 	log.Printf("vms: %+v\n", len(vms))
 	d.Disks = disks
@@ -275,8 +306,9 @@ func (d *DeploymentDeployer) sync(ctx context.Context, sub subi.SubstrateExt) er
 }
 
 // Match objects to match the input
-//      already existing object are stored ordered the same way they are in the input
-//      others are pushed after
+//
+//	already existing object are stored ordered the same way they are in the input
+//	others are pushed after
 func (d *DeploymentDeployer) Match(
 	disks []workloads.Disk,
 	qsfs []workloads.QSFS,
@@ -321,18 +353,6 @@ func (d *DeploymentDeployer) Match(
 	}
 }
 func (d *DeploymentDeployer) validate() error {
-	if len(d.VMs) != 0 && d.IPRange == "" {
-		return errors.New("empty ip_range was passed," +
-			" you probably used the wrong node id in the expression `lookup(grid_network.net1.nodes_ip_range, 4, \"\")`" +
-			" the node id in the lookup must match the node property of the resource.")
-	}
-	if len(d.VMs) != 0 && strings.TrimSpace(d.IPRange) != d.IPRange {
-		return errors.New("ip_range must not contain trailing or leading spaces")
-	}
-	_, _, err := net.ParseCIDR(d.IPRange)
-	if len(d.VMs) != 0 && err != nil {
-		return errors.Wrap(err, "If you pass a vm, ip_range must be set to a valid ip range (e.g. 10.1.3.0/16)")
-	}
 	if len(d.VMs) != 0 && d.NetworkName == "" {
 		return errors.New("If you pass a vm, network_name must be non-empty")
 	}

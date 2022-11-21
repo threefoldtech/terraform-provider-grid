@@ -9,21 +9,24 @@
 provider "grid" {
 }
 
+locals {
+  name = "myvm"
+}
 resource "grid_network" "net1" {
     nodes = [1]
     ip_range = "10.1.0.0/16"
-    name = "network"
+    name = local.name
     description = "newer network"
     add_wg_access = true
 }
  
 resource "grid_deployment" "swarm1" {
+  name = local.name
   node = 1
   network_name = grid_network.net1.name
-  ip_range = lookup(grid_network.net1.nodes_ip_range, 1, "")
   vms {
     name = "swarmManager1"
-    flist = "https://hub.grid.tf/samehabouelsaad.3bot/abouelsaad-grid3_ubuntu20.04_debug-latest.flist"
+    flist = "https://hub.grid.tf/tf-official-apps/grid3_ubuntu20.04_debug-latest.flist"
     entrypoint = "/init.sh"
     cpu = 2 
     memory = 1024

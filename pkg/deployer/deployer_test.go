@@ -82,6 +82,7 @@ func TestCreate(t *testing.T) {
 		ncPool,
 		true,
 		nil,
+		"",
 	)
 	dl1, dl2 := deployment1(identity, true, 0), deployment2(identity)
 	newDls := map[uint32]gridtypes.Deployment{
@@ -90,6 +91,8 @@ func TestCreate(t *testing.T) {
 	}
 	dl1.ContractID = 100
 	dl2.ContractID = 200
+	var solutionProvider *uint64
+	*solutionProvider = 0
 	sub.EXPECT().
 		CreateNodeContract(
 			identity,
@@ -97,6 +100,7 @@ func TestCreate(t *testing.T) {
 			nil,
 			hash(&dl1),
 			uint32(0),
+			solutionProvider,
 		).Return(uint64(100), nil)
 	sub.EXPECT().
 		CreateNodeContract(
@@ -105,6 +109,7 @@ func TestCreate(t *testing.T) {
 			nil,
 			hash(&dl2),
 			uint32(0),
+			solutionProvider,
 		).Return(uint64(200), nil)
 	ncPool.EXPECT().
 		GetNodeClient(sub, uint32(10)).
@@ -160,6 +165,7 @@ func TestUpdate(t *testing.T) {
 		ncPool,
 		true,
 		nil,
+		"",
 	)
 	dl1, dl2 := deployment1(identity, false, 0), deployment1(identity, true, 1)
 	newDls := map[uint32]gridtypes.Deployment{
@@ -216,6 +222,7 @@ func TestCancel(t *testing.T) {
 		ncPool,
 		true,
 		nil,
+		"",
 	)
 	dl1 := deployment1(identity, false, 0)
 	dl1.ContractID = 100
@@ -257,6 +264,7 @@ func TestCocktail(t *testing.T) {
 		ncPool,
 		true,
 		nil,
+		"",
 	)
 	g := workloads.GatewayFQDNProxy{Name: "f", FQDN: "test.com", Backends: []zos.Backend{"http://1.1.1.1:10"}}
 	dl1 := deployment1(identity, false, 0)
@@ -281,6 +289,8 @@ func TestCocktail(t *testing.T) {
 		30: dl4,
 		40: dl6,
 	}
+	var solutionProvider *uint64
+	*solutionProvider = 0
 	sub.EXPECT().
 		CreateNodeContract(
 			identity,
@@ -288,6 +298,7 @@ func TestCocktail(t *testing.T) {
 			nil,
 			hash(&dl4),
 			uint32(0),
+			solutionProvider,
 		).Return(uint64(300), nil)
 
 	sub.EXPECT().

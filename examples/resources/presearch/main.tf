@@ -8,20 +8,27 @@ terraform {
 
 provider "grid" {
 }
+locals {
+  solution_type = "Presearch"
+  name          = "mypreasearch"
+}
+
 
 resource "grid_network" "net1" {
+  solution_type = local.solution_type
+  name          = local.name
   nodes         = [8]
   ip_range      = "10.1.0.0/16"
-  name          = "network"
   description   = "newer network"
   add_wg_access = true
 }
 
 # Deployment specs
 resource "grid_deployment" "d1" {
-  node         = 8
-  network_name = grid_network.net1.name
-  ip_range     = lookup(grid_network.net1.nodes_ip_range, 8, "")
+  solution_type = local.solution_type
+  name          = local.name
+  node          = 8
+  network_name  = grid_network.net1.name
 
   disks {
     name        = "data"

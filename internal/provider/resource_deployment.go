@@ -2,12 +2,12 @@ package provider
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
 func resourceDeployment() *schema.Resource {
@@ -30,6 +30,16 @@ func resourceDeployment() *schema.Resource {
 				Required:    true,
 				Description: "Node id to place the deployment on",
 			},
+			"name": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "vm",
+			},
+			"solution_type": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "Virtual Machine",
+			},
 			"solution_provider": {
 				Type:        schema.TypeInt,
 				Optional:    true,
@@ -38,7 +48,7 @@ func resourceDeployment() *schema.Resource {
 			},
 			"ip_range": {
 				Type:        schema.TypeString,
-				Optional:    true,
+				Computed:    true,
 				Description: "IP range of the node (e.g. 10.1.2.0/24)",
 			},
 			"network_name": {
@@ -408,20 +418,6 @@ func resourceDeployment() *schema.Resource {
 	}
 }
 
-func getFreeIP(ipRange gridtypes.IPNet, usedIPs []string) (string, error) {
-	i := byte(2)
-	ip := ipRange.IP
-	ip[3] = i
-	for isInStr(usedIPs, ip.String()) {
-		i += 1
-		if i >= 255 {
-			return "", errors.New("all ips are used")
-		}
-		ip[3] = i
-	}
-	return ip.String(), nil
-}
-
 func resourceDeploymentCreate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
 	deployer, err := getDeploymentDeployer(d, apiClient)
 	if err != nil {
@@ -441,9 +437,15 @@ func resourceDeploymentRead(ctx context.Context, sub subi.SubstrateExt, d *schem
 
 func resourceDeploymentUpdate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
 	if d.HasChange("node") {
-		old, _ := d.GetChange("node")
-		d.Set("node", old)
-		return nil, errors.New("changing node is not supported, you need to destroy the deployment and reapply it again but you will lose your old data")
+		oldContractID, err := strconv.ParseUint(d.Id(), 10, 64)
+		if err != nil {
+			return nil, errors.Wrapf(err, "couldn't parse deployment id %s", d.Id())
+		}
+		err = sub.CancelContract(apiClient.identity, oldContractID)
+		if err != nil {
+			return nil, errors.Wrapf(err, "couldn't cancel old node contract")
+		}
+		d.SetId("")
 	}
 	deployer, err := getDeploymentDeployer(d, apiClient)
 	if err != nil {
