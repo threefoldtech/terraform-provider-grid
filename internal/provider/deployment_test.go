@@ -23,6 +23,8 @@ func constructTestDeployer(ctrl *gomock.Controller) DeploymentDeployer {
 	manager := mock.NewMockManager(ctrl)
 	state := mock.NewMockStateI(ctrl)
 	manager.EXPECT().SubstrateExt().Return(sub, nil).AnyTimes()
+	identity := mock.NewMockIdentity(ctrl)
+	identity.EXPECT().PublicKey().Return([]byte("")).AnyTimes()
 	return DeploymentDeployer{
 		ncPool:   pool,
 		deployer: deployer,

@@ -53,7 +53,7 @@ func init() {
 	// }
 }
 
-func New(version string, st state.StateI) func() *schema.Provider {
+func New(version string, subext subi.SubstrateExt, st state.StateI) func() *schema.Provider {
 	return func() *schema.Provider {
 		p := &schema.Provider{
 			Schema: map[string]*schema.Schema{
@@ -118,7 +118,7 @@ func New(version string, st state.StateI) func() *schema.Provider {
 			},
 		}
 
-		p.ConfigureContextFunc = providerConfigure(st)
+		p.ConfigureContextFunc = providerConfigure(subext, st)
 
 		return p
 	}
@@ -132,17 +132,18 @@ type apiClient struct {
 	use_rmb_proxy bool
 	grid_client   proxy.Client
 	rmb           rmb.Client
+	substrateConn subi.SubstrateExt
 	manager       subi.Manager
 	identity      subi.Identity
 	state         state.StateI
 }
 
-func providerConfigure(st state.StateI) func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
+func providerConfigure(sub subi.SubstrateExt, st state.StateI) func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 	return func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 		rand.Seed(time.Now().UnixNano())
 		var err error
-
 		apiClient := apiClient{}
+		apiClient.substrateConn = sub
 		apiClient.mnemonics = d.Get("mnemonics").(string)
 		key_type := d.Get("key_type").(string)
 		var identity subi.Identity
@@ -187,7 +188,7 @@ func providerConfigure(st state.StateI) func(ctx context.Context, d *schema.Reso
 
 		apiClient.rmb_redis_url = d.Get("rmb_redis_url").(string)
 
-		if err := validateAccount(&apiClient, sub); err != nil {
+		if err := validateAccount(&apiClient, apiClient.substrateConn); err != nil {
 			return nil, diag.FromErr(err)
 		}
 		pub := sk.Public()
@@ -202,7 +203,7 @@ func providerConfigure(st state.StateI) func(ctx context.Context, d *schema.Reso
 		var cl rmb.Client
 		if apiClient.use_rmb_proxy {
 			verify_reply := d.Get("verify_reply").(bool)
-			cl, err = client.NewProxyBus(rmb_proxy_url, apiClient.twin_id, apiClient.manager, identity, verify_reply)
+			cl, err = client.NewProxyBus(rmb_proxy_url, apiClient.twin_id, apiClient.substrateConn, identity, verify_reply)
 		} else {
 			cl, err = rmb.NewClient(apiClient.rmb_redis_url)
 		}

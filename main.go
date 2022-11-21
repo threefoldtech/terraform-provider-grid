@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"log"
+	"os"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
 	"github.com/threefoldtech/terraform-provider-grid/internal/provider"
@@ -43,7 +44,14 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	opts := &plugin.ServeOpts{ProviderFunc: provider.New(version, db.GetState())}
+	network := determineSubstrateNetwork()
+
+	subext, err := provider.SubstrateVersion[network](provider.SUBSTRATE_URL[network]).SubstrateExt()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer subext.Close()
+	opts := &plugin.ServeOpts{ProviderFunc: provider.New(version, subext, db.GetState())}
 
 	if debugMode {
 		// TODO: update this string with the full name of your provider as used in your configs
@@ -59,4 +67,15 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
+}
+
+func determineSubstrateNetwork() string {
+	network := os.Getenv("NETWORK")
+	if network == "" {
+		network = "dev"
+	}
+	if network != "dev" && network != "qa" && network != "test" && network != "main" {
+		log.Fatal("network must be one of dev, qa, test, or main")
+	}
+	return network
 }
