@@ -15,7 +15,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.7.1
 	github.com/threefoldtech/go-rmb v0.2.1
-	github.com/threefoldtech/substrate-client v0.0.0-20220822132933-d0d75781793c
+	github.com/threefoldtech/substrate-client v0.0.0-20221123134548-5ff41f589ab6
 	github.com/threefoldtech/substrate-client-main v0.0.1
 	github.com/threefoldtech/substrate-client-qa v0.0.1
 	github.com/threefoldtech/substrate-client-test v0.0.1
