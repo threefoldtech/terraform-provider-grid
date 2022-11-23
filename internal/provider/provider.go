@@ -53,7 +53,8 @@ func init() {
 	// }
 }
 
-func New(version string, subext subi.SubstrateExt, st state.StateI) func() *schema.Provider {
+func New(version string, st state.StateI) (func() *schema.Provider, subi.SubstrateExt) {
+	var substrateConnection subi.SubstrateExt
 	return func() *schema.Provider {
 		p := &schema.Provider{
 			Schema: map[string]*schema.Schema{
@@ -117,11 +118,12 @@ func New(version string, subext subi.SubstrateExt, st state.StateI) func() *sche
 				"grid_fqdn_proxy": resourceGatewayFQDNProxy(),
 			},
 		}
-
-		p.ConfigureContextFunc = providerConfigure(subext, st)
+		configFunc, sub := providerConfigure(st)
+		substrateConnection = sub
+		p.ConfigureContextFunc = configFunc
 
 		return p
-	}
+	}, substrateConnection
 }
 
 type apiClient struct {
@@ -138,12 +140,12 @@ type apiClient struct {
 	state         state.StateI
 }
 
-func providerConfigure(sub subi.SubstrateExt, st state.StateI) func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
+func providerConfigure(st state.StateI) (func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics), subi.SubstrateExt) {
+	var substrateConn subi.SubstrateExt
 	return func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 		rand.Seed(time.Now().UnixNano())
 		var err error
 		apiClient := apiClient{}
-		apiClient.substrateConn = sub
 		apiClient.mnemonics = d.Get("mnemonics").(string)
 		key_type := d.Get("key_type").(string)
 		var identity subi.Identity
@@ -183,7 +185,9 @@ func providerConfigure(sub subi.SubstrateExt, st state.StateI) func(ctx context.
 		if err != nil {
 			return nil, diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
 		}
-		defer sub.Close()
+		// substrate connection will be returned and closed in main.go
+		substrateConn = sub
+		apiClient.substrateConn = sub
 		apiClient.use_rmb_proxy = d.Get("use_rmb_proxy").(bool)
 
 		apiClient.rmb_redis_url = d.Get("rmb_redis_url").(string)
@@ -219,5 +223,5 @@ func providerConfigure(sub subi.SubstrateExt, st state.StateI) func(ctx context.
 		}
 		apiClient.state = st
 		return &apiClient, nil
-	}
+	}, substrateConn
 }
