@@ -1,5 +1,5 @@
 module "kubernetes" {
-  source  = "github.com/IslamWalid/terraform-provider-grid/modules/k8s-module"
+  source  = "github.com/threefoldtech/terraform-provider-grid/modules/k8s-module"
   token   = local.token
   network = local.network
   master  = local.master
@@ -51,7 +51,7 @@ locals {
 
   master = {
     name        = "mr"
-    node        = 45
+    node        = 2
     cpu         = 2
     memory      = 1024
     disk_name   = "mrdisk"

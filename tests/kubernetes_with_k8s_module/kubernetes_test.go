@@ -20,11 +20,11 @@ func TestKubernetesDeployment(t *testing.T) {
 		Parallelism:  1,
 		Vars: map[string]interface{}{
 			"ssh":           sshKey,
-			"network_nodes": []int{45, 49},
+			"network_nodes": []int{2, 3},
 			"workers": []map[string]interface{}{
 				{
 					"name":        "w0",
-					"node":        49,
+					"node":        2,
 					"cpu":         1,
 					"memory":      1024,
 					"disk_name":   "w0disk",
@@ -36,13 +36,13 @@ func TestKubernetesDeployment(t *testing.T) {
 			"disks": []map[string]interface{}{
 				{
 					"name":        "mrdisk",
-					"node":        45,
+					"node":        2,
 					"size":        5,
 					"description": "",
 				},
 				{
 					"name":        "w0disk",
-					"node":        49,
+					"node":        2,
 					"size":        2,
 					"description": "",
 				},
@@ -56,7 +56,7 @@ func TestKubernetesDeployment(t *testing.T) {
 	terraformOptions.Vars["workers"] = []map[string]interface{}{
 		{
 			"name":        "w0",
-			"node":        49,
+			"node":        2,
 			"cpu":         1,
 			"memory":      1024,
 			"disk_name":   "w0disk",
@@ -66,7 +66,7 @@ func TestKubernetesDeployment(t *testing.T) {
 		},
 		{
 			"name":        "w1",
-			"node":        49,
+			"node":        2,
 			"cpu":         1,
 			"memory":      1024,
 			"disk_name":   "w1disk",
@@ -78,19 +78,19 @@ func TestKubernetesDeployment(t *testing.T) {
 	terraformOptions.Vars["disks"] = []map[string]interface{}{
 		{
 			"name":        "mrdisk",
-			"node":        45,
+			"node":        2,
 			"size":        5,
 			"description": "",
 		},
 		{
 			"name":        "w0disk",
-			"node":        49,
+			"node":        2,
 			"size":        2,
 			"description": "",
 		},
 		{
 			"name":        "w1disk",
-			"node":        49,
+			"node":        2,
 			"size":        2,
 			"description": "",
 		},

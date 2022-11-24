@@ -33,3 +33,41 @@ website/vendor
 
 # Keep windows files with windows line endings
 *.winfile eol=crlf
+examples/resources/k8s-using-modules/.terraform.lock.hcl
+examples/resources/k8s-using-modules/state.json
+examples/resources/singlenode/.terraform.lock.hcl
+examples/resources/singlenode/state.json
+tests/gateway_with_fqdn/.terraform.lock.hcl
+tests/gateway_with_fqdn/state.json
+tests/gateway_with_yggdrasil_ip/.terraform.lock.hcl
+tests/gateway_with_yggdrasil_ip/state.json
+tests/kubernetes/.terraform.lock.hcl
+tests/kubernetes/state.json
+tests/kubernetes_with_2worker_same_name/.terraform.lock.hcl
+tests/kubernetes_with_2worker_same_name/state.json
+tests/kubernetes_with_k8s_module/.terraform.lock.hcl
+tests/kubernetes_with_k8s_module/state.json
+tests/kubernetes_with_no_network/.terraform.lock.hcl
+tests/mount_with_file_bigger_than_disk_size/.terraform.lock.hcl
+tests/kubernetes_with_no_network/state.json
+tests/mount_with_file_bigger_than_disk_size/state.json
+tests/mounts/.terraform.lock.hcl
+tests/mounts/state.json
+tests/multinode/.terraform.lock.hcl
+tests/multinode/state.json
+tests/qsfs_check_metrics/.terraform.lock.hcl
+tests/qsfs_check_metrics/state.json
+tests/qsfs_read_write/.terraform.lock.hcl
+tests/qsfs_read_write/state.json
+tests/singlenode/.terraform.lock.hcl
+tests/singlenode/state.json
+tests/singlenode_key_ed25519/.terraform.lock.hcl
+tests/singlenode_key_ed25519/state.json
+tests/singlenode_with_memory_less_than_250M/.terraform.lock.hcl
+tests/singlenode_with_memory_less_than_250M/state.json
+tests/singlenode_with_zero_cpu/.terraform.lock.hcl
+tests/singlenode_with_zero_cpu/state.json
+tests/VM_with_planetary_network/.terraform.lock.hcl
+tests/VM_with_planetary_network/state.json
+tests/zdbs/.terraform.lock.hcl
+tests/zdbs/state.json

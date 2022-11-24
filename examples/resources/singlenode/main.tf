@@ -14,14 +14,14 @@ locals {
 
 resource "grid_network" "net1" {
   name        = local.name
-  nodes       = [34]
+  nodes       = [13]
   ip_range    = "10.1.0.0/16"
   description = "newer network"
   # add_wg_access = true
 }
 resource "grid_deployment" "d1" {
   name         = local.name
-  node         = 34
+  node         = 13
   network_name = grid_network.net1.name
   vms {
     name  = "vm1"
