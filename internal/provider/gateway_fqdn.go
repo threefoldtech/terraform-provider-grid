@@ -9,9 +9,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
+	"github.com/threefoldtech/substrate-client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/deployer"
-	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -73,7 +73,7 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 	return deployer, nil
 }
 
-func (k *GatewayFQDNDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error {
+func (k *GatewayFQDNDeployer) Validate(ctx context.Context, sub *substrate.Substrate) error {
 	return isNodesUp(ctx, sub, []uint32{k.Node}, k.ncPool)
 }
 
@@ -99,7 +99,7 @@ func (k *GatewayFQDNDeployer) GenerateVersionlessDeployments(ctx context.Context
 	return deployments, nil
 }
 
-func (k *GatewayFQDNDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt) error {
+func (k *GatewayFQDNDeployer) Deploy(ctx context.Context, sub *substrate.Substrate) error {
 	if err := k.Validate(ctx, sub); err != nil {
 		return err
 	}
@@ -114,8 +114,8 @@ func (k *GatewayFQDNDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt)
 	return err
 }
 
-func (k *GatewayFQDNDeployer) syncContracts(ctx context.Context, sub subi.SubstrateExt) (err error) {
-	if err := sub.DeleteInvalidContracts(k.NodeDeploymentID); err != nil {
+func (k *GatewayFQDNDeployer) syncContracts(ctx context.Context, sub *substrate.Substrate) (err error) {
+	if err := DeleteInvalidContracts(sub, k.NodeDeploymentID); err != nil {
 		return err
 	}
 	if len(k.NodeDeploymentID) == 0 {
@@ -124,7 +124,7 @@ func (k *GatewayFQDNDeployer) syncContracts(ctx context.Context, sub subi.Substr
 	}
 	return nil
 }
-func (k *GatewayFQDNDeployer) sync(ctx context.Context, sub subi.SubstrateExt, cl *apiClient) error {
+func (k *GatewayFQDNDeployer) sync(ctx context.Context, sub *substrate.Substrate, cl *apiClient) error {
 	if err := k.syncContracts(ctx, sub); err != nil {
 		return errors.Wrap(err, "couldn't sync contracts")
 	}
@@ -145,7 +145,7 @@ func (k *GatewayFQDNDeployer) sync(ctx context.Context, sub subi.SubstrateExt, c
 	return nil
 }
 
-func (k *GatewayFQDNDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt) (err error) {
+func (k *GatewayFQDNDeployer) Cancel(ctx context.Context, sub *substrate.Substrate) (err error) {
 	newDeployments := make(map[uint32]gridtypes.Deployment)
 
 	k.NodeDeploymentID, err = k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)

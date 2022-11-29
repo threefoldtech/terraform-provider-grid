@@ -11,9 +11,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
+	"github.com/threefoldtech/substrate-client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/deployer"
-	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -219,11 +219,12 @@ func (d *DeploymentDeployer) ID() uint64 {
 	return id
 
 }
-func (d *DeploymentDeployer) syncContract(sub subi.SubstrateExt) error {
+
+func (d *DeploymentDeployer) syncContract(sub *substrate.Substrate) error {
 	if d.Id == "" {
 		return nil
 	}
-	valid, err := sub.IsValidContract(d.ID())
+	valid, err := IsValidContract(sub, d.ID())
 	if err != nil {
 		return errors.Wrap(err, "error checking contract validity")
 	}
@@ -233,7 +234,7 @@ func (d *DeploymentDeployer) syncContract(sub subi.SubstrateExt) error {
 	}
 	return nil
 }
-func (d *DeploymentDeployer) sync(ctx context.Context, sub subi.SubstrateExt, cl *apiClient) error {
+func (d *DeploymentDeployer) sync(ctx context.Context, sub *substrate.Substrate, cl *apiClient) error {
 	if err := d.syncContract(sub); err != nil {
 		return err
 	}
@@ -364,7 +365,7 @@ func (d *DeploymentDeployer) validate() error {
 	}
 	return nil
 }
-func (d *DeploymentDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt) error {
+func (d *DeploymentDeployer) Deploy(ctx context.Context, sub *substrate.Substrate) error {
 	if err := d.validate(); err != nil {
 		return err
 	}
@@ -383,7 +384,7 @@ func (d *DeploymentDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt) 
 	return err
 }
 
-func (d *DeploymentDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt) error {
+func (d *DeploymentDeployer) Cancel(ctx context.Context, sub *substrate.Substrate) error {
 	newDeployments := make(map[uint32]gridtypes.Deployment)
 	oldDeployments, err := d.GetOldDeployments(ctx)
 	if err != nil {

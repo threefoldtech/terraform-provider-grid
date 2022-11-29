@@ -68,7 +68,8 @@ func resourceDeploymentsRead(ctx context.Context, d *schema.ResourceData, meta i
 }
 func resourceDeploymentsCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	// this will call reserve capacity and set node ids
+	// this will call reserve capacity and set node ids in deployments
+
 	d.SetId(strconv.FormatInt(time.Now().Unix(), 10))
 	return diags
 }
@@ -80,17 +81,22 @@ func resourceDeploymentsUpdate(ctx context.Context, d *schema.ResourceData, meta
 		tflog.Info(ctx, "old deployments")
 		oldValuesList := oldValues.([]interface{})
 		newValuesList := newValues.([]interface{})
+		// the user may add new deployments, so we need to reserve capacity for it
 		var newCapacityRequests []interface{}
+		// update capacity for old deployments if changed
 		var updateCapacityRequests []interface{}
 
 		tflog.Info(ctx, "new deployments")
 		for idx, deployment := range newValuesList {
+			// check if any of old deployments got updated
 			if len(oldValuesList) >= idx+1 {
-				if deployment.(map[string]interface{})["cpu"].(int) != oldValuesList[idx].(map[string]interface{})["cpu"].(int) || deployment.(map[string]interface{})["memory"].(int) != oldValuesList[idx].(map[string]interface{})["memory"].(int) {
+				if deployment.(map[string]interface{})["cpu"].(int) != oldValuesList[idx].(map[string]interface{})["cpu"].(int) ||
+					deployment.(map[string]interface{})["memory"].(int) != oldValuesList[idx].(map[string]interface{})["memory"].(int) {
 					updateCapacityRequests = append(updateCapacityRequests, deployment)
 				}
 				continue
 			}
+			// if new deployments append to newCapacityRequests
 			newCapacityRequests = append(newCapacityRequests, deployment)
 		}
 		tflog.Info(ctx, fmt.Sprintf("newCapacityRequests: %d ------------------ oldCapacityRequests: %d", len(newCapacityRequests), len(updateCapacityRequests)))

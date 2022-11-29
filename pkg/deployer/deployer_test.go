@@ -11,7 +11,6 @@ import (
 	"github.com/threefoldtech/substrate-client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	mock "github.com/threefoldtech/terraform-provider-grid/internal/provider/mocks"
-	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -65,7 +64,7 @@ func hash(dl *gridtypes.Deployment) string {
 
 type EmptyValidator struct{}
 
-func (d *EmptyValidator) Validate(ctx context.Context, sub subi.SubstrateExt, oldDeployments map[uint32]gridtypes.Deployment, newDeployments map[uint32]gridtypes.Deployment) error {
+func (d *EmptyValidator) Validate(ctx context.Context, sub substrate.Substrate, oldDeployments map[uint32]gridtypes.Deployment, newDeployments map[uint32]gridtypes.Deployment) error {
 	return nil
 }
 func TestCreate(t *testing.T) {

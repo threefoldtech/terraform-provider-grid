@@ -9,12 +9,12 @@ import (
 
 	"github.com/pkg/errors"
 	proxytypes "github.com/threefoldtech/grid_proxy_server/pkg/types"
-	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
+	"github.com/threefoldtech/substrate-client"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
-func (d *DeployerImpl) GetDeploymentObjects(ctx context.Context, sub subi.SubstrateExt, dls map[uint32]uint64) (map[uint32]gridtypes.Deployment, error) {
+func (d *DeployerImpl) GetDeploymentObjects(ctx context.Context, sub *substrate.Substrate, dls map[uint32]uint64) (map[uint32]gridtypes.Deployment, error) {
 	res := make(map[uint32]gridtypes.Deployment)
 	for nodeID, dlID := range dls {
 		nc, err := d.ncPool.GetNodeClient(sub, nodeID)
@@ -135,4 +135,14 @@ func addCapacity(cap *proxytypes.Capacity, add *gridtypes.Capacity) {
 	cap.MRU += add.MRU
 	cap.SRU += add.SRU
 	cap.HRU += add.HRU
+}
+
+func EnsureContractCanceled(sub *substrate.Substrate, identity substrate.Identity, contractID uint64) error {
+	if contractID == 0 {
+		return nil
+	}
+	if err := sub.CancelContract(identity, contractID); err != nil && err.Error() != "ContractNotExists" {
+		return err
+	}
+	return nil
 }

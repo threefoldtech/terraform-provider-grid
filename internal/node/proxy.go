@@ -15,7 +15,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/go-rmb"
 	"github.com/threefoldtech/substrate-client"
-	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 )
 
 const (
@@ -24,7 +23,7 @@ const (
 
 type TwinResolver struct {
 	cache  *cache.Cache
-	client subi.SubstrateExt
+	client *substrate.Substrate
 }
 type ProxyBus struct {
 	signer      substrate.Identity
@@ -34,7 +33,7 @@ type ProxyBus struct {
 	resolver    TwinResolver
 }
 
-func NewProxyBus(endpoint string, twinID uint32, sub subi.SubstrateExt, signer substrate.Identity, verifyReply bool) (*ProxyBus, error) {
+func NewProxyBus(endpoint string, twinID uint32, sub *substrate.Substrate, signer substrate.Identity, verifyReply bool) (*ProxyBus, error) {
 	if len(endpoint) != 0 && endpoint[len(endpoint)-1] == '/' {
 		endpoint = endpoint[:len(endpoint)-1]
 	}
@@ -138,11 +137,11 @@ func (r TwinResolver) PublicKey(twin int) ([]byte, error) {
 	if ok {
 		return cached.([]byte), nil
 	}
-	pk, err := r.client.GetTwinPK(uint32(twin))
+	twinObj, err := r.client.GetTwin(uint32(twin))
 	if err != nil {
 		return nil, err
 	}
-
+	pk := twinObj.Account.PublicKey()
 	r.cache.Set(key, pk, cache.DefaultExpiration)
 	return pk, nil
 }
