@@ -11,10 +11,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
+	"github.com/threefoldtech/substrate-client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/deployer"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/state"
-	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
@@ -215,11 +215,11 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 }
 
 // invalidateBrokenAttributes removes outdated attrs and deleted contracts
-func (k *NetworkDeployer) invalidateBrokenAttributes(sub subi.SubstrateExt) error {
+func (k *NetworkDeployer) invalidateBrokenAttributes(sub *substrate.Substrate) error {
 
 	for node, contractID := range k.NodeDeploymentID {
 		contract, err := sub.GetContract(contractID)
-		if (err == nil && !contract.IsCreated()) || errors.Is(err, subi.ErrNotFound) {
+		if (err == nil && !contract.State.IsCreated) || errors.Is(err, substrate.ErrNotFound) {
 			delete(k.NodeDeploymentID, node)
 			delete(k.NodesIPRange, node)
 			delete(k.Keys, node)
@@ -253,7 +253,7 @@ func (k *NetworkDeployer) invalidateBrokenAttributes(sub subi.SubstrateExt) erro
 	}
 	return nil
 }
-func (k *NetworkDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error {
+func (k *NetworkDeployer) Validate(ctx context.Context, sub *substrate.Substrate) error {
 	if err := validateAccountMoneyForExtrinsics(sub, k.APIClient.identity); err != nil {
 		return err
 	}
@@ -374,7 +374,7 @@ func (k *NetworkDeployer) assignNodesIPs(nodes []uint32) error {
 	k.NodesIPRange = ips
 	return nil
 }
-func (k *NetworkDeployer) assignNodesWGPort(ctx context.Context, sub subi.SubstrateExt, nodes []uint32) error {
+func (k *NetworkDeployer) assignNodesWGPort(ctx context.Context, sub *substrate.Substrate, nodes []uint32) error {
 	for _, node := range nodes {
 		if _, ok := k.WGPort[node]; !ok {
 			cl, err := k.ncPool.GetNodeClient(sub, node)
@@ -405,7 +405,7 @@ func (k *NetworkDeployer) assignNodesWGKey(nodes []uint32) error {
 
 	return nil
 }
-func (k *NetworkDeployer) readNodesConfig(ctx context.Context, sub subi.SubstrateExt) error {
+func (k *NetworkDeployer) readNodesConfig(ctx context.Context, sub *substrate.Substrate) error {
 	keys := make(map[uint32]wgtypes.Key)
 	WGPort := make(map[uint32]int)
 	nodesIPRange := make(map[uint32]gridtypes.IPNet)
@@ -451,7 +451,7 @@ func (k *NetworkDeployer) readNodesConfig(ctx context.Context, sub subi.Substrat
 	return nil
 }
 
-func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, sub subi.SubstrateExt) (map[uint32]gridtypes.Deployment, error) {
+func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, sub *substrate.Substrate) (map[uint32]gridtypes.Deployment, error) {
 	log.Printf("nodes: %v\n", k.Nodes)
 	deployments := make(map[uint32]gridtypes.Deployment)
 	endpoints := make(map[uint32]string)
@@ -666,7 +666,7 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 	}
 	return deployments, nil
 }
-func (k *NetworkDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt) error {
+func (k *NetworkDeployer) Deploy(ctx context.Context, sub *substrate.Substrate) error {
 	newDeployments, err := k.GenerateVersionlessDeployments(ctx, sub)
 	if err != nil {
 		return errors.Wrap(err, "couldn't generate deployments data")
@@ -679,7 +679,7 @@ func (k *NetworkDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt) err
 	}
 	return err
 }
-func (k *NetworkDeployer) updateState(ctx context.Context, sub subi.SubstrateExt, currentDeploymentIDs map[uint32]uint64) error {
+func (k *NetworkDeployer) updateState(ctx context.Context, sub *substrate.Substrate, currentDeploymentIDs map[uint32]uint64) error {
 	k.NodeDeploymentID = currentDeploymentIDs
 	if err := k.readNodesConfig(ctx, sub); err != nil {
 		return errors.Wrap(err, "couldn't read node's data")
@@ -688,7 +688,7 @@ func (k *NetworkDeployer) updateState(ctx context.Context, sub subi.SubstrateExt
 	return nil
 }
 
-func (k *NetworkDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt) error {
+func (k *NetworkDeployer) Cancel(ctx context.Context, sub *substrate.Substrate) error {
 	newDeployments := make(map[uint32]gridtypes.Deployment)
 
 	currentDeployments, err := k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)

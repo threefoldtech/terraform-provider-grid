@@ -13,13 +13,12 @@ import (
 	proxy "github.com/threefoldtech/grid_proxy_server/pkg/client"
 	"github.com/threefoldtech/substrate-client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
-	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
 type Deployer interface {
-	Deploy(ctx context.Context, sub subi.SubstrateExt, oldDeployments map[uint32]uint64, newDeployments map[uint32]gridtypes.Deployment) (map[uint32]uint64, error)
-	GetDeploymentObjects(ctx context.Context, sub subi.SubstrateExt, dls map[uint32]uint64) (map[uint32]gridtypes.Deployment, error)
+	Deploy(ctx context.Context, sub *substrate.Substrate, oldDeployments map[uint32]uint64, newDeployments map[uint32]gridtypes.Deployment) (map[uint32]uint64, error)
+	GetDeploymentObjects(ctx context.Context, sub *substrate.Substrate, dls map[uint32]uint64) (map[uint32]gridtypes.Deployment, error)
 }
 
 type DeployerImpl struct {
@@ -52,7 +51,7 @@ func NewDeployer(
 	}
 }
 
-func (d *DeployerImpl) Deploy(ctx context.Context, sub subi.SubstrateExt, oldDeploymentIDs map[uint32]uint64, newDeployments map[uint32]gridtypes.Deployment) (map[uint32]uint64, error) {
+func (d *DeployerImpl) Deploy(ctx context.Context, sub *substrate.Substrate, oldDeploymentIDs map[uint32]uint64, newDeployments map[uint32]gridtypes.Deployment) (map[uint32]uint64, error) {
 	oldDeployments, oldErr := d.GetDeploymentObjects(ctx, sub, oldDeploymentIDs)
 	if oldErr == nil {
 		// check resources only when old deployments are readable
@@ -80,7 +79,7 @@ func (d *DeployerImpl) Deploy(ctx context.Context, sub subi.SubstrateExt, oldDep
 
 func (d *DeployerImpl) deploy(
 	ctx context.Context,
-	sub subi.SubstrateExt,
+	sub *substrate.Substrate,
 	oldDeployments map[uint32]uint64,
 	newDeployments map[uint32]gridtypes.Deployment,
 	revertOnFailure bool,
@@ -92,7 +91,7 @@ func (d *DeployerImpl) deploy(
 	// deletions
 	for node, contractID := range oldDeployments {
 		if _, ok := newDeployments[node]; !ok {
-			err = sub.EnsureContractCanceled(d.identity, contractID)
+			err = EnsureContractCanceled(sub, d.identity, contractID)
 			if err != nil && !strings.Contains(err.Error(), "ContractNotExists") {
 				return currentDeployments, errors.Wrap(err, "failed to delete deployment")
 			}
@@ -137,7 +136,7 @@ func (d *DeployerImpl) deploy(
 			err = client.DeploymentDeploy(ctx2, dl)
 
 			if err != nil {
-				rerr := sub.EnsureContractCanceled(d.identity, contractID)
+				rerr := EnsureContractCanceled(sub, d.identity, contractID)
 				log.Printf("failed to send deployment deploy request to node %s", err)
 				if rerr != nil {
 					return currentDeployments, fmt.Errorf("error sending deployment to the node: %w, error cancelling contract: %s; you must cancel it manually (id: %d)", err, rerr, contractID)

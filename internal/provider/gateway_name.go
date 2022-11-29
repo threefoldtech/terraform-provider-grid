@@ -10,9 +10,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
+	"github.com/threefoldtech/substrate-client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/deployer"
-	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -78,7 +78,7 @@ func NewGatewayNameDeployer(d *schema.ResourceData, apiClient *apiClient) (Gatew
 	return deployer, nil
 }
 
-func (k *GatewayNameDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error {
+func (k *GatewayNameDeployer) Validate(ctx context.Context, sub *substrate.Substrate) error {
 	return isNodesUp(ctx, sub, []uint32{k.Node}, k.ncPool)
 }
 
@@ -105,20 +105,20 @@ func (k *GatewayNameDeployer) GenerateVersionlessDeployments(ctx context.Context
 	deployments[k.Node] = deployment
 	return deployments, nil
 }
-func (k *GatewayNameDeployer) InvalidateNameContract(ctx context.Context, sub subi.SubstrateExt) (err error) {
+func (k *GatewayNameDeployer) InvalidateNameContract(ctx context.Context, sub *substrate.Substrate) (err error) {
 	if k.NameContractID == 0 {
 		return
 	}
 
-	k.NameContractID, err = sub.InvalidateNameContract(
-		ctx,
+	k.NameContractID, err = InvalidateNameContract(
+		sub,
 		k.APIClient.identity,
 		k.NameContractID,
 		k.Gw.Name,
 	)
 	return
 }
-func (k *GatewayNameDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt) error {
+func (k *GatewayNameDeployer) Deploy(ctx context.Context, sub *substrate.Substrate) error {
 	if err := k.Validate(ctx, sub); err != nil {
 		return err
 	}
@@ -142,11 +142,11 @@ func (k *GatewayNameDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt)
 	k.NodeDeploymentID, err = k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)
 	return err
 }
-func (k *GatewayNameDeployer) syncContracts(ctx context.Context, sub subi.SubstrateExt) (err error) {
-	if err := sub.DeleteInvalidContracts(k.NodeDeploymentID); err != nil {
+func (k *GatewayNameDeployer) syncContracts(ctx context.Context, sub *substrate.Substrate) (err error) {
+	if err := DeleteInvalidContracts(sub, k.NodeDeploymentID); err != nil {
 		return err
 	}
-	valid, err := sub.IsValidContract(k.NameContractID)
+	valid, err := IsValidContract(sub, k.NameContractID)
 	if err != nil {
 		return err
 	}
@@ -159,7 +159,7 @@ func (k *GatewayNameDeployer) syncContracts(ctx context.Context, sub subi.Substr
 	}
 	return nil
 }
-func (k *GatewayNameDeployer) sync(ctx context.Context, sub subi.SubstrateExt, cl *apiClient) (err error) {
+func (k *GatewayNameDeployer) sync(ctx context.Context, sub *substrate.Substrate, cl *apiClient) (err error) {
 	if err := k.syncContracts(ctx, sub); err != nil {
 		return errors.Wrap(err, "couldn't sync contracts")
 	}
@@ -180,14 +180,14 @@ func (k *GatewayNameDeployer) sync(ctx context.Context, sub subi.SubstrateExt, c
 	return nil
 }
 
-func (k *GatewayNameDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt) (err error) {
+func (k *GatewayNameDeployer) Cancel(ctx context.Context, sub *substrate.Substrate) (err error) {
 	newDeployments := make(map[uint32]gridtypes.Deployment)
 	k.NodeDeploymentID, err = k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)
 	if err != nil {
 		return err
 	}
 	if k.NameContractID != 0 {
-		if err := sub.EnsureContractCanceled(k.APIClient.identity, k.NameContractID); err != nil {
+		if err := EnsureContractCanceled(sub, k.APIClient.identity, k.NameContractID); err != nil {
 			return err
 		}
 		k.NameContractID = 0

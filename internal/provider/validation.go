@@ -10,17 +10,17 @@ import (
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
+	"github.com/threefoldtech/substrate-client"
 )
 
 // validateAccount checks the mnemonics is associated with an account with key type ed25519
-func validateAccount(apiClient *apiClient, sub subi.SubstrateExt) error {
+func validateAccount(apiClient *apiClient, sub *substrate.Substrate) error {
 	_, err := sub.GetAccount(apiClient.identity)
-	if err != nil && !errors.Is(err, subi.ErrAccountNotFound) {
+	if err != nil && !errors.Is(err, substrate.ErrAccountNotFound) {
 		return errors.Wrap(err, "failed to get account with the given mnemonics")
 	}
 	if err != nil { // Account not found
-		funcs := map[string]func(string) (subi.Identity, error){"ed25519": subi.NewIdentityFromEd25519Phrase, "sr25519": subi.NewIdentityFromSr25519Phrase}
+		funcs := map[string]func(string) (substrate.Identity, error){"ed25519": substrate.NewIdentityFromEd25519Phrase, "sr25519": substrate.NewIdentityFromSr25519Phrase}
 		for keyType, f := range funcs {
 			ident, err2 := f(apiClient.mnemonics)
 			if err2 != nil { // shouldn't happen, return original error
@@ -52,11 +52,13 @@ func validateRedis(apiClient *apiClient) error {
 	return nil
 }
 
-func validateYggdrasil(apiClient *apiClient, sub subi.SubstrateExt) error {
-	yggIP, err := sub.GetTwinIP(apiClient.twin_id)
+func validateYggdrasil(apiClient *apiClient, sub *substrate.Substrate) error {
+	twinObj, err := sub.GetTwin(apiClient.twin_id)
 	if err != nil {
 		return errors.Wrapf(err, "coudln't get twin %d from substrate", apiClient.twin_id)
 	}
+
+	yggIP := twinObj.IP
 	ip := net.ParseIP(yggIP)
 	listenIP := yggIP
 	if ip != nil && ip.To4() == nil {
@@ -93,7 +95,7 @@ func validateYggdrasil(apiClient *apiClient, sub subi.SubstrateExt) error {
 	return nil
 }
 
-func validateRMB(apiClient *apiClient, sub subi.SubstrateExt) error {
+func validateRMB(apiClient *apiClient, sub *substrate.Substrate) error {
 	if err := validateRedis(apiClient); err != nil {
 		return err
 	}
@@ -114,7 +116,7 @@ func validateRMBProxy(apiClient *apiClient) error {
 	return nil
 }
 
-func preValidate(apiClient *apiClient, sub subi.SubstrateExt) error {
+func preValidate(apiClient *apiClient, sub *substrate.Substrate) error {
 	if apiClient.use_rmb_proxy {
 		return validateRMBProxy(apiClient)
 	} else {
@@ -122,9 +124,9 @@ func preValidate(apiClient *apiClient, sub subi.SubstrateExt) error {
 	}
 }
 
-func validateAccountMoneyForExtrinsics(sub subi.SubstrateExt, identity subi.Identity) error {
+func validateAccountMoneyForExtrinsics(sub *substrate.Substrate, identity substrate.Identity) error {
 	acc, err := sub.GetAccount(identity)
-	if err != nil && !errors.Is(err, subi.ErrAccountNotFound) {
+	if err != nil && !errors.Is(err, substrate.ErrAccountNotFound) {
 		return errors.Wrap(err, "failed to get account with the given mnemonics")
 	}
 	log.Printf("money %d\n", acc.Data.Free)

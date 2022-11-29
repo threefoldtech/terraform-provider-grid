@@ -13,10 +13,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
+	"github.com/threefoldtech/substrate-client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/deployer"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/state"
-	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
@@ -406,12 +406,12 @@ func (k *K8sNodeData) Dictify() map[string]interface{} {
 }
 
 // invalidateBrokenAttributes removes outdated attrs and deleted contracts
-func (k *K8sDeployer) invalidateBrokenAttributes(sub subi.SubstrateExt) error {
+func (k *K8sDeployer) invalidateBrokenAttributes(sub *substrate.Substrate) error {
 	newWorkers := make([]K8sNodeData, 0)
 	validNodes := make(map[uint32]struct{})
 	for node, contractID := range k.NodeDeploymentID {
 		contract, err := sub.GetContract(contractID)
-		if (err == nil && !contract.IsCreated()) || errors.Is(err, subi.ErrNotFound) {
+		if (err == nil && !contract.IsCreated()) || errors.Is(err, substrate.ErrNotFound) {
 			delete(k.NodeDeploymentID, node)
 			delete(k.NodesIPRange, node)
 		} else if err != nil {
@@ -632,7 +632,7 @@ func (k *K8sDeployer) validateToken(ctx context.Context) error {
 	return nil
 }
 
-func (k *K8sDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error {
+func (k *K8sDeployer) Validate(ctx context.Context, sub *substrate.Substrate) error {
 	if err := k.validateToken(ctx); err != nil {
 		return err
 	}
@@ -654,7 +654,7 @@ func (k *K8sDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error
 	return isNodesUp(ctx, sub, nodes, k.ncPool)
 }
 
-func (k *K8sDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, cl *apiClient) error {
+func (k *K8sDeployer) Deploy(ctx context.Context, sub *substrate.Substrate, d *schema.ResourceData, cl *apiClient) error {
 	if err := k.validateChecksums(); err != nil {
 		return err
 	}
@@ -669,7 +669,7 @@ func (k *K8sDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt, d *sche
 	return err
 }
 
-func (k *K8sDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, cl *apiClient) error {
+func (k *K8sDeployer) Cancel(ctx context.Context, sub *substrate.Substrate, d *schema.ResourceData, cl *apiClient) error {
 	newDeployments := make(map[uint32]gridtypes.Deployment)
 
 	currentDeployments, err := k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)
@@ -704,7 +704,7 @@ func (k *K8sDeployer) removeUsedIPsFromLocalState(cl *apiClient) {
 	}
 }
 
-func (k *K8sDeployer) updateState(ctx context.Context, sub subi.SubstrateExt, currentDeploymentIDs map[uint32]uint64, d *schema.ResourceData, cl *apiClient) error {
+func (k *K8sDeployer) updateState(ctx context.Context, sub *substrate.Substrate, currentDeploymentIDs map[uint32]uint64, d *schema.ResourceData, cl *apiClient) error {
 	log.Printf("current deployments\n")
 	k.NodeDeploymentID = currentDeploymentIDs
 	currentDeployments, err := k.deployer.GetDeploymentObjects(ctx, sub, currentDeploymentIDs)
@@ -760,14 +760,14 @@ func (k *K8sDeployer) updateState(ctx context.Context, sub subi.SubstrateExt, cu
 	return nil
 }
 
-func (k *K8sDeployer) removeDeletedContracts(ctx context.Context, sub subi.SubstrateExt) error {
+func (k *K8sDeployer) removeDeletedContracts(ctx context.Context, sub *substrate.Substrate) error {
 	nodeDeploymentID := make(map[uint32]uint64)
 	for nodeID, deploymentID := range k.NodeDeploymentID {
 		cont, err := sub.GetContract(deploymentID)
 		if err != nil {
 			return errors.Wrap(err, "failed to get deployments")
 		}
-		if !cont.IsDeleted() {
+		if !cont.State.IsDeleted {
 			nodeDeploymentID[nodeID] = deploymentID
 		}
 	}
@@ -775,7 +775,7 @@ func (k *K8sDeployer) removeDeletedContracts(ctx context.Context, sub subi.Subst
 	return nil
 }
 
-func (k *K8sDeployer) updateFromRemote(ctx context.Context, sub subi.SubstrateExt) error {
+func (k *K8sDeployer) updateFromRemote(ctx context.Context, sub *substrate.Substrate) error {
 	if err := k.removeDeletedContracts(ctx, sub); err != nil {
 		return errors.Wrap(err, "failed to remove deleted contracts")
 	}

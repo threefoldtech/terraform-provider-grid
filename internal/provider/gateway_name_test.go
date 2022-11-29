@@ -11,7 +11,6 @@ import (
 	"github.com/threefoldtech/substrate-client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	mock "github.com/threefoldtech/terraform-provider-grid/internal/provider/mocks"
-	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -576,7 +575,7 @@ func TestNameSync(t *testing.T) {
 
 	deployer.EXPECT().
 		GetDeploymentObjects(gomock.Any(), sub, map[uint32]uint64{10: 100}).
-		DoAndReturn(func(ctx context.Context, _ subi.SubstrateExt, _ map[uint32]uint64) (map[uint32]gridtypes.Deployment, error) {
+		DoAndReturn(func(ctx context.Context, _ substrate.Substrate, _ map[uint32]uint64) (map[uint32]gridtypes.Deployment, error) {
 			return map[uint32]gridtypes.Deployment{10: dl}, nil
 		})
 	gw.Gw.FQDN = "123"
@@ -629,7 +628,7 @@ func TestNameSyncDeletedWorkload(t *testing.T) {
 
 	deployer.EXPECT().
 		GetDeploymentObjects(gomock.Any(), sub, map[uint32]uint64{10: 100}).
-		DoAndReturn(func(ctx context.Context, _ subi.SubstrateExt, _ map[uint32]uint64) (map[uint32]gridtypes.Deployment, error) {
+		DoAndReturn(func(ctx context.Context, _ substrate.Substrate, _ map[uint32]uint64) (map[uint32]gridtypes.Deployment, error) {
 			return map[uint32]gridtypes.Deployment{10: dl}, nil
 		})
 	gw.Gw.FQDN = "123"
