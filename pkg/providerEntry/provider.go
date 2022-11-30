@@ -1,4 +1,4 @@
-package provider
+package providerEntry
 
 import (
 	"context"
@@ -14,6 +14,8 @@ import (
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/state"
 	"github.com/threefoldtech/zos/pkg/rmb"
+	provider "github.com/threefoldtech/terraform-provider-grid/internal/provider"
+	
 )
 
 var (
@@ -120,6 +122,9 @@ func New(version string, st state.StateI) (func() *schema.Provider, *substrate.S
 		return p
 	}, substrateConnection
 }
+
+
+
 
 type apiClient struct {
 	twin_id       uint32

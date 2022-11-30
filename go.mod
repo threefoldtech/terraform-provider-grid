@@ -16,9 +16,11 @@ require (
 	github.com/stretchr/testify v1.7.1
 	github.com/threefoldtech/go-rmb v0.2.1
 	github.com/threefoldtech/substrate-client v0.0.0-20221129080858-a6ca4c8a3873
+	github.com/threefoldtech/terraform-provider-grid-main v1.0.0
 	github.com/threefoldtech/zos v0.5.6-0.20221129115828-94ca13ccd8a6
 	golang.org/x/net v0.0.0-20220403103023-749bd193bc2b // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20210803171230-4253848d036c
+
 )
 
 require (
@@ -111,3 +113,9 @@ require (
 )
 
 replace github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.5 => github.com/threefoldtech/go-substrate-rpc-client/v4 v4.0.6-0.20220927094755-0f0d22c73cc7
+
+replace github.com/threefoldtech/terraform-provider-grid-test v1.0.0 => github.com/threefoldtech/terraform-provider-grid v1.6.0
+
+replace github.com/threefoldtech/terraform-provider-grid-qa v1.0.0 => github.com/threefoldtech/terraform-provider-grid v1.5.9
+
+replace github.com/threefoldtech/terraform-provider-grid-main v1.0.0 => github.com/threefoldtech/terraform-provider-grid v1.6.1

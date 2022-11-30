@@ -14,6 +14,7 @@ import (
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
+	entry "github.com/threefoldtech/terraform-provider-grid/pkg/providerEntry"
 )
 
 const RMB_WORKERS = 10
