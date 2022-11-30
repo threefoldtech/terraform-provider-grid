@@ -21,7 +21,7 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
-func resourceKubernetes() *schema.Resource {
+func ResourceKubernetes() *schema.Resource {
 	return &schema.Resource{
 		// This description is used by the documentation generator and the language server.
 		Description: "Kubernetes resource.",

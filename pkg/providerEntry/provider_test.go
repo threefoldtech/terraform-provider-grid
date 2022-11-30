@@ -1,4 +1,4 @@
-package providerEntry
+package providerentry
 
 import (
 	"testing"

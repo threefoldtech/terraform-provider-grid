@@ -8,7 +8,7 @@ import (
 	"github.com/threefoldtech/substrate-client"
 )
 
-func resourceGatewayFQDNProxy() *schema.Resource {
+func ResourceGatewayFQDNProxy() *schema.Resource {
 	return &schema.Resource{
 		// This description is used by the documentation generator and the language server.
 		Description: "Resource for deploying gateway domains.",

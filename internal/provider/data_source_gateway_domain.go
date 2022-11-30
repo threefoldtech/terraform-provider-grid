@@ -10,9 +10,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
+
 )
 
-func dataSourceGatewayDomain() *schema.Resource {
+func DataSourceGatewayDomain() *schema.Resource {
 	return &schema.Resource{
 		// This description is used by the documentation generator and the language server.
 		Description: "Data source for computing gateway name proxy fqdn.",

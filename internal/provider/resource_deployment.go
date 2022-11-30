@@ -10,7 +10,7 @@ import (
 	"github.com/threefoldtech/substrate-client"
 )
 
-func resourceDeployment() *schema.Resource {
+func ResourceDeployment() *schema.Resource {
 	return &schema.Resource{
 		// This description is used by the documentation generator and the language server.
 		Description: "Deployment resource (zdbs + vms + disks + qsfs).",

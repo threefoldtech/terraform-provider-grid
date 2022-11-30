@@ -22,7 +22,7 @@ import (
 
 const ExternalNodeID = -1
 
-func resourceNetwork() *schema.Resource {
+func ResourceNetwork() *schema.Resource {
 	return &schema.Resource{
 		// This description is used by the documentation generator and the language server.
 		Description: "Network resource.",

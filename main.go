@@ -4,10 +4,12 @@ import (
 	"context"
 	"flag"
 	"log"
+	"os"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
-	"github.com/threefoldtech/terraform-provider-grid/internal/provider"
+	test "github.com/threefoldtech/terraform-provider-grid-test/pkg/providerEntry"
+	// "github.com/threefoldtech/terraform-provider-grid/internal/provider"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/state"
 )
 
@@ -45,6 +47,14 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
+	var providerFunc func() *schema.Provider //contain provider function
+
+	network := os.Getenv("NETWORK")
+	if network == "test" {
+		// providerFunc, sub := t
+	}
+
+
 	/** 1- determine network for user
 		2- use provider for network user wants
 
@@ -54,7 +64,7 @@ func main() {
 	**/
 	// mainnet.
 
-	var providerFunc func() *schema.Provider //contain provider function
+	
 	// if ()
 
 	// providerFunc, sub := provider.New(version, db.GetState())
