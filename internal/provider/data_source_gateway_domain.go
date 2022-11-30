@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
-
 )
 
 func DataSourceGatewayDomain() *schema.Resource {
@@ -42,11 +41,11 @@ func DataSourceGatewayDomain() *schema.Resource {
 
 // TODO: make this non failing
 func dataSourceGatewayRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	apiClient := meta.(*apiClient)
+	apiClient := meta.(*ApiClient)
 	nodeID := uint32(d.Get("node").(int))
 	name := d.Get("name").(string)
-	ncPool := client.NewNodeClientPool(apiClient.rmb)
-	nodeClient, err := ncPool.GetNodeClient(apiClient.substrateConn, nodeID)
+	ncPool := client.NewNodeClientPool(apiClient.Rmb)
+	nodeClient, err := ncPool.GetNodeClient(apiClient.SubstrateConn, nodeID)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "failed to get node client"))
 	}

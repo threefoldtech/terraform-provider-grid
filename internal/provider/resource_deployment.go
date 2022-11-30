@@ -418,7 +418,7 @@ func ResourceDeployment() *schema.Resource {
 	}
 }
 
-func resourceDeploymentCreate(ctx context.Context, sub *substrate.Substrate, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
+func resourceDeploymentCreate(ctx context.Context, sub *substrate.Substrate, d *schema.ResourceData, apiClient *ApiClient) (Marshalable, error) {
 	deployer, err := getDeploymentDeployer(d, apiClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
@@ -427,7 +427,7 @@ func resourceDeploymentCreate(ctx context.Context, sub *substrate.Substrate, d *
 	return &deployer, deployer.Deploy(ctx, sub)
 }
 
-func resourceDeploymentRead(ctx context.Context, sub *substrate.Substrate, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
+func resourceDeploymentRead(ctx context.Context, sub *substrate.Substrate, d *schema.ResourceData, apiClient *ApiClient) (Marshalable, error) {
 	deployer, err := getDeploymentDeployer(d, apiClient)
 	if err != nil {
 		return nil, err
@@ -435,13 +435,13 @@ func resourceDeploymentRead(ctx context.Context, sub *substrate.Substrate, d *sc
 	return &deployer, nil
 }
 
-func resourceDeploymentUpdate(ctx context.Context, sub *substrate.Substrate, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
+func resourceDeploymentUpdate(ctx context.Context, sub *substrate.Substrate, d *schema.ResourceData, apiClient *ApiClient) (Marshalable, error) {
 	if d.HasChange("node") {
 		oldContractID, err := strconv.ParseUint(d.Id(), 10, 64)
 		if err != nil {
 			return nil, errors.Wrapf(err, "couldn't parse deployment id %s", d.Id())
 		}
-		err = sub.CancelContract(apiClient.identity, oldContractID)
+		err = sub.CancelContract(apiClient.Identity, oldContractID)
 		if err != nil {
 			return nil, errors.Wrapf(err, "couldn't cancel old node contract")
 		}
@@ -455,7 +455,7 @@ func resourceDeploymentUpdate(ctx context.Context, sub *substrate.Substrate, d *
 	return &deployer, deployer.Deploy(ctx, sub)
 }
 
-func resourceDeploymentDelete(ctx context.Context, sub *substrate.Substrate, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
+func resourceDeploymentDelete(ctx context.Context, sub *substrate.Substrate, d *schema.ResourceData, apiClient *ApiClient) (Marshalable, error) {
 	deployer, err := getDeploymentDeployer(d, apiClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")

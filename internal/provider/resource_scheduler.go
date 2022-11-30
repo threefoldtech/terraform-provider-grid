@@ -120,10 +120,10 @@ func parseRequests(d *schema.ResourceData, assignment map[string]uint32) []sched
 }
 
 func schedule(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	apiClient := meta.(*apiClient)
+	apiClient := meta.(*ApiClient)
 	assignment := parseAssignment(d)
 	reqs := parseRequests(d, assignment)
-	scheduler := scheduler.NewScheduler(apiClient.grid_client, uint64(apiClient.twin_id))
+	scheduler := scheduler.NewScheduler(apiClient.Grid_client, uint64(apiClient.Twin_id))
 	for _, r := range reqs {
 		node, err := scheduler.Schedule(&r)
 		if err != nil {

@@ -28,7 +28,7 @@ type DeploymentDeployer struct {
 	QSFSs       []workloads.QSFS
 	IPRange     string
 	NetworkName string
-	APIClient   *apiClient
+	APIClient   *ApiClient
 	ncPool      client.NodeClientCollection
 	deployer    deployer.Deployer
 }
@@ -38,7 +38,7 @@ type DeploymentData struct {
 	ProjectName string `json:"projectName"`
 }
 
-func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (DeploymentDeployer, error) {
+func getDeploymentDeployer(d *schema.ResourceData, apiClient *ApiClient) (DeploymentDeployer, error) {
 	networkName := d.Get("network_name").(string)
 	nodeID := uint32(d.Get("node").(int))
 	disks := make([]workloads.Disk, 0)
@@ -64,7 +64,7 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 		data := workloads.NewQSFSFromSchema(q.(map[string]interface{}))
 		qsfs = append(qsfs, data)
 	}
-	pool := client.NewNodeClientPool(apiClient.rmb)
+	pool := client.NewNodeClientPool(apiClient.Rmb)
 	solutionProviderVal := uint64(d.Get("solution_provider").(int))
 	var solutionProvider *uint64
 	if solutionProviderVal == 0 {
@@ -82,7 +82,7 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 		log.Printf("error parsing deploymentdata: %s", err.Error())
 	}
 
-	networkingState := apiClient.state.GetNetworkState()
+	networkingState := apiClient.State.GetNetworkState()
 	net := networkingState.GetNetwork(networkName)
 	ipRange := net.GetNodeSubnet(nodeID)
 
@@ -97,13 +97,13 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 		NetworkName: networkName,
 		APIClient:   apiClient,
 		ncPool:      pool,
-		deployer:    deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, solutionProvider, string(deploymentDataStr)),
+		deployer:    deployer.NewDeployer(apiClient.Identity, apiClient.Twin_id, apiClient.Grid_client, pool, true, solutionProvider, string(deploymentDataStr)),
 	}
 	return deploymentDeployer, nil
 }
 
 func (d *DeploymentDeployer) assignNodesIPs() error {
-	networkingState := d.APIClient.state.GetNetworkState()
+	networkingState := d.APIClient.State.GetNetworkState()
 	network := networkingState.GetNetwork(d.NetworkName)
 	usedIPs := network.GetNodeIPsList(d.Node)
 	if len(d.VMs) == 0 {
@@ -138,7 +138,7 @@ func (d *DeploymentDeployer) assignNodesIPs() error {
 	return nil
 }
 func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
-	dl := workloads.NewDeployment(d.APIClient.twin_id)
+	dl := workloads.NewDeployment(d.APIClient.Twin_id)
 	err := d.assignNodesIPs()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to assign node ips")
@@ -234,7 +234,7 @@ func (d *DeploymentDeployer) syncContract(sub *substrate.Substrate) error {
 	}
 	return nil
 }
-func (d *DeploymentDeployer) sync(ctx context.Context, sub *substrate.Substrate, cl *apiClient) error {
+func (d *DeploymentDeployer) sync(ctx context.Context, sub *substrate.Substrate, cl *ApiClient) error {
 	if err := d.syncContract(sub); err != nil {
 		return err
 	}
@@ -252,7 +252,7 @@ func (d *DeploymentDeployer) sync(ctx context.Context, sub *substrate.Substrate,
 	var qsfs []workloads.QSFS
 	var disks []workloads.Disk
 
-	ns := cl.state.GetNetworkState()
+	ns := cl.State.GetNetworkState()
 	network := ns.GetNetwork(d.NetworkName)
 	network.DeleteDeployment(d.Node, d.Id)
 

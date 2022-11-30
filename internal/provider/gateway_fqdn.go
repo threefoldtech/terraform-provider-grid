@@ -24,12 +24,12 @@ type GatewayFQDNDeployer struct {
 	Node             uint32
 	NodeDeploymentID map[uint32]uint64
 
-	APIClient *apiClient
+	APIClient *ApiClient
 	ncPool    client.NodeClientCollection
 	deployer  deployer.Deployer
 }
 
-func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClient *apiClient) (GatewayFQDNDeployer, error) {
+func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClient *ApiClient) (GatewayFQDNDeployer, error) {
 	backendsIf := d.Get("backends").([]interface{})
 	backends := make([]zos.Backend, len(backendsIf))
 	for idx, n := range backendsIf {
@@ -45,7 +45,7 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 		deploymentID := uint64(id.(int))
 		nodeDeploymentID[uint32(nodeInt)] = deploymentID
 	}
-	ncPool := client.NewNodeClientPool(apiClient.rmb)
+	ncPool := client.NewNodeClientPool(apiClient.Rmb)
 	deploymentData := DeploymentData{
 		Name:        d.Get("name").(string),
 		Type:        "gateway",
@@ -68,7 +68,7 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 		NodeDeploymentID: nodeDeploymentID,
 		APIClient:        apiClient,
 		ncPool:           ncPool,
-		deployer:         deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, ncPool, true, nil, string(deploymentDataStr)),
+		deployer:         deployer.NewDeployer(apiClient.Identity, apiClient.Twin_id, apiClient.Grid_client, ncPool, true, nil, string(deploymentDataStr)),
 	}
 	return deployer, nil
 }
@@ -93,7 +93,7 @@ func (k *GatewayFQDNDeployer) Marshal(d *schema.ResourceData) {
 }
 func (k *GatewayFQDNDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
 	deployments := make(map[uint32]gridtypes.Deployment)
-	dl := workloads.NewDeployment(k.APIClient.twin_id)
+	dl := workloads.NewDeployment(k.APIClient.Twin_id)
 	dl.Workloads = append(dl.Workloads, k.Gw.ZosWorkload())
 	deployments[k.Node] = dl
 	return deployments, nil
@@ -124,7 +124,7 @@ func (k *GatewayFQDNDeployer) syncContracts(ctx context.Context, sub *substrate.
 	}
 	return nil
 }
-func (k *GatewayFQDNDeployer) sync(ctx context.Context, sub *substrate.Substrate, cl *apiClient) error {
+func (k *GatewayFQDNDeployer) sync(ctx context.Context, sub *substrate.Substrate, cl *ApiClient) error {
 	if err := k.syncContracts(ctx, sub); err != nil {
 		return errors.Wrap(err, "couldn't sync contracts")
 	}

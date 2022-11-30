@@ -9,6 +9,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
 	test "github.com/threefoldtech/terraform-provider-grid-test/pkg/providerEntry"
+	qa "github.com/threefoldtech/terraform-provider-grid-qa/pkg/providerEntry"
+	mainnet "github.com/threefoldtech/terraform-provider-grid-main/pkg/providerEntry"
 	// "github.com/threefoldtech/terraform-provider-grid/internal/provider"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/state"
 )
@@ -51,7 +53,11 @@ func main() {
 
 	network := os.Getenv("NETWORK")
 	if network == "test" {
-		// providerFunc, sub := t
+		providerFunc, sub := test.provider.New(network,db.GetState())
+	}else if network == "qa" {
+		providerFunc, sub := qa.provider.New(network,db.GetState())
+	}else if network == "main" {
+		providerFunc, sub := mainnet.provider.New(network,db.GetState())
 	}
 
 
@@ -64,13 +70,11 @@ func main() {
 	**/
 	// mainnet.
 
-	
-	// if ()
-
 	// providerFunc, sub := provider.New(version, db.GetState())
 	// if sub != nil {
 	// 	defer sub.Close()
 	// }
+
 	opts := &plugin.ServeOpts{ProviderFunc: providerFunc}
 
 	if debugMode {

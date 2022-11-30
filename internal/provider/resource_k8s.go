@@ -259,7 +259,7 @@ type K8sDeployer struct {
 	NetworkName      string
 	NodeDeploymentID map[uint32]uint64
 
-	APIClient *apiClient
+	APIClient *ApiClient
 
 	NodeUsedIPs map[uint32][]byte
 	ncPool      *client.NodeClientPool
@@ -316,9 +316,9 @@ func NewK8sNodeDataFromWorkload(w gridtypes.Workload, nodeID uint32, diskSize in
 	return k, nil
 }
 
-func NewK8sDeployer(d *schema.ResourceData, apiClient *apiClient) (K8sDeployer, error) {
+func NewK8sDeployer(d *schema.ResourceData, apiClient *ApiClient) (K8sDeployer, error) {
 	networkName := d.Get("network_name").(string)
-	ns := apiClient.state.GetNetworkState()
+	ns := apiClient.State.GetNetworkState()
 	network := ns.GetNetwork(networkName)
 
 	master := NewK8sNodeData(d.Get("master").([]interface{})[0].(map[string]interface{}))
@@ -360,7 +360,7 @@ func NewK8sDeployer(d *schema.ResourceData, apiClient *apiClient) (K8sDeployer, 
 		nodeDeploymentID[uint32(nodeInt)] = deploymentID
 	}
 
-	pool := client.NewNodeClientPool(apiClient.rmb)
+	pool := client.NewNodeClientPool(apiClient.Rmb)
 	deploymentData := DeploymentData{
 		Name:        d.Get("name").(string),
 		Type:        "kubernetes",
@@ -382,7 +382,7 @@ func NewK8sDeployer(d *schema.ResourceData, apiClient *apiClient) (K8sDeployer, 
 		APIClient:        apiClient,
 		ncPool:           pool,
 		d:                d,
-		deployer:         deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, nil, string(deploymentDataStr)),
+		deployer:         deployer.NewDeployer(apiClient.Identity, apiClient.Twin_id, apiClient.Grid_client, pool, true, nil, string(deploymentDataStr)),
 	}
 	return deployer, nil
 }
@@ -447,7 +447,7 @@ func (d *K8sDeployer) retainChecksums(workers []interface{}, master interface{})
 	}
 }
 
-func (k *K8sDeployer) storeState(d *schema.ResourceData, cl *apiClient) {
+func (k *K8sDeployer) storeState(d *schema.ResourceData, cl *ApiClient) {
 	workers := make([]interface{}, 0)
 	for _, w := range k.Workers {
 		workers = append(workers, w.Dictify())
@@ -464,7 +464,7 @@ func (k *K8sDeployer) storeState(d *schema.ResourceData, cl *apiClient) {
 	k.retainChecksums(workers, master)
 
 	l := []interface{}{master}
-	k.updateNetworkState(d, cl.state)
+	k.updateNetworkState(d, cl.State)
 	d.Set("master", l)
 	d.Set("workers", workers)
 	d.Set("token", k.Token)
@@ -553,14 +553,14 @@ func (k *K8sDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[u
 	for node, ws := range nodeWorkloads {
 		dl := gridtypes.Deployment{
 			Version: 0,
-			TwinID:  uint32(k.APIClient.twin_id), //LocalTwin,
+			TwinID:  uint32(k.APIClient.Twin_id), //LocalTwin,
 			// this contract id must match the one on substrate
 			Workloads: ws,
 			SignatureRequirement: gridtypes.SignatureRequirement{
 				WeightRequired: 1,
 				Requests: []gridtypes.SignatureRequest{
 					{
-						TwinID: k.APIClient.twin_id,
+						TwinID: k.APIClient.Twin_id,
 						Weight: 1,
 					},
 				},
@@ -636,7 +636,7 @@ func (k *K8sDeployer) Validate(ctx context.Context, sub *substrate.Substrate) er
 	if err := k.validateToken(ctx); err != nil {
 		return err
 	}
-	if err := validateAccountMoneyForExtrinsics(sub, k.APIClient.identity); err != nil {
+	if err := validateAccountMoneyForExtrinsics(sub, k.APIClient.Identity); err != nil {
 		return err
 	}
 	if err := k.ValidateNames(ctx); err != nil {
@@ -654,7 +654,7 @@ func (k *K8sDeployer) Validate(ctx context.Context, sub *substrate.Substrate) er
 	return isNodesUp(ctx, sub, nodes, k.ncPool)
 }
 
-func (k *K8sDeployer) Deploy(ctx context.Context, sub *substrate.Substrate, d *schema.ResourceData, cl *apiClient) error {
+func (k *K8sDeployer) Deploy(ctx context.Context, sub *substrate.Substrate, d *schema.ResourceData, cl *ApiClient) error {
 	if err := k.validateChecksums(); err != nil {
 		return err
 	}
@@ -669,7 +669,7 @@ func (k *K8sDeployer) Deploy(ctx context.Context, sub *substrate.Substrate, d *s
 	return err
 }
 
-func (k *K8sDeployer) Cancel(ctx context.Context, sub *substrate.Substrate, d *schema.ResourceData, cl *apiClient) error {
+func (k *K8sDeployer) Cancel(ctx context.Context, sub *substrate.Substrate, d *schema.ResourceData, cl *ApiClient) error {
 	newDeployments := make(map[uint32]gridtypes.Deployment)
 
 	currentDeployments, err := k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)
@@ -694,8 +694,8 @@ func printDeployments(dls map[uint32]gridtypes.Deployment) {
 	}
 }
 
-func (k *K8sDeployer) removeUsedIPsFromLocalState(cl *apiClient) {
-	ns := cl.state.GetNetworkState()
+func (k *K8sDeployer) removeUsedIPsFromLocalState(cl *ApiClient) {
+	ns := cl.State.GetNetworkState()
 	network := ns.GetNetwork(k.NetworkName)
 
 	network.DeleteDeployment(k.Master.Node, fmt.Sprint(k.NodeDeploymentID[k.Master.Node]))
@@ -704,7 +704,7 @@ func (k *K8sDeployer) removeUsedIPsFromLocalState(cl *apiClient) {
 	}
 }
 
-func (k *K8sDeployer) updateState(ctx context.Context, sub *substrate.Substrate, currentDeploymentIDs map[uint32]uint64, d *schema.ResourceData, cl *apiClient) error {
+func (k *K8sDeployer) updateState(ctx context.Context, sub *substrate.Substrate, currentDeploymentIDs map[uint32]uint64, d *schema.ResourceData, cl *ApiClient) error {
 	log.Printf("current deployments\n")
 	k.NodeDeploymentID = currentDeploymentIDs
 	currentDeployments, err := k.deployer.GetDeploymentObjects(ctx, sub, currentDeploymentIDs)
@@ -755,7 +755,7 @@ func (k *K8sDeployer) updateState(ctx context.Context, sub *substrate.Substrate,
 		k.Workers[idx].IP = privateIPs[string(w.Name)]
 		k.Workers[idx].YggIP = yggIPs[string(w.Name)]
 	}
-	k.updateNetworkState(d, cl.state)
+	k.updateNetworkState(d, cl.State)
 	log.Printf("Current state after updatestate %v\n", k)
 	return nil
 }
@@ -998,17 +998,17 @@ func (k *K8sDeployer) getK8sFreeIP(ipRange gridtypes.IPNet, nodeID uint32) (stri
 
 func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	apiClient := meta.(*apiClient)
+	apiClient := meta.(*ApiClient)
 	deployer, err := NewK8sDeployer(d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	if err := deployer.Validate(ctx, apiClient.substrateConn); err != nil {
+	if err := deployer.Validate(ctx, apiClient.SubstrateConn); err != nil {
 		return diag.FromErr(err)
 	}
 
-	err = deployer.Deploy(ctx, apiClient.substrateConn, d, apiClient)
+	err = deployer.Deploy(ctx, apiClient.SubstrateConn, d, apiClient)
 	if err != nil {
 		if len(deployer.NodeDeploymentID) != 0 {
 			// failed to deploy and failed to revert, store the current state locally
@@ -1024,21 +1024,21 @@ func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 
 func resourceK8sUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	apiClient := meta.(*apiClient)
+	apiClient := meta.(*ApiClient)
 	deployer, err := NewK8sDeployer(d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	if err := deployer.Validate(ctx, apiClient.substrateConn); err != nil {
+	if err := deployer.Validate(ctx, apiClient.SubstrateConn); err != nil {
 		return diag.FromErr(err)
 	}
 
-	if err := deployer.invalidateBrokenAttributes(apiClient.substrateConn); err != nil {
+	if err := deployer.invalidateBrokenAttributes(apiClient.SubstrateConn); err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't invalidate broken attributes"))
 	}
 
-	err = deployer.Deploy(ctx, apiClient.substrateConn, d, apiClient)
+	err = deployer.Deploy(ctx, apiClient.SubstrateConn, d, apiClient)
 	if err != nil {
 		diags = diag.FromErr(err)
 	}
@@ -1048,21 +1048,21 @@ func resourceK8sUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 
 func resourceK8sRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	apiClient := meta.(*apiClient)
+	apiClient := meta.(*ApiClient)
 	deployer, err := NewK8sDeployer(d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	if err := deployer.Validate(ctx, apiClient.substrateConn); err != nil {
+	if err := deployer.Validate(ctx, apiClient.SubstrateConn); err != nil {
 		return diag.FromErr(err)
 	}
 
-	if err := deployer.invalidateBrokenAttributes(apiClient.substrateConn); err != nil {
+	if err := deployer.invalidateBrokenAttributes(apiClient.SubstrateConn); err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't invalidate broken attributes"))
 	}
 
-	err = deployer.updateFromRemote(ctx, apiClient.substrateConn)
+	err = deployer.updateFromRemote(ctx, apiClient.SubstrateConn)
 	log.Printf("read updateFromRemote err: %s\n", err)
 	if err != nil {
 		diags = append(diags, diag.Diagnostic{
@@ -1078,13 +1078,13 @@ func resourceK8sRead(ctx context.Context, d *schema.ResourceData, meta interface
 
 func resourceK8sDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	apiClient := meta.(*apiClient)
+	apiClient := meta.(*ApiClient)
 	deployer, err := NewK8sDeployer(d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	err = deployer.Cancel(ctx, apiClient.substrateConn, d, apiClient)
+	err = deployer.Cancel(ctx, apiClient.SubstrateConn, d, apiClient)
 	if err != nil {
 		diags = diag.FromErr(err)
 	}

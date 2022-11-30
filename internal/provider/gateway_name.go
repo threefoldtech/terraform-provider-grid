@@ -27,12 +27,12 @@ type GatewayNameDeployer struct {
 	NodeDeploymentID map[uint32]uint64
 	NameContractID   uint64
 
-	APIClient *apiClient
+	APIClient *ApiClient
 	ncPool    client.NodeClientCollection
 	deployer  deployer.Deployer
 }
 
-func NewGatewayNameDeployer(d *schema.ResourceData, apiClient *apiClient) (GatewayNameDeployer, error) {
+func NewGatewayNameDeployer(d *schema.ResourceData, apiClient *ApiClient) (GatewayNameDeployer, error) {
 	backendsIf := d.Get("backends").([]interface{})
 	backends := make([]zos.Backend, len(backendsIf))
 	for idx, n := range backendsIf {
@@ -48,7 +48,7 @@ func NewGatewayNameDeployer(d *schema.ResourceData, apiClient *apiClient) (Gatew
 		deploymentID := uint64(id.(int))
 		nodeDeploymentID[uint32(nodeInt)] = deploymentID
 	}
-	pool := client.NewNodeClientPool(apiClient.rmb)
+	pool := client.NewNodeClientPool(apiClient.Rmb)
 	deploymentData := DeploymentData{
 		Name:        d.Get("name").(string),
 		Type:        "gateway",
@@ -73,7 +73,7 @@ func NewGatewayNameDeployer(d *schema.ResourceData, apiClient *apiClient) (Gatew
 
 		APIClient: apiClient,
 		ncPool:    pool,
-		deployer:  deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, nil, string(deploymentDataStr)),
+		deployer:  deployer.NewDeployer(apiClient.Identity, apiClient.Twin_id, apiClient.Grid_client, pool, true, nil, string(deploymentDataStr)),
 	}
 	return deployer, nil
 }
@@ -100,7 +100,7 @@ func (k *GatewayNameDeployer) Marshal(d *schema.ResourceData) {
 
 func (k *GatewayNameDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
 	deployments := make(map[uint32]gridtypes.Deployment)
-	deployment := workloads.NewDeployment(k.APIClient.twin_id)
+	deployment := workloads.NewDeployment(k.APIClient.Twin_id)
 	deployment.Workloads = append(deployment.Workloads, k.Gw.ZosWorkload())
 	deployments[k.Node] = deployment
 	return deployments, nil
@@ -112,7 +112,7 @@ func (k *GatewayNameDeployer) InvalidateNameContract(ctx context.Context, sub *s
 
 	k.NameContractID, err = InvalidateNameContract(
 		sub,
-		k.APIClient.identity,
+		k.APIClient.Identity,
 		k.NameContractID,
 		k.Gw.Name,
 	)
@@ -130,7 +130,7 @@ func (k *GatewayNameDeployer) Deploy(ctx context.Context, sub *substrate.Substra
 		return err
 	}
 	if k.NameContractID == 0 {
-		k.NameContractID, err = sub.CreateNameContract(k.APIClient.identity, k.Gw.Name)
+		k.NameContractID, err = sub.CreateNameContract(k.APIClient.Identity, k.Gw.Name)
 		if err != nil {
 			return err
 		}
@@ -159,7 +159,7 @@ func (k *GatewayNameDeployer) syncContracts(ctx context.Context, sub *substrate.
 	}
 	return nil
 }
-func (k *GatewayNameDeployer) sync(ctx context.Context, sub *substrate.Substrate, cl *apiClient) (err error) {
+func (k *GatewayNameDeployer) sync(ctx context.Context, sub *substrate.Substrate, cl *ApiClient) (err error) {
 	if err := k.syncContracts(ctx, sub); err != nil {
 		return errors.Wrap(err, "couldn't sync contracts")
 	}
@@ -187,7 +187,7 @@ func (k *GatewayNameDeployer) Cancel(ctx context.Context, sub *substrate.Substra
 		return err
 	}
 	if k.NameContractID != 0 {
-		if err := EnsureContractCanceled(sub, k.APIClient.identity, k.NameContractID); err != nil {
+		if err := EnsureContractCanceled(sub, k.APIClient.Identity, k.NameContractID); err != nil {
 			return err
 		}
 		k.NameContractID = 0

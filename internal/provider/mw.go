@@ -10,10 +10,10 @@ import (
 
 type Marshalable interface {
 	Marshal(d *schema.ResourceData)
-	sync(ctx context.Context, sub *substrate.Substrate, cl *apiClient) (err error)
+	sync(ctx context.Context, sub *substrate.Substrate, cl *ApiClient) (err error)
 }
 
-type Action func(context.Context, *substrate.Substrate, *schema.ResourceData, *apiClient) (Marshalable, error)
+type Action func(context.Context, *substrate.Substrate, *schema.ResourceData, *ApiClient) (Marshalable, error)
 
 func ResourceFunc(a Action) func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
 	return func(ctx context.Context, d *schema.ResourceData, i interface{}) (diags diag.Diagnostics) {
@@ -38,17 +38,17 @@ func ResourceReadFunc(a Action) func(ctx context.Context, d *schema.ResourceData
 
 func resourceFunc(a Action, reportSync bool) func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
 	return func(ctx context.Context, d *schema.ResourceData, i interface{}) (diags diag.Diagnostics) {
-		cl := i.(*apiClient)
-		if err := validateAccountMoneyForExtrinsics(cl.substrateConn, cl.identity); err != nil {
+		cl := i.(*ApiClient)
+		if err := validateAccountMoneyForExtrinsics(cl.SubstrateConn, cl.Identity); err != nil {
 			return diag.FromErr(err)
 		}
 
-		obj, err := a(ctx, cl.substrateConn, d, cl)
+		obj, err := a(ctx, cl.SubstrateConn, d, cl)
 		if err != nil {
 			diags = diag.FromErr(err)
 		}
 		if obj != nil {
-			if err := obj.sync(ctx, cl.substrateConn, cl); err != nil {
+			if err := obj.sync(ctx, cl.SubstrateConn, cl); err != nil {
 				if reportSync {
 					diags = append(diags, diag.FromErr(err)...)
 				} else {

@@ -18,15 +18,15 @@ import (
 
 const RMB_WORKERS = 10
 
-func startRmbIfNeeded(ctx context.Context, api *apiClient) {
-	if api.use_rmb_proxy {
+func startRmbIfNeeded(ctx context.Context, api *ApiClient) {
+	if api.Use_rmb_proxy {
 		return
 	}
-	rmbClient, err := gormb.NewServer(api.manager, "127.0.0.1:6379", RMB_WORKERS, api.identity)
+	rmbClient, err := gormb.NewServer(api.Manager, "127.0.0.1:6379", RMB_WORKERS, api.Identity)
 	if err != nil {
 		log.Fatalf("couldn't start server %s\n", err)
 	}
-	if err := rmbClient.Serve(ctx, api.manager); err != nil {
+	if err := rmbClient.Serve(ctx, api.Manager); err != nil {
 		log.Printf("error serving rmb %s\n", err)
 	}
 }

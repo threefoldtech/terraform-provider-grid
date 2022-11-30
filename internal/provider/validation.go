@@ -14,15 +14,15 @@ import (
 )
 
 // validateAccount checks the mnemonics is associated with an account with key type ed25519
-func validateAccount(apiClient *apiClient, sub *substrate.Substrate) error {
-	_, err := sub.GetAccount(apiClient.identity)
+func ValidateAccount(apiClient *ApiClient, sub *substrate.Substrate) error {
+	_, err := sub.GetAccount(apiClient.Identity)
 	if err != nil && !errors.Is(err, substrate.ErrAccountNotFound) {
 		return errors.Wrap(err, "failed to get account with the given mnemonics")
 	}
 	if err != nil { // Account not found
 		funcs := map[string]func(string) (substrate.Identity, error){"ed25519": substrate.NewIdentityFromEd25519Phrase, "sr25519": substrate.NewIdentityFromSr25519Phrase}
 		for keyType, f := range funcs {
-			ident, err2 := f(apiClient.mnemonics)
+			ident, err2 := f(apiClient.Mnemonics)
 			if err2 != nil { // shouldn't happen, return original error
 				log.Printf("couldn't convert the mnemomincs to %s key: %s", keyType, err2.Error())
 				return err
@@ -38,9 +38,9 @@ func validateAccount(apiClient *apiClient, sub *substrate.Substrate) error {
 	return nil
 }
 
-func validateRedis(apiClient *apiClient) error {
-	errMsg := fmt.Sprintf("redis error. make sure rmb_redis_url is correct and there's a redis server listening there. rmb_redis_url: %s", apiClient.rmb_redis_url)
-	cl, err := newRedisPool(apiClient.rmb_redis_url)
+func validateRedis(apiClient *ApiClient) error {
+	errMsg := fmt.Sprintf("redis error. make sure rmb_redis_url is correct and there's a redis server listening there. rmb_redis_url: %s", apiClient.Rmb_redis_url)
+	cl, err := newRedisPool(apiClient.Rmb_redis_url)
 	if err != nil {
 		return errors.Wrap(err, errMsg)
 	}
@@ -52,10 +52,10 @@ func validateRedis(apiClient *apiClient) error {
 	return nil
 }
 
-func validateYggdrasil(apiClient *apiClient, sub *substrate.Substrate) error {
-	twinObj, err := sub.GetTwin(apiClient.twin_id)
+func validateYggdrasil(apiClient *ApiClient, sub *substrate.Substrate) error {
+	twinObj, err := sub.GetTwin(apiClient.Twin_id)
 	if err != nil {
-		return errors.Wrapf(err, "coudln't get twin %d from substrate", apiClient.twin_id)
+		return errors.Wrapf(err, "coudln't get twin %d from substrate", apiClient.Twin_id)
 	}
 
 	yggIP := twinObj.IP
@@ -68,7 +68,7 @@ func validateYggdrasil(apiClient *apiClient, sub *substrate.Substrate) error {
 	}
 	s, err := net.Listen("tcp", fmt.Sprintf("%s:0", listenIP))
 	if err != nil {
-		return errors.Wrapf(err, "couldn't listen on port. make sure the twin id is associated with a valid yggdrasil ip, twin id: %d, ygg ip: %s, err", apiClient.twin_id, yggIP)
+		return errors.Wrapf(err, "couldn't listen on port. make sure the twin id is associated with a valid yggdrasil ip, twin id: %d, ygg ip: %s, err", apiClient.Twin_id, yggIP)
 	}
 	defer s.Close()
 	port := s.Addr().(*net.TCPAddr).Port
@@ -86,16 +86,16 @@ func validateYggdrasil(apiClient *apiClient, sub *substrate.Substrate) error {
 	}()
 	c, err := net.Dial("tcp", fmt.Sprintf("%s:%d", listenIP, port))
 	if err != nil {
-		return errors.Wrapf(err, "failed to connect to ip. make sure the twin id is associated with a valid yggdrasil ip, twin id: %d, ygg ip: %s, err", apiClient.twin_id, yggIP)
+		return errors.Wrapf(err, "failed to connect to ip. make sure the twin id is associated with a valid yggdrasil ip, twin id: %d, ygg ip: %s, err", apiClient.Twin_id, yggIP)
 	}
 	c.Close()
 	if !arrived {
-		return errors.Wrapf(err, "sent request but didn't arrive to me. make sure the twin id is associated with a valid yggdrasil ip, twin id: %d, ygg ip: %s, err", apiClient.twin_id, yggIP)
+		return errors.Wrapf(err, "sent request but didn't arrive to me. make sure the twin id is associated with a valid yggdrasil ip, twin id: %d, ygg ip: %s, err", apiClient.Twin_id, yggIP)
 	}
 	return nil
 }
 
-func validateRMB(apiClient *apiClient, sub *substrate.Substrate) error {
+func validateRMB(apiClient *ApiClient, sub *substrate.Substrate) error {
 	if err := validateRedis(apiClient); err != nil {
 		return err
 	}
@@ -105,19 +105,19 @@ func validateRMB(apiClient *apiClient, sub *substrate.Substrate) error {
 	return nil
 }
 
-func validateRMBProxyServer(apiClient *apiClient) error {
-	return apiClient.grid_client.Ping()
+func validateRMBProxyServer(apiClient *ApiClient) error {
+	return apiClient.Grid_client.Ping()
 }
 
-func validateRMBProxy(apiClient *apiClient) error {
+func validateRMBProxy(apiClient *ApiClient) error {
 	if err := validateRMBProxyServer(apiClient); err != nil {
 		return err
 	}
 	return nil
 }
 
-func preValidate(apiClient *apiClient, sub *substrate.Substrate) error {
-	if apiClient.use_rmb_proxy {
+func PreValidate(apiClient *ApiClient, sub *substrate.Substrate) error {
+	if apiClient.Use_rmb_proxy {
 		return validateRMBProxy(apiClient)
 	} else {
 		return validateRMB(apiClient, sub)
