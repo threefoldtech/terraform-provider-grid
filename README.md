@@ -1,5 +1,5 @@
 # Grid provider for terraform
- - A resource, and a data source (`internal/provider/`),
+ - A resource, and a data source (`pkg/provider/`),
  - Examples (`examples/`) 
 ## Requirements
 
