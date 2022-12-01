@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"math/rand"
+	"os"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -69,12 +70,6 @@ func New(version string, st state.StateI) (func() *schema.Provider, subi.Substra
 					Optional:    true,
 					Description: "key type registered on substrate (ed25519 or sr25519)",
 					DefaultFunc: schema.EnvDefaultFunc("KEY_TYPE", "sr25519"),
-				},
-				"network": {
-					Type:        schema.TypeString,
-					Required:    true,
-					Description: "grid network, one of: dev test qa main",
-					DefaultFunc: schema.EnvDefaultFunc("NETWORK", "dev"),
 				},
 				"substrate_url": {
 					Type:        schema.TypeString,
@@ -164,7 +159,10 @@ func providerConfigure(st state.StateI) (func(ctx context.Context, d *schema.Res
 			return nil, diag.FromErr(errors.Wrap(err, "error getting user secret"))
 		}
 		apiClient.identity = identity
-		network := d.Get("network").(string)
+		network := os.Getenv("NETWORK")
+		if network == "" {
+			network = "dev"
+		}
 		if network != "dev" && network != "qa" && network != "test" && network != "main" {
 			return nil, diag.Errorf("network must be one of dev, qa, test, and main")
 		}

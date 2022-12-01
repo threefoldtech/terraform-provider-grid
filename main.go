@@ -6,7 +6,7 @@ import (
 	"log"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
-	"github.com/threefoldtech/terraform-provider-grid/internal/provider"
+	providerentry "github.com/threefoldtech/terraform-provider-grid/pkg/provider_entry"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/state"
 )
 
@@ -44,7 +44,7 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
-	providerFunc, sub := provider.New(version, db.GetState())
+	providerFunc, sub := providerentry.New(version, db.GetState())
 	if sub != nil {
 		defer sub.Close()
 	}
