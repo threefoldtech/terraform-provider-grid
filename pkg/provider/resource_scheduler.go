@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/terraform-provider-grid/internal/provider/scheduler"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/provider/scheduler"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 

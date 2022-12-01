@@ -10,7 +10,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
-	mock "github.com/threefoldtech/terraform-provider-grid/internal/provider/mocks"
+	mock "github.com/threefoldtech/terraform-provider-grid/pkg/provider/mocks"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"

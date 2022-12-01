@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
-	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
+	client "github.com/threefoldtech/terraform-provider-grid/pkg/node"
 )
 
 func dataSourceGatewayDomain() *schema.Resource {

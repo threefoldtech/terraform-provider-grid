@@ -10,7 +10,7 @@ import (
 	"time"
 
 	gormb "github.com/threefoldtech/go-rmb"
-	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
+	client "github.com/threefoldtech/terraform-provider-grid/pkg/node"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
