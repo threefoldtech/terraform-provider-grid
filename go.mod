@@ -22,6 +22,7 @@ require (
 )
 
 require (
+	github.com/centrifuge/go-substrate-rpc-client/v3 v3.0.2
 	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e
 	github.com/hashicorp/terraform-plugin-log v0.4.0
 	github.com/threefoldtech/grid_proxy_server v1.5.5

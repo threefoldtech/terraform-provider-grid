@@ -20,17 +20,18 @@ import (
 )
 
 type DeploymentDeployer struct {
-	Id          string
-	Node        uint32
-	Disks       []workloads.Disk
-	ZDBs        []workloads.ZDB
-	VMs         []workloads.VM
-	QSFSs       []workloads.QSFS
-	IPRange     string
-	NetworkName string
-	APIClient   *apiClient
-	ncPool      client.NodeClientCollection
-	deployer    deployer.Deployer
+	Id                            string
+	CapacityReservationContractID uint64 `name:"capacity_reservation_contract_id"`
+	Node                          uint32
+	Disks                         []workloads.Disk
+	ZDBs                          []workloads.ZDB
+	VMs                           []workloads.VM
+	QSFSs                         []workloads.QSFS
+	IPRange                       string
+	NetworkName                   string
+	APIClient                     *apiClient
+	ncPool                        client.NodeClientCollection
+	deployer                      deployer.Deployer
 }
 type DeploymentData struct {
 	Type        string `json:"type"`
@@ -40,6 +41,7 @@ type DeploymentData struct {
 
 func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (DeploymentDeployer, error) {
 	networkName := d.Get("network_name").(string)
+	capacityReservationContract := d.Get("capacity_reservation_contract_id").(uint64)
 	nodeID := uint32(d.Get("node").(int))
 	disks := make([]workloads.Disk, 0)
 	for _, disk := range d.Get("disks").([]interface{}) {
@@ -87,17 +89,18 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 	ipRange := net.GetNodeSubnet(nodeID)
 
 	deploymentDeployer := DeploymentDeployer{
-		Id:          d.Id(),
-		Node:        nodeID,
-		Disks:       disks,
-		VMs:         vms,
-		QSFSs:       qsfs,
-		ZDBs:        zdbs,
-		IPRange:     ipRange,
-		NetworkName: networkName,
-		APIClient:   apiClient,
-		ncPool:      pool,
-		deployer:    deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, solutionProvider, string(deploymentDataStr)),
+		Id:                            d.Id(),
+		CapacityReservationContractID: capacityReservationContract,
+		Node:                          nodeID,
+		Disks:                         disks,
+		VMs:                           vms,
+		QSFSs:                         qsfs,
+		ZDBs:                          zdbs,
+		IPRange:                       ipRange,
+		NetworkName:                   networkName,
+		APIClient:                     apiClient,
+		ncPool:                        pool,
+		deployer:                      deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, solutionProvider, string(deploymentDataStr)),
 	}
 	return deploymentDeployer, nil
 }

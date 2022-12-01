@@ -229,6 +229,7 @@ github.com/cenkalti/backoff v2.2.1+incompatible/go.mod h1:90ReRw6GdpyfrHakVjL/QH
 github.com/cenkalti/backoff/v3 v3.2.2 h1:cfUAAO3yvKMYKPrvhDuHSwQnhZNk/RMHKdZqKTxfm6M=
 github.com/cenkalti/backoff/v3 v3.2.2/go.mod h1:cIeZDE3IrqwwJl6VUwCN6trj1oXrTS4rc0ij+ULvLYs=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
+github.com/centrifuge/go-substrate-rpc-client/v3 v3.0.2 h1:SQNaOeTmW2y2fmJgR5a7KIozjaOYi34GxafQ4efGc5U=
 github.com/centrifuge/go-substrate-rpc-client/v3 v3.0.2/go.mod h1:ZYSX8OuIJgZ9aVdKLhIi1G4Rj42Ys4nZNsWW70yfCJc=
 github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.0/go.mod h1:MDzvG8lkzMGRaO4qzvxdfJtlDtukRPqNVWG9HJybVt0=
 github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.2/go.mod h1:5g1oM4Zu3BOaLpsKQ+O8PAv2kNuq+kPcA1VzFbsSqxE=
@@ -1260,6 +1261,9 @@ github.com/threefoldtech/substrate-client v0.0.0-20220224131248-f56a2e9fa1d4/go.
 github.com/threefoldtech/substrate-client v0.0.0-20220629072807-544d41e5b81a/go.mod h1:c84405+EkHv4YAAdMGyQuc0U29zmaVxzfFr7Cma1JEo=
 github.com/threefoldtech/substrate-client v0.0.0-20221129080858-a6ca4c8a3873 h1:04ZqR80OdUPG5S9SnhYKlrJ0cv6I2XlYB3m9wC4VDak=
 github.com/threefoldtech/substrate-client v0.0.0-20221129080858-a6ca4c8a3873/go.mod h1:U8sNNYpXyxEKuLUm4jTacuWu43vU0iu2l+K8GXIcbLo=
+github.com/threefoldtech/substrate-client v0.0.0-20221201094734-e226251cdfa4 h1:O8qNyCKVrntlgEBzb0KwqRFVUA659sGFc+yGW2alWQI=
+github.com/threefoldtech/substrate-client v0.0.0-20221201094734-e226251cdfa4/go.mod h1:U8sNNYpXyxEKuLUm4jTacuWu43vU0iu2l+K8GXIcbLo=
+github.com/threefoldtech/terraform-provider-grid v1.6.0/go.mod h1:SsHiI4OyrOlGtsJ3mH4FkZQn5QyO9fL07z2bsllsYCY=
 github.com/threefoldtech/zbus v1.0.0/go.mod h1:E/v/xEvG/l6z/Oj0aDkuSUXFm/1RVJkhKBwDTAIdsHo=
 github.com/threefoldtech/zos v0.5.6-0.20221129115828-94ca13ccd8a6 h1:GUXhQZQrJq0VDWsHu5LITSxW2wMbB7tAeNp+RU/V/EA=
 github.com/threefoldtech/zos v0.5.6-0.20221129115828-94ca13ccd8a6/go.mod h1:kGHhiVrkGmbOb0cfqEdTG12MVYOfAPNFiGO6TtMYibQ=

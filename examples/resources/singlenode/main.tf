@@ -12,21 +12,17 @@ locals {
   name = "myvm"
 }
 
-resource "grid_capacity_reserver" "deployer1" {
-  nodes = [34]
-  deployments {
-    farm   = "1"
-    node   = 34
-    cpu    = 2
-    memory = 1024
+resource "group" "g1"{
+  
+}
 
-  }
-  deployments {
-    farm   = "1"
-    node   = 34
-    cpu    = 4
-    memory = 1024
-  }
+resource "grid_capacity_reserver" "deployer1" {
+  farm   = 1
+  cpu    = 4
+  memory = 1024
+  hdd = 5
+  ssd = 2
+  group_id = group.g1.group_id
 
 }
 resource "grid_network" "net1" {

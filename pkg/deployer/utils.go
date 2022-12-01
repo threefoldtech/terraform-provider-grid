@@ -14,20 +14,28 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
-func (d *DeployerImpl) GetDeploymentObjects(ctx context.Context, sub *substrate.Substrate, dls map[uint32]uint64) (map[uint32]gridtypes.Deployment, error) {
+func (d *DeployerImpl) GetDeploymentObjects(ctx context.Context, sub *substrate.Substrate, dls map[uint64]uint64) (map[uint64]gridtypes.Deployment, error) {
 	res := make(map[uint32]gridtypes.Deployment)
 	for nodeID, dlID := range dls {
 		nc, err := d.ncPool.GetNodeClient(sub, nodeID)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to get node %d client", nodeID)
 		}
-		sub, cancel := context.WithTimeout(ctx, 10*time.Second)
+		subCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
-		dl, err := nc.DeploymentGet(sub, dlID)
+		dl, err := nc.DeploymentGet(subCtx, dlID)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to get deployment %d of node %d", dlID, nodeID)
 		}
-		res[nodeID] = dl
+		dep, err := sub.GetDeployment(dlID)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to get deployment %d of node %d", dlID, nodeID)
+		}
+
+		res[nodeID] = DeploymentInfo{
+			Deployment:                    dl,
+			CapacityReservationContractID: uint64(dep.CapacityReservationID),
+		}
 	}
 	return res, nil
 }
@@ -137,11 +145,11 @@ func addCapacity(cap *proxytypes.Capacity, add *gridtypes.Capacity) {
 	cap.HRU += add.HRU
 }
 
-func EnsureContractCanceled(sub *substrate.Substrate, identity substrate.Identity, contractID uint64) error {
-	if contractID == 0 {
+func EnsureContractCanceled(sub *substrate.Substrate, identity substrate.Identity, deploymentID uint64) error {
+	if deploymentID == 0 {
 		return nil
 	}
-	if err := sub.CancelContract(identity, contractID); err != nil && err.Error() != "ContractNotExists" {
+	if err := sub.CancelContract(identity, deploymentID); err != nil && err.Error() != "ContractNotExists" {
 		return err
 	}
 	return nil
