@@ -13,7 +13,7 @@ import (
 )
 
 type Validator interface {
-	Validate(ctx context.Context, sub substrate.Substrate, oldDeployments map[uint32]gridtypes.Deployment, newDeployments map[uint32]gridtypes.Deployment) error
+	Validate(ctx context.Context, sub *substrate.Substrate, oldDeployments map[uint64]gridtypes.Deployment, newDeployments map[uint64]gridtypes.Deployment) error
 }
 
 type ValidatorImpl struct {
@@ -24,7 +24,7 @@ type ValidatorImpl struct {
 //
 //	errors that may arise because of dead nodes are ignored.
 //	if a real error dodges the validation, it'll be fail anyway in the deploying phase
-func (d *ValidatorImpl) Validate(ctx context.Context, sub substrate.Substrate, oldDeployments map[uint32]gridtypes.Deployment, newDeployments map[uint32]gridtypes.Deployment) error {
+func (d *ValidatorImpl) Validate(ctx context.Context, sub *substrate.Substrate, oldDeployments map[uint64]gridtypes.Deployment, newDeployments map[uint64]gridtypes.Deployment) error {
 	farmIPs := make(map[int]int)
 	nodeMap := make(map[uint32]proxytypes.NodeWithNestedCapacity)
 	for node := range oldDeployments {
@@ -66,15 +66,18 @@ func (d *ValidatorImpl) Validate(ctx context.Context, sub substrate.Substrate, o
 			}
 		}
 	}
-	for node, dl := range oldDeployments {
+	for node, info := range oldDeployments {
+		dl := info.Deployment
 		nodeData, ok := nodeMap[node]
 		if !ok {
 			return fmt.Errorf("node %d not returned from the grid proxy", node)
 		}
 		farmIPs[nodeData.FarmID] += int(countDeploymentPublicIPs(dl))
 	}
-	for node, dl := range newDeployments {
-		oldDl, alreadyExists := oldDeployments[node]
+	for node, info := range newDeployments {
+		dl := info.Deployment
+		oldDlInfo, alreadyExists := oldDeployments[node]
+		oldDl := oldDlInfo.Deployment
 		if err := dl.Valid(); err != nil {
 			return errors.Wrap(err, "invalid deployment")
 		}
@@ -88,12 +91,12 @@ func (d *ValidatorImpl) Validate(ctx context.Context, sub substrate.Substrate, o
 		if alreadyExists {
 			oldCap, err := capacity(oldDl)
 			if err != nil {
-				return errors.Wrapf(err, "couldn't read old deployment %d of node %d capacity", oldDl.ContractID, node)
+				return errors.Wrapf(err, "couldn't read old deployment %d of node %d capacity", oldDl.DeploymentID, node)
 			}
 			addCapacity(&nodeInfo.Capacity.Total, &oldCap)
-			contract, err := sub.GetContract(oldDl.ContractID)
+			contract, err := sub.GetContract(oldDl.DeploymentID.U64())
 			if err != nil {
-				return errors.Wrapf(err, "couldn't get node contract %d", oldDl.ContractID)
+				return errors.Wrapf(err, "couldn't get node contract %d", oldDl.DeploymentID)
 			}
 			current := int(contract.PublicIPCount())
 			if requiredIPs > current {
