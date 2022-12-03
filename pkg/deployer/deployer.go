@@ -267,19 +267,19 @@ func (d *DeployerImpl) deploy(
 	return currentDeployments, nil
 }
 
-type Progress struct {
-	time    time.Time
-	stateOk int
-}
+// type Progress struct {
+// 	time    time.Time
+// 	stateOk int
+// }
 
-func getExponentialBackoff(initial_interval time.Duration, multiplier float64, max_interval time.Duration, max_elapsed_time time.Duration) *backoff.ExponentialBackOff {
-	b := backoff.NewExponentialBackOff()
-	b.InitialInterval = initial_interval
-	b.Multiplier = multiplier
-	b.MaxInterval = max_interval
-	b.MaxElapsedTime = max_elapsed_time
-	return b
-}
+// func getExponentialBackoff(initial_interval time.Duration, multiplier float64, max_interval time.Duration, max_elapsed_time time.Duration) *backoff.ExponentialBackOff {
+// 	b := backoff.NewExponentialBackOff()
+// 	b.InitialInterval = initial_interval
+// 	b.Multiplier = multiplier
+// 	b.MaxInterval = max_interval
+// 	b.MaxElapsedTime = max_elapsed_time
+// 	return b
+// }
 
 func (d *DeployerImpl) Wait(
 	ctx context.Context,

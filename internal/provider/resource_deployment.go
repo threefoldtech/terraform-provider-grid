@@ -35,6 +35,7 @@ func resourceDeployment() *schema.Resource {
 				Type:        schema.TypeInt,
 				Required:    true,
 				Description: "Capacity reservation contract id from capacity reserver",
+				ForceNew:    true,
 			},
 			"name": {
 				Type:     schema.TypeString,

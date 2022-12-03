@@ -14,7 +14,7 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
-func (d *DeployerImpl) GetDeploymentObjects(ctx context.Context, sub *substrate.Substrate, dls map[uint64]uint64) (map[uint64]gridtypes.Deployment, error) {
+func (d *DeployerImpl) GetDeploymentObjects(ctx context.Context, sub *substrate.Substrate, dls CapacityDeploymentIDs) (CapacityGridDeployments, error) {
 	res := make(map[uint32]gridtypes.Deployment)
 	for nodeID, dlID := range dls {
 		nc, err := d.ncPool.GetNodeClient(sub, nodeID)
@@ -145,11 +145,11 @@ func addCapacity(cap *proxytypes.Capacity, add *gridtypes.Capacity) {
 	cap.HRU += add.HRU
 }
 
-func EnsureContractCanceled(sub *substrate.Substrate, identity substrate.Identity, deploymentID uint64) error {
+func EnsureDeploymentCanceled(sub *substrate.Substrate, identity substrate.Identity, deploymentID uint64) error {
 	if deploymentID == 0 {
 		return nil
 	}
-	if err := sub.CancelContract(identity, deploymentID); err != nil && err.Error() != "ContractNotExists" {
+	if err := sub.CancelDeployment(identity, deploymentID); err != nil {
 		return err
 	}
 	return nil
