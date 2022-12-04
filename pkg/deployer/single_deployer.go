@@ -6,7 +6,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/cenkalti/backoff"
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/substrate-client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
@@ -14,6 +13,8 @@ import (
 )
 
 type CapacityReservationContractID uint64
+type DeploymentData string
+type DeploymentID uint64
 
 // Client is used to talk to chain and nodes
 type Client struct {
@@ -23,38 +24,24 @@ type Client struct {
 	ncPool   client.NodeClientCollection
 }
 
-type DeploymentInfo struct {
-	deployment     gridtypes.Deployment
-	deploymentData string
-}
-
-type NewDeployment struct {
-	info             DeploymentInfo
-	contractID       CapacityReservationContractID
-	solutionProvider *uint64
-}
-
-type UpdatedDeployment struct {
-	info         DeploymentInfo
-	deploymentID uint64
+type DeployentProps struct {
+	deployment   gridtypes.Deployment
 	contractID   CapacityReservationContractID
-}
-
-type Progress struct {
-	time    time.Time
-	stateOk int
+	deploymentID DeploymentID
 }
 
 // SingleDeployerInterface handles resources that have single deployments per reservation contract
 type SingleDeployerInterface interface {
 	// Create handles deployment creations
-	Create(ctx context.Context, cl Client, newDeployment NewDeployment) error
+	Create(ctx context.Context, cl Client, data DeploymentData, d DeployentProps) error
 	// Update handles deployment updates
-	Update(ctx context.Context, cl Client, updatedDeployment UpdatedDeployment) error
+	Update(ctx context.Context, cl Client, data DeploymentData, d DeployentProps) error
 	// Delete handles deployment deletions
-	Delete(ctx context.Context, cl Client, deploymentID uint64) error
-	// Wait waits until deployment is deployed on node
-	Wait(ctx context.Context, nodeClient *client.NodeClient, deploymentID uint64, workloadVersions map[string]uint32) error
+	Delete(ctx context.Context, cl Client, deploymentID DeploymentID) error
+	// // Wait waits until deployment is deployed on node
+	// Wait(ctx context.Context, nodeClient *client.NodeClient, deploymentID DeploymentID, workloadVersions map[string]uint32) error
+	// Revert should try to revert changes the deployer did. it should be used if deployer failed to deploy, and changes were to be canceled.
+	// Revert(ctx context.Context, cl Client) error
 	// GetCurrent gets current deployment from node
 	// GetCurrent(ctx context.Context, cl Client, )
 }
@@ -62,9 +49,9 @@ type SingleDeployerInterface interface {
 type SingleDeployer struct {
 }
 
-func (s *SingleDeployer) Create(ctx context.Context, cl Client, newDeployment NewDeployment) error {
-	deployment := newDeployment.info.deployment
-	capacityContract, err := cl.sub.GetContract(uint64(newDeployment.contractID))
+func (s *SingleDeployer) Create(ctx context.Context, cl Client, data DeploymentData, d DeployentProps) error {
+	deployment := d.deployment
+	capacityContract, err := cl.sub.GetContract(uint64(d.contractID))
 	if err != nil {
 		return err
 	}
@@ -93,7 +80,7 @@ func (s *SingleDeployer) Create(ctx context.Context, cl Client, newDeployment Ne
 	if err != nil {
 		return errors.Wrapf(err, "couldn't get deployment capacity")
 	}
-	deploymentID, err := cl.sub.CreateDeployment(cl.identity, uint64(newDeployment.contractID), hashHex, newDeployment.info.deploymentData, cap.AsResources(), publicIPCount)
+	deploymentID, err := cl.sub.CreateDeployment(cl.identity, uint64(d.contractID), hashHex, string(data), cap.AsResources(), publicIPCount)
 	log.Printf("createDeployment returned id: %d\n", deploymentID)
 	if err != nil {
 		return errors.Wrap(err, "failed to create deployment")
@@ -102,7 +89,6 @@ func (s *SingleDeployer) Create(ctx context.Context, cl Client, newDeployment Ne
 	ctx2, cancel := context.WithTimeout(ctx, 4*time.Minute)
 	defer cancel()
 	err = client.DeploymentDeploy(ctx2, deployment)
-
 	if err != nil {
 		rerr := EnsureDeploymentCanceled(cl.sub, cl.identity, deploymentID)
 		log.Printf("failed to send deployment deploy request to node %s", err)
@@ -116,23 +102,19 @@ func (s *SingleDeployer) Create(ctx context.Context, cl Client, newDeployment Ne
 	for _, w := range deployment.Workloads {
 		newWorkloadVersions[w.Name.String()] = 0
 	}
-	err = s.Wait(ctx, client, deployment.DeploymentID.U64(), newWorkloadVersions)
+	err = wait(ctx, client, deploymentID, newWorkloadVersions)
 	if err != nil {
 		return errors.Wrap(err, "error waiting deployment")
 	}
 	return nil
 }
-func (s *SingleDeployer) Update(ctx context.Context, cl Client, updatedDeployment UpdatedDeployment) error {
-	contractID := updatedDeployment.contractID
-	deployment := updatedDeployment.info.deployment
-	deploymentID := updatedDeployment.deploymentID
-
-	capacityContract, err := cl.sub.GetContract(uint64(contractID))
+func (s *SingleDeployer) Update(ctx context.Context, cl Client, data DeploymentData, d DeployentProps) error {
+	capacityContract, err := cl.sub.GetContract(uint64(d.contractID))
 	if err != nil {
 		return err
 	}
 	node := capacityContract.ContractType.CapacityReservationContract.NodeID
-	newDeploymentHash, err := hashDeployment(deployment)
+	newDeploymentHash, err := hashDeployment(d.deployment)
 	if err != nil {
 		return errors.Wrap(err, "couldn't get deployment hash")
 	}
@@ -141,7 +123,7 @@ func (s *SingleDeployer) Update(ctx context.Context, cl Client, updatedDeploymen
 	if err != nil {
 		return errors.Wrap(err, "failed to get node client")
 	}
-	oldDl, err := client.DeploymentGet(ctx, deploymentID)
+	oldDl, err := client.DeploymentGet(ctx, uint64(d.deploymentID))
 	if err != nil {
 		return errors.Wrap(err, "failed to get old deployment to update it")
 	}
@@ -149,41 +131,41 @@ func (s *SingleDeployer) Update(ctx context.Context, cl Client, updatedDeploymen
 	if err != nil {
 		return errors.Wrap(err, "couldn't get deployment hash")
 	}
-	if oldDeploymentHash == newDeploymentHash && sameWorkloadsNames(deployment, oldDl) {
+	if oldDeploymentHash == newDeploymentHash && sameWorkloadsNames(d.deployment, oldDl) {
 		return nil
 	}
 	oldHashes, err := constructWorkloadHashes(oldDl)
 	if err != nil {
 		return errors.Wrap(err, "couldn't get old workloads hashes")
 	}
-	newHashes, err := constructWorkloadHashes(deployment)
+	newHashes, err := constructWorkloadHashes(d.deployment)
 	if err != nil {
 		return errors.Wrap(err, "couldn't get new workloads hashes")
 	}
 	oldWorkloadsVersions := constructWorkloadVersions(oldDl)
 	newWorkloadsVersions := map[string]uint32{}
-	deployment.Version = oldDl.Version + 1
-	deployment.DeploymentID = oldDl.DeploymentID
-	for idx, w := range deployment.Workloads {
+	d.deployment.Version = oldDl.Version + 1
+	d.deployment.DeploymentID = oldDl.DeploymentID
+	for idx, w := range d.deployment.Workloads {
 		newHash := newHashes[string(w.Name)]
 		oldHash, ok := oldHashes[string(w.Name)]
 		if !ok || newHash != oldHash {
-			deployment.Workloads[idx].Version = deployment.Version
+			d.deployment.Workloads[idx].Version = d.deployment.Version
 		} else if ok && newHash == oldHash {
-			deployment.Workloads[idx].Version = oldWorkloadsVersions[string(w.Name)]
+			d.deployment.Workloads[idx].Version = oldWorkloadsVersions[string(w.Name)]
 		}
-		newWorkloadsVersions[w.Name.String()] = deployment.Workloads[idx].Version
+		newWorkloadsVersions[w.Name.String()] = d.deployment.Workloads[idx].Version
 	}
-	if err := deployment.Sign(cl.twin, cl.identity); err != nil {
+	if err := d.deployment.Sign(cl.twin, cl.identity); err != nil {
 		return errors.Wrap(err, "error signing deployment")
 	}
 
-	if err := deployment.Valid(); err != nil {
+	if err := d.deployment.Valid(); err != nil {
 		return errors.Wrap(err, "deployment is invalid")
 	}
 
-	log.Printf("%+v", deployment)
-	hash, err := deployment.ChallengeHash()
+	log.Printf("%+v", d.deployment)
+	hash, err := d.deployment.ChallengeHash()
 
 	if err != nil {
 		return errors.Wrap(err, "failed to create hash")
@@ -192,98 +174,35 @@ func (s *SingleDeployer) Update(ctx context.Context, cl Client, updatedDeploymen
 	hashHex := hash.Hex()
 	log.Printf("[DEBUG] HASH: %s", hashHex)
 
-	cap, err := deployment.Capacity()
+	cap, err := d.deployment.Capacity()
 	if err != nil {
 		return errors.Wrapf(err, "couldn't get deployment capacity")
 	}
 	resources := cap.AsResources()
-	err = cl.sub.UpdateDeployment(cl.identity, deployment.DeploymentID.U64(), hashHex, updatedDeployment.info.deploymentData, &resources)
+	err = cl.sub.UpdateDeployment(cl.identity, uint64(d.deployment.DeploymentID), hashHex, string(data), &resources)
 	if err != nil {
 		return errors.Wrap(err, "failed to update deployment")
 	}
 	// dl.ContractID = contractID
 	sub, cancel := context.WithTimeout(ctx, 4*time.Minute)
 	defer cancel()
-	err = client.DeploymentUpdate(sub, deployment)
+	err = client.DeploymentUpdate(sub, d.deployment)
 	if err != nil {
 		// cancel previous contract
 		log.Printf("failed to send deployment update request to node %s", err)
 		return errors.Wrap(err, "error sending deployment to the node")
 	}
-	// currentDeployments[node] = dl.DeploymentID.U64()
 
-	err = s.Wait(ctx, client, deployment.DeploymentID.U64(), newWorkloadsVersions)
+	err = wait(ctx, client, uint64(d.deployment.DeploymentID), newWorkloadsVersions)
 	if err != nil {
 		return errors.Wrap(err, "error waiting deployment")
 	}
 	return nil
 }
-func (s *SingleDeployer) Delete(ctx context.Context, cl Client, deploymentID uint64) error {
-	err := EnsureDeploymentCanceled(cl.sub, cl.identity, deploymentID)
+func (s *SingleDeployer) Delete(ctx context.Context, cl Client, deploymentID DeploymentID) error {
+	err := EnsureDeploymentCanceled(cl.sub, cl.identity, uint64(deploymentID))
 	if err != nil {
 		return errors.Wrap(err, "failed to delete deployment")
 	}
 	return nil
-}
-
-func getExponentialBackoff(initial_interval time.Duration, multiplier float64, max_interval time.Duration, max_elapsed_time time.Duration) *backoff.ExponentialBackOff {
-	b := backoff.NewExponentialBackOff()
-	b.InitialInterval = initial_interval
-	b.Multiplier = multiplier
-	b.MaxInterval = max_interval
-	b.MaxElapsedTime = max_elapsed_time
-	return b
-}
-
-func (s *SingleDeployer) Wait(ctx context.Context, nodeClient *client.NodeClient, deploymentID uint64, workloadVersions map[string]uint32) error {
-	lastProgress := Progress{time.Now(), 0}
-	numberOfWorkloads := len(workloadVersions)
-
-	deploymentError := backoff.Retry(func() error {
-		stateOk := 0
-		sub, cancel := context.WithTimeout(ctx, 10*time.Second)
-		defer cancel()
-		deploymentChanges, err := nodeClient.DeploymentChanges(sub, deploymentID)
-		if err != nil {
-			return backoff.Permanent(err)
-		}
-
-		for _, wl := range deploymentChanges {
-			if _, ok := workloadVersions[wl.Name.String()]; ok && wl.Version == workloadVersions[wl.Name.String()] {
-				var errString string = ""
-				switch wl.Result.State {
-				case gridtypes.StateOk:
-					stateOk++
-				case gridtypes.StateError:
-					errString = fmt.Sprintf("workload %s within deployment %d failed with error: %s", wl.Name, deploymentID, wl.Result.Error)
-				case gridtypes.StateDeleted:
-					errString = fmt.Sprintf("workload %s state within deployment %d is deleted: %s", wl.Name, deploymentID, wl.Result.Error)
-				case gridtypes.StatePaused:
-					errString = fmt.Sprintf("workload %s state within deployment %d is paused: %s", wl.Name, deploymentID, wl.Result.Error)
-				case gridtypes.StateUnChanged:
-					errString = fmt.Sprintf("worklaod %s within deployment %d was not updated: %s", wl.Name, deploymentID, wl.Result.Error)
-				}
-				if errString != "" {
-					return backoff.Permanent(errors.New(errString))
-				}
-			}
-		}
-
-		if stateOk == numberOfWorkloads {
-			return nil
-		}
-
-		currentProgress := Progress{time.Now(), stateOk}
-		if lastProgress.stateOk < currentProgress.stateOk {
-			lastProgress = currentProgress
-		} else if currentProgress.time.Sub(lastProgress.time) > 4*time.Minute {
-			timeoutError := fmt.Errorf("waiting for deployment %d timedout", deploymentID)
-			return backoff.Permanent(timeoutError)
-		}
-
-		return errors.New("deployment in progress")
-	},
-		backoff.WithContext(getExponentialBackoff(3*time.Second, 1.25, 40*time.Second, 50*time.Minute), ctx))
-
-	return deploymentError
 }
