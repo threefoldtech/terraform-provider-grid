@@ -45,6 +45,8 @@ type SingleDeployerInterface interface {
 	Update(ctx context.Context, cl Client, data DeploymentData, d *DeploymentProps) error
 	// Delete handles deployment deletions
 	Delete(ctx context.Context, cl Client, deploymentID DeploymentID) error
+	// GetCurrentState get current deployment state from node
+	GetCurrentState(ctx context.Context, cl Client, d *DeploymentProps) (gridtypes.Deployment, error)
 }
 
 type SingleDeployer struct {
@@ -72,7 +74,7 @@ func (s *SingleDeployer) Update(ctx context.Context, cl Client, data DeploymentD
 	if err != nil {
 		return errors.Wrap(err, "deployer failed to validate deployment")
 	}
-	currentDeployment, err := s.getCurrentDeployment(ctx, cl, d)
+	currentDeployment, err := s.GetCurrentState(ctx, cl, d)
 	if err != nil {
 		return errors.Wrap(err, "failed to get old deployment")
 	}
@@ -392,7 +394,7 @@ func capacityDiff(new gridtypes.Capacity, old gridtypes.Capacity) gridtypes.Capa
 	}
 }
 
-func (s *SingleDeployer) getCurrentDeployment(ctx context.Context, cl Client, d *DeploymentProps) (gridtypes.Deployment, error) {
+func (s *SingleDeployer) GetCurrentState(ctx context.Context, cl Client, d *DeploymentProps) (gridtypes.Deployment, error) {
 	contract, err := cl.Sub.GetContract(uint64(d.ContractID))
 	if err != nil {
 		return gridtypes.Deployment{}, err

@@ -18,6 +18,8 @@ type MultiDeployerInterface interface {
 	Update(ctx context.Context, cl Client, data DeploymentData, d []DeploymentProps) error
 	// Delete handles multiple deployments deletions
 	Delete(ctx context.Context, cl Client, deploymentID []DeploymentID) error
+	// GetCurrentState get current deployments states from nodes
+	GetCurrentState(ctx context.Context, cl Client, d []DeploymentProps) ([]gridtypes.Deployment, error)
 }
 
 type MultiDeployer struct {
@@ -37,7 +39,7 @@ func (m *MultiDeployer) Create(ctx context.Context, cl Client, data DeploymentDa
 			// revertCreate: check created deployments and delete them
 			revertErr := m.Delete(ctx, cl, createdDeployments)
 			if revertErr != nil {
-				return fmt.Errorf("failed to deploy: %w, failed to revert deployments: %w, try again.")
+				return fmt.Errorf("failed to deploy: %w, failed to revert deployments: %w, try again.", err, revertErr)
 			}
 			return err
 		}
@@ -58,7 +60,7 @@ func (m *MultiDeployer) Update(ctx context.Context, cl Client, data DeploymentDa
 		return errors.Wrap(err, "error validating deployment")
 	}
 
-	currentDeployments, err := m.getCurrentDeployments(ctx, cl, d)
+	currentDeployments, err := m.GetCurrentState(ctx, cl, d)
 	if err != nil {
 		return errors.Wrap(err, "couldn't get current deployments")
 	}
@@ -92,10 +94,10 @@ func (m *MultiDeployer) Delete(ctx context.Context, cl Client, deploymentID []De
 	return nil
 }
 
-func (m *MultiDeployer) getCurrentDeployments(ctx context.Context, cl Client, d []DeploymentProps) ([]gridtypes.Deployment, error) {
+func (m *MultiDeployer) GetCurrentState(ctx context.Context, cl Client, d []DeploymentProps) ([]gridtypes.Deployment, error) {
 	currentDeployments := []gridtypes.Deployment{}
 	for idx := range d {
-		deployment, err := m.Single.getCurrentDeployment(ctx, cl, &d[idx])
+		deployment, err := m.Single.GetCurrentState(ctx, cl, &d[idx])
 		if err != nil {
 			return nil, err
 		}
@@ -111,7 +113,6 @@ func (m *MultiDeployer) reuseOldDeployments(oldDeployments []gridtypes.Deploymen
 }
 
 func (m *MultiDeployer) validate(ctx context.Context, cl Client, d []DeploymentProps) error {
-	// get farm and node info
 	farmIPs := map[uint64]int{}
 	nodes := map[uint32]*proxytypes.NodeWithNestedCapacity{}
 	for idx := range d {
@@ -186,7 +187,6 @@ func (m *MultiDeployer) validate(ctx context.Context, cl Client, d []DeploymentP
 
 func getNodeInfo(cl Client, nodeID uint32, nodes map[uint32]*proxytypes.NodeWithNestedCapacity) (*proxytypes.NodeWithNestedCapacity, error) {
 	if _, ok := nodes[nodeID]; ok {
-		// we already have this node's info, and consequently this farm's info
 		return nodes[nodeID], nil
 	}
 	nodeInfo, err := cl.GridProxy.Node(nodeID)
@@ -199,7 +199,6 @@ func getNodeInfo(cl Client, nodeID uint32, nodes map[uint32]*proxytypes.NodeWith
 
 func calculateFarmIPs(cl Client, farmID uint64, farmIPs map[uint64]int) error {
 	if _, ok := farmIPs[farmID]; ok {
-		// we already have this farm's info
 		return nil
 	}
 	farmInfo, _, err := cl.GridProxy.Farms(proxytypes.FarmFilter{

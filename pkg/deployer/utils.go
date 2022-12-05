@@ -1,11 +1,9 @@
 package deployer
 
 import (
-	"context"
 	"crypto/md5"
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/pkg/errors"
 	proxytypes "github.com/threefoldtech/grid_proxy_server/pkg/types"
@@ -14,31 +12,31 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
-func (d *DeployerImpl) GetDeploymentObjects(ctx context.Context, sub *substrate.Substrate, dls map[uint64]uint64) (map[uint64]gridtypes.Deployment, error) {
-	res := make(map[uint32]gridtypes.Deployment)
-	for nodeID, dlID := range dls {
-		nc, err := d.ncPool.GetNodeClient(sub, nodeID)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to get node %d client", nodeID)
-		}
-		subCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-		defer cancel()
-		dl, err := nc.DeploymentGet(subCtx, dlID)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to get deployment %d of node %d", dlID, nodeID)
-		}
-		dep, err := sub.GetDeployment(dlID)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to get deployment %d of node %d", dlID, nodeID)
-		}
+// func (d *DeployerImpl) GetDeploymentObjects(ctx context.Context, sub *substrate.Substrate, dls map[uint64]uint64) (map[uint64]gridtypes.Deployment, error) {
+// 	res := make(map[uint32]gridtypes.Deployment)
+// 	for nodeID, dlID := range dls {
+// 		nc, err := d.ncPool.GetNodeClient(sub, nodeID)
+// 		if err != nil {
+// 			return nil, errors.Wrapf(err, "failed to get node %d client", nodeID)
+// 		}
+// 		subCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+// 		defer cancel()
+// 		dl, err := nc.DeploymentGet(subCtx, dlID)
+// 		if err != nil {
+// 			return nil, errors.Wrapf(err, "failed to get deployment %d of node %d", dlID, nodeID)
+// 		}
+// 		dep, err := sub.GetDeployment(dlID)
+// 		if err != nil {
+// 			return nil, errors.Wrapf(err, "failed to get deployment %d of node %d", dlID, nodeID)
+// 		}
 
-		res[nodeID] = DeploymentInfo{
-			Deployment:                    dl,
-			CapacityReservationContractID: uint64(dep.CapacityReservationID),
-		}
-	}
-	return res, nil
-}
+// 		res[nodeID] = DeploymentInfo{
+// 			Deployment:                    dl,
+// 			CapacityReservationContractID: uint64(dep.CapacityReservationID),
+// 		}
+// 	}
+// 	return res, nil
+// }
 
 func countDeploymentPublicIPs(dl gridtypes.Deployment) uint32 {
 	var res uint32 = 0
