@@ -31,6 +31,12 @@ func resourceGatewayFQDNProxy() *schema.Resource {
 				Description: "Gateway name (the fqdn will be <name>.<gateway-domain>)",
 				Default:     "Gateway",
 			},
+			"capacity_reservation_contract_id": {
+				Type:        schema.TypeInt,
+				Required:    true,
+				Description: "Capacity reservation contract id from capacity reserver",
+				ForceNew:    true,
+			},
 			"description": {
 				Type:        schema.TypeString,
 				Optional:    true,
@@ -76,7 +82,7 @@ func resourceGatewayFQDNCreate(ctx context.Context, sub *substrate.Substrate, d 
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
 	}
-	return &deployer, deployer.Deploy(ctx, sub)
+	return &deployer, deployer.Create(ctx, sub)
 }
 
 func resourceGatewayFQDNUpdate(ctx context.Context, sub *substrate.Substrate, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
@@ -85,7 +91,7 @@ func resourceGatewayFQDNUpdate(ctx context.Context, sub *substrate.Substrate, d 
 		return nil, errors.Wrap(err, "couldn't load deployer data")
 	}
 
-	return &deployer, deployer.Deploy(ctx, sub)
+	return &deployer, deployer.Update(ctx, sub)
 }
 
 func resourceGatewayFQDNRead(ctx context.Context, sub *substrate.Substrate, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
@@ -101,5 +107,5 @@ func resourceGatewayFQDNDelete(ctx context.Context, sub *substrate.Substrate, d 
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
 	}
-	return &deployer, deployer.Cancel(ctx, sub)
+	return &deployer, deployer.Delete(ctx, sub)
 }

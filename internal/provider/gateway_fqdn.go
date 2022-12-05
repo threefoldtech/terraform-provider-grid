@@ -18,15 +18,19 @@ import (
 )
 
 type GatewayFQDNDeployer struct {
-	Gw               workloads.GatewayFQDNProxy
-	ID               string
-	Description      string
-	Node             uint32
-	NodeDeploymentID map[uint32]uint64
+	Gw                            workloads.GatewayFQDNProxy
+	ID                            string
+	CapacityReservationContractID uint64
+	Description                   string
+	Node                          uint32
+	NodeDeploymentID              map[uint32]uint64
+	DeploymentData                deployer.DeploymentData
+	DeploymentProps               deployer.DeploymentProps
 
-	APIClient *apiClient
-	ncPool    client.NodeClientCollection
-	deployer  deployer.Deployer
+	DeployerClient deployer.Client
+	APIClient      *apiClient
+	ncPool         client.NodeClientCollection
+	deployer       deployer.SingleDeployerInterface
 }
 
 func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClient *apiClient) (GatewayFQDNDeployer, error) {
@@ -35,6 +39,7 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 	for idx, n := range backendsIf {
 		backends[idx] = zos.Backend(n.(string))
 	}
+	capacityReservationContractID := d.Get("capacity_reservation_contract_id").(uint64)
 	nodeDeploymentIDIf := d.Get("node_deployment_id").(map[string]interface{})
 	nodeDeploymentID := make(map[uint32]uint64)
 	for node, id := range nodeDeploymentIDIf {
@@ -55,20 +60,38 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 	if err != nil {
 		log.Printf("error parsing deploymentdata: %s", err.Error())
 	}
+	gw := workloads.GatewayFQDNProxy{
+		Name:           d.Get("name").(string),
+		Backends:       backends,
+		FQDN:           d.Get("fqdn").(string),
+		TLSPassthrough: d.Get("tls_passthrough").(bool),
+	}
+	dl := workloads.NewDeployment(apiClient.twin_id)
+	dl.Workloads = append(dl.Workloads, gw.ZosWorkload())
+	deploymentProps := deployer.DeploymentProps{
+		Deployment: dl,
+		ContractID: deployer.CapacityReservationContractID(capacityReservationContractID),
+	}
+	deployerClinet := deployer.Client{
+		Identity:  apiClient.identity,
+		Sub:       apiClient.substrateConn,
+		Twin:      apiClient.twin_id,
+		NCPool:    ncPool,
+		GridProxy: apiClient.grid_client,
+	}
 	deployer := GatewayFQDNDeployer{
-		Gw: workloads.GatewayFQDNProxy{
-			Name:           d.Get("name").(string),
-			Backends:       backends,
-			FQDN:           d.Get("fqdn").(string),
-			TLSPassthrough: d.Get("tls_passthrough").(bool),
-		},
-		ID:               d.Id(),
-		Description:      d.Get("description").(string),
-		Node:             uint32(d.Get("node").(int)),
-		NodeDeploymentID: nodeDeploymentID,
-		APIClient:        apiClient,
-		ncPool:           ncPool,
-		deployer:         deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, ncPool, true, nil, string(deploymentDataStr)),
+		Gw:                            gw,
+		ID:                            d.Id(),
+		CapacityReservationContractID: capacityReservationContractID,
+		Description:                   d.Get("description").(string),
+		Node:                          uint32(d.Get("node").(int)),
+		NodeDeploymentID:              nodeDeploymentID,
+		DeploymentData:                deployer.DeploymentData(deploymentDataStr),
+		DeploymentProps:               deploymentProps,
+		DeployerClient:                deployerClinet,
+		APIClient:                     apiClient,
+		ncPool:                        ncPool,
+		deployer:                      &deployer.SingleDeployer{},
 	}
 	return deployer, nil
 }
@@ -91,26 +114,30 @@ func (k *GatewayFQDNDeployer) Marshal(d *schema.ResourceData) {
 	d.Set("node_deployment_id", nodeDeploymentID)
 	d.SetId(k.ID)
 }
-func (k *GatewayFQDNDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
-	deployments := make(map[uint32]gridtypes.Deployment)
-	dl := workloads.NewDeployment(k.APIClient.twin_id)
-	dl.Workloads = append(dl.Workloads, k.Gw.ZosWorkload())
-	deployments[k.Node] = dl
-	return deployments, nil
-}
 
-func (k *GatewayFQDNDeployer) Deploy(ctx context.Context, sub *substrate.Substrate) error {
-	if err := k.Validate(ctx, sub); err != nil {
-		return err
+func (k *GatewayFQDNDeployer) Create(ctx context.Context, sub *substrate.Substrate) error {
+	err := k.deployer.Create(
+		ctx,
+		k.DeployerClient,
+		k.DeploymentData,
+		&k.DeploymentProps,
+	)
+	if err == nil {
+		k.NodeDeploymentID[k.Node] = k.DeploymentProps.Deployment.DeploymentID.U64()
 	}
-	newDeployments, err := k.GenerateVersionlessDeployments(ctx)
-	if err != nil {
-		return errors.Wrap(err, "couldn't generate deployments data")
-	}
-	k.NodeDeploymentID, err = k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)
 	if k.ID == "" && k.NodeDeploymentID[k.Node] != 0 {
 		k.ID = strconv.FormatUint(k.NodeDeploymentID[k.Node], 10)
 	}
+	return err
+}
+
+func (k *GatewayFQDNDeployer) Update(ctx context.Context, sub *substrate.Substrate) error {
+	err := k.deployer.Update(
+		ctx,
+		k.DeployerClient,
+		k.DeploymentData,
+		&k.DeploymentProps,
+	)
 	return err
 }
 
@@ -129,11 +156,14 @@ func (k *GatewayFQDNDeployer) sync(ctx context.Context, sub *substrate.Substrate
 		return errors.Wrap(err, "couldn't sync contracts")
 	}
 
-	dls, err := k.deployer.GetDeploymentObjects(ctx, sub, k.NodeDeploymentID)
+	dl, err := k.deployer.GetCurrentState(
+		ctx,
+		k.DeployerClient,
+		&k.DeploymentProps,
+	)
 	if err != nil {
 		return errors.Wrap(err, "couldn't get deployment objects")
 	}
-	dl := dls[k.Node]
 	wl, _ := dl.Get(gridtypes.Name(k.Gw.Name))
 	k.Gw = workloads.GatewayFQDNProxy{}
 	if wl != nil && wl.Result.State.IsOkay() {
@@ -145,10 +175,12 @@ func (k *GatewayFQDNDeployer) sync(ctx context.Context, sub *substrate.Substrate
 	return nil
 }
 
-func (k *GatewayFQDNDeployer) Cancel(ctx context.Context, sub *substrate.Substrate) (err error) {
-	newDeployments := make(map[uint32]gridtypes.Deployment)
-
-	k.NodeDeploymentID, err = k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)
+func (k *GatewayFQDNDeployer) Delete(ctx context.Context, sub *substrate.Substrate) (err error) {
+	err = k.deployer.Delete(
+		ctx,
+		k.DeployerClient,
+		deployer.DeploymentID(k.NodeDeploymentID[k.Node]),
+	)
 
 	return err
 }
