@@ -25,12 +25,11 @@ type MultiDeployer struct {
 }
 
 func (m *MultiDeployer) Create(ctx context.Context, cl Client, data DeploymentData, d []DeploymentProps) error {
-	for idx := range d {
-		err := m.Single.validate(ctx, cl, &d[idx])
-		if err != nil {
-			return errors.Wrap(err, "error validating deployment")
-		}
+	err := m.validate(ctx, cl, d)
+	if err != nil {
+		return errors.Wrap(err, "error validating deployment")
 	}
+
 	createdDeployments := []DeploymentID{}
 	for idx := range d {
 		err := m.Single.PushCreate(ctx, cl, data, &d[idx])
@@ -54,12 +53,11 @@ func (m *MultiDeployer) Create(ctx context.Context, cl Client, data DeploymentDa
 	return nil
 }
 func (m *MultiDeployer) Update(ctx context.Context, cl Client, data DeploymentData, d []DeploymentProps) error {
-	for idx := range d {
-		err := m.Single.validate(ctx, cl, &d[idx])
-		if err != nil {
-			return errors.Wrap(err, "error validating deployment")
-		}
+	err := m.validate(ctx, cl, d)
+	if err != nil {
+		return errors.Wrap(err, "error validating deployment")
 	}
+
 	currentDeployments, err := m.getCurrentDeployments(ctx, cl, d)
 	if err != nil {
 		return errors.Wrap(err, "couldn't get current deployments")
