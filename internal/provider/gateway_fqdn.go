@@ -18,14 +18,13 @@ import (
 )
 
 type GatewayFQDNDeployer struct {
-	Gw                            workloads.GatewayFQDNProxy
-	ID                            string
-	CapacityReservationContractID uint64
-	Description                   string
-	Node                          uint32
-	NodeDeploymentID              map[uint32]uint64
-	DeploymentData                deployer.DeploymentData
-	DeploymentProps               deployer.DeploymentProps
+	Gw               workloads.GatewayFQDNProxy
+	ID               string
+	Description      string
+	Node             uint32
+	NodeDeploymentID map[uint32]uint64
+	DeploymentData   deployer.DeploymentData
+	DeploymentProps  deployer.DeploymentProps
 
 	DeployerClient deployer.Client
 	APIClient      *apiClient
@@ -80,24 +79,19 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 		GridProxy: apiClient.grid_client,
 	}
 	deployer := GatewayFQDNDeployer{
-		Gw:                            gw,
-		ID:                            d.Id(),
-		CapacityReservationContractID: capacityReservationContractID,
-		Description:                   d.Get("description").(string),
-		Node:                          uint32(d.Get("node").(int)),
-		NodeDeploymentID:              nodeDeploymentID,
-		DeploymentData:                deployer.DeploymentData(deploymentDataStr),
-		DeploymentProps:               deploymentProps,
-		DeployerClient:                deployerClinet,
-		APIClient:                     apiClient,
-		ncPool:                        ncPool,
-		deployer:                      &deployer.SingleDeployer{},
+		Gw:               gw,
+		ID:               d.Id(),
+		Description:      d.Get("description").(string),
+		Node:             uint32(d.Get("node").(int)),
+		NodeDeploymentID: nodeDeploymentID,
+		DeploymentData:   deployer.DeploymentData(deploymentDataStr),
+		DeploymentProps:  deploymentProps,
+		DeployerClient:   deployerClinet,
+		APIClient:        apiClient,
+		ncPool:           ncPool,
+		deployer:         &deployer.SingleDeployer{},
 	}
 	return deployer, nil
-}
-
-func (k *GatewayFQDNDeployer) Validate(ctx context.Context, sub *substrate.Substrate) error {
-	return isNodesUp(ctx, sub, []uint32{k.Node}, k.ncPool)
 }
 
 func (k *GatewayFQDNDeployer) Marshal(d *schema.ResourceData) {
