@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"strconv"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -46,12 +45,6 @@ func resourceDeployment() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 				Default:  "Virtual Machine",
-			},
-			"solution_provider": {
-				Type:        schema.TypeInt,
-				Optional:    true,
-				Default:     0,
-				Description: "Solution provider ID",
 			},
 			"ip_range": {
 				Type:        schema.TypeString,
@@ -431,7 +424,7 @@ func resourceDeploymentCreate(ctx context.Context, sub *substrate.Substrate, d *
 		return nil, errors.Wrap(err, "couldn't load deployer data")
 	}
 
-	return &deployer, deployer.Deploy(ctx, sub)
+	return &deployer, deployer.Create(ctx, sub)
 }
 
 func resourceDeploymentRead(ctx context.Context, sub *substrate.Substrate, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
@@ -443,23 +436,12 @@ func resourceDeploymentRead(ctx context.Context, sub *substrate.Substrate, d *sc
 }
 
 func resourceDeploymentUpdate(ctx context.Context, sub *substrate.Substrate, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
-	if d.HasChange("node") {
-		oldContractID, err := strconv.ParseUint(d.Id(), 10, 64)
-		if err != nil {
-			return nil, errors.Wrapf(err, "couldn't parse deployment id %s", d.Id())
-		}
-		err = sub.CancelContract(apiClient.identity, oldContractID)
-		if err != nil {
-			return nil, errors.Wrapf(err, "couldn't cancel old node contract")
-		}
-		d.SetId("")
-	}
 	deployer, err := getDeploymentDeployer(d, apiClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
 	}
 
-	return &deployer, deployer.Deploy(ctx, sub)
+	return &deployer, deployer.Update(ctx, sub)
 }
 
 func resourceDeploymentDelete(ctx context.Context, sub *substrate.Substrate, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
@@ -468,5 +450,5 @@ func resourceDeploymentDelete(ctx context.Context, sub *substrate.Substrate, d *
 		return nil, errors.Wrap(err, "couldn't load deployer data")
 	}
 
-	return &deployer, deployer.Cancel(ctx, sub)
+	return &deployer, deployer.Delete(ctx, sub)
 }
