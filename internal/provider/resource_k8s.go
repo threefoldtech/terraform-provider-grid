@@ -1007,6 +1007,13 @@ func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 	if err := deployer.Validate(ctx, apiClient.substrateConn); err != nil {
 		return diag.FromErr(err)
 	}
+	if err := deployer.validateChecksums(); err != nil {
+		return diag.FromErr(err)
+	}
+	newDeployments, err := deployer.GenerateVersionlessDeployments(ctx)
+	if err != nil {
+		return errors.Wrap(err, "couldn't generate deployments data")
+	}
 
 	err = deployer.Deploy(ctx, apiClient.substrateConn, d, apiClient)
 	if err != nil {

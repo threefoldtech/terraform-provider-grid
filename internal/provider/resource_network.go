@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"sort"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -49,9 +50,17 @@ func resourceNetwork() *schema.Resource {
 				Optional: true,
 				Default:  "",
 			},
-			"nodes": {
-				Type:     schema.TypeList,
+			"capacity_reservation_contract_ids": {
+				Type:     schema.TypeSet,
 				Required: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeInt,
+				},
+				Description: "List of capacity reservation contracts the network should be deployed on",
+			},
+			"nodes": {
+				Type:     schema.TypeSet,
+				Computed: true,
 				Elem: &schema.Schema{
 					Type: schema.TypeInt,
 				},
@@ -106,32 +115,56 @@ func resourceNetwork() *schema.Resource {
 }
 
 type NetworkDeployer struct {
-	Name        string
-	Description string
-	Nodes       []uint32
-	IPRange     gridtypes.IPNet
-	AddWGAccess bool
+	Name                           string
+	Description                    string
+	CapacityReservationContractIDs []uint64 `name:"capacity_reservation_contract_ids"`
+	IPRange                        gridtypes.IPNet
+	AddWGAccess                    bool
 
+	Nodes            []uint32
 	AccessWGConfig   string
 	ExternalIP       *gridtypes.IPNet
 	ExternalSK       wgtypes.Key
 	PublicNodeID     uint32
 	NodeDeploymentID map[uint32]uint64
+	NodeCapacityID   map[uint32]uint64
 	NodesIPRange     map[uint32]gridtypes.IPNet
 
-	WGPort    map[uint32]int
-	Keys      map[uint32]wgtypes.Key
-	APIClient *apiClient
-	ncPool    *client.NodeClientPool
-	deployer  deployer.Deployer
+	WGPort         map[uint32]int
+	Keys           map[uint32]wgtypes.Key
+	APIClient      *apiClient
+	ncPool         *client.NodeClientPool
+	deploymentData string
+	deployer       deployer.MultiDeployerInterface
 }
 
 func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *apiClient) (NetworkDeployer, error) {
 	var err error
-	nodesIf := d.Get("nodes").([]interface{})
-	nodes := make([]uint32, len(nodesIf))
-	for idx, n := range nodesIf {
-		nodes[idx] = uint32(n.(int))
+	// nodesIf := d.Get("nodes").([]interface{})
+	// nodes := make([]uint32, len(nodesIf))
+	// for idx, n := range nodesIf {
+	// 	nodes[idx] = uint32(n.(int))
+	// }
+
+	capacityReservationContractIDsIf := d.Get("capacity_reservation_contract_ids").([]interface{})
+	capacityReservationContractIDs := make([]uint64, len(capacityReservationContractIDsIf))
+	for idx, id := range capacityReservationContractIDsIf {
+		capacityReservationContractIDs[idx] = id.(uint64)
+	}
+
+	nodeCapacityIDIf := d.Get("node_capacity_id").(map[string]interface{})
+	nodeCapacityID := map[uint32]uint64{}
+	for node, id := range nodeCapacityIDIf {
+		nodeInt, err := strconv.ParseUint(node, 10, 32)
+		if err != nil {
+			return NetworkDeployer{}, errors.Wrap(err, "couldn't parse node id")
+		}
+		nodeCapacityID[uint32(nodeInt)] = uint64(id.(int))
+	}
+
+	nodes, err := getUniqueNodes(capacityReservationContractIDs, nodeCapacityID, apiClient)
+	if err != nil {
+		return NetworkDeployer{}, nil
 	}
 
 	nodeDeploymentIDIf := d.Get("node_deployment_id").(map[string]interface{})
@@ -193,39 +226,69 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 	if err != nil {
 		log.Printf("error parsing deploymentdata: %s", err.Error())
 	}
+	multiDeployere := deployer.MultiDeployer{
+		Single: deployer.SingleDeployer{},
+	}
 	deployer := NetworkDeployer{
-		Name:             d.Get("name").(string),
-		Description:      d.Get("description").(string),
-		Nodes:            nodes,
-		IPRange:          ipRange,
-		AddWGAccess:      addWGAccess,
-		AccessWGConfig:   d.Get("access_wg_config").(string),
-		ExternalIP:       externalIP,
-		ExternalSK:       externalSK,
-		PublicNodeID:     uint32(d.Get("public_node_id").(int)),
-		NodesIPRange:     nodesIPRange,
-		NodeDeploymentID: nodeDeploymentID,
-		Keys:             make(map[uint32]wgtypes.Key),
-		WGPort:           make(map[uint32]int),
-		APIClient:        apiClient,
-		ncPool:           pool,
-		deployer:         deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, nil, string(deploymentDataStr)),
+		Name:                           d.Get("name").(string),
+		Description:                    d.Get("description").(string),
+		CapacityReservationContractIDs: capacityReservationContractIDs,
+		Nodes:                          nodes,
+		IPRange:                        ipRange,
+		AddWGAccess:                    addWGAccess,
+		AccessWGConfig:                 d.Get("access_wg_config").(string),
+		ExternalIP:                     externalIP,
+		ExternalSK:                     externalSK,
+		PublicNodeID:                   uint32(d.Get("public_node_id").(int)),
+		NodesIPRange:                   nodesIPRange,
+		NodeDeploymentID:               nodeDeploymentID,
+		NodeCapacityID:                 nodeCapacityID,
+		Keys:                           make(map[uint32]wgtypes.Key),
+		WGPort:                         make(map[uint32]int),
+		APIClient:                      apiClient,
+		ncPool:                         pool,
+		deploymentData:                 string(deploymentDataStr),
+		deployer:                       &multiDeployere,
 	}
 	return deployer, nil
+}
+
+func getUniqueNodes(contractIDs []uint64, nodeCapacityID map[uint32]uint64, cl *apiClient) ([]uint32, error) {
+	cp := contractIDs[:]
+	sort.Slice(cp, func(i, j int) bool { return cp[i] < cp[j] })
+	nodes := []uint32{}
+	for _, id := range cp {
+		contract, err := cl.substrateConn.GetContract(id)
+		if err != nil {
+			return nil, err
+		}
+		node := uint32(contract.ContractType.CapacityReservationContract.NodeID)
+		if isInUint64(cp, nodeCapacityID[node]) {
+			// this node is already set to another capacity contract that exists in contarctIDs, no need to reset it
+			continue
+		}
+		if !isInUint32(nodes, node) {
+			nodes = append(nodes, node)
+			nodeCapacityID[node] = id
+		}
+	}
+	sort.Slice(nodes, func(i, j int) bool { return nodes[i] < nodes[j] })
+	return nodes, nil
 }
 
 // invalidateBrokenAttributes removes outdated attrs and deleted contracts
 func (k *NetworkDeployer) invalidateBrokenAttributes(sub *substrate.Substrate) error {
 
-	for node, contractID := range k.NodeDeploymentID {
-		contract, err := sub.GetContract(contractID)
+	for node, deploymentID := range k.NodeDeploymentID {
+		// this is invalid now, get contract gets capacity contract, not deployment
+		contract, err := sub.GetDeployment(deploymentID)
 		if (err == nil && !contract.State.IsCreated) || errors.Is(err, substrate.ErrNotFound) {
 			delete(k.NodeDeploymentID, node)
 			delete(k.NodesIPRange, node)
 			delete(k.Keys, node)
 			delete(k.WGPort, node)
 		} else if err != nil {
-			return errors.Wrapf(err, "couldn't get node %d contract %d", node, contractID)
+			return errors.Wrapf(err, "couldn't get node %d contract %d", node, deploymentID)
 		}
 	}
 	if k.ExternalIP != nil && !k.IPRange.Contains(k.ExternalIP.IP) {
@@ -451,9 +514,9 @@ func (k *NetworkDeployer) readNodesConfig(ctx context.Context, sub *substrate.Su
 	return nil
 }
 
-func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, sub *substrate.Substrate) (map[uint32]gridtypes.Deployment, error) {
+func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, sub *substrate.Substrate) ([]deployer.DeploymentProps, error) {
 	log.Printf("nodes: %v\n", k.Nodes)
-	deployments := make(map[uint32]gridtypes.Deployment)
+	props := []deployer.DeploymentProps{}
 	endpoints := make(map[uint32]string)
 	hiddenNodes := make([]uint32, 0)
 	var ipv4Node uint32
@@ -616,7 +679,11 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 				},
 			},
 		}
-		deployments[node] = deployment
+		// deployments[node] = deployment
+		props = append(props, deployer.DeploymentProps{
+			ContractID: deployer.CapacityReservationContractID(k.NodeCapacityID[node]),
+			Deployment: deployment,
+		})
 	}
 	// hidden nodes deployments
 	for _, node := range hiddenNodes {
@@ -662,23 +729,28 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 				},
 			},
 		}
-		deployments[node] = deployment
+		// deployments[node] = deployment
+		props = append(props, deployer.DeploymentProps{
+			ContractID: deployer.CapacityReservationContractID(k.NodeCapacityID[node]),
+			Deployment: deployment,
+		})
 	}
-	return deployments, nil
+	return props, nil
 }
-func (k *NetworkDeployer) Deploy(ctx context.Context, sub *substrate.Substrate) error {
-	newDeployments, err := k.GenerateVersionlessDeployments(ctx, sub)
-	if err != nil {
-		return errors.Wrap(err, "couldn't generate deployments data")
-	}
-	log.Printf("new deployments")
-	printDeployments(newDeployments)
-	currentDeployments, err := k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)
-	if err := k.updateState(ctx, sub, currentDeployments); err != nil {
-		log.Printf("error updating state: %s\n", err)
-	}
-	return err
-}
+
+//	func (k *NetworkDeployer) Deploy(ctx context.Context, sub *substrate.Substrate) error {
+//		newDeployments, err := k.GenerateVersionlessDeployments(ctx, sub)
+//		if err != nil {
+//			return errors.Wrap(err, "couldn't generate deployments data")
+//		}
+//		log.Printf("new deployments")
+//		printDeployments(newDeployments)
+//		currentDeployments, err := k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)
+//		if err := k.updateState(ctx, sub, currentDeployments); err != nil {
+//			log.Printf("error updating state: %s\n", err)
+//		}
+//		return err
+//	}
 func (k *NetworkDeployer) updateState(ctx context.Context, sub *substrate.Substrate, currentDeploymentIDs map[uint32]uint64) error {
 	k.NodeDeploymentID = currentDeploymentIDs
 	if err := k.readNodesConfig(ctx, sub); err != nil {
@@ -688,36 +760,48 @@ func (k *NetworkDeployer) updateState(ctx context.Context, sub *substrate.Substr
 	return nil
 }
 
-func (k *NetworkDeployer) Cancel(ctx context.Context, sub *substrate.Substrate) error {
-	newDeployments := make(map[uint32]gridtypes.Deployment)
+// func (k *NetworkDeployer) Cancel(ctx context.Context, sub *substrate.Substrate) error {
+// 	newDeployments := make(map[uint32]gridtypes.Deployment)
 
-	currentDeployments, err := k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)
-	if err := k.updateState(ctx, sub, currentDeployments); err != nil {
-		log.Printf("error updating state: %s\n", err)
-	}
-	return err
-}
+// 	currentDeployments, err := k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)
+// 	if err := k.updateState(ctx, sub, currentDeployments); err != nil {
+// 		log.Printf("error updating state: %s\n", err)
+// 	}
+// 	return err
+// }
 
 func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	deployer, err := NewNetworkDeployer(ctx, d, apiClient)
+	k, err := NewNetworkDeployer(ctx, d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
-	if err := deployer.Validate(ctx, apiClient.substrateConn); err != nil {
+	if err := k.Validate(ctx, apiClient.substrateConn); err != nil {
 		return diag.FromErr(err)
 	}
-	err = deployer.Deploy(ctx, apiClient.substrateConn)
+	cl := &deployer.Client{
+		Identity:  apiClient.identity,
+		Sub:       apiClient.substrateConn,
+		Twin:      apiClient.twin_id,
+		GridProxy: apiClient.grid_client,
+		NCPool:    k.ncPool,
+	}
+
+	props, err := k.GenerateVersionlessDeployments(ctx, apiClient.substrateConn)
 	if err != nil {
-		if len(deployer.NodeDeploymentID) != 0 {
+		return diag.FromErr(errors.Wrap(err, "couldn't generate deployments"))
+	}
+	err = k.deployer.Create(ctx, cl, deployer.DeploymentData(k.deploymentData), props)
+	if err != nil {
+		if len(k.NodeDeploymentID) != 0 {
 			// failed to deploy and failed to revert, store the current state locally
 			diags = diag.FromErr(err)
 		} else {
 			return diag.FromErr(err)
 		}
 	}
-	deployer.storeState(d, apiClient.state)
+	k.storeState(d, apiClient.state)
 	d.SetId(uuid.New().String())
 	return diags
 }
@@ -725,23 +809,49 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	deployer, err := NewNetworkDeployer(ctx, d, apiClient)
+	k, err := NewNetworkDeployer(ctx, d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	if err := deployer.Validate(ctx, apiClient.substrateConn); err != nil {
+	if err := k.Validate(ctx, apiClient.substrateConn); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := deployer.invalidateBrokenAttributes(apiClient.substrateConn); err != nil {
+	if err := k.invalidateBrokenAttributes(apiClient.substrateConn); err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't invalidate broken attributes"))
 	}
-
-	err = deployer.Deploy(ctx, apiClient.substrateConn)
+	props, err := k.GenerateVersionlessDeployments(ctx, apiClient.substrateConn)
 	if err != nil {
-		diags = diag.FromErr(err)
+		return diag.FromErr(errors.Wrap(err, "couldn't generate deployments"))
 	}
-	deployer.storeState(d, apiClient.state)
+	// cl := deployer
+	// deployer.deployer.Create()
+	cl := &deployer.Client{
+		Identity:  apiClient.identity,
+		Sub:       apiClient.substrateConn,
+		Twin:      apiClient.twin_id,
+		NCPool:    k.ncPool,
+		GridProxy: apiClient.grid_client,
+	}
+
+	if err := k.CancelRemovedDeployments(ctx, cl, props); err != nil {
+		return diag.FromErr(errors.Wrap(err, "couldn't cancel removed deployments"))
+	}
+	if err := k.CreateNewDeployments(ctx, cl, props); err != nil {
+		return diag.FromErr(errors.Wrap(err, "couldn't create new deployments"))
+	}
+	if err := k.UpdateOldDeployments(ctx, cl, props); err != nil {
+		return diag.FromErr(errors.Wrap(err, "couldn't update old deployments"))
+	}
+
+	// deployment ids should be set in props beffore updating
+	// create, update, delete operations should be separated
+
+	// err = k.Deploy(ctx, apiClient.substrateConn)
+	// if err != nil {
+	// 	diags = diag.FromErr(err)
+	// }
+	k.storeState(d, apiClient.state)
 	return diags
 }
 
@@ -773,20 +883,65 @@ func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta inter
 func resourceNetworkDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	apiClient := meta.(*apiClient)
-	deployer, err := NewNetworkDeployer(ctx, d, apiClient)
+	k, err := NewNetworkDeployer(ctx, d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
-	err = deployer.Cancel(ctx, apiClient.substrateConn)
+	toDelete := []deployer.DeploymentID{}
+	for _, deploymentID := range k.NodeDeploymentID {
+		toDelete = append(toDelete, deployer.DeploymentID(deploymentID))
+	}
+	cl := &deployer.Client{
+		Identity:  apiClient.identity,
+		Sub:       apiClient.substrateConn,
+		Twin:      apiClient.twin_id,
+		NCPool:    k.ncPool,
+		GridProxy: apiClient.grid_client,
+	}
+	err = k.deployer.Delete(ctx, cl, toDelete)
 	if err != nil {
 		diags = diag.FromErr(err)
 	}
+	// err = k.Cancel(ctx, apiClient.substrateConn)
+	// if err != nil {
+	// 	diags = diag.FromErr(err)
+	// }
 	if err == nil {
 		d.SetId("")
 		ns := apiClient.state.GetNetworkState()
-		ns.DeleteNetwork(deployer.Name)
+		ns.DeleteNetwork(k.Name)
 	} else {
-		deployer.storeState(d, apiClient.state)
+		k.storeState(d, apiClient.state)
 	}
 	return diags
+}
+
+func (k *NetworkDeployer) CancelRemovedDeployments(ctx context.Context, cl *deployer.Client, props []deployer.DeploymentProps) error {
+	// if a node is in k.NodeDeploymentIDs and not in k.Nodes, cancel this deployment
+	toDelete := []deployer.DeploymentID{}
+	for node, deploymentID := range k.NodeDeploymentID {
+		if !isInUint32(k.Nodes, node) {
+			toDelete = append(toDelete, deployer.DeploymentID(deploymentID))
+		}
+	}
+
+	// TODO: delete them all or one by one ???
+
+	if err := k.deployer.Delete(ctx, cl, toDelete); err != nil {
+		return errors.Wrap(err, "couldn't cancel deployments")
+	}
+	return nil
+}
+
+func (k *NetworkDeployer) CreateNewDeployments(ctx context.Context, cl *deployer.Client, props []deployer.DeploymentProps) error {
+	// if a node is not in k.NodeDeploymentIDs and in k.Nodes, create this deployment
+
+}
+
+func (k *NetworkDeployer) UpdateOldDeployments(ctx context.Context, cl *deployer.Client, props []deployer.DeploymentProps) error {
+	// if a node is in k.NodeDeploymentIDs and in k.Nodes, there are two paths to take:
+	// check if k.NodeCapacityID is in k.CapacityContractIDs:
+	// 		if exists: update this deployment
+	//		if not: cancel this deployment, recreate it.
+	//
 }

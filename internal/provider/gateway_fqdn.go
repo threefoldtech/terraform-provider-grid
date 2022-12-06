@@ -26,7 +26,7 @@ type GatewayFQDNDeployer struct {
 	DeploymentData   deployer.DeploymentData
 	DeploymentProps  deployer.DeploymentProps
 
-	DeployerClient deployer.Client
+	DeployerClient *deployer.Client
 	APIClient      *apiClient
 	ncPool         client.NodeClientCollection
 	deployer       deployer.SingleDeployerInterface
@@ -71,7 +71,7 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 		Deployment: dl,
 		ContractID: deployer.CapacityReservationContractID(capacityReservationContractID),
 	}
-	deployerClinet := deployer.Client{
+	deployerClinet := &deployer.Client{
 		Identity:  apiClient.identity,
 		Sub:       apiClient.substrateConn,
 		Twin:      apiClient.twin_id,

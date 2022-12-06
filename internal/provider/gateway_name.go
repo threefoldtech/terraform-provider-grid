@@ -28,7 +28,7 @@ type GatewayNameDeployer struct {
 	DeploymentProps  deployer.DeploymentProps
 	NameContractID   uint64
 
-	DeployerClient deployer.Client
+	DeployerClient *deployer.Client
 	APIClient      *apiClient
 	ncPool         client.NodeClientCollection
 	deployer       deployer.SingleDeployerInterface
@@ -73,7 +73,7 @@ func NewGatewayNameDeployer(d *schema.ResourceData, apiClient *apiClient) (Gatew
 		Deployment: dl,
 		ContractID: deployer.CapacityReservationContractID(capacityReservationContractID),
 	}
-	deployerClinet := deployer.Client{
+	deployerClinet := &deployer.Client{
 		Identity:  apiClient.identity,
 		Sub:       apiClient.substrateConn,
 		Twin:      apiClient.twin_id,

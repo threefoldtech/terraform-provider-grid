@@ -31,7 +31,7 @@ type DeploymentDeployer struct {
 	DeploymentData  deployer.DeploymentData
 	DeploymentProps deployer.DeploymentProps
 
-	DeployerClient deployer.Client
+	DeployerClient *deployer.Client
 	APIClient      *apiClient
 	ncPool         client.NodeClientCollection
 	deployer       deployer.SingleDeployerInterface
@@ -83,7 +83,7 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 	networkingState := apiClient.state.GetNetworkState()
 	net := networkingState.GetNetwork(networkName)
 	ipRange := net.GetNodeSubnet(nodeID)
-	deployerClinet := deployer.Client{
+	deployerClinet := &deployer.Client{
 		Identity:  apiClient.identity,
 		Sub:       apiClient.substrateConn,
 		Twin:      apiClient.twin_id,

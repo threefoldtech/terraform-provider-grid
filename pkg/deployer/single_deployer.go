@@ -40,19 +40,19 @@ type DeploymentProps struct {
 // SingleDeployerInterface handles resources that have single deployments per reservation contract
 type SingleDeployerInterface interface {
 	// Create handles deployment creations
-	Create(ctx context.Context, cl Client, data DeploymentData, d *DeploymentProps) error
+	Create(ctx context.Context, cl *Client, data DeploymentData, d *DeploymentProps) error
 	// Update handles deployment updates
-	Update(ctx context.Context, cl Client, data DeploymentData, d *DeploymentProps) error
+	Update(ctx context.Context, cl *Client, data DeploymentData, d *DeploymentProps) error
 	// Delete handles deployment deletions
-	Delete(ctx context.Context, cl Client, deploymentID DeploymentID) error
+	Delete(ctx context.Context, cl *Client, deploymentID DeploymentID) error
 	// GetCurrentState get current deployment state from node
-	GetCurrentState(ctx context.Context, cl Client, d *DeploymentProps) (gridtypes.Deployment, error)
+	GetCurrentState(ctx context.Context, cl *Client, d *DeploymentProps) (gridtypes.Deployment, error)
 }
 
 type SingleDeployer struct {
 }
 
-func (s *SingleDeployer) Create(ctx context.Context, cl Client, data DeploymentData, d *DeploymentProps) error {
+func (s *SingleDeployer) Create(ctx context.Context, cl *Client, data DeploymentData, d *DeploymentProps) error {
 	err := s.validate(ctx, cl, d)
 	if err != nil {
 		return errors.Wrap(err, "deployer failed to validate deployment")
@@ -69,7 +69,7 @@ func (s *SingleDeployer) Create(ctx context.Context, cl Client, data DeploymentD
 	}
 	return nil
 }
-func (s *SingleDeployer) Update(ctx context.Context, cl Client, data DeploymentData, d *DeploymentProps) error {
+func (s *SingleDeployer) Update(ctx context.Context, cl *Client, data DeploymentData, d *DeploymentProps) error {
 	err := s.validate(ctx, cl, d)
 	if err != nil {
 		return errors.Wrap(err, "deployer failed to validate deployment")
@@ -97,7 +97,7 @@ func (s *SingleDeployer) Update(ctx context.Context, cl Client, data DeploymentD
 
 	return nil
 }
-func (s *SingleDeployer) Delete(ctx context.Context, cl Client, deploymentID DeploymentID) error {
+func (s *SingleDeployer) Delete(ctx context.Context, cl *Client, deploymentID DeploymentID) error {
 	err := EnsureDeploymentCanceled(cl.Sub, cl.Identity, uint64(deploymentID))
 	if err != nil {
 		return errors.Wrap(err, "failed to delete deployment")
@@ -105,7 +105,7 @@ func (s *SingleDeployer) Delete(ctx context.Context, cl Client, deploymentID Dep
 	return nil
 }
 
-func (s *SingleDeployer) validate(ctx context.Context, cl Client, d *DeploymentProps) error {
+func (s *SingleDeployer) validate(ctx context.Context, cl *Client, d *DeploymentProps) error {
 	contract, err := cl.Sub.GetContract(uint64(d.ContractID))
 	if err != nil {
 		return err
@@ -179,7 +179,7 @@ func (s *SingleDeployer) validate(ctx context.Context, cl Client, d *DeploymentP
 	return nil
 }
 
-func (s *SingleDeployer) PushCreate(ctx context.Context, cl Client, data DeploymentData, d *DeploymentProps) error {
+func (s *SingleDeployer) PushCreate(ctx context.Context, cl *Client, data DeploymentData, d *DeploymentProps) error {
 	capacityContract, err := cl.Sub.GetContract(uint64(d.ContractID))
 	if err != nil {
 		return err
@@ -230,7 +230,7 @@ func (s *SingleDeployer) PushCreate(ctx context.Context, cl Client, data Deploym
 	return nil
 }
 
-func (s *SingleDeployer) PushUpdate(ctx context.Context, cl Client, data DeploymentData, d *DeploymentProps) error {
+func (s *SingleDeployer) PushUpdate(ctx context.Context, cl *Client, data DeploymentData, d *DeploymentProps) error {
 
 	capacityContract, err := cl.Sub.GetContract(uint64(d.ContractID))
 	if err != nil {
@@ -315,7 +315,7 @@ func (s *SingleDeployer) PushUpdate(ctx context.Context, cl Client, data Deploym
 	return nil
 }
 
-func (s *SingleDeployer) Wait(ctx context.Context, cl Client, d *DeploymentProps) error {
+func (s *SingleDeployer) Wait(ctx context.Context, cl *Client, d *DeploymentProps) error {
 	lastProgress := Progress{time.Now(), 0}
 	workloadsNumber := len(d.Deployment.Workloads)
 	contract, err := cl.Sub.GetContract(uint64(d.ContractID))
@@ -394,7 +394,7 @@ func capacityDiff(new gridtypes.Capacity, old gridtypes.Capacity) gridtypes.Capa
 	}
 }
 
-func (s *SingleDeployer) GetCurrentState(ctx context.Context, cl Client, d *DeploymentProps) (gridtypes.Deployment, error) {
+func (s *SingleDeployer) GetCurrentState(ctx context.Context, cl *Client, d *DeploymentProps) (gridtypes.Deployment, error) {
 	contract, err := cl.Sub.GetContract(uint64(d.ContractID))
 	if err != nil {
 		return gridtypes.Deployment{}, err

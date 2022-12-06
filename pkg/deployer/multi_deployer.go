@@ -13,20 +13,20 @@ import (
 // MultiDeployer handles resources that have multiple deployments per reservation contract
 type MultiDeployerInterface interface {
 	// Create handles multiple deployments creations
-	Create(ctx context.Context, cl Client, data DeploymentData, d []DeploymentProps) error
+	Create(ctx context.Context, cl *Client, data DeploymentData, d []DeploymentProps) error
 	// Update handles multiple deployments updates
-	Update(ctx context.Context, cl Client, data DeploymentData, d []DeploymentProps) error
+	Update(ctx context.Context, cl *Client, data DeploymentData, d []DeploymentProps) error
 	// Delete handles multiple deployments deletions
-	Delete(ctx context.Context, cl Client, deploymentID []DeploymentID) error
+	Delete(ctx context.Context, cl *Client, deploymentID []DeploymentID) error
 	// GetCurrentState get current deployments states from nodes
-	GetCurrentState(ctx context.Context, cl Client, d []DeploymentProps) ([]gridtypes.Deployment, error)
+	GetCurrentState(ctx context.Context, cl *Client, d []DeploymentProps) ([]gridtypes.Deployment, error)
 }
 
 type MultiDeployer struct {
 	Single SingleDeployer
 }
 
-func (m *MultiDeployer) Create(ctx context.Context, cl Client, data DeploymentData, d []DeploymentProps) error {
+func (m *MultiDeployer) Create(ctx context.Context, cl *Client, data DeploymentData, d []DeploymentProps) error {
 	err := m.validate(ctx, cl, d)
 	if err != nil {
 		return errors.Wrap(err, "error validating deployment")
@@ -54,7 +54,7 @@ func (m *MultiDeployer) Create(ctx context.Context, cl Client, data DeploymentDa
 	}
 	return nil
 }
-func (m *MultiDeployer) Update(ctx context.Context, cl Client, data DeploymentData, d []DeploymentProps) error {
+func (m *MultiDeployer) Update(ctx context.Context, cl *Client, data DeploymentData, d []DeploymentProps) error {
 	err := m.validate(ctx, cl, d)
 	if err != nil {
 		return errors.Wrap(err, "error validating deployment")
@@ -84,7 +84,7 @@ func (m *MultiDeployer) Update(ctx context.Context, cl Client, data DeploymentDa
 	}
 	return nil
 }
-func (m *MultiDeployer) Delete(ctx context.Context, cl Client, deploymentID []DeploymentID) error {
+func (m *MultiDeployer) Delete(ctx context.Context, cl *Client, deploymentID []DeploymentID) error {
 	for _, id := range deploymentID {
 		err := m.Single.Delete(ctx, cl, id)
 		if err != nil {
@@ -94,7 +94,7 @@ func (m *MultiDeployer) Delete(ctx context.Context, cl Client, deploymentID []De
 	return nil
 }
 
-func (m *MultiDeployer) GetCurrentState(ctx context.Context, cl Client, d []DeploymentProps) ([]gridtypes.Deployment, error) {
+func (m *MultiDeployer) GetCurrentState(ctx context.Context, cl *Client, d []DeploymentProps) ([]gridtypes.Deployment, error) {
 	currentDeployments := []gridtypes.Deployment{}
 	for idx := range d {
 		deployment, err := m.Single.GetCurrentState(ctx, cl, &d[idx])
@@ -112,7 +112,7 @@ func (m *MultiDeployer) reuseOldDeployments(oldDeployments []gridtypes.Deploymen
 	}
 }
 
-func (m *MultiDeployer) validate(ctx context.Context, cl Client, d []DeploymentProps) error {
+func (m *MultiDeployer) validate(ctx context.Context, cl *Client, d []DeploymentProps) error {
 	farmIPs := map[uint64]int{}
 	nodes := map[uint32]*proxytypes.NodeWithNestedCapacity{}
 	for idx := range d {
@@ -185,7 +185,7 @@ func (m *MultiDeployer) validate(ctx context.Context, cl Client, d []DeploymentP
 	return nil
 }
 
-func getNodeInfo(cl Client, nodeID uint32, nodes map[uint32]*proxytypes.NodeWithNestedCapacity) (*proxytypes.NodeWithNestedCapacity, error) {
+func getNodeInfo(cl *Client, nodeID uint32, nodes map[uint32]*proxytypes.NodeWithNestedCapacity) (*proxytypes.NodeWithNestedCapacity, error) {
 	if _, ok := nodes[nodeID]; ok {
 		return nodes[nodeID], nil
 	}
@@ -197,7 +197,7 @@ func getNodeInfo(cl Client, nodeID uint32, nodes map[uint32]*proxytypes.NodeWith
 	return nodes[nodeID], nil
 }
 
-func calculateFarmIPs(cl Client, farmID uint64, farmIPs map[uint64]int) error {
+func calculateFarmIPs(cl *Client, farmID uint64, farmIPs map[uint64]int) error {
 	if _, ok := farmIPs[farmID]; ok {
 		return nil
 	}
