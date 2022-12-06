@@ -50,8 +50,8 @@ func resourceNetwork() *schema.Resource {
 				Optional: true,
 				Default:  "",
 			},
-			"capacity_reservation_contract_ids": {
-				Type:     schema.TypeSet,
+			"capacity_contracts": {
+				Type:     schema.TypeList,
 				Required: true,
 				Elem: &schema.Schema{
 					Type: schema.TypeInt,
@@ -59,7 +59,7 @@ func resourceNetwork() *schema.Resource {
 				Description: "List of capacity reservation contracts the network should be deployed on",
 			},
 			"nodes": {
-				Type:     schema.TypeSet,
+				Type:     schema.TypeList,
 				Computed: true,
 				Elem: &schema.Schema{
 					Type: schema.TypeInt,
@@ -115,11 +115,11 @@ func resourceNetwork() *schema.Resource {
 }
 
 type NetworkDeployer struct {
-	Name                           string
-	Description                    string
-	CapacityReservationContractIDs []uint64 `name:"capacity_reservation_contract_ids"`
-	IPRange                        gridtypes.IPNet
-	AddWGAccess                    bool
+	Name              string
+	Description       string
+	CapacityContracts []uint64 `name:"capacity_contracts"`
+	IPRange           gridtypes.IPNet
+	AddWGAccess       bool
 
 	Nodes            []uint32
 	AccessWGConfig   string
@@ -146,10 +146,10 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 	// 	nodes[idx] = uint32(n.(int))
 	// }
 
-	capacityReservationContractIDsIf := d.Get("capacity_reservation_contract_ids").([]interface{})
-	capacityReservationContractIDs := make([]uint64, len(capacityReservationContractIDsIf))
-	for idx, id := range capacityReservationContractIDsIf {
-		capacityReservationContractIDs[idx] = id.(uint64)
+	capacityContractsIf := d.Get("capacity_reservation_contract_ids").([]interface{})
+	capacityContracts := make([]uint64, len(capacityContractsIf))
+	for idx, id := range capacityContractsIf {
+		capacityContracts[idx] = id.(uint64)
 	}
 
 	nodeCapacityIDIf := d.Get("node_capacity_id").(map[string]interface{})
@@ -162,7 +162,7 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 		nodeCapacityID[uint32(nodeInt)] = uint64(id.(int))
 	}
 
-	nodes, err := getUniqueNodes(capacityReservationContractIDs, nodeCapacityID, apiClient)
+	nodes, err := getUniqueNodes(capacityContracts, nodeCapacityID, apiClient)
 	if err != nil {
 		return NetworkDeployer{}, nil
 	}
@@ -177,6 +177,7 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 		deploymentID := uint64(id.(int))
 		nodeDeploymentID[uint32(nodeInt)] = deploymentID
 	}
+
 	nodesIPRange := make(map[uint32]gridtypes.IPNet)
 	nodesIPRangeIf := d.Get("nodes_ip_range").(map[string]interface{})
 	for node, r := range nodesIPRangeIf {
@@ -230,25 +231,25 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 		Single: deployer.SingleDeployer{},
 	}
 	deployer := NetworkDeployer{
-		Name:                           d.Get("name").(string),
-		Description:                    d.Get("description").(string),
-		CapacityReservationContractIDs: capacityReservationContractIDs,
-		Nodes:                          nodes,
-		IPRange:                        ipRange,
-		AddWGAccess:                    addWGAccess,
-		AccessWGConfig:                 d.Get("access_wg_config").(string),
-		ExternalIP:                     externalIP,
-		ExternalSK:                     externalSK,
-		PublicNodeID:                   uint32(d.Get("public_node_id").(int)),
-		NodesIPRange:                   nodesIPRange,
-		NodeDeploymentID:               nodeDeploymentID,
-		NodeCapacityID:                 nodeCapacityID,
-		Keys:                           make(map[uint32]wgtypes.Key),
-		WGPort:                         make(map[uint32]int),
-		APIClient:                      apiClient,
-		ncPool:                         pool,
-		deploymentData:                 string(deploymentDataStr),
-		deployer:                       &multiDeployere,
+		Name:              d.Get("name").(string),
+		Description:       d.Get("description").(string),
+		CapacityContracts: capacityContracts,
+		Nodes:             nodes,
+		IPRange:           ipRange,
+		AddWGAccess:       addWGAccess,
+		AccessWGConfig:    d.Get("access_wg_config").(string),
+		ExternalIP:        externalIP,
+		ExternalSK:        externalSK,
+		PublicNodeID:      uint32(d.Get("public_node_id").(int)),
+		NodesIPRange:      nodesIPRange,
+		NodeDeploymentID:  nodeDeploymentID,
+		NodeCapacityID:    nodeCapacityID,
+		Keys:              make(map[uint32]wgtypes.Key),
+		WGPort:            make(map[uint32]int),
+		APIClient:         apiClient,
+		ncPool:            pool,
+		deploymentData:    string(deploymentDataStr),
+		deployer:          &multiDeployere,
 	}
 	return deployer, nil
 }
@@ -787,6 +788,10 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 		GridProxy: apiClient.grid_client,
 		NCPool:    k.ncPool,
 	}
+	// err = k.CreateNeededCapacityContracts(ctx, apiClient.substrateConn)
+	// if err != nil {
+	// 	return diag.FromErr(errors.Wrap(err, "couldn't create capacity contracts for network resource"))
+	// }
 
 	props, err := k.GenerateVersionlessDeployments(ctx, apiClient.substrateConn)
 	if err != nil {
@@ -805,6 +810,75 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 	d.SetId(uuid.New().String())
 	return diags
 }
+
+// UpdateCapacityContracts creates and deletes needed capacity contracts depending on nodes and wg access
+// func (k *NetworkDeployer) UpdateCapacityContracts(ctx context.Context, sub *substrate.Substrate) error {
+// 	// create capacity contracts for nodes
+// 	// if a user requires wg access, create a separate capacity contract for the access node
+// 	//
+// 	// check k.Nodes and k.NetworkCapacityContracts
+// 	// if a node doesn't have a corresponding capacity contract, create it
+// 	// if user wants wg access and k.AccessNodeCapacityContract == 0, create a new capacity contract
+// 	nodesWithCapacities := []uint32{}
+// 	toCreate := []uint32{}
+// 	toDelete := []uint64{}
+
+// 	for _, id := range k.NetworkCapacityContracts {
+// 		contract, err := sub.GetContract(id)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		node := uint32(contract.ContractType.CapacityReservationContract.NodeID)
+// 		if !isInUint32(k.Nodes, node) {
+// 			toDelete = append(toDelete, id)
+// 		}
+// 		nodesWithCapacities = append(nodesWithCapacities, node)
+// 	}
+
+// 	// delete contracts
+// 	for _, id := range toDelete {
+// 		err := sub.CancelContract(k.APIClient.identity, id)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		k.findAndRemoveContract(id)
+// 	}
+// 	// update k.NetworkCapacityContracts accordingly
+
+// 	for _, node := range k.Nodes {
+// 		if !isInUint32(nodesWithCapacities, node) {
+// 			toCreate = append(toCreate, node)
+// 		}
+// 	}
+
+// 	// create contracts
+// 	// update k.NetworkCapacityContracts accordingly
+
+// 	// choosing an access node
+// 	if k.AddWGAccess {
+// 		// check if k.AccessNodeCapacity exists
+// 		// if not: create a contract
+// 		// if exists: ok
+// 		if k.AccessNodeCapacityContract == 0 {
+
+// 		}
+// 	} else {
+// 		// check if k.AccessNodeCapacity exists
+// 		// if exists: delete it
+// 		// if no, ok
+// 	}
+
+// }
+
+// func (k *NetworkDeployer) findAndRemoveContract(id uint64) {
+// 	for idx := range k.NetworkCapacityContracts {
+// 		if k.NetworkCapacityContracts[idx] == id {
+// 			k.NetworkCapacityContracts[idx] = k.NetworkCapacityContracts[len(k.NetworkCapacityContracts)-1]
+// 			k.NetworkCapacityContracts = k.NetworkCapacityContracts[:len(k.NetworkCapacityContracts)-1]
+// 			return
+// 		}
+// 	}
+// }
 
 func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
@@ -925,9 +999,13 @@ func (k *NetworkDeployer) CancelRemovedDeployments(ctx context.Context, cl *depl
 		}
 	}
 
-	// TODO: delete them all or one by one ???
+	// TODO: return deleted deployments???
 
-	if err := k.deployer.Delete(ctx, cl, toDelete); err != nil {
+	deleted, err := k.deployer.Delete(ctx, cl, toDelete)
+	for _, d := range deleted {
+		// find d in k.nodeDeploymentIDs and delete it
+	}
+	if err != nil {
 		return errors.Wrap(err, "couldn't cancel deployments")
 	}
 	return nil
@@ -935,6 +1013,24 @@ func (k *NetworkDeployer) CancelRemovedDeployments(ctx context.Context, cl *depl
 
 func (k *NetworkDeployer) CreateNewDeployments(ctx context.Context, cl *deployer.Client, props []deployer.DeploymentProps) error {
 	// if a node is not in k.NodeDeploymentIDs and in k.Nodes, create this deployment
+	toCreate := []deployer.DeploymentProps{}
+	for _, p := range props {
+		contract, err := cl.Sub.GetContract(p.Deployment.DeploymentID.U64())
+		if err != nil {
+			return err
+		}
+		node := contract.ContractType.CapacityReservationContract.NodeID
+		if _, ok := k.NodeDeploymentID[uint32(node)]; !ok {
+			toCreate = append(toCreate, p)
+		}
+	}
+	created, err := k.deployer.Create(ctx, cl, toCreate)
+	for node, deploymentID := range created {
+		k.NodeDeploymentID[node] = deploymentID
+	}
+	if err != nil {
+		return errors.Wrap(err, "couldn't create deployments")
+	}
 
 }
 
