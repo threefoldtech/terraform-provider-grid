@@ -16,7 +16,6 @@ provider "grid" {
 
 resource "grid_kubernetes" "k8s1" {
   network_name = "nonexistname"
-  nodes_ip_range = {x = "10.1.0.0/16"}
   token = "12345678910122"
   ssh_key = "${var.public_key}"
 

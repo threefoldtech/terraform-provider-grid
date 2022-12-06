@@ -24,7 +24,6 @@ resource "grid_network" "net1" {
 resource "grid_deployment" "d1" {
   node = 2
   network_name = grid_network.net1.name
-  ip_range = grid_network.net1.nodes_ip_range[2]
   disks {
     name = "data"
     size = 1
