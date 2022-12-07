@@ -37,9 +37,14 @@ func resourceGatewayFQDNProxy() *schema.Resource {
 				Default:     "",
 				Description: "Description field",
 			},
-			"node": {
+			"capacity_reservation_contract_id": {
 				Type:        schema.TypeInt,
 				Required:    true,
+				Description: "Capacity reservation contract id from capacity reserver",
+			},
+			"node": {
+				Type:        schema.TypeInt,
+				Computed:    true,
 				Description: "The gateway's node id",
 			},
 			"fqdn": {
@@ -61,11 +66,11 @@ func resourceGatewayFQDNProxy() *schema.Resource {
 				},
 				Description: "The backends of the gateway proxy (in the format (http|https)://ip:port), with tls_passthrough the scheme must be https",
 			},
-			"node_deployment_id": {
+			"contract_deployment_id": {
 				Type:        schema.TypeMap,
 				Computed:    true,
 				Elem:        &schema.Schema{Type: schema.TypeInt},
-				Description: "Mapping from each node to its deployment id",
+				Description: "Mapping from each contract to its deployment id",
 			},
 		},
 	}
