@@ -5,7 +5,15 @@ import (
 	"github.com/threefoldtech/substrate-client"
 )
 
-func isIn(l []uint16, i uint16) bool {
+type Number interface {
+	int | int8 | int16 | int32 | int64 | uint | uint8 | uint16 | uint32 | uint64
+}
+
+type Chars interface {
+	byte | string
+}
+
+func isIn[N Number | Chars](l []N, i N) bool {
 	for _, x := range l {
 		if i == x {
 			return true
@@ -13,32 +21,12 @@ func isIn(l []uint16, i uint16) bool {
 	}
 	return false
 }
-
-func isInByte(l []byte, i byte) bool {
-	for _, x := range l {
-		if i == x {
-			return true
-		}
+func SumIntsOrFloats[K comparable, V int64 | float64](m map[K]V) V {
+	var s V
+	for _, v := range m {
+		s += v
 	}
-	return false
-}
-
-func isInUint32(l []uint32, i uint32) bool {
-	for _, x := range l {
-		if i == x {
-			return true
-		}
-	}
-	return false
-}
-
-func isInStr(l []string, i string) bool {
-	for _, x := range l {
-		if i == x {
-			return true
-		}
-	}
-	return false
+	return s
 }
 
 func IsValidContract(sub *substrate.Substrate, contractID uint64) (bool, error) {

@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"sort"
 	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
+	"github.com/threefoldtech/grid_proxy_server/pkg/types"
 	"github.com/threefoldtech/substrate-client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/deployer"
@@ -49,9 +51,27 @@ func resourceNetwork() *schema.Resource {
 				Optional: true,
 				Default:  "",
 			},
+			"capacity_ids": {
+				Type:        schema.TypeList,
+				Required:    true,
+				Description: "List of capacity contract ids that the user wants to deploy network on",
+			},
+			"capacity_deployment_map": {
+				Type:     schema.TypeMap,
+				Computed: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeInt,
+				},
+				Description: "Map from capactiy contract id to deployment id",
+			},
+			"access_node_capacity_id": {
+				Type:        schema.TypeInt,
+				Computed:    true,
+				Description: "Access node capacity contract id that is created if an access node is required (user requires wg access, or all nodes don't a have public configuration).",
+			},
 			"nodes": {
 				Type:     schema.TypeList,
-				Required: true,
+				Computed: true,
 				Elem: &schema.Schema{
 					Type: schema.TypeInt,
 				},
@@ -108,16 +128,21 @@ func resourceNetwork() *schema.Resource {
 type NetworkDeployer struct {
 	Name        string
 	Description string
-	Nodes       []uint32
+	CapacityIDs []uint64
 	IPRange     gridtypes.IPNet
 	AddWGAccess bool
 
-	AccessWGConfig   string
-	ExternalIP       *gridtypes.IPNet
-	ExternalSK       wgtypes.Key
-	PublicNodeID     uint32
-	NodeDeploymentID map[uint32]uint64
-	NodesIPRange     map[uint32]gridtypes.IPNet
+	Nodes                 []uint32
+	AccessWGConfig        string
+	AccessNodeCapacityID  uint64
+	ExternalIP            *gridtypes.IPNet
+	ExternalSK            wgtypes.Key
+	PublicNodeID          uint32
+	NodeDeploymentID      map[uint32]uint64
+	NodesIPRange          map[uint32]gridtypes.IPNet
+	CapacityDeploymentMap map[uint64]uint64
+	NodeCapacity          map[uint32]uint64
+	CapacityNode          map[uint64]uint32
 
 	WGPort    map[uint32]int
 	Keys      map[uint32]wgtypes.Key
@@ -128,12 +153,36 @@ type NetworkDeployer struct {
 
 func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *apiClient) (NetworkDeployer, error) {
 	var err error
-	nodesIf := d.Get("nodes").([]interface{})
-	nodes := make([]uint32, len(nodesIf))
-	for idx, n := range nodesIf {
-		nodes[idx] = uint32(n.(int))
+	capacityIDsIf := d.Get("capacity_ids").([]interface{})
+	capacityIDs := make([]uint64, len(capacityIDsIf))
+	for idx, c := range capacityIDsIf {
+		capacityIDs[idx] = c.(uint64)
 	}
 
+	capacityDeploymentIDIf := d.Get("capacity_deployment_id").(map[string]interface{})
+	capacityDeploymentID := map[uint64]uint64{}
+	for capacityStr, deploymentID := range capacityDeploymentIDIf {
+		capacityID, err := strconv.ParseUint(capacityStr, 10, 64)
+		if err != nil {
+			return NetworkDeployer{}, errors.Wrap(err, "couldn't parse capacity id")
+		}
+		capacityDeploymentID[capacityID] = deploymentID.(uint64)
+	}
+
+	nodeCapacityIDIf := d.Get("node_capacity_id").(map[string]interface{})
+	nodeCapacity := map[uint32]uint64{}
+	for node, id := range nodeCapacityIDIf {
+		nodeInt, err := strconv.ParseUint(node, 10, 32)
+		if err != nil {
+			return NetworkDeployer{}, errors.Wrap(err, "couldn't parse node id")
+		}
+		nodeCapacity[uint32(nodeInt)] = uint64(id.(int))
+	}
+	capacityNode := map[uint64]uint32{}
+	nodes, err := getUniqueNodes(capacityIDs, nodeCapacity, capacityNode, apiClient)
+	if err != nil {
+		return NetworkDeployer{}, fmt.Errorf("couldn't get unique nodes. %w", err)
+	}
 	nodeDeploymentIDIf := d.Get("node_deployment_id").(map[string]interface{})
 	nodeDeploymentID := make(map[uint32]uint64)
 	for node, id := range nodeDeploymentIDIf {
@@ -194,39 +243,73 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 		log.Printf("error parsing deploymentdata: %s", err.Error())
 	}
 	deployer := NetworkDeployer{
-		Name:             d.Get("name").(string),
-		Description:      d.Get("description").(string),
-		Nodes:            nodes,
-		IPRange:          ipRange,
-		AddWGAccess:      addWGAccess,
-		AccessWGConfig:   d.Get("access_wg_config").(string),
-		ExternalIP:       externalIP,
-		ExternalSK:       externalSK,
-		PublicNodeID:     uint32(d.Get("public_node_id").(int)),
-		NodesIPRange:     nodesIPRange,
-		NodeDeploymentID: nodeDeploymentID,
-		Keys:             make(map[uint32]wgtypes.Key),
-		WGPort:           make(map[uint32]int),
-		APIClient:        apiClient,
-		ncPool:           pool,
-		deployer:         deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, nil, string(deploymentDataStr)),
+		Name:                  d.Get("name").(string),
+		Description:           d.Get("description").(string),
+		CapacityIDs:           capacityIDs,
+		Nodes:                 nodes,
+		IPRange:               ipRange,
+		AddWGAccess:           addWGAccess,
+		AccessNodeCapacityID:  d.Get("access_node_capacity_id").(uint64),
+		AccessWGConfig:        d.Get("access_wg_config").(string),
+		ExternalIP:            externalIP,
+		ExternalSK:            externalSK,
+		PublicNodeID:          uint32(d.Get("public_node_id").(int)),
+		NodesIPRange:          nodesIPRange,
+		NodeDeploymentID:      nodeDeploymentID,
+		CapacityDeploymentMap: capacityDeploymentID,
+		NodeCapacity:          nodeCapacity,
+		CapacityNode:          capacityNode,
+		Keys:                  make(map[uint32]wgtypes.Key),
+		WGPort:                make(map[uint32]int),
+		APIClient:             apiClient,
+		ncPool:                pool,
+		deployer:              deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, nil, string(deploymentDataStr)),
 	}
 	return deployer, nil
+}
+
+// getUniqueNodes gets uniqe nodes list from capacity contracts that the user provided, assigns each node to a capacity contract and vice versa.
+func getUniqueNodes(contractIDs []uint64, nodeCapacityID map[uint32]uint64, capacityNode map[uint64]uint32, cl *apiClient) ([]uint32, error) {
+	nodes := []uint32{}
+	for _, id := range contractIDs {
+		contract, err := cl.substrateConn.GetContract(id)
+		if err != nil {
+			return nil, fmt.Errorf("couldn't get capacity contract with id %d. %w", id, err)
+		}
+		node := uint32(contract.ContractType.CapacityReservationContract.NodeID)
+
+		if isIn[uint64](contractIDs, nodeCapacityID[node]) {
+			// this node is already set to another capacity contract that exists in contarctIDs, no need to reset it
+			continue
+		}
+		if !isIn[uint32](nodes, node) {
+			nodes = append(nodes, node)
+			nodeCapacityID[node] = id
+			capacityNode[id] = node
+		}
+	}
+	sort.Slice(nodes, func(i, j int) bool { return nodes[i] < nodes[j] })
+	return nodes, nil
 }
 
 // invalidateBrokenAttributes removes outdated attrs and deleted contracts
 func (k *NetworkDeployer) invalidateBrokenAttributes(sub *substrate.Substrate) error {
 
-	for node, contractID := range k.NodeDeploymentID {
-		contract, err := sub.GetContract(contractID)
+	for capacity := range k.CapacityDeploymentMap {
+		contract, err := sub.GetContract(capacity)
 		if (err == nil && !contract.State.IsCreated) || errors.Is(err, substrate.ErrNotFound) {
+			node := k.CapacityNode[capacity]
 			delete(k.NodeDeploymentID, node)
 			delete(k.NodesIPRange, node)
 			delete(k.Keys, node)
 			delete(k.WGPort, node)
+			delete(k.NodeCapacity, node)
+			delete(k.CapacityDeploymentMap, capacity)
+			delete(k.CapacityNode, capacity)
 		} else if err != nil {
-			return errors.Wrapf(err, "couldn't get node %d contract %d", node, contractID)
+			return errors.Wrapf(err, "couldn't get capacity contract id %d ", capacity)
 		}
+
 	}
 	if k.ExternalIP != nil && !k.IPRange.Contains(k.ExternalIP.IP) {
 		k.ExternalIP = nil
@@ -288,7 +371,7 @@ func (k *NetworkDeployer) storeState(d *schema.ResourceData, state state.StateI)
 		}
 	}
 	for node := range k.NodeDeploymentID {
-		if !isInUint32(nodes, node) {
+		if !isIn[uint32](nodes, node) {
 			if k.PublicNodeID == node {
 				continue
 			}
@@ -328,7 +411,7 @@ func (k *NetworkDeployer) updateNetworkLocalState(state state.StateI) {
 }
 
 func nextFreeOctet(used []byte, start *byte) error {
-	for isInByte(used, *start) && *start <= 254 {
+	for isIn[byte](used, *start) && *start <= 254 {
 		*start += 1
 	}
 	if *start == 255 {
@@ -342,7 +425,7 @@ func (k *NetworkDeployer) assignNodesIPs(nodes []uint32) error {
 	l := len(k.IPRange.IP)
 	usedIPs := make([]byte, 0) // the third octet
 	for node, ip := range k.NodesIPRange {
-		if isInUint32(nodes, node) {
+		if isIn[uint32](nodes, node) {
 			usedIPs = append(usedIPs, ip.IP[l-2])
 			ips[node] = ip
 		}
@@ -410,13 +493,14 @@ func (k *NetworkDeployer) readNodesConfig(ctx context.Context, sub *substrate.Su
 	WGPort := make(map[uint32]int)
 	nodesIPRange := make(map[uint32]gridtypes.IPNet)
 	log.Printf("reading node config")
-	nodeDeployments, err := k.deployer.GetDeploymentObjects(ctx, sub, k.NodeDeploymentID)
+	capacityDeployments, err := k.deployer.GetDeploymentObjects(ctx, sub, k.CapacityDeploymentMap)
 	if err != nil {
 		return errors.Wrap(err, "failed to get deployment objects")
 	}
-	printDeployments(nodeDeployments)
+	printDeployments(capacityDeployments)
 	WGAccess := false
-	for node, dl := range nodeDeployments {
+	for capacityID, dl := range capacityDeployments {
+		node := k.CapacityNode[capacityID]
 		for _, wl := range dl.Workloads {
 			if wl.Type != zos.NetworkType {
 				continue
@@ -451,14 +535,14 @@ func (k *NetworkDeployer) readNodesConfig(ctx context.Context, sub *substrate.Su
 	return nil
 }
 
-func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, sub *substrate.Substrate) (map[uint32]gridtypes.Deployment, error) {
-	log.Printf("nodes: %v\n", k.Nodes)
-	deployments := make(map[uint32]gridtypes.Deployment)
+func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, sub *substrate.Substrate) (map[uint64]gridtypes.Deployment, error) {
+	log.Printf("Node-CapacityID: %v\n", k.NodeCapacity)
+	deployments := make(map[uint64]gridtypes.Deployment)
 	endpoints := make(map[uint32]string)
 	hiddenNodes := make([]uint32, 0)
-	var ipv4Node uint32
+	// var ipv4Node uint32
 	accessibleNodes := make([]uint32, 0)
-	for _, node := range k.Nodes {
+	for node := range k.NodeCapacity {
 		cl, err := k.ncPool.GetNodeClient(sub, node)
 		if err != nil {
 			return nil, errors.Wrapf(err, "couldn't get node %d client", node)
@@ -470,7 +554,7 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 			return nil, errors.Wrapf(err, "failed to get node %d endpoint", node)
 		} else if endpoint.To4() != nil {
 			accessibleNodes = append(accessibleNodes, node)
-			ipv4Node = node
+			// ipv4Node = node
 			endpoints[node] = endpoint.String()
 		} else {
 			accessibleNodes = append(accessibleNodes, node)
@@ -479,20 +563,9 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 	}
 	needsIPv4Access := k.AddWGAccess || (len(hiddenNodes) != 0 && len(hiddenNodes)+len(accessibleNodes) > 1)
 	if needsIPv4Access {
-		if k.PublicNodeID != 0 { // it's set
-			// if public node id is already set, it should be added to accessible nodes
-			if !isInUint32(accessibleNodes, k.PublicNodeID) {
-				accessibleNodes = append(accessibleNodes, k.PublicNodeID)
-			}
-		} else if ipv4Node != 0 { // there's one in the network original nodes
-			k.PublicNodeID = ipv4Node
-		} else {
-			publicNode, err := getPublicNode(ctx, k.APIClient.grid_client, []uint32{})
-			if err != nil {
-				return nil, errors.Wrap(err, "public node needed because you requested adding wg access or a hidden node is added to the network")
-			}
-			k.PublicNodeID = publicNode
-			accessibleNodes = append(accessibleNodes, publicNode)
+		// if ipv4 access is needed, k.publicNodeID should always be set to some node
+		if !isIn[uint32](accessibleNodes, k.PublicNodeID) {
+			accessibleNodes = append(accessibleNodes, k.PublicNodeID)
 		}
 		if endpoints[k.PublicNodeID] == "" { // old or new outsider
 			cl, err := k.ncPool.GetNodeClient(sub, k.PublicNodeID)
@@ -543,7 +616,7 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 	}
 
 	for _, node := range accessibleNodes {
-		peers := make([]zos.Peer, 0, len(k.Nodes))
+		peers := make([]zos.Peer, 0, len(k.NodeCapacity))
 		for _, neigh := range accessibleNodes {
 			if neigh == node {
 				continue
@@ -616,7 +689,8 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 				},
 			},
 		}
-		deployments[node] = deployment
+		capacityID := k.NodeCapacity[node]
+		deployments[capacityID] = deployment
 	}
 	// hidden nodes deployments
 	for _, node := range hiddenNodes {
@@ -662,7 +736,8 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 				},
 			},
 		}
-		deployments[node] = deployment
+		capacityID := k.NodeCapacity[node]
+		deployments[capacityID] = deployment
 	}
 	return deployments, nil
 }
@@ -673,14 +748,22 @@ func (k *NetworkDeployer) Deploy(ctx context.Context, sub *substrate.Substrate) 
 	}
 	log.Printf("new deployments")
 	printDeployments(newDeployments)
-	currentDeployments, err := k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)
+	currentDeployments, err := k.deployer.Deploy(ctx, sub, k.CapacityDeploymentMap, newDeployments)
+	// currentDeployments, err := k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)
 	if err := k.updateState(ctx, sub, currentDeployments); err != nil {
 		log.Printf("error updating state: %s\n", err)
 	}
 	return err
 }
-func (k *NetworkDeployer) updateState(ctx context.Context, sub *substrate.Substrate, currentDeploymentIDs map[uint32]uint64) error {
-	k.NodeDeploymentID = currentDeploymentIDs
+func (k *NetworkDeployer) updateState(ctx context.Context, sub *substrate.Substrate, currentDeploymentIDs map[uint64]uint64) error {
+	// k.NodeDeploymentID = currentDeploymentIDs
+	k.CapacityDeploymentMap = currentDeploymentIDs
+	nodeDeploymentID := map[uint32]uint64{}
+	for capacity, deployment := range k.CapacityDeploymentMap {
+		node := k.CapacityNode[capacity]
+		nodeDeploymentID[node] = deployment
+	}
+	k.NodeDeploymentID = nodeDeploymentID
 	if err := k.readNodesConfig(ctx, sub); err != nil {
 		return errors.Wrap(err, "couldn't read node's data")
 	}
@@ -689,9 +772,10 @@ func (k *NetworkDeployer) updateState(ctx context.Context, sub *substrate.Substr
 }
 
 func (k *NetworkDeployer) Cancel(ctx context.Context, sub *substrate.Substrate) error {
-	newDeployments := make(map[uint32]gridtypes.Deployment)
+	newDeployments := make(map[uint64]gridtypes.Deployment)
 
-	currentDeployments, err := k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)
+	currentDeployments, err := k.deployer.Deploy(ctx, sub, k.CapacityDeploymentMap, newDeployments)
+	// currentDeployments, err := k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)
 	if err := k.updateState(ctx, sub, currentDeployments); err != nil {
 		log.Printf("error updating state: %s\n", err)
 	}
@@ -707,6 +791,9 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 	}
 	if err := deployer.Validate(ctx, apiClient.substrateConn); err != nil {
 		return diag.FromErr(err)
+	}
+	if err := deployer.updateAccessNodeCapacity(ctx); err != nil {
+		return diag.FromErr(fmt.Errorf("couldn't update access node capacity contract. %w", err))
 	}
 	err = deployer.Deploy(ctx, apiClient.substrateConn)
 	if err != nil {
@@ -732,6 +819,9 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 
 	if err := deployer.Validate(ctx, apiClient.substrateConn); err != nil {
 		return diag.FromErr(err)
+	}
+	if err := deployer.updateAccessNodeCapacity(ctx); err != nil {
+		return diag.FromErr(fmt.Errorf("couldn't update access node capacity contract. %w", err))
 	}
 	if err := deployer.invalidateBrokenAttributes(apiClient.substrateConn); err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't invalidate broken attributes"))
@@ -789,4 +879,164 @@ func resourceNetworkDelete(ctx context.Context, d *schema.ResourceData, meta int
 		deployer.storeState(d, apiClient.state)
 	}
 	return diags
+}
+
+// CreateAccessNodeCapacity is used when a capacity contract is needed for wg access.
+//
+// an already used farm is preferred to create the capacity contract on. if no farm is eligible, a random farm is selected.
+func (k *NetworkDeployer) CreateAccessNodeCapacity() (contractID uint64, err error) {
+	var minFreeIPs *uint64
+	var dedicated *bool
+	*minFreeIPs = 1
+	*dedicated = false
+
+	// preferebly choose a farm used with the capacity contracts, if not, choose a random one
+	farmID, err := k.getPreferrableFarm()
+	if err != nil {
+		return 0, fmt.Errorf("couldn't get a farm to create a capacity contract on for wg access. %w", err)
+	}
+	resources := substrate.Resources{
+		HRU: 0,
+		SRU: 0,
+		CRU: 0,
+		MRU: 0,
+	}
+	// log chosen farm
+	log.Printf("farm %d was chosen to create capacity contract on for wg access. %d", farmID)
+
+	policy := substrate.WithCapacityPolicy(resources, substrate.NodeFeatures{IsPublicNode: true})
+	contractID, err = k.APIClient.substrateConn.CreateCapacityReservationContract(k.APIClient.identity, uint32(farmID), policy, nil)
+	if err != nil {
+		return 0, fmt.Errorf("couldn't create capacity contract for wg access. %w", err)
+	}
+	log.Printf("capacity contract id %d was created for wg access", contractID)
+	return contractID, nil
+}
+
+// getPreferrableFarm gets a farm to create a capacity contract on.
+// this farm is preferrably one of the farms already used in provided capacity contracts.
+// if non is eligible, a random eligible farm is chosen
+func (k *NetworkDeployer) getPreferrableFarm() (uint64, error) {
+	var freeIP *uint64
+	var dedicated *bool
+	*freeIP = uint64(1)
+	*dedicated = false
+	for _, id := range k.CapacityIDs {
+		contract, err := k.APIClient.substrateConn.GetContract(id)
+		if err != nil {
+			return 0, fmt.Errorf("couldn't get contract with id %d", id)
+		}
+		nodeID := uint32(contract.ContractType.CapacityReservationContract.NodeID)
+		node, err := k.APIClient.substrateConn.GetNode(nodeID)
+		if err != nil {
+			return 0, fmt.Errorf("couldn't get node with id %d. %w", id, err)
+		}
+		var farmID *uint64
+		*farmID = uint64(node.FarmID)
+		_, cnt, err := k.APIClient.grid_client.Farms(types.FarmFilter{
+			FarmID:  farmID,
+			FreeIPs: freeIP,
+		}, types.Limit{
+			Size: 1,
+		})
+		if cnt == 0 {
+			log.Printf("couldn't get farm with id %d", *farmID)
+			continue
+		}
+		if err != nil {
+			log.Printf("couldn't get farm with id %d. %w", *farmID, err)
+			continue
+		}
+		return *farmID, nil
+	}
+	// non is eligible, choose a random eligible farm
+	farms, cnt, err := k.APIClient.grid_client.Farms(types.FarmFilter{
+		FreeIPs:   freeIP,
+		Dedicated: dedicated,
+	},
+		types.Limit{
+			Size: 1,
+		})
+	if cnt == 0 {
+		return 0, fmt.Errorf("couldn't get farm with public ips")
+	}
+	if err != nil {
+		return 0, fmt.Errorf("couldn't get farm with public ips. %w", err)
+	}
+	return uint64(farms[0].FarmID), nil
+}
+
+// deleteAccessNodeCapacity deletes the access node capacity contract
+func (k *NetworkDeployer) deleteAccessNodeCapacity() error {
+	if k.AccessNodeCapacityID == 0 {
+		return nil
+	}
+	err := k.APIClient.substrateConn.CancelContract(k.APIClient.identity, k.AccessNodeCapacityID)
+	if err != nil {
+		if errors.Is(err, substrate.ErrNotFound) {
+			return nil
+		} else {
+			return fmt.Errorf("couldn't delete access node capacity contract with id %d. %w", k.AccessNodeCapacityID, err)
+		}
+	}
+	return nil
+}
+
+// updateAccessNodeCapacity should decide whether to create a new capacity for an access node, or to delete it if not needed any more.
+func (k *NetworkDeployer) updateAccessNodeCapacity(ctx context.Context) error {
+	// if capacity contract is needed, create it if not created
+	atLeastHiddenNode, err := k.haveHiddenNodes(ctx)
+	if err != nil {
+		return fmt.Errorf("couldn't get network hidden nodes. %w", err)
+	}
+	if k.AddWGAccess || atLeastHiddenNode {
+		// access node is needed
+		if k.AccessNodeCapacityID != 0 {
+			return nil
+		}
+		contractID, err := k.CreateAccessNodeCapacity()
+		if err != nil {
+			return fmt.Errorf("couldn't create a capacity contract for access node. %w", err)
+		}
+
+		k.AccessNodeCapacityID = contractID
+		contract, err := k.APIClient.substrateConn.GetContract(contractID)
+		if err != nil {
+			return fmt.Errorf("couldn't retreive capacity contract %d. %w", contractID, err)
+		}
+		nodeID := uint32(contract.ContractType.CapacityReservationContract.NodeID)
+
+		k.AccessNodeCapacityID = contractID
+		k.NodeCapacity[nodeID] = contractID
+		k.CapacityNode[contractID] = nodeID
+	} else {
+		if k.AccessNodeCapacityID == 0 {
+			return nil
+		}
+		err := k.deleteAccessNodeCapacity()
+		if err != nil {
+			return fmt.Errorf("couldn't delete access node's capacity contract with id %d. %w", k.AccessNodeCapacityID, err)
+		}
+		contractID := k.AccessNodeCapacityID
+		nodeID := k.CapacityNode[contractID]
+		delete(k.CapacityNode, contractID)
+		delete(k.NodeCapacity, nodeID)
+		k.AccessNodeCapacityID = 0
+	}
+	return nil
+}
+
+// haveHiddenNodes returns a boolean indicating whether or not the set of nodes the network should be deployed on have at least one hidden node.
+func (k *NetworkDeployer) haveHiddenNodes(ctx context.Context) (bool, error) {
+	for _, node := range k.Nodes {
+		nodeClient, err := k.ncPool.GetNodeClient(k.APIClient.substrateConn, node)
+		if err != nil {
+			return false, fmt.Errorf("couldn't get node client. %w", err)
+		}
+		_, err = getNodeEndpoint(ctx, nodeClient)
+		if err != nil && errors.Is(err, ErrNoAccessibleInterfaceFound) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
