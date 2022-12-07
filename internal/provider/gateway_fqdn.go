@@ -18,12 +18,12 @@ import (
 )
 
 type GatewayFQDNDeployer struct {
-	Gw                            workloads.GatewayFQDNProxy
-	ID                            string
-	Description                   string
-	Node                          uint32
-	CapacityReservationContractID uint64
-	ContractDeploymentID          map[uint64]uint64
+	Gw                    workloads.GatewayFQDNProxy
+	ID                    string
+	Description           string
+	Node                  uint32
+	CapacityID            uint64
+	CapacityDeploymentMap map[uint64]uint64
 
 	APIClient *apiClient
 	ncPool    client.NodeClientCollection
@@ -36,16 +36,16 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 	for idx, n := range backendsIf {
 		backends[idx] = zos.Backend(n.(string))
 	}
-	capacityReservationContractID := d.Get("capacity_reservation_contract_id").(uint64)
-	ContractDeploymentIDIf := d.Get("contract_deployment_id").(map[string]interface{})
-	ContractDeploymentID := make(map[uint64]uint64)
-	for contractID, deploymentID := range ContractDeploymentIDIf {
+	capacityID := d.Get("capacity_id").(uint64)
+	contractDeploymentMapIf := d.Get("capacity_deployment_map").(map[string]interface{})
+	capacityDeploymentMap := make(map[uint64]uint64)
+	for contractID, deploymentID := range contractDeploymentMapIf {
 		contractIDInt, err := strconv.ParseUint(contractID, 10, 64)
 		if err != nil {
 			return GatewayFQDNDeployer{}, errors.Wrap(err, "couldn't parse contract id")
 		}
 		deploymentIDInt := uint64(deploymentID.(int))
-		ContractDeploymentID[contractIDInt] = deploymentIDInt
+		capacityDeploymentMap[contractIDInt] = deploymentIDInt
 	}
 	ncPool := client.NewNodeClientPool(apiClient.rmb)
 	deploymentData := DeploymentData{
@@ -64,22 +64,22 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 			FQDN:           d.Get("fqdn").(string),
 			TLSPassthrough: d.Get("tls_passthrough").(bool),
 		},
-		ID:                            d.Id(),
-		Description:                   d.Get("description").(string),
-		Node:                          uint32(d.Get("node").(int)),
-		ContractDeploymentID:          ContractDeploymentID,
-		CapacityReservationContractID: capacityReservationContractID,
-		APIClient:                     apiClient,
-		ncPool:                        ncPool,
-		deployer:                      deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, ncPool, true, nil, string(deploymentDataStr)),
+		ID:                    d.Id(),
+		Description:           d.Get("description").(string),
+		Node:                  uint32(d.Get("node").(int)),
+		CapacityDeploymentMap: capacityDeploymentMap,
+		CapacityID:            capacityID,
+		APIClient:             apiClient,
+		ncPool:                ncPool,
+		deployer:              deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, ncPool, true, nil, string(deploymentDataStr)),
 	}
 	return deployer, nil
 }
 
 func (k *GatewayFQDNDeployer) Validate(ctx context.Context, sub *substrate.Substrate) error {
-	contract, err := sub.GetContract(k.CapacityReservationContractID)
+	contract, err := sub.GetContract(k.CapacityID)
 	if err != nil {
-		return errors.Wrapf(err, "couldn't get contract %d info", k.CapacityReservationContractID)
+		return errors.Wrapf(err, "couldn't get contract %d info", k.CapacityID)
 	}
 	k.Node = uint32(contract.ContractType.CapacityReservationContract.NodeID)
 	return isNodesUp(ctx, sub, []uint32{k.Node}, k.ncPool)
@@ -87,9 +87,9 @@ func (k *GatewayFQDNDeployer) Validate(ctx context.Context, sub *substrate.Subst
 
 func (k *GatewayFQDNDeployer) Marshal(d *schema.ResourceData) error {
 
-	contractDeploymentID := make(map[string]interface{})
-	for contractID, deploymentID := range k.ContractDeploymentID {
-		contractDeploymentID[fmt.Sprintf("%d", contractID)] = int(deploymentID)
+	capacityDeploymentMap := make(map[string]interface{})
+	for contractID, deploymentID := range k.CapacityDeploymentMap {
+		capacityDeploymentMap[fmt.Sprintf("%d", contractID)] = int(deploymentID)
 	}
 
 	err := errSet{}
@@ -97,7 +97,7 @@ func (k *GatewayFQDNDeployer) Marshal(d *schema.ResourceData) error {
 	err.Push(d.Set("tls_passthrough", k.Gw.TLSPassthrough))
 	err.Push(d.Set("backends", k.Gw.Backends))
 	err.Push(d.Set("fqdn", k.Gw.FQDN))
-	err.Push(d.Set("contract_deployment_id", contractDeploymentID))
+	err.Push(d.Set("capacity_deployment_map", capacityDeploymentMap))
 	d.SetId(k.ID)
 	return err.error()
 }
@@ -105,7 +105,7 @@ func (k *GatewayFQDNDeployer) GenerateVersionlessDeployments(ctx context.Context
 	deployments := make(map[uint64]gridtypes.Deployment)
 	dl := workloads.NewDeployment(k.APIClient.twin_id)
 	dl.Workloads = append(dl.Workloads, k.Gw.ZosWorkload())
-	deployments[k.CapacityReservationContractID] = dl
+	deployments[k.CapacityID] = dl
 	return deployments, nil
 }
 
@@ -117,18 +117,18 @@ func (k *GatewayFQDNDeployer) Deploy(ctx context.Context, sub *substrate.Substra
 	if err != nil {
 		return errors.Wrap(err, "couldn't generate deployments data")
 	}
-	k.ContractDeploymentID, err = k.deployer.Deploy(ctx, sub, k.ContractDeploymentID, newDeployments)
-	if k.ID == "" && k.ContractDeploymentID[k.CapacityReservationContractID] != 0 {
-		k.ID = strconv.FormatUint(k.ContractDeploymentID[k.CapacityReservationContractID], 10)
+	k.CapacityDeploymentMap, err = k.deployer.Deploy(ctx, sub, k.CapacityDeploymentMap, newDeployments)
+	if k.ID == "" && k.CapacityDeploymentMap[k.CapacityID] != 0 {
+		k.ID = strconv.FormatUint(k.CapacityDeploymentMap[k.CapacityID], 10)
 	}
 	return err
 }
 
 func (k *GatewayFQDNDeployer) syncContracts(ctx context.Context, sub *substrate.Substrate) (err error) {
-	if err := DeleteInvalidContracts(sub, k.ContractDeploymentID); err != nil {
+	if err := DeleteInvalidContracts(sub, k.CapacityDeploymentMap); err != nil {
 		return err
 	}
-	if len(k.ContractDeploymentID) == 0 {
+	if len(k.CapacityDeploymentMap) == 0 {
 		// delete resource in case nothing is active (reflects only on read)
 		k.ID = ""
 	}
@@ -139,11 +139,11 @@ func (k *GatewayFQDNDeployer) sync(ctx context.Context, sub *substrate.Substrate
 		return errors.Wrap(err, "couldn't sync contracts")
 	}
 
-	dls, err := k.deployer.GetDeploymentObjects(ctx, sub, k.ContractDeploymentID)
+	dls, err := k.deployer.GetDeploymentObjects(ctx, sub, k.CapacityDeploymentMap)
 	if err != nil {
 		return errors.Wrap(err, "couldn't get deployment objects")
 	}
-	dl := dls[k.CapacityReservationContractID]
+	dl := dls[k.CapacityID]
 	wl, _ := dl.Get(gridtypes.Name(k.Gw.Name))
 	k.Gw = workloads.GatewayFQDNProxy{}
 	if wl != nil && wl.Result.State.IsOkay() {
@@ -158,7 +158,7 @@ func (k *GatewayFQDNDeployer) sync(ctx context.Context, sub *substrate.Substrate
 func (k *GatewayFQDNDeployer) Cancel(ctx context.Context, sub *substrate.Substrate) (err error) {
 	newDeployments := make(map[uint64]gridtypes.Deployment)
 
-	k.ContractDeploymentID, err = k.deployer.Deploy(ctx, sub, k.ContractDeploymentID, newDeployments)
+	k.CapacityDeploymentMap, err = k.deployer.Deploy(ctx, sub, k.CapacityDeploymentMap, newDeployments)
 
 	return err
 }

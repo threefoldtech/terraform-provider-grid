@@ -26,7 +26,7 @@ data "grid_gateway_domain" "domain" {
 }
 
 resource "grid_name_proxy" "p1" {
-  capacity_reservation_contract_id = grid_capacity_reserver.reserver.capacity_contract_id
+  capacity_id = grid_capacity_reserver.reserver.capacity_contract_id
   name = "example2"
   backends = [format("http://69.164.223.208")]
   tls_passthrough = false
