@@ -23,9 +23,16 @@ func includes[N Number | Chars](l []N, i N) bool {
 }
 
 func IsValidContract(sub *substrate.Substrate, contractID uint64) (bool, error) {
-	if contractID == 0 {
-		return false, nil
-	}
+	// if deploymentID == 0 {
+	// 	return false, nil
+	// }
+	// _, err := sub.GetDeployment(deploymentID)
+
+	// if errors.Is(err, substrate.ErrNotFound) {
+	// 	return false, nil
+	// } else if err != nil {
+	// 	return true, errors.Wrapf(err, "couldn't get deployment %d info", deploymentID)
+	// }
 	contract, err := sub.GetContract(contractID)
 	if errors.Is(err, substrate.ErrNotFound) || (contract != nil && !contract.State.IsCreated) {
 		return false, nil
@@ -34,14 +41,14 @@ func IsValidContract(sub *substrate.Substrate, contractID uint64) (bool, error) 
 	}
 	return true, nil
 }
-func DeleteInvalidContracts(sub *substrate.Substrate, contracts map[uint32]uint64) (err error) {
-	for nodeId, contractID := range contracts {
+func DeleteInvalidContracts(sub *substrate.Substrate, deployments map[uint64]uint64) (err error) {
+	for contractID, _ := range deployments {
 		valid, err := IsValidContract(sub, contractID)
 		if err != nil {
 			return err
 		}
 		if !valid {
-			delete(contracts, nodeId)
+			delete(deployments, contractID)
 		}
 
 	}
