@@ -39,16 +39,16 @@ func NewGatewayNameDeployer(d *schema.ResourceData, apiClient *apiClient) (Gatew
 	for idx, n := range backendsIf {
 		backends[idx] = zos.Backend(n.(string))
 	}
-	capacityReservationContract := d.Get("capacity_reservation_contract_id").(uint64)
+	capacityReservationContractID := d.Get("capacity_reservation_contract_id").(uint64)
 	ContractDeploymentIDIf := d.Get("contract_deployment_id").(map[string]interface{})
 	ContractDeploymentID := make(map[uint64]uint64)
-	for contract, id := range ContractDeploymentIDIf {
-		contractInt, err := strconv.ParseUint(contract, 10, 64)
+	for contractID, deploymentID := range ContractDeploymentIDIf {
+		contractIDInt, err := strconv.ParseUint(contractID, 10, 64)
 		if err != nil {
 			return GatewayNameDeployer{}, errors.Wrap(err, "couldn't parse contract id")
 		}
-		deploymentID := uint64(id.(int))
-		ContractDeploymentID[contractInt] = deploymentID
+		deploymentIDInt := uint64(deploymentID.(int))
+		ContractDeploymentID[contractIDInt] = deploymentIDInt
 	}
 	pool := client.NewNodeClientPool(apiClient.rmb)
 	deploymentData := DeploymentData{
@@ -71,7 +71,7 @@ func NewGatewayNameDeployer(d *schema.ResourceData, apiClient *apiClient) (Gatew
 		Description:                   d.Get("description").(string),
 		Node:                          uint32(d.Get("node").(int)),
 		ContractDeploymentID:          ContractDeploymentID,
-		CapacityReservationContractID: capacityReservationContract,
+		CapacityReservationContractID: capacityReservationContractID,
 		NameContractID:                uint64(d.Get("name_contract_id").(int)),
 
 		APIClient: apiClient,
@@ -93,8 +93,8 @@ func (k *GatewayNameDeployer) Validate(ctx context.Context, sub *substrate.Subst
 func (k *GatewayNameDeployer) Marshal(d *schema.ResourceData) error {
 
 	contractDeploymentID := make(map[string]interface{})
-	for contract, id := range k.ContractDeploymentID {
-		contractDeploymentID[fmt.Sprintf("%d", contract)] = int(id)
+	for contractID, deploymentID := range k.ContractDeploymentID {
+		contractDeploymentID[fmt.Sprintf("%d", contractID)] = int(deploymentID)
 	}
 
 	err := errSet{}
