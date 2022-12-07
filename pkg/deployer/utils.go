@@ -15,27 +15,24 @@ import (
 )
 
 func (d *DeployerImpl) GetDeploymentObjects(ctx context.Context, sub *substrate.Substrate, dls map[uint64]uint64) (map[uint64]gridtypes.Deployment, error) {
-	res := make(map[uint32]gridtypes.Deployment)
-	for nodeID, dlID := range dls {
-		nc, err := d.ncPool.GetNodeClient(sub, nodeID)
+	res := make(map[uint64]gridtypes.Deployment)
+	for capacityID, dlID := range dls {
+		contract, err := sub.GetContract(capacityID)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to get node %d client", nodeID)
+			return res, errors.Wrap(err, "failed to get capacity contract")
+		}
+		nodeID := contract.ContractType.CapacityReservationContract.NodeID
+		nc, err := d.ncPool.GetNodeClient(sub, uint32(nodeID))
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to get node %d client", capacityID)
 		}
 		subCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
 		dl, err := nc.DeploymentGet(subCtx, dlID)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to get deployment %d of node %d", dlID, nodeID)
+			return nil, errors.Wrapf(err, "failed to get deployment %d of node %d", dlID, capacityID)
 		}
-		dep, err := sub.GetDeployment(dlID)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to get deployment %d of node %d", dlID, nodeID)
-		}
-
-		res[nodeID] = DeploymentInfo{
-			Deployment:                    dl,
-			CapacityReservationContractID: uint64(dep.CapacityReservationID),
-		}
+		res[capacityID] = dl
 	}
 	return res, nil
 }
@@ -145,12 +142,15 @@ func addCapacity(cap *proxytypes.Capacity, add *gridtypes.Capacity) {
 	cap.HRU += add.HRU
 }
 
-func EnsureContractCanceled(sub *substrate.Substrate, identity substrate.Identity, deploymentID uint64) error {
+func EnsureDeploymentCanceled(sub *substrate.Substrate, identity substrate.Identity, deploymentID uint64) error {
 	if deploymentID == 0 {
 		return nil
 	}
-	if err := sub.CancelContract(identity, deploymentID); err != nil && err.Error() != "ContractNotExists" {
+	if err := sub.CancelDeployment(identity, deploymentID); err != nil {
 		return err
 	}
+	// if err := sub.CancelContract(identity, deploymentID); err != nil && err.Error() != "ContractNotExists" {
+	// 	return err
+	// }
 	return nil
 }

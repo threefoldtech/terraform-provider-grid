@@ -27,23 +27,33 @@ type ValidatorImpl struct {
 func (d *ValidatorImpl) Validate(ctx context.Context, sub *substrate.Substrate, oldDeployments map[uint64]gridtypes.Deployment, newDeployments map[uint64]gridtypes.Deployment) error {
 	farmIPs := make(map[int]int)
 	nodeMap := make(map[uint32]proxytypes.NodeWithNestedCapacity)
-	for node := range oldDeployments {
-		nodeInfo, err := d.gridClient.Node(node)
+	for capacityID := range oldDeployments {
+		contract, err := sub.GetContract(capacityID)
 		if err != nil {
-			return errors.Wrapf(err, "couldn't get node %d data from the grid proxy", node)
+			return errors.Wrap(err, "failed to get capacity contract")
 		}
-		nodeMap[node] = nodeInfo
+		nodeID := contract.ContractType.CapacityReservationContract.NodeID
+		nodeInfo, err := d.gridClient.Node(uint32(nodeID))
+		if err != nil {
+			return errors.Wrapf(err, "couldn't get node %d data from the grid proxy", capacityID)
+		}
+		nodeMap[uint32(nodeID)] = nodeInfo
 		farmIPs[nodeInfo.FarmID] = 0
 	}
-	for node := range newDeployments {
-		if _, ok := nodeMap[node]; ok {
+	for capacityID := range newDeployments {
+		contract, err := sub.GetContract(capacityID)
+		if err != nil {
+			return errors.Wrap(err, "failed to get capacity contract")
+		}
+		nodeID := contract.ContractType.CapacityReservationContract.NodeID
+		if _, ok := nodeMap[uint32(nodeID)]; ok {
 			continue
 		}
-		nodeInfo, err := d.gridClient.Node(node)
+		nodeInfo, err := d.gridClient.Node(uint32(nodeID))
 		if err != nil {
-			return errors.Wrapf(err, "couldn't get node %d data from the grid proxy", node)
+			return errors.Wrapf(err, "couldn't get node %d data from the grid proxy", capacityID)
 		}
-		nodeMap[node] = nodeInfo
+		nodeMap[uint32(nodeID)] = nodeInfo
 		farmIPs[nodeInfo.FarmID] = 0
 	}
 	for farm := range farmIPs {
@@ -66,18 +76,28 @@ func (d *ValidatorImpl) Validate(ctx context.Context, sub *substrate.Substrate, 
 			}
 		}
 	}
-	for node, info := range oldDeployments {
-		dl := info.Deployment
-		nodeData, ok := nodeMap[node]
+	for capacityID, dl := range oldDeployments {
+		// dl := info.Deployment
+		contract, err := sub.GetContract(capacityID)
+		if err != nil {
+			return errors.Wrap(err, "failed to get capacity contract")
+		}
+		nodeID := contract.ContractType.CapacityReservationContract.NodeID
+		nodeData, ok := nodeMap[uint32(nodeID)]
 		if !ok {
-			return fmt.Errorf("node %d not returned from the grid proxy", node)
+			return fmt.Errorf("node %d not returned from the grid proxy", capacityID)
 		}
 		farmIPs[nodeData.FarmID] += int(countDeploymentPublicIPs(dl))
 	}
-	for node, info := range newDeployments {
-		dl := info.Deployment
-		oldDlInfo, alreadyExists := oldDeployments[node]
-		oldDl := oldDlInfo.Deployment
+	for capacityID, dl := range newDeployments {
+		// dl := info.Deployment
+		oldDl, alreadyExists := oldDeployments[capacityID]
+		// oldDl := oldDlInfo
+		contract, err := sub.GetContract(capacityID)
+		if err != nil {
+			return errors.Wrap(err, "failed to get capacity contract")
+		}
+		nodeID := contract.ContractType.CapacityReservationContract.NodeID
 		if err := dl.Valid(); err != nil {
 			return errors.Wrap(err, "invalid deployment")
 		}
@@ -87,22 +107,22 @@ func (d *ValidatorImpl) Validate(ctx context.Context, sub *substrate.Substrate, 
 		}
 
 		requiredIPs := int(countDeploymentPublicIPs(dl))
-		nodeInfo := nodeMap[node]
+		nodeInfo := nodeMap[uint32(nodeID)]
 		if alreadyExists {
 			oldCap, err := capacity(oldDl)
 			if err != nil {
-				return errors.Wrapf(err, "couldn't read old deployment %d of node %d capacity", oldDl.DeploymentID, node)
+				return errors.Wrapf(err, "couldn't read old deployment %d of node %d capacity", oldDl.DeploymentID, capacityID)
 			}
 			addCapacity(&nodeInfo.Capacity.Total, &oldCap)
-			contract, err := sub.GetContract(oldDl.DeploymentID.U64())
+			deployment, err := sub.GetDeployment(oldDl.DeploymentID.U64())
 			if err != nil {
 				return errors.Wrapf(err, "couldn't get node contract %d", oldDl.DeploymentID)
 			}
-			current := int(contract.PublicIPCount())
+			current := int(deployment.PublicIPsCount)
 			if requiredIPs > current {
 				return fmt.Errorf(
 					"currently, it's not possible to increase the number of reserved public ips in a deployment, node: %d, current: %d, requested: %d",
-					node,
+					capacityID,
 					current,
 					requiredIPs,
 				)
@@ -114,10 +134,10 @@ func (d *ValidatorImpl) Validate(ctx context.Context, sub *substrate.Substrate, 
 			return fmt.Errorf("farm %d doesn't have enough public ips", nodeInfo.FarmID)
 		}
 		if hasWorkload(&dl, zos.GatewayFQDNProxyType) && nodeInfo.PublicConfig.Ipv4 == "" {
-			return fmt.Errorf("node %d can't deploy a fqdn workload as it doesn't have a public ipv4 configured", node)
+			return fmt.Errorf("node %d can't deploy a fqdn workload as it doesn't have a public ipv4 configured", capacityID)
 		}
 		if hasWorkload(&dl, zos.GatewayNameProxyType) && nodeInfo.PublicConfig.Domain == "" {
-			return fmt.Errorf("node %d can't deploy a gateway name workload as it doesn't have a domain configured", node)
+			return fmt.Errorf("node %d can't deploy a gateway name workload as it doesn't have a domain configured", capacityID)
 		}
 		mrus := nodeInfo.Capacity.Total.MRU - nodeInfo.Capacity.Used.MRU
 		hrus := nodeInfo.Capacity.Total.HRU - nodeInfo.Capacity.Used.HRU
@@ -130,7 +150,7 @@ func (d *ValidatorImpl) Validate(ctx context.Context, sub *substrate.Substrate, 
 				MRU: mrus,
 				SRU: srus,
 			}
-			return fmt.Errorf("node %d doesn't have enough resources. needed: %v, free: %v", node, capacityPrettyPrint(needed), capacityPrettyPrint(free))
+			return fmt.Errorf("node %d doesn't have enough resources. needed: %v, free: %v", capacityID, capacityPrettyPrint(needed), capacityPrettyPrint(free))
 		}
 	}
 	return nil

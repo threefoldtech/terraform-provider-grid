@@ -85,25 +85,30 @@ func (d *DeployerImpl) deploy(
 	newDeployments map[uint64]gridtypes.Deployment,
 	revertOnFailure bool,
 ) (currentDeployments map[uint64]uint64, err error) {
-	currentDeployments = make(map[uint32]uint64)
+	currentDeployments = make(map[uint64]uint64)
 	for nodeID, contractID := range oldDeployments {
 		currentDeployments[nodeID] = contractID
 	}
 	// deletions
-	for node, contractID := range oldDeployments {
-		if _, ok := newDeployments[node]; !ok {
-			err = EnsureContractCanceled(sub, d.identity, contractID)
+	for capacityID, deploymentID := range oldDeployments {
+		if _, ok := newDeployments[capacityID]; !ok {
+			err = EnsureDeploymentCanceled(sub, d.identity, deploymentID)
 			if err != nil && !strings.Contains(err.Error(), "ContractNotExists") {
 				return currentDeployments, errors.Wrap(err, "failed to delete deployment")
 			}
-			delete(currentDeployments, node)
+			delete(currentDeployments, capacityID)
 		}
 	}
 	// creations
-	for node, info := range newDeployments {
-		if _, ok := oldDeployments[node]; !ok {
-			dl := info.Deployment
-			client, err := d.ncPool.GetNodeClient(sub, node)
+	for capacityID, dl := range newDeployments {
+		if _, ok := oldDeployments[capacityID]; !ok {
+			// dl := info.Deployment
+			contract, err := sub.GetContract(capacityID)
+			if err != nil {
+				return currentDeployments, errors.Wrap(err, "failed to get capacity contract")
+			}
+			nodeID := contract.ContractType.CapacityReservationContract.NodeID
+			client, err := d.ncPool.GetNodeClient(sub, uint32(nodeID))
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "failed to get node client")
 			}
@@ -131,7 +136,7 @@ func (d *DeployerImpl) deploy(
 			if err != nil {
 				return currentDeployments, errors.Wrapf(err, "couldn't get deployment capacity")
 			}
-			deploymentID, err := sub.CreateDeployment(d.identity, info.CapacityReservationContractID, hashHex, d.deploymentData, cap.AsResources(), publicIPCount)
+			deploymentID, err := sub.CreateDeployment(d.identity, capacityID, hashHex, d.deploymentData, cap.AsResources(), publicIPCount)
 			log.Printf("createDeployment returned id: %d\n", deploymentID)
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "failed to create deployment")
@@ -148,7 +153,7 @@ func (d *DeployerImpl) deploy(
 			err = client.DeploymentDeploy(ctx2, dl)
 
 			if err != nil {
-				rerr := EnsureContractCanceled(sub, d.identity, deploymentID)
+				rerr := EnsureDeploymentCanceled(sub, d.identity, deploymentID)
 				log.Printf("failed to send deployment deploy request to node %s", err)
 				if rerr != nil {
 					return currentDeployments, fmt.Errorf("error sending deployment to the node: %w, error cancelling contract: %s; you must cancel it manually (id: %d)", err, rerr, dl.DeploymentID)
@@ -156,7 +161,7 @@ func (d *DeployerImpl) deploy(
 					return currentDeployments, errors.Wrap(err, "error sending deployment to the node")
 				}
 			}
-			currentDeployments[node] = dl.DeploymentID.U64()
+			currentDeployments[capacityID] = dl.DeploymentID.U64()
 			newWorkloadVersions := map[string]uint32{}
 			for _, w := range dl.Workloads {
 				newWorkloadVersions[w.Name.String()] = 0
@@ -170,15 +175,19 @@ func (d *DeployerImpl) deploy(
 	}
 
 	// updates
-	for node, info := range newDeployments {
-		if oldDeploymentID, ok := oldDeployments[node]; ok {
-			dl := info.Deployment
+	for capacityID, dl := range newDeployments {
+		if oldDeploymentID, ok := oldDeployments[capacityID]; ok {
+			// dl := info.Deployment
 			newDeploymentHash, err := hashDeployment(dl)
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "couldn't get deployment hash")
 			}
-
-			client, err := d.ncPool.GetNodeClient(sub, node)
+			contract, err := sub.GetContract(capacityID)
+			if err != nil {
+				return currentDeployments, errors.Wrap(err, "failed to get capacity contract")
+			}
+			nodeID := contract.ContractType.CapacityReservationContract.NodeID
+			client, err := d.ncPool.GetNodeClient(sub, uint32(nodeID))
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "failed to get node client")
 			}
@@ -255,7 +264,7 @@ func (d *DeployerImpl) deploy(
 				log.Printf("failed to send deployment update request to node %s", err)
 				return currentDeployments, errors.Wrap(err, "error sending deployment to the node")
 			}
-			currentDeployments[node] = dl.DeploymentID.U64()
+			currentDeployments[capacityID] = dl.DeploymentID.U64()
 
 			err = d.Wait(ctx, client, dl.DeploymentID.U64(), newWorkloadsVersions)
 			if err != nil {
