@@ -42,7 +42,7 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 	for contract, id := range ContractDeploymentIDIf {
 		contractInt, err := strconv.ParseUint(contract, 10, 64)
 		if err != nil {
-			return GatewayFQDNDeployer{}, errors.Wrap(err, "couldn't parse node id")
+			return GatewayFQDNDeployer{}, errors.Wrap(err, "couldn't parse contract id")
 		}
 		deploymentID := uint64(id.(int))
 		ContractDeploymentID[contractInt] = deploymentID
@@ -77,6 +77,11 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 }
 
 func (k *GatewayFQDNDeployer) Validate(ctx context.Context, sub *substrate.Substrate) error {
+	contract, err := sub.GetContract(k.CapacityReservationContractID)
+	if err != nil {
+		return errors.Wrapf(err, "couldn't get contract %d info", k.CapacityReservationContractID)
+	}
+	k.Node = uint32(contract.ContractType.CapacityReservationContract.NodeID)
 	return isNodesUp(ctx, sub, []uint32{k.Node}, k.ncPool)
 }
 
