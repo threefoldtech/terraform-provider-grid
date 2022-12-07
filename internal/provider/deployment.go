@@ -41,6 +41,15 @@ type DeploymentData struct {
 
 func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (DeploymentDeployer, error) {
 	networkName := d.Get("network_name").(string)
+
+	sub := substrate.Substrate{}
+	contract, err := sub.GetContract(CapacityID)
+	if err != nil {
+		return DeploymentDeployer{},errors.Wrap(err, "failed to get capacity contract")
+	}
+	nodeID := contract.ContractType.CapacityReservationContract.NodeID
+
+	// nodeID := uint32(d.Get("node").(int))
 	capacityReservationContract := d.Get("capacity_reservation_contract_id").(uint64)
 	nodeID := uint32(d.Get("node").(int))
 	disks := make([]workloads.Disk, 0)
@@ -86,9 +95,20 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 
 	networkingState := apiClient.state.GetNetworkState()
 	net := networkingState.GetNetwork(networkName)
-	ipRange := net.GetNodeSubnet(nodeID)
+	ipRange := net.GetNodeSubnet(uint32(nodeID))
 
 	deploymentDeployer := DeploymentDeployer{
+		Id:          d.Id(),
+		Node:        uint32(nodeID),
+		Disks:       disks,
+		VMs:         vms,
+		QSFSs:       qsfs,
+		ZDBs:        zdbs,
+		IPRange:     ipRange,
+		NetworkName: networkName,
+		APIClient:   apiClient,
+		ncPool:      pool,
+		deployer:    deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, solutionProvider, string(deploymentDataStr)),
 		Id:                            d.Id(),
 		CapacityReservationContractID: capacityReservationContract,
 		Node:                          nodeID,
@@ -108,7 +128,15 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 func (d *DeploymentDeployer) assignNodesIPs() error {
 	networkingState := d.APIClient.state.GetNetworkState()
 	network := networkingState.GetNetwork(d.NetworkName)
-	usedIPs := network.GetNodeIPsList(d.Node)
+
+	sub := substrate.Substrate{}
+	contract, err := sub.GetContract(d.CapacityID)
+	if err != nil {
+		return errors.Wrap(err, "failed to get capacity contract")
+	}
+	nodeID := contract.ContractType.CapacityReservationContract.NodeID
+
+	usedIPs := network.GetNodeIPsList(uint32(nodeID))
 	if len(d.VMs) == 0 {
 		return nil
 	}
@@ -140,7 +168,8 @@ func (d *DeploymentDeployer) assignNodesIPs() error {
 	}
 	return nil
 }
-func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
+func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[uint64]gridtypes.Deployment, error) {
+
 	dl := workloads.NewDeployment(d.APIClient.twin_id)
 	err := d.assignNodesIPs()
 	if err != nil {
@@ -164,7 +193,7 @@ func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context)
 		dl.Workloads = append(dl.Workloads, qsfsWorkload)
 	}
 
-	return map[uint32]gridtypes.Deployment{d.Node: dl}, nil
+	return map[uint64]gridtypes.Deployment{d.CapacityID: dl}, nil
 }
 
 func (d *DeploymentDeployer) Marshal(r *schema.ResourceData) {
@@ -194,15 +223,15 @@ func (d *DeploymentDeployer) Marshal(r *schema.ResourceData) {
 	r.SetId(d.Id)
 }
 
-func (d *DeploymentDeployer) GetOldDeployments(ctx context.Context) (map[uint32]uint64, error) {
-	deployments := make(map[uint32]uint64)
+func (d *DeploymentDeployer) GetOldDeployments(ctx context.Context) (map[uint64]uint64, error) {
+	deployments := make(map[uint64]uint64)
 	if d.Id != "" {
 
 		deploymentID, err := strconv.ParseUint(d.Id, 10, 64)
 		if err != nil {
 			return nil, errors.Wrapf(err, "couldn't parse deployment id %s", d.Id)
 		}
-		deployments[d.Node] = deploymentID
+		deployments[d.CapacityID] = deploymentID
 	}
 
 	return deployments, nil
