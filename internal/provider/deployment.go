@@ -22,7 +22,7 @@ import (
 type DeploymentDeployer struct {
 	Id          string
 	CapacityID  uint64 `name:"capacity_id"`
-	Node        uint32
+	NodeID        uint32
 	Disks       []workloads.Disk
 	ZDBs        []workloads.ZDB
 	VMs         []workloads.VM
@@ -44,7 +44,7 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 	capacityID := d.Get("capacity_id").(uint64)
 	contract, err := apiClient.substrateConn.GetContract(capacityID)
 	if err != nil {
-		errors.Wrap(err, "failed to get capacity contract")
+		errors.Wrap(err, "failed to get capacity contract ")
 	}
 	nodeID := uint32(contract.ContractType.CapacityReservationContract.NodeID)
 	disks := make([]workloads.Disk, 0)
@@ -95,7 +95,7 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 	deploymentDeployer := DeploymentDeployer{
 		Id:          d.Id(),
 		CapacityID:  capacityID,
-		Node:        nodeID,
+		NodeID:        nodeID,
 		Disks:       disks,
 		VMs:         vms,
 		QSFSs:       qsfs,
@@ -112,7 +112,7 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 func (d *DeploymentDeployer) assignNodesIPs() error {
 	networkingState := d.APIClient.state.GetNetworkState()
 	network := networkingState.GetNetwork(d.NetworkName)
-	usedIPs := network.GetNodeIPsList(d.Node)
+	usedIPs := network.GetNodeIPsList(d.NodeID)
 	if len(d.VMs) == 0 {
 		return nil
 	}
@@ -192,7 +192,7 @@ func (d *DeploymentDeployer) Marshal(r *schema.ResourceData) {
 	r.Set("zdbs", zdbs)
 	r.Set("disks", disks)
 	r.Set("qsfs", qsfs)
-	r.Set("node", d.Node)
+	r.Set("node", d.NodeID)
 	r.Set("network_name", d.NetworkName)
 	r.Set("ip_range", d.IPRange)
 	r.SetId(d.Id)
@@ -261,7 +261,7 @@ func (d *DeploymentDeployer) sync(ctx context.Context, sub *substrate.Substrate,
 
 	ns := cl.state.GetNetworkState()
 	network := ns.GetNetwork(d.NetworkName)
-	network.DeleteDeployment(d.Node, d.Id)
+	network.DeleteDeployment(d.NodeID, d.Id)
 
 	usedIPs := []byte{}
 	for _, w := range dl.Workloads {
@@ -303,7 +303,7 @@ func (d *DeploymentDeployer) sync(ctx context.Context, sub *substrate.Substrate,
 
 		}
 	}
-	network.SetDeploymentIPs(d.Node, d.Id, usedIPs)
+	network.SetDeploymentIPs(d.NodeID, d.Id, usedIPs)
 	d.Match(disks, qsfs, zdbs, vms)
 	log.Printf("vms: %+v\n", len(vms))
 	d.Disks = disks
