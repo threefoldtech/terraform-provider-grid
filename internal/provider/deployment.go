@@ -21,7 +21,7 @@ import (
 
 type DeploymentDeployer struct {
 	Id          string
-	CapacityID uint64 `name:"capacity_reservation_contract_id"`
+	CapacityID  uint64 `name:"capacity_id"`
 	Node        uint32
 	Disks       []workloads.Disk
 	ZDBs        []workloads.ZDB
@@ -42,7 +42,7 @@ type DeploymentData struct {
 func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (DeploymentDeployer, error) {
 	networkName := d.Get("network_name").(string)
 	capacityID := d.Get("capacity_id").(uint64)
-	contract , err := apiClient.substrateConn.GetContract(capacityID)
+	contract, err := apiClient.substrateConn.GetContract(capacityID)
 	if err != nil {
 		errors.Wrap(err, "failed to get capacity contract")
 	}
@@ -94,7 +94,7 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 
 	deploymentDeployer := DeploymentDeployer{
 		Id:          d.Id(),
-		CapacityID: capacityID,
+		CapacityID:  capacityID,
 		Node:        nodeID,
 		Disks:       disks,
 		VMs:         vms,
