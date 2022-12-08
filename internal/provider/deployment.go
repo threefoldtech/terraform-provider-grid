@@ -21,7 +21,7 @@ import (
 
 type DeploymentDeployer struct {
 	Id          string
-	capacity_id uint64 `name:"capacity_reservation_contract_id"`
+	CapacityID uint64 `name:"capacity_reservation_contract_id"`
 	Node        uint32
 	Disks       []workloads.Disk
 	ZDBs        []workloads.ZDB
@@ -94,7 +94,7 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 
 	deploymentDeployer := DeploymentDeployer{
 		Id:          d.Id(),
-		capacity_id: capacityID,
+		CapacityID: capacityID,
 		Node:        nodeID,
 		Disks:       disks,
 		VMs:         vms,
@@ -168,7 +168,7 @@ func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context)
 		dl.Workloads = append(dl.Workloads, qsfsWorkload)
 	}
 
-	return map[uint64]gridtypes.Deployment{d.capacity_id: dl}, nil
+	return map[uint64]gridtypes.Deployment{d.CapacityID: dl}, nil
 }
 
 func (d *DeploymentDeployer) Marshal(r *schema.ResourceData) {
@@ -206,7 +206,7 @@ func (d *DeploymentDeployer) GetOldDeployments(ctx context.Context) (map[uint64]
 		if err != nil {
 			return nil, errors.Wrapf(err, "couldn't parse deployment id %s", d.Id)
 		}
-		deployments[d.capacity_id] = deploymentID
+		deployments[d.CapacityID] = deploymentID
 	}
 
 	return deployments, nil
@@ -249,11 +249,11 @@ func (d *DeploymentDeployer) sync(ctx context.Context, sub *substrate.Substrate,
 		d.Nullify()
 		return nil
 	}
-	currentDeployments, err := d.deployer.GetDeploymentObjects(ctx, sub, map[uint64]uint64{d.capacity_id: d.ID()})
+	currentDeployments, err := d.deployer.GetDeploymentObjects(ctx, sub, map[uint64]uint64{d.CapacityID: d.ID()})
 	if err != nil {
 		return errors.Wrap(err, "failed to get deployments to update local state")
 	}
-	dl := currentDeployments[d.capacity_id]
+	dl := currentDeployments[d.CapacityID]
 	var vms []workloads.VM
 	var zdbs []workloads.ZDB
 	var qsfs []workloads.QSFS
@@ -385,8 +385,8 @@ func (d *DeploymentDeployer) Deploy(ctx context.Context, sub *substrate.Substrat
 		return errors.Wrap(err, "couldn't get old deployments data")
 	}
 	currentDeployments, err := d.deployer.Deploy(ctx, sub, oldDeployments, newDeployments)
-	if currentDeployments[d.capacity_id] != 0 {
-		d.Id = fmt.Sprintf("%d", currentDeployments[d.capacity_id])
+	if currentDeployments[d.CapacityID] != 0 {
+		d.Id = fmt.Sprintf("%d", currentDeployments[d.CapacityID])
 	}
 	return err
 }
@@ -398,7 +398,7 @@ func (d *DeploymentDeployer) Cancel(ctx context.Context, sub *substrate.Substrat
 		return err
 	}
 	currentDeployments, err := d.deployer.Deploy(ctx, sub, oldDeployments, newDeployments)
-	id := currentDeployments[d.capacity_id]
+	id := currentDeployments[d.CapacityID]
 	if id != 0 {
 		d.Id = fmt.Sprintf("%d", id)
 	} else {
