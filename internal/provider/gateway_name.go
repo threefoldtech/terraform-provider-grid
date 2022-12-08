@@ -45,14 +45,14 @@ func NewGatewayNameDeployer(d *schema.ResourceData, apiClient *apiClient) (Gatew
 	for contractID, deploymentID := range contractDeploymentMapIf {
 		contractIDInt, err := strconv.ParseUint(contractID, 10, 64)
 		if err != nil {
-			return GatewayNameDeployer{}, errors.Wrap(err, "couldn't parse contract id")
+			return GatewayNameDeployer{}, errors.Wrapf(err, "couldn't parse capacity reservation contract id %s", contractID)
 		}
 		deploymentIDInt := uint64(deploymentID.(int))
 		capacityDeploymentMap[contractIDInt] = deploymentIDInt
 	}
 	contract, err := apiClient.substrateConn.GetContract(capacityID)
 	if err != nil {
-		return GatewayNameDeployer{}, errors.Wrapf(err, "couldn't get contract %d info", capacityID)
+		return GatewayNameDeployer{}, errors.Wrapf(err, "couldn't get capacity reservation contract %d info", capacityID)
 	}
 	nodeID := uint32(contract.ContractType.CapacityReservationContract.NodeID)
 	pool := client.NewNodeClientPool(apiClient.rmb)
@@ -94,7 +94,7 @@ func (k *GatewayNameDeployer) Marshal(d *schema.ResourceData) error {
 
 	capacityDeploymentMap := make(map[string]interface{})
 	for contractID, deploymentID := range k.CapacityDeploymentMap {
-		capacityDeploymentMap[fmt.Sprintf("%d", contractID)] = int(deploymentID)
+		capacityDeploymentMap[fmt.Sprint(contractID)] = deploymentID
 	}
 
 	err := errSet{}
@@ -153,10 +153,10 @@ func (k *GatewayNameDeployer) Deploy(ctx context.Context, sub *substrate.Substra
 	return err
 }
 func (k *GatewayNameDeployer) syncContracts(ctx context.Context, sub *substrate.Substrate) (err error) {
-	if err := DeleteInvalidContracts(sub, k.CapacityDeploymentMap); err != nil {
+	if err := CheckInvalidContracts(sub, k.CapacityDeploymentMap); err != nil {
 		return err
 	}
-	valid, err := IsValidContract(sub, k.NameContractID)
+	valid, err := IsValidNameContract(sub, k.NameContractID)
 	if err != nil {
 		return err
 	}

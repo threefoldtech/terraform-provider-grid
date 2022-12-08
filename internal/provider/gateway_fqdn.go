@@ -42,14 +42,14 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 	for contractID, deploymentID := range contractDeploymentMapIf {
 		contractIDInt, err := strconv.ParseUint(contractID, 10, 64)
 		if err != nil {
-			return GatewayFQDNDeployer{}, errors.Wrap(err, "couldn't parse contract id")
+			return GatewayFQDNDeployer{}, errors.Wrapf(err, "couldn't parse capacity reservation contract id %s", contractID)
 		}
 		deploymentIDInt := uint64(deploymentID.(int))
 		capacityDeploymentMap[contractIDInt] = deploymentIDInt
 	}
 	contract, err := apiClient.substrateConn.GetContract(capacityID)
 	if err != nil {
-		return GatewayFQDNDeployer{}, errors.Wrapf(err, "couldn't get contract %d info", capacityID)
+		return GatewayFQDNDeployer{}, errors.Wrapf(err, "couldn't get capacity reservation contract %d info", capacityID)
 	}
 	nodeID := uint32(contract.ContractType.CapacityReservationContract.NodeID)
 	ncPool := client.NewNodeClientPool(apiClient.rmb)
@@ -89,7 +89,7 @@ func (k *GatewayFQDNDeployer) Marshal(d *schema.ResourceData) error {
 
 	capacityDeploymentMap := make(map[string]interface{})
 	for contractID, deploymentID := range k.CapacityDeploymentMap {
-		capacityDeploymentMap[fmt.Sprintf("%d", contractID)] = int(deploymentID)
+		capacityDeploymentMap[fmt.Sprint(contractID)] = deploymentID
 	}
 
 	err := errSet{}
@@ -125,7 +125,7 @@ func (k *GatewayFQDNDeployer) Deploy(ctx context.Context, sub *substrate.Substra
 }
 
 func (k *GatewayFQDNDeployer) syncContracts(ctx context.Context, sub *substrate.Substrate) (err error) {
-	if err := DeleteInvalidContracts(sub, k.CapacityDeploymentMap); err != nil {
+	if err := CheckInvalidContracts(sub, k.CapacityDeploymentMap); err != nil {
 		return err
 	}
 	if len(k.CapacityDeploymentMap) == 0 {
