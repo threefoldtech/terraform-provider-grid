@@ -47,6 +47,11 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 		deploymentIDInt := uint64(deploymentID.(int))
 		capacityDeploymentMap[contractIDInt] = deploymentIDInt
 	}
+	contract, err := apiClient.substrateConn.GetContract(capacityID)
+	if err != nil {
+		return GatewayFQDNDeployer{}, errors.Wrapf(err, "couldn't get contract %d info", capacityID)
+	}
+	node := uint32(contract.ContractType.CapacityReservationContract.NodeID)
 	ncPool := client.NewNodeClientPool(apiClient.rmb)
 	deploymentData := DeploymentData{
 		Name:        d.Get("name").(string),
@@ -66,7 +71,7 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 		},
 		ID:                    d.Id(),
 		Description:           d.Get("description").(string),
-		Node:                  uint32(d.Get("node").(int)),
+		Node:                  node,
 		CapacityDeploymentMap: capacityDeploymentMap,
 		CapacityID:            capacityID,
 		APIClient:             apiClient,
@@ -77,11 +82,6 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 }
 
 func (k *GatewayFQDNDeployer) Validate(ctx context.Context, sub *substrate.Substrate) error {
-	contract, err := sub.GetContract(k.CapacityID)
-	if err != nil {
-		return errors.Wrapf(err, "couldn't get contract %d info", k.CapacityID)
-	}
-	k.Node = uint32(contract.ContractType.CapacityReservationContract.NodeID)
 	return isNodesUp(ctx, sub, []uint32{k.Node}, k.ncPool)
 }
 
