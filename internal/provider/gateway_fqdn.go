@@ -21,7 +21,7 @@ type GatewayFQDNDeployer struct {
 	Gw                    workloads.GatewayFQDNProxy
 	ID                    string
 	Description           string
-	Node                  uint32
+	NodeID                uint32
 	CapacityID            uint64
 	CapacityDeploymentMap map[uint64]uint64
 
@@ -51,7 +51,7 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 	if err != nil {
 		return GatewayFQDNDeployer{}, errors.Wrapf(err, "couldn't get contract %d info", capacityID)
 	}
-	node := uint32(contract.ContractType.CapacityReservationContract.NodeID)
+	nodeID := uint32(contract.ContractType.CapacityReservationContract.NodeID)
 	ncPool := client.NewNodeClientPool(apiClient.rmb)
 	deploymentData := DeploymentData{
 		Name:        d.Get("name").(string),
@@ -71,7 +71,7 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 		},
 		ID:                    d.Id(),
 		Description:           d.Get("description").(string),
-		Node:                  node,
+		NodeID:                nodeID,
 		CapacityDeploymentMap: capacityDeploymentMap,
 		CapacityID:            capacityID,
 		APIClient:             apiClient,
@@ -82,7 +82,7 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 }
 
 func (k *GatewayFQDNDeployer) Validate(ctx context.Context, sub *substrate.Substrate) error {
-	return isNodesUp(ctx, sub, []uint32{k.Node}, k.ncPool)
+	return isNodesUp(ctx, sub, []uint32{k.NodeID}, k.ncPool)
 }
 
 func (k *GatewayFQDNDeployer) Marshal(d *schema.ResourceData) error {
@@ -93,7 +93,7 @@ func (k *GatewayFQDNDeployer) Marshal(d *schema.ResourceData) error {
 	}
 
 	err := errSet{}
-	err.Push(d.Set("node", k.Node))
+	err.Push(d.Set("node", k.NodeID))
 	err.Push(d.Set("tls_passthrough", k.Gw.TLSPassthrough))
 	err.Push(d.Set("backends", k.Gw.Backends))
 	err.Push(d.Set("fqdn", k.Gw.FQDN))

@@ -43,7 +43,7 @@ func resourceGatewayFQDNProxy() *schema.Resource {
 				ForceNew:    true,
 				Description: "Capacity reservation contract id from capacity reserver",
 			},
-			"node": {
+			"node_id": {
 				Type:        schema.TypeInt,
 				Computed:    true,
 				Description: "The gateway's node id",

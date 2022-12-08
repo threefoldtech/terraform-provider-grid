@@ -22,7 +22,7 @@ type GatewayNameDeployer struct {
 	Gw workloads.GatewayNameProxy
 
 	ID                    string
-	Node                  uint32
+	NodeID                uint32
 	Description           string
 	NameContractID        uint64
 	CapacityID            uint64
@@ -54,7 +54,7 @@ func NewGatewayNameDeployer(d *schema.ResourceData, apiClient *apiClient) (Gatew
 	if err != nil {
 		return GatewayNameDeployer{}, errors.Wrapf(err, "couldn't get contract %d info", capacityID)
 	}
-	node := uint32(contract.ContractType.CapacityReservationContract.NodeID)
+	nodeID := uint32(contract.ContractType.CapacityReservationContract.NodeID)
 	pool := client.NewNodeClientPool(apiClient.rmb)
 	deploymentData := DeploymentData{
 		Name:        d.Get("name").(string),
@@ -74,7 +74,7 @@ func NewGatewayNameDeployer(d *schema.ResourceData, apiClient *apiClient) (Gatew
 		},
 		ID:                    d.Id(),
 		Description:           d.Get("description").(string),
-		Node:                  node,
+		NodeID:                nodeID,
 		CapacityDeploymentMap: capacityDeploymentMap,
 		CapacityID:            capacityID,
 		NameContractID:        uint64(d.Get("name_contract_id").(int)),
@@ -87,7 +87,7 @@ func NewGatewayNameDeployer(d *schema.ResourceData, apiClient *apiClient) (Gatew
 }
 
 func (k *GatewayNameDeployer) Validate(ctx context.Context, sub *substrate.Substrate) error {
-	return isNodesUp(ctx, sub, []uint32{k.Node}, k.ncPool)
+	return isNodesUp(ctx, sub, []uint32{k.NodeID}, k.ncPool)
 }
 
 func (k *GatewayNameDeployer) Marshal(d *schema.ResourceData) error {
@@ -99,8 +99,7 @@ func (k *GatewayNameDeployer) Marshal(d *schema.ResourceData) error {
 
 	err := errSet{}
 	d.SetId(k.ID)
-
-	err.Push(d.Set("node", k.Node))
+	err.Push(d.Set("node", k.NodeID))
 	err.Push(d.Set("tls_passthrough", k.Gw.TLSPassthrough))
 	err.Push(d.Set("backends", k.Gw.Backends))
 	err.Push(d.Set("fqdn", k.Gw.FQDN))
