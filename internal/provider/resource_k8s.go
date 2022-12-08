@@ -43,11 +43,11 @@ func resourceKubernetes() *schema.Resource {
 				Default:     "",
 				Description: "Kubernetes",
 			},
-			"node_deployment_id": {
+			"capacity_deployment_map": {
 				Type:        schema.TypeMap,
 				Computed:    true,
 				Elem:        &schema.Schema{Type: schema.TypeInt},
-				Description: "Mapping from each node to its deployment id",
+				Description: "Mapping from each capacityID to its deployment id",
 			},
 			"network_name": {
 				Type:        schema.TypeString,
@@ -84,8 +84,13 @@ func resourceKubernetes() *schema.Resource {
 						},
 						"node": {
 							Type:        schema.TypeInt,
-							Required:    true,
+							Computed:    true,
 							Description: "Node ID",
+						},
+						"capacity_id": {
+							Type:        schema.TypeInt,
+							Required:    true,
+							Description: "Capacity reservation contract id from capacity reserver",
 						},
 						"disk_size": {
 							Type:        schema.TypeInt,
@@ -177,8 +182,13 @@ func resourceKubernetes() *schema.Resource {
 						},
 						"node": {
 							Type:        schema.TypeInt,
-							Required:    true,
+							Computed:    true,
 							Description: "Node ID",
+						},
+						"capacity_id": {
+							Type:        schema.TypeInt,
+							Required:    true,
+							Description: "Capacity reservation contract id from capacity reserver",
 						},
 						"publicip": {
 							Type:        schema.TypeBool,
@@ -236,6 +246,7 @@ func resourceKubernetes() *schema.Resource {
 type K8sNodeData struct {
 	Name          string
 	Node          uint32
+	CapacityId    uint64
 	DiskSize      int
 	PublicIP      bool
 	PublicIP6     bool
@@ -251,13 +262,13 @@ type K8sNodeData struct {
 }
 
 type K8sDeployer struct {
-	Master           *K8sNodeData
-	Workers          []K8sNodeData
-	NodesIPRange     map[uint32]gridtypes.IPNet
-	Token            string
-	SSHKey           string
-	NetworkName      string
-	NodeDeploymentID map[uint32]uint64
+	Master                *K8sNodeData
+	Workers               []K8sNodeData
+	NodesIPRange          map[uint32]gridtypes.IPNet
+	Token                 string
+	SSHKey                string
+	NetworkName           string
+	CapacityDeploymentMap map[uint64]uint64
 
 	APIClient *apiClient
 
@@ -267,10 +278,16 @@ type K8sDeployer struct {
 	deployer    deployer.Deployer
 }
 
-func NewK8sNodeData(m map[string]interface{}) K8sNodeData {
+func NewK8sNodeData(m map[string]interface{}, sub *substrate.Substrate) (K8sNodeData, error) {
+	capacityId := uint64(m["capacity_id"].(int))
+	nodeId, err := getNodeIdByCapacityId(sub, capacityId)
+	if err != nil {
+		return K8sNodeData{}, errors.Wrapf(err, "can't get nodeId for capacityId: %d", capacityId)
+	}
 	return K8sNodeData{
 		Name:          m["name"].(string),
-		Node:          uint32(m["node"].(int)),
+		Node:          uint32(nodeId),
+		CapacityId:    capacityId,
 		DiskSize:      m["disk_size"].(int),
 		PublicIP:      m["publicip"].(bool),
 		PublicIP6:     m["publicip6"].(bool),
@@ -283,10 +300,10 @@ func NewK8sNodeData(m map[string]interface{}) K8sNodeData {
 		IP:            m["ip"].(string),
 		Cpu:           m["cpu"].(int),
 		Memory:        m["memory"].(int),
-	}
+	}, nil
 }
 
-func NewK8sNodeDataFromWorkload(w gridtypes.Workload, nodeID uint32, diskSize int, computedIP string, computedIP6 string) (K8sNodeData, error) {
+func NewK8sNodeDataFromWorkload(w gridtypes.Workload, nodeID uint32, capacityId uint64, diskSize int, computedIP string, computedIP6 string) (K8sNodeData, error) {
 	var k K8sNodeData
 	data, err := w.WorkloadData()
 	if err != nil {
@@ -301,6 +318,7 @@ func NewK8sNodeDataFromWorkload(w gridtypes.Workload, nodeID uint32, diskSize in
 	k = K8sNodeData{
 		Name:        string(w.Name),
 		Node:        nodeID,
+		CapacityId:  capacityId,
 		DiskSize:    diskSize,
 		PublicIP:    computedIP != "",
 		PublicIP6:   computedIP6 != "",
@@ -320,8 +338,16 @@ func NewK8sDeployer(d *schema.ResourceData, apiClient *apiClient) (K8sDeployer, 
 	networkName := d.Get("network_name").(string)
 	ns := apiClient.state.GetNetworkState()
 	network := ns.GetNetwork(networkName)
+	master, err := NewK8sNodeData(d.Get("master").([]interface{})[0].(map[string]interface{}), apiClient.substrateConn)
 
-	master := NewK8sNodeData(d.Get("master").([]interface{})[0].(map[string]interface{}))
+	if err != nil {
+		return K8sDeployer{}, errors.Wrap(err, "couldn't construct master node data")
+	}
+	masterNodeId, err := getNodeIdByCapacityId(apiClient.substrateConn, master.CapacityId)
+	if err != nil {
+		return K8sDeployer{}, errors.Wrapf(err, "couldn't get master node Id, CapacityId: ", master.CapacityId)
+	}
+	master.Node = masterNodeId
 	workers := make([]K8sNodeData, 0)
 	usedIPs := make(map[uint32][]byte)
 
@@ -330,34 +356,43 @@ func NewK8sDeployer(d *schema.ResourceData, apiClient *apiClient) (K8sDeployer, 
 	}
 	usedIPs[master.Node] = append(usedIPs[master.Node], network.GetNodeIPsList(master.Node)...)
 	for _, w := range d.Get("workers").([]interface{}) {
-		data := NewK8sNodeData(w.(map[string]interface{}))
+		data, err := NewK8sNodeData(w.(map[string]interface{}), apiClient.substrateConn)
+		if err != nil {
+			return K8sDeployer{}, errors.Wrapf(err, "couldn't construct worker node data capacityId: %d", master.CapacityId)
+		}
+		workerNodeId, err := getNodeIdByCapacityId(apiClient.substrateConn, data.CapacityId)
+		if err != nil {
+			return K8sDeployer{}, errors.Wrapf(err, "couldn't get worker nodeId, capacityId: %d", data.CapacityId)
+		}
+		data.Node = workerNodeId
 		workers = append(workers, data)
 		if data.IP != "" {
 			usedIPs[data.Node] = append(usedIPs[data.Node], net.ParseIP(data.IP)[3])
 			usedIPs[data.Node] = append(usedIPs[data.Node], network.GetNodeIPsList(data.Node)...)
 		}
+
 	}
 	nodesIPRange := make(map[uint32]gridtypes.IPNet)
-	var err error
-	nodesIPRange[master.Node], err = gridtypes.ParseIPNet(network.GetNodeSubnet(master.Node))
+	masterIPRange, err := gridtypes.ParseIPNet(network.GetNodeSubnet(master.Node))
 	if err != nil {
 		return K8sDeployer{}, errors.Wrap(err, "couldn't parse master node ip range")
 	}
+	nodesIPRange[master.Node] = masterIPRange
 	for _, worker := range workers {
 		nodesIPRange[worker.Node], err = gridtypes.ParseIPNet(network.GetNodeSubnet(worker.Node))
 		if err != nil {
 			return K8sDeployer{}, errors.Wrapf(err, "couldn't parse worker node (%d) ip range", worker.Node)
 		}
 	}
-	nodeDeploymentIDIf := d.Get("node_deployment_id").(map[string]interface{})
-	nodeDeploymentID := make(map[uint32]uint64)
-	for node, id := range nodeDeploymentIDIf {
-		nodeInt, err := strconv.ParseUint(node, 10, 32)
+	capacityDeploymentRaw := d.Get("capacity_deployment_map").(map[string]interface{})
+	capacityDeploymentMap := make(map[uint64]uint64)
+	for capId, dlId := range capacityDeploymentRaw {
+		capacityId, err := strconv.ParseUint(capId, 10, 64)
 		if err != nil {
 			return K8sDeployer{}, errors.Wrap(err, "couldn't parse node id")
 		}
-		deploymentID := uint64(id.(int))
-		nodeDeploymentID[uint32(nodeInt)] = deploymentID
+		deploymentID := uint64(dlId.(int))
+		capacityDeploymentMap[capacityId] = deploymentID
 	}
 
 	pool := client.NewNodeClientPool(apiClient.rmb)
@@ -371,18 +406,18 @@ func NewK8sDeployer(d *schema.ResourceData, apiClient *apiClient) (K8sDeployer, 
 		log.Printf("error parsing deploymentdata: %s", err.Error())
 	}
 	deployer := K8sDeployer{
-		Master:           &master,
-		Workers:          workers,
-		Token:            d.Get("token").(string),
-		SSHKey:           d.Get("ssh_key").(string),
-		NetworkName:      d.Get("network_name").(string),
-		NodeDeploymentID: nodeDeploymentID,
-		NodeUsedIPs:      usedIPs,
-		NodesIPRange:     nodesIPRange,
-		APIClient:        apiClient,
-		ncPool:           pool,
-		d:                d,
-		deployer:         deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, nil, string(deploymentDataStr)),
+		Master:                &master,
+		Workers:               workers,
+		Token:                 d.Get("token").(string),
+		SSHKey:                d.Get("ssh_key").(string),
+		NetworkName:           d.Get("network_name").(string),
+		CapacityDeploymentMap: capacityDeploymentMap,
+		NodeUsedIPs:           usedIPs,
+		NodesIPRange:          nodesIPRange,
+		APIClient:             apiClient,
+		ncPool:                pool,
+		d:                     d,
+		deployer:              deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, nil, string(deploymentDataStr)),
 	}
 	return deployer, nil
 }
@@ -390,7 +425,8 @@ func NewK8sDeployer(d *schema.ResourceData, apiClient *apiClient) (K8sDeployer, 
 func (k *K8sNodeData) Dictify() map[string]interface{} {
 	res := make(map[string]interface{})
 	res["name"] = k.Name
-	res["node"] = int(k.Node)
+	res["node"] = uint64(k.Node)
+	res["capacity_id"] = uint64(k.CapacityId)
 	res["disk_size"] = k.DiskSize
 	res["publicip"] = k.PublicIP
 	res["publicip6"] = k.PublicIP6
@@ -408,16 +444,21 @@ func (k *K8sNodeData) Dictify() map[string]interface{} {
 // invalidateBrokenAttributes removes outdated attrs and deleted contracts
 func (k *K8sDeployer) invalidateBrokenAttributes(sub *substrate.Substrate) error {
 	newWorkers := make([]K8sNodeData, 0)
+
 	validNodes := make(map[uint32]struct{})
-	for node, contractID := range k.NodeDeploymentID {
-		contract, err := sub.GetContract(contractID)
-		if (err == nil && !contract.IsCreated()) || errors.Is(err, substrate.ErrNotFound) {
-			delete(k.NodeDeploymentID, node)
-			delete(k.NodesIPRange, node)
+	for capacityId := range k.CapacityDeploymentMap {
+		nodeId, err := getNodeIdByCapacityId(sub, capacityId)
+		if err != nil {
+			return errors.Wrapf(err, "couldn't get node id for capacity Id", capacityId)
+		}
+		contract, err := sub.GetContract(capacityId)
+		if (err == nil && !contract.State.IsCreated) || errors.Is(err, substrate.ErrNotFound) {
+			delete(k.CapacityDeploymentMap, capacityId)
+			delete(k.NodesIPRange, nodeId)
 		} else if err != nil {
-			return errors.Wrapf(err, "couldn't get node %d contract %d", node, contractID)
+			return errors.Wrapf(err, "couldn't get capacity contract with ID: %d", capacityId)
 		} else {
-			validNodes[node] = struct{}{}
+			validNodes[nodeId] = struct{}{}
 		}
 
 	}
@@ -452,9 +493,9 @@ func (k *K8sDeployer) storeState(d *schema.ResourceData, cl *apiClient) {
 	for _, w := range k.Workers {
 		workers = append(workers, w.Dictify())
 	}
-	nodeDeploymentID := make(map[string]interface{})
-	for node, id := range k.NodeDeploymentID {
-		nodeDeploymentID[fmt.Sprintf("%d", node)] = int(id)
+	capacityDeploymentMap := make(map[string]interface{})
+	for capacityId, deploymentId := range k.CapacityDeploymentMap {
+		capacityDeploymentMap[fmt.Sprint("%d", capacityId)] = int(deploymentId)
 	}
 	log.Printf("master data: %v\n", k.Master)
 	if k.Master == nil {
@@ -464,52 +505,60 @@ func (k *K8sDeployer) storeState(d *schema.ResourceData, cl *apiClient) {
 	k.retainChecksums(workers, master)
 
 	l := []interface{}{master}
-	k.updateNetworkState(d, cl.state)
+	k.updateNetworkState(cl.substrateConn, d, cl.state)
 	d.Set("master", l)
 	d.Set("workers", workers)
 	d.Set("token", k.Token)
 	d.Set("ssh_key", k.SSHKey)
 	d.Set("network_name", k.NetworkName)
-	d.Set("node_deployment_id", nodeDeploymentID)
+	d.Set("capacity_deployment_map", capacityDeploymentMap)
 }
 
-func (k *K8sDeployer) updateNetworkState(d *schema.ResourceData, state state.StateI) {
+func (k *K8sDeployer) updateNetworkState(sub *substrate.Substrate, d *schema.ResourceData, state state.StateI) {
 	ns := state.GetNetworkState()
 	network := ns.GetNetwork(k.NetworkName)
-	before, _ := d.GetChange("node_deployment_id")
-	for node, deploymentID := range before.(map[string]interface{}) {
-		nodeID, err := strconv.Atoi(node)
+	before, _ := d.GetChange("capacity_deployment_map")
+	for capacityIdStr, deploymentID := range before.(map[string]interface{}) {
+		capacityId, err := strconv.ParseUint(capacityIdStr, 10, 64)
 		if err != nil {
 			log.Printf("error converting node id string to int: %+v", err)
 			continue
 		}
 		deploymentIDStr := fmt.Sprint(deploymentID.(int))
-		network.DeleteDeployment(uint32(nodeID), deploymentIDStr)
+		nodeId, err := getNodeIdByCapacityId(sub, capacityId)
+		// shouldn't panic if we failed to get the node to free the ip
+		if err != nil {
+			continue
+		}
+		network.DeleteDeployment(nodeId, deploymentIDStr)
 	}
 	// remove old ips
-	network.DeleteDeployment(k.Master.Node, fmt.Sprint(k.NodeDeploymentID[k.Master.Node]))
+	masterDl := k.CapacityDeploymentMap[k.Master.CapacityId]
+	network.DeleteDeployment(k.Master.Node, fmt.Sprint(masterDl))
 	for _, worker := range k.Workers {
-		network.DeleteDeployment(worker.Node, fmt.Sprint(k.NodeDeploymentID[worker.Node]))
+		workerDl := k.CapacityDeploymentMap[worker.CapacityId]
+		network.DeleteDeployment(worker.Node, fmt.Sprint(workerDl))
 	}
 
 	// append new ips
-	masterNodeIPs := network.GetDeploymentIPs(k.Master.Node, fmt.Sprint(k.NodeDeploymentID[k.Master.Node]))
+	masterNodeIPs := network.GetDeploymentIPs(k.Master.Node, fmt.Sprint(masterDl))
 	masterIP := net.ParseIP(k.Master.IP)
 	if masterIP == nil {
-		log.Printf("couldn't parse master ip")
+		log.Printf("couldn't parse master ip, value: %s", k.Master.IP)
 	} else {
 		masterNodeIPs = append(masterNodeIPs, masterIP.To4()[3])
 	}
-	network.SetDeploymentIPs(k.Master.Node, fmt.Sprint(k.NodeDeploymentID[k.Master.Node]), masterNodeIPs)
+	network.SetDeploymentIPs(k.Master.Node, fmt.Sprint(masterDl), masterNodeIPs)
 	for _, worker := range k.Workers {
-		workerNodeIPs := network.GetDeploymentIPs(worker.Node, fmt.Sprint(k.NodeDeploymentID[worker.Node]))
+		workerDl := k.CapacityDeploymentMap[worker.CapacityId]
+		workerNodeIPs := network.GetDeploymentIPs(worker.Node, fmt.Sprint(workerDl))
 		workerIP := net.ParseIP(worker.IP)
 		if workerIP == nil {
 			log.Printf("couldn't parse worker ip at node (%d)", worker.Node)
 		} else {
 			workerNodeIPs = append(workerNodeIPs, workerIP.To4()[3])
 		}
-		network.SetDeploymentIPs(worker.Node, fmt.Sprint(k.NodeDeploymentID[worker.Node]), workerNodeIPs)
+		network.SetDeploymentIPs(worker.Node, fmt.Sprint(workerDl), workerNodeIPs)
 	}
 }
 
@@ -536,21 +585,21 @@ func (k *K8sDeployer) assignNodesIPs() error {
 	}
 	return nil
 }
-func (k *K8sDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
+func (k *K8sDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[uint64]gridtypes.Deployment, error) {
 	err := k.assignNodesIPs()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to assign node ips")
 	}
-	deployments := make(map[uint32]gridtypes.Deployment)
-	nodeWorkloads := make(map[uint32][]gridtypes.Workload)
+	deployments := make(map[uint64]gridtypes.Deployment)
+	capacityWorkloadsMap := make(map[uint64][]gridtypes.Workload)
 	masterWorkloads := k.Master.GenerateK8sWorkload(k, "")
-	nodeWorkloads[k.Master.Node] = append(nodeWorkloads[k.Master.Node], masterWorkloads...)
+	capacityWorkloadsMap[k.Master.CapacityId] = append(capacityWorkloadsMap[k.Master.CapacityId], masterWorkloads...)
 	for _, w := range k.Workers {
 		workerWorkloads := w.GenerateK8sWorkload(k, k.Master.IP)
-		nodeWorkloads[w.Node] = append(nodeWorkloads[w.Node], workerWorkloads...)
+		capacityWorkloadsMap[w.CapacityId] = append(capacityWorkloadsMap[w.CapacityId], workerWorkloads...)
 	}
 
-	for node, ws := range nodeWorkloads {
+	for capacityId, ws := range capacityWorkloadsMap {
 		dl := gridtypes.Deployment{
 			Version: 0,
 			TwinID:  uint32(k.APIClient.twin_id), //LocalTwin,
@@ -566,7 +615,7 @@ func (k *K8sDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[u
 				},
 			},
 		}
-		deployments[node] = dl
+		deployments[capacityId] = dl
 	}
 	return deployments, nil
 }
@@ -662,7 +711,7 @@ func (k *K8sDeployer) Deploy(ctx context.Context, sub *substrate.Substrate, d *s
 	if err != nil {
 		return errors.Wrap(err, "couldn't generate deployments data")
 	}
-	currentDeployments, err := k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)
+	currentDeployments, err := k.deployer.Deploy(ctx, sub, k.CapacityDeploymentMap, newDeployments)
 	if err := k.updateState(ctx, sub, currentDeployments, d, cl); err != nil {
 		log.Printf("error updating state: %s\n", err)
 	}
@@ -670,9 +719,9 @@ func (k *K8sDeployer) Deploy(ctx context.Context, sub *substrate.Substrate, d *s
 }
 
 func (k *K8sDeployer) Cancel(ctx context.Context, sub *substrate.Substrate, d *schema.ResourceData, cl *apiClient) error {
-	newDeployments := make(map[uint32]gridtypes.Deployment)
+	newDeployments := make(map[uint64]gridtypes.Deployment)
 
-	currentDeployments, err := k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)
+	currentDeployments, err := k.deployer.Deploy(ctx, sub, k.CapacityDeploymentMap, newDeployments)
 	if err != nil {
 		return errors.Wrapf(err, "couldn't cancel k8s deployment")
 	}
@@ -686,8 +735,8 @@ func (k *K8sDeployer) Cancel(ctx context.Context, sub *substrate.Substrate, d *s
 }
 
 func printDeployments(dls map[uint64]gridtypes.Deployment) {
-	for capacityID, dl := range dls {
-		log.Printf("capacity id: %d\n", capacityID)
+	for capacityId, dl := range dls {
+		log.Printf("capacityId: %d\n", capacityId)
 		enc := json.NewEncoder(log.Writer())
 		enc.SetIndent("", "  ")
 		enc.Encode(dl)
@@ -697,16 +746,17 @@ func printDeployments(dls map[uint64]gridtypes.Deployment) {
 func (k *K8sDeployer) removeUsedIPsFromLocalState(cl *apiClient) {
 	ns := cl.state.GetNetworkState()
 	network := ns.GetNetwork(k.NetworkName)
-
-	network.DeleteDeployment(k.Master.Node, fmt.Sprint(k.NodeDeploymentID[k.Master.Node]))
+	masterDl := k.CapacityDeploymentMap[k.Master.CapacityId]
+	network.DeleteDeployment(k.Master.Node, fmt.Sprint(masterDl))
 	for _, worker := range k.Workers {
-		network.DeleteDeployment(worker.Node, fmt.Sprint(k.NodeDeploymentID[worker.Node]))
+		workerDl := k.CapacityDeploymentMap[worker.CapacityId]
+		network.DeleteDeployment(worker.Node, fmt.Sprint(workerDl))
 	}
 }
 
-func (k *K8sDeployer) updateState(ctx context.Context, sub *substrate.Substrate, currentDeploymentIDs map[uint32]uint64, d *schema.ResourceData, cl *apiClient) error {
+func (k *K8sDeployer) updateState(ctx context.Context, sub *substrate.Substrate, currentDeploymentIDs map[uint64]uint64, d *schema.ResourceData, cl *apiClient) error {
 	log.Printf("current deployments\n")
-	k.NodeDeploymentID = currentDeploymentIDs
+	k.CapacityDeploymentMap = currentDeploymentIDs
 	currentDeployments, err := k.deployer.GetDeploymentObjects(ctx, sub, currentDeploymentIDs)
 	if err != nil {
 		return errors.Wrap(err, "failed to get deployments to update local state")
@@ -755,31 +805,50 @@ func (k *K8sDeployer) updateState(ctx context.Context, sub *substrate.Substrate,
 		k.Workers[idx].IP = privateIPs[string(w.Name)]
 		k.Workers[idx].YggIP = yggIPs[string(w.Name)]
 	}
-	k.updateNetworkState(d, cl.state)
+	k.updateNetworkState(sub, d, cl.state)
 	log.Printf("Current state after updatestate %v\n", k)
 	return nil
 }
 
 func (k *K8sDeployer) removeDeletedContracts(ctx context.Context, sub *substrate.Substrate) error {
-	nodeDeploymentID := make(map[uint32]uint64)
-	for nodeID, deploymentID := range k.NodeDeploymentID {
-		cont, err := sub.GetContract(deploymentID)
+	capacityDeploymentMap := make(map[uint64]uint64)
+	for capacityId, deploymentID := range k.CapacityDeploymentMap {
+
+		cont, err := sub.GetContract(capacityId)
 		if err != nil {
-			return errors.Wrap(err, "failed to get deployments")
+			return errors.Wrapf(err, "failed to get capacity contract %d", capacityId)
 		}
+
 		if !cont.State.IsDeleted {
-			nodeDeploymentID[nodeID] = deploymentID
+			_, err = sub.GetDeployment(deploymentID)
+			if err != nil {
+				if !errors.Is(err, substrate.ErrNotFound) {
+					return errors.Wrapf(err, "failed to get deployment with id: %d", deploymentID)
+					continue
+				}
+			}
+			capacityDeploymentMap[capacityId] = deploymentID
 		}
+
 	}
-	k.NodeDeploymentID = nodeDeploymentID
+	k.CapacityDeploymentMap = capacityDeploymentMap
 	return nil
+}
+
+func getNodeIdByCapacityId(sub *substrate.Substrate, capacityId uint64) (uint32, error) {
+	contract, err := sub.GetContract(capacityId)
+	if err != nil {
+		return 0, errors.Wrapf(err, "couldn't get capacity reservation contract with Id: (%d)", capacityId)
+	}
+	nodeId := uint32(contract.ContractType.CapacityReservationContract.NodeID)
+	return nodeId, nil
 }
 
 func (k *K8sDeployer) updateFromRemote(ctx context.Context, sub *substrate.Substrate) error {
 	if err := k.removeDeletedContracts(ctx, sub); err != nil {
 		return errors.Wrap(err, "failed to remove deleted contracts")
 	}
-	currentDeployments, err := k.deployer.GetDeploymentObjects(ctx, sub, k.NodeDeploymentID)
+	currentDeployments, err := k.deployer.GetDeploymentObjects(ctx, sub, k.CapacityDeploymentMap)
 	if err != nil {
 		return errors.Wrap(err, "failed to fetch remote deployments")
 	}
@@ -813,13 +882,13 @@ func (k *K8sDeployer) updateFromRemote(ctx context.Context, sub *substrate.Subst
 		}
 	}
 
-	nodeDeploymentID := make(map[uint32]uint64)
-	for node, dl := range currentDeployments {
-		nodeDeploymentID[node] = dl.ContractID
+	capacityDeploymentMap := make(map[uint64]uint64)
+	for capacityId, dl := range currentDeployments {
+		capacityDeploymentMap[capacityId] = dl.DeploymentID.U64()
 	}
-	k.NodeDeploymentID = nodeDeploymentID
+	k.CapacityDeploymentMap = capacityDeploymentMap
 	// maps from workload name to (public ip, node id, disk size, actual workload)
-	workloadNodeID := make(map[string]uint32)
+	workloadCapacityMap := make(map[string]uint64)
 	workloadDiskSize := make(map[string]int)
 	workloadComputedIP := make(map[string]string)
 	workloadComputedIP6 := make(map[string]string)
@@ -828,10 +897,10 @@ func (k *K8sDeployer) updateFromRemote(ctx context.Context, sub *substrate.Subst
 	publicIPs := make(map[string]string)
 	publicIP6s := make(map[string]string)
 	diskSize := make(map[string]int)
-	for node, dl := range currentDeployments {
+	for capacityId, dl := range currentDeployments {
 		for _, w := range dl.Workloads {
 			if w.Type == zos.ZMachineType {
-				workloadNodeID[string(w.Name)] = node
+				workloadCapacityMap[string(w.Name)] = capacityId
 				workloadObj[string(w.Name)] = w
 
 			} else if w.Type == zos.PublicIPType {
@@ -864,7 +933,7 @@ func (k *K8sDeployer) updateFromRemote(ctx context.Context, sub *substrate.Subst
 		}
 	}
 	// update master
-	masterNodeID, ok := workloadNodeID[k.Master.Name]
+	masterCapacityId, ok := workloadCapacityMap[k.Master.Name]
 	if !ok {
 		k.Master = nil
 	} else {
@@ -872,8 +941,11 @@ func (k *K8sDeployer) updateFromRemote(ctx context.Context, sub *substrate.Subst
 		masterIP := workloadComputedIP[k.Master.Name]
 		masterIP6 := workloadComputedIP6[k.Master.Name]
 		masterDiskSize := workloadDiskSize[k.Master.Name]
-
-		m, err := NewK8sNodeDataFromWorkload(masterWorkload, masterNodeID, masterDiskSize, masterIP, masterIP6)
+		masterNodeId, err := getNodeIdByCapacityId(sub, masterCapacityId)
+		if err != nil {
+			errors.Wrapf(err, "couldn't get master nodeID, capacityId: %d", masterCapacityId)
+		}
+		m, err := NewK8sNodeDataFromWorkload(masterWorkload, masterNodeId, masterCapacityId, masterDiskSize, masterIP, masterIP6)
 		if err != nil {
 			return errors.Wrap(err, "failed to get master data from workload")
 		}
@@ -882,25 +954,28 @@ func (k *K8sDeployer) updateFromRemote(ctx context.Context, sub *substrate.Subst
 	// update workers
 	workers := make([]K8sNodeData, 0)
 	for _, w := range k.Workers {
-		workerNodeID, ok := workloadNodeID[w.Name]
+		workerCapacityId, ok := workloadCapacityMap[w.Name]
 		if !ok {
 			// worker doesn't exist in any deployment, skip it
 			continue
 		}
-		delete(workloadNodeID, w.Name)
+		delete(workloadCapacityMap, w.Name)
 		workerWorkload := workloadObj[w.Name]
 		workerIP := workloadComputedIP[w.Name]
 		workerIP6 := workloadComputedIP6[w.Name]
-
 		workerDiskSize := workloadDiskSize[w.Name]
-		w, err := NewK8sNodeDataFromWorkload(workerWorkload, workerNodeID, workerDiskSize, workerIP, workerIP6)
+		workerNodeId, err := getNodeIdByCapacityId(sub, workerCapacityId)
+		if err != nil {
+			errors.Wrapf(err, "couldn't get worker nodeID, capacityId: %d", workerCapacityId)
+		}
+		w, err := NewK8sNodeDataFromWorkload(workerWorkload, workerNodeId, workerCapacityId, workerDiskSize, workerIP, workerIP6)
 		if err != nil {
 			return errors.Wrap(err, "failed to get worker data from workload")
 		}
 		workers = append(workers, w)
 	}
 	// add missing workers (in case of failed deletions)
-	for name, workerNodeID := range workloadNodeID {
+	for name, workerCapacityId := range workloadCapacityMap {
 		if name == k.Master.Name {
 			continue
 		}
@@ -908,7 +983,11 @@ func (k *K8sDeployer) updateFromRemote(ctx context.Context, sub *substrate.Subst
 		workerIP := workloadComputedIP[name]
 		workerIP6 := workloadComputedIP6[name]
 		workerDiskSize := workloadDiskSize[name]
-		w, err := NewK8sNodeDataFromWorkload(workerWorkload, workerNodeID, workerDiskSize, workerIP, workerIP6)
+		workerNodeId, err := getNodeIdByCapacityId(sub, workerCapacityId)
+		if err != nil {
+			errors.Wrapf(err, "couldn't get worker nodeID, capacityId: %d", workerCapacityId)
+		}
+		w, err := NewK8sNodeDataFromWorkload(workerWorkload, workerNodeId, workerCapacityId, workerDiskSize, workerIP, workerIP6)
 		if err != nil {
 			return errors.Wrap(err, "failed to get worker data from workload")
 		}
@@ -1010,7 +1089,7 @@ func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 
 	err = deployer.Deploy(ctx, apiClient.substrateConn, d, apiClient)
 	if err != nil {
-		if len(deployer.NodeDeploymentID) != 0 {
+		if len(deployer.CapacityDeploymentMap) != 0 {
 			// failed to deploy and failed to revert, store the current state locally
 			diags = diag.FromErr(err)
 		} else {
