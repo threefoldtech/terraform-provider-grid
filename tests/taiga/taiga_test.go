@@ -12,15 +12,17 @@ import (
 	"testing"
 )
 
-func TestKubernetesDeployment(t *testing.T) {
-	/* Test case for deployeng a presearch.
+func TestTaigaDeployment(t *testing.T) {
+	/* Test case for deploying a presearch.
 
 	   **Test Scenario**
 
 	   - Deploy a taiga.
 	   - Check that the outputs not empty.
-	   - Check that node is reachable.
-	   - Destroy the deployment
+	   - Check that vm is reachable.
+	   - Check that env variables set successfully.
+	   - Ping the website.
+	   - Destroy the deployment.
 	*/
 
 	// retryable errors in terraform testing.
@@ -53,15 +55,13 @@ func TestKubernetesDeployment(t *testing.T) {
 		t.Errorf("public ip not reachable")
 	}
 
-	// out, _ := exec.Command("ping", ip, "-c 5", "-i 3", "-w 10").Output()
-	// assert.NotContains(t, string(out), "Destination Host Unreachable")
 
 	// Check that env variables set successfully
 	res, _ := tests.RemoteRun("root", ip, "cat /proc/1/environ")
 	assert.Contains(t, string(res), "TEST_VAR=this value for test")
 
 	res1, _ := tests.RemoteRun("root", ip, "zinit list")
-	assert.Contains(t, res1, "containerd: Running")
+	assert.Contains(t, res1, "taiga: Running")
 
 	//check the webpage
 	webip := webIp

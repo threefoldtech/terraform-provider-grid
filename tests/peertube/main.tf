@@ -20,18 +20,18 @@ variable "public_key" {
   # - the fqdn can be computed from grid_gateway_domain for the vm
   # - the backend can reference the vm ip directly 
   data "grid_gateway_domain" "domain" {
-    node = 3
+    node = 1
     name = "ashrafpeertube"
   }
   resource "grid_network" "net1" {
-      nodes = [3]
+      nodes = [1]
       ip_range = "10.1.0.0/16"
       name = "network"
       description = "newer network"
       add_wg_access = true
   }
   resource "grid_deployment" "d1" {
-    node = 2
+    node = 1
     network_name = grid_network.net1.name
     vms {
       name = "vm1"
@@ -58,7 +58,7 @@ variable "public_key" {
     }
   }
   resource "grid_name_proxy" "p1" {
-    node = 2
+    node = 1
     name = "ashrafpeertube"
     backends = [format("http://[%s]:9000", grid_deployment.d1.vms[0].ygg_ip)]
     tls_passthrough = false

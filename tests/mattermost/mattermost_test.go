@@ -12,14 +12,15 @@ import (
 	"testing"
 )
 
-func TestKubernetesDeployment(t *testing.T) {
-	/* Test case for deployeng a presearch.
+func TestMattermostDeployment(t *testing.T) {
+	/* Test case for deploying a matermost.
 
 	   **Test Scenario**
 
 	   - Deploy a matermost.
 	   - Check that the outputs not empty.
-	   - Check that node is reachable.
+	   - Check that vm is reachable
+	   - Check that env variables set successfully
 	   - Destroy the deployment
 	*/
 
@@ -42,8 +43,7 @@ func TestKubernetesDeployment(t *testing.T) {
 	ip := terraform.Output(t, terraformOptions, "ygg_ip")
 	assert.NotEmpty(t, ip)
 
-	// Check that vm is reachable
-	// ip := strings.Split(publicIp, "/")[0]
+
 	status := false
 	status = tests.Wait(ip, "22")
 	if status == false {

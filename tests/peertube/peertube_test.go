@@ -12,14 +12,15 @@ import (
 	"testing"
 )
 
-func TestKubernetesDeployment(t *testing.T) {
-	/* Test case for deployeng a presearch.
+func TestPeerTubeDeployment(t *testing.T) {
+	/* Test case for deploying a presearch.
 
 	   **Test Scenario**
 
 	   - Deploy a peertube.
 	   - Check that the outputs not empty.
-	   - Check that node is reachable.
+	   - Check that vm is reachable
+	   - Check that env variables set successfully
 	   - Destroy the deployment
 	*/
 
@@ -42,8 +43,6 @@ func TestKubernetesDeployment(t *testing.T) {
 	ip := terraform.Output(t, terraformOptions, "ygg_ip")
 	assert.NotEmpty(t, ip)
 
-	// Check that vm is reachable
-	// ip := strings.Split(publicIp, "/")[0]
 	status := false
 	status = tests.Wait(ip, "22")
 	if status == false {
@@ -58,6 +57,6 @@ func TestKubernetesDeployment(t *testing.T) {
 	assert.Contains(t, string(res), "TEST_VAR=this value for test")
 
 	res1, _ := tests.RemoteRun("root", ip, "zinit list")
-	assert.Contains(t, res1, "prepare-redis: Success")
+	assert.Contains(t, res1, "peertube: Running")
 
 }

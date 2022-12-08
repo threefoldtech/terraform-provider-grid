@@ -11,16 +11,19 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+	"time"
 )
 
-func TestKubernetesDeployment(t *testing.T) {
-	/* Test case for deployeng a presearch.
+func TestPreSearchDeployment(t *testing.T) {
+	/* Test case for deploying a presearch.
 
 	   **Test Scenario**
 
 	   - Deploy a presearch.
 	   - Check that the outputs not empty.
 	   - Check that node is reachable.
+	   - Check that vm is reachable
+	   - Check that env variables set successfully
 	   - Destroy the deployment
 	*/
 
@@ -58,8 +61,8 @@ func TestKubernetesDeployment(t *testing.T) {
 	res, _ := tests.RemoteRun("root", ip, "cat /proc/1/environ")
 	assert.Contains(t, string(res), "PRESEARCH_REGISTRATION_CODE=e5083a8d0a6362c6cf7a3078bfac81e3")
 
-	res1, _ := tests.RemoteRun("root", ip, "zinit list")
-	assert.Contains(t, res1, "prenode: Running")
-	// assert.Equal()
+	time.Sleep(30 * time.Second) // Sleeps for 30 seconds
 
+	res1, _ := tests.RemoteRun("root", ip, "zinit list")
+	assert.Contains(t, res1, "prenode: Success")
 }

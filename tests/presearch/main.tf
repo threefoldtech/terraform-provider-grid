@@ -51,26 +51,6 @@ resource "grid_deployment" "d1" {
       SSH_KEY                     = "${var.public_key}",
       PRESEARCH_REGISTRATION_CODE = "e5083a8d0a6362c6cf7a3078bfac81e3",
       
-
-      # COMMENT the two env vars below to create a new node. 
-      # or uncomment and fill them from your old node to restore it. #
-
-      # optional keys pair from the old node 
-      # important to follow the schema ` <<-EOF ... EOF ` with no indentation
-#       PRESEARCH_BACKUP_PRI_KEY = <<EOF
-# -----BEGIN PRIVATE KEY-----
-# MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDQjfuZ3uIGOXUP
-# Qqpw1K85LV6sZWOAntUnhL73GXTWcwBer06yPI1ush8Vj6tdP94hmUFfWW85vYRU
-# ...
-# -----END PRIVATE KEY-----
-#       EOF
-#       PRESEARCH_BACKUP_PUB_KEY = <<EOF
-# -----BEGIN PUBLIC KEY-----
-# MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0I37md7iBjl1D0KqcNSv
-# OS1erGVjgJ7VJ4S+9xl01nMAXq9OsjyNbrIfFY+rXT/eIZlBX1lvOb2EVJ93o1mz
-# ...
-# -----END PUBLIC KEY-----
-#       EOF
      }
   }
 }
