@@ -12,6 +12,9 @@ provider "grid" {
 resource "grid_capacity_reserver" "reserver" {
   farm = 1
   public = true
+  cru = 4
+  mru = 4096
+  sru = 6
 }
 
 resource "grid_network" "net1" {
