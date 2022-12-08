@@ -20,18 +20,18 @@ import (
 )
 
 type DeploymentDeployer struct {
-	Id                            string
-	CapacityReservationContractID uint64 `name:"capacity_reservation_contract_id"`
-	Node                          uint32
-	Disks                         []workloads.Disk
-	ZDBs                          []workloads.ZDB
-	VMs                           []workloads.VM
-	QSFSs                         []workloads.QSFS
-	IPRange                       string
-	NetworkName                   string
-	APIClient                     *apiClient
-	ncPool                        client.NodeClientCollection
-	deployer                      deployer.Deployer
+	Id          string
+	capacity_id uint64 `name:"capacity_reservation_contract_id"`
+	Node        uint32
+	Disks       []workloads.Disk
+	ZDBs        []workloads.ZDB
+	VMs         []workloads.VM
+	QSFSs       []workloads.QSFS
+	IPRange     string
+	NetworkName string
+	APIClient   *apiClient
+	ncPool      client.NodeClientCollection
+	deployer    deployer.Deployer
 }
 type DeploymentData struct {
 	Type        string `json:"type"`
@@ -41,7 +41,7 @@ type DeploymentData struct {
 
 func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (DeploymentDeployer, error) {
 	networkName := d.Get("network_name").(string)
-	capacityReservationContract := d.Get("capacity_reservation_contract_id").(uint64)
+	capacityReservationContract := d.Get("capacity_id").(uint64)
 	nodeID := uint32(d.Get("node").(int))
 	disks := make([]workloads.Disk, 0)
 	for _, disk := range d.Get("disks").([]interface{}) {
@@ -89,18 +89,18 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 	ipRange := net.GetNodeSubnet(nodeID)
 
 	deploymentDeployer := DeploymentDeployer{
-		Id:                            d.Id(),
-		CapacityReservationContractID: capacityReservationContract,
-		Node:                          nodeID,
-		Disks:                         disks,
-		VMs:                           vms,
-		QSFSs:                         qsfs,
-		ZDBs:                          zdbs,
-		IPRange:                       ipRange,
-		NetworkName:                   networkName,
-		APIClient:                     apiClient,
-		ncPool:                        pool,
-		deployer:                      deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, solutionProvider, string(deploymentDataStr)),
+		Id:          d.Id(),
+		capacity_id: capacityReservationContract,
+		Node:        nodeID,
+		Disks:       disks,
+		VMs:         vms,
+		QSFSs:       qsfs,
+		ZDBs:        zdbs,
+		IPRange:     ipRange,
+		NetworkName: networkName,
+		APIClient:   apiClient,
+		ncPool:      pool,
+		deployer:    deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, solutionProvider, string(deploymentDataStr)),
 	}
 	return deploymentDeployer, nil
 }
@@ -164,7 +164,7 @@ func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context)
 		dl.Workloads = append(dl.Workloads, qsfsWorkload)
 	}
 
-	return map[uint64]gridtypes.Deployment{d.CapacityReservationContractID: dl}, nil
+	return map[uint64]gridtypes.Deployment{d.capacity_id: dl}, nil
 }
 
 func (d *DeploymentDeployer) Marshal(r *schema.ResourceData) {
@@ -202,7 +202,7 @@ func (d *DeploymentDeployer) GetOldDeployments(ctx context.Context) (map[uint64]
 		if err != nil {
 			return nil, errors.Wrapf(err, "couldn't parse deployment id %s", d.Id)
 		}
-		deployments[d.CapacityReservationContractID] = deploymentID
+		deployments[d.capacity_id] = deploymentID
 	}
 
 	return deployments, nil
@@ -245,11 +245,11 @@ func (d *DeploymentDeployer) sync(ctx context.Context, sub *substrate.Substrate,
 		d.Nullify()
 		return nil
 	}
-	currentDeployments, err := d.deployer.GetDeploymentObjects(ctx, sub, map[uint64]uint64{d.CapacityReservationContractID: d.ID()})
+	currentDeployments, err := d.deployer.GetDeploymentObjects(ctx, sub, map[uint64]uint64{d.capacity_id: d.ID()})
 	if err != nil {
 		return errors.Wrap(err, "failed to get deployments to update local state")
 	}
-	dl := currentDeployments[d.CapacityReservationContractID]
+	dl := currentDeployments[d.capacity_id]
 	var vms []workloads.VM
 	var zdbs []workloads.ZDB
 	var qsfs []workloads.QSFS
@@ -381,8 +381,8 @@ func (d *DeploymentDeployer) Deploy(ctx context.Context, sub *substrate.Substrat
 		return errors.Wrap(err, "couldn't get old deployments data")
 	}
 	currentDeployments, err := d.deployer.Deploy(ctx, sub, oldDeployments, newDeployments)
-	if currentDeployments[d.CapacityReservationContractID] != 0 {
-		d.Id = fmt.Sprintf("%d", currentDeployments[d.CapacityReservationContractID])
+	if currentDeployments[d.capacity_id] != 0 {
+		d.Id = fmt.Sprintf("%d", currentDeployments[d.capacity_id])
 	}
 	return err
 }
@@ -394,7 +394,7 @@ func (d *DeploymentDeployer) Cancel(ctx context.Context, sub *substrate.Substrat
 		return err
 	}
 	currentDeployments, err := d.deployer.Deploy(ctx, sub, oldDeployments, newDeployments)
-	id := currentDeployments[d.CapacityReservationContractID]
+	id := currentDeployments[d.capacity_id]
 	if id != 0 {
 		d.Id = fmt.Sprintf("%d", id)
 	} else {
