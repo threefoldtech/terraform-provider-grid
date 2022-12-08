@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"sort"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -69,7 +68,7 @@ func resourceNetwork() *schema.Resource {
 				Computed:    true,
 				Description: "Access node capacity contract id that is created if an access node is required (user requires wg access, or all nodes don't a have public configuration).",
 			},
-			"nodes": {
+			"node_ids": {
 				Type:     schema.TypeList,
 				Computed: true,
 				Elem: &schema.Schema{
@@ -132,7 +131,7 @@ type NetworkDeployer struct {
 	IPRange     gridtypes.IPNet
 	AddWGAccess bool
 
-	Nodes                 []uint32
+	NodeIDs               []uint32
 	AccessWGConfig        string
 	AccessNodeCapacityID  uint64
 	ExternalIP            *gridtypes.IPNet
@@ -141,14 +140,14 @@ type NetworkDeployer struct {
 	NodeDeploymentID      map[uint32]uint64
 	NodesIPRange          map[uint32]gridtypes.IPNet
 	CapacityDeploymentMap map[uint64]uint64
-	NodeCapacity          map[uint32]uint64
-	CapacityNode          map[uint64]uint32
 
-	WGPort    map[uint32]int
-	Keys      map[uint32]wgtypes.Key
-	APIClient *apiClient
-	ncPool    *client.NodeClientPool
-	deployer  deployer.Deployer
+	NodeCapacity map[uint32]uint64
+	CapacityNode map[uint64]uint32
+	WGPort       map[uint32]int
+	Keys         map[uint32]wgtypes.Key
+	APIClient    *apiClient
+	ncPool       *client.NodeClientPool
+	deployer     deployer.Deployer
 }
 
 func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *apiClient) (NetworkDeployer, error) {
@@ -159,14 +158,14 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 		capacityIDs[idx] = c.(uint64)
 	}
 
-	capacityDeploymentIDIf := d.Get("capacity_deployment_id").(map[string]interface{})
-	capacityDeploymentID := map[uint64]uint64{}
-	for capacityStr, deploymentID := range capacityDeploymentIDIf {
+	capacityDeploymentMapIf := d.Get("capacity_deployment_map").(map[string]interface{})
+	capacityDeploymentMap := map[uint64]uint64{}
+	for capacityStr, deploymentID := range capacityDeploymentMapIf {
 		capacityID, err := strconv.ParseUint(capacityStr, 10, 64)
 		if err != nil {
-			return NetworkDeployer{}, errors.Wrap(err, "couldn't parse capacity id")
+			return NetworkDeployer{}, errors.Wrapf(err, "couldn't parse capacity id %s", capacityStr)
 		}
-		capacityDeploymentID[capacityID] = deploymentID.(uint64)
+		capacityDeploymentMap[capacityID] = deploymentID.(uint64)
 	}
 
 	nodeCapacityIDIf := d.Get("node_capacity_id").(map[string]interface{})
@@ -174,21 +173,29 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 	for node, id := range nodeCapacityIDIf {
 		nodeInt, err := strconv.ParseUint(node, 10, 32)
 		if err != nil {
-			return NetworkDeployer{}, errors.Wrap(err, "couldn't parse node id")
+			return NetworkDeployer{}, errors.Wrapf(err, "couldn't parse node id %s", node)
 		}
 		nodeCapacity[uint32(nodeInt)] = uint64(id.(int))
 	}
-	capacityNode := map[uint64]uint32{}
-	nodes, err := getUniqueNodes(capacityIDs, nodeCapacity, capacityNode, apiClient)
+
+	nodeCapacity, err = assignNodesToCapacities(capacityIDs, nodeCapacity, apiClient)
 	if err != nil {
-		return NetworkDeployer{}, fmt.Errorf("couldn't get unique nodes. %w", err)
+		return NetworkDeployer{}, fmt.Errorf("couldn't assign nodes to capacities. %w", err)
 	}
+
+	capacityNode := map[uint64]uint32{}
+	nodes := []uint32{}
+	for node, capacity := range nodeCapacity {
+		nodes = append(nodes, node)
+		capacityNode[capacity] = node
+	}
+
 	nodeDeploymentIDIf := d.Get("node_deployment_id").(map[string]interface{})
 	nodeDeploymentID := make(map[uint32]uint64)
 	for node, id := range nodeDeploymentIDIf {
 		nodeInt, err := strconv.ParseUint(node, 10, 32)
 		if err != nil {
-			return NetworkDeployer{}, errors.Wrap(err, "couldn't parse node id")
+			return NetworkDeployer{}, errors.Wrapf(err, "couldn't parse node id %s", node)
 		}
 		deploymentID := uint64(id.(int))
 		nodeDeploymentID[uint32(nodeInt)] = deploymentID
@@ -198,11 +205,11 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 	for node, r := range nodesIPRangeIf {
 		nodeInt, err := strconv.ParseUint(node, 10, 32)
 		if err != nil {
-			return NetworkDeployer{}, errors.Wrap(err, "couldn't parse node id")
+			return NetworkDeployer{}, errors.Wrapf(err, "couldn't parse node id %s", node)
 		}
 		nodesIPRange[uint32(nodeInt)], err = gridtypes.ParseIPNet(r.(string))
 		if err != nil {
-			return NetworkDeployer{}, errors.Wrap(err, "couldn't parse node ip range")
+			return NetworkDeployer{}, errors.Wrapf(err, "couldn't parse node ip range %s", r.(string))
 		}
 	}
 
@@ -214,23 +221,24 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 	if externalIPStr != "" {
 		ip, err := gridtypes.ParseIPNet(externalIPStr)
 		if err != nil {
-			return NetworkDeployer{}, errors.Wrap(err, "couldn't parse external ip")
+			return NetworkDeployer{}, errors.Wrapf(err, "couldn't parse external ip %s", externalIPStr)
 		}
 		externalIP = &ip
 	}
 	var externalSK wgtypes.Key
-	if d.Get("external_sk").(string) != "" {
-		externalSK, err = wgtypes.ParseKey(d.Get("external_sk").(string))
+	externalSKStr := d.Get("external_sk").(string)
+	if externalSKStr != "" {
+		externalSK, err = wgtypes.ParseKey(externalSKStr)
 	} else {
 		externalSK, err = wgtypes.GeneratePrivateKey()
 	}
 	if err != nil {
-		return NetworkDeployer{}, errors.Wrap(err, "failed to get external_sk key")
+		return NetworkDeployer{}, errors.Wrapf(err, "failed to get external_sk key %s", externalSKStr)
 	}
-
-	ipRange, err := gridtypes.ParseIPNet(d.Get("ip_range").(string))
+	ipRangeStr := d.Get("ip_range").(string)
+	ipRange, err := gridtypes.ParseIPNet(ipRangeStr)
 	if err != nil {
-		return NetworkDeployer{}, errors.Wrap(err, "couldn't parse network ip range")
+		return NetworkDeployer{}, errors.Wrapf(err, "couldn't parse network ip range %s", ipRangeStr)
 	}
 	pool := client.NewNodeClientPool(apiClient.rmb)
 	deploymentData := DeploymentData{
@@ -246,7 +254,7 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 		Name:                  d.Get("name").(string),
 		Description:           d.Get("description").(string),
 		CapacityIDs:           capacityIDs,
-		Nodes:                 nodes,
+		NodeIDs:               nodes,
 		IPRange:               ipRange,
 		AddWGAccess:           addWGAccess,
 		AccessNodeCapacityID:  d.Get("access_node_capacity_id").(uint64),
@@ -256,7 +264,7 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 		PublicNodeID:          uint32(d.Get("public_node_id").(int)),
 		NodesIPRange:          nodesIPRange,
 		NodeDeploymentID:      nodeDeploymentID,
-		CapacityDeploymentMap: capacityDeploymentID,
+		CapacityDeploymentMap: capacityDeploymentMap,
 		NodeCapacity:          nodeCapacity,
 		CapacityNode:          capacityNode,
 		Keys:                  make(map[uint32]wgtypes.Key),
@@ -268,34 +276,28 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 	return deployer, nil
 }
 
-// getUniqueNodes gets uniqe nodes list from capacity contracts that the user provided, assigns each node to a capacity contract and vice versa.
-func getUniqueNodes(contractIDs []uint64, nodeCapacityID map[uint32]uint64, capacityNode map[uint64]uint32, cl *apiClient) ([]uint32, error) {
-	nodes := []uint32{}
+// assignNodesToCapacities should assing each node to one capacity contract id
+func assignNodesToCapacities(contractIDs []uint64, nodeCapacityID map[uint32]uint64, cl *apiClient) (map[uint32]uint64, error) {
+	newNodeCapacityID := map[uint32]uint64{}
 	for _, id := range contractIDs {
 		contract, err := cl.substrateConn.GetContract(id)
 		if err != nil {
 			return nil, fmt.Errorf("couldn't get capacity contract with id %d. %w", id, err)
 		}
 		node := uint32(contract.ContractType.CapacityReservationContract.NodeID)
-
-		if isIn[uint64](contractIDs, nodeCapacityID[node]) {
-			// this node is already set to another capacity contract that exists in contarctIDs, no need to reset it
+		if includes[uint64](contractIDs, nodeCapacityID[node]) {
+			// this node is already assigned to another capacity contract that exists in contarctIDs, no need to reset it
 			continue
 		}
-		if !isIn[uint32](nodes, node) {
-			nodes = append(nodes, node)
-			nodeCapacityID[node] = id
-			capacityNode[id] = node
-		}
+		newNodeCapacityID[node] = id
 	}
-	sort.Slice(nodes, func(i, j int) bool { return nodes[i] < nodes[j] })
-	return nodes, nil
+	return newNodeCapacityID, nil
 }
 
 // invalidateBrokenAttributes removes outdated attrs and deleted contracts
 func (k *NetworkDeployer) invalidateBrokenAttributes(sub *substrate.Substrate) error {
 
-	for capacity := range k.CapacityDeploymentMap {
+	for capacity, deploymentID := range k.CapacityDeploymentMap {
 		contract, err := sub.GetContract(capacity)
 		if (err == nil && !contract.State.IsCreated) || errors.Is(err, substrate.ErrNotFound) {
 			node := k.CapacityNode[capacity]
@@ -308,6 +310,10 @@ func (k *NetworkDeployer) invalidateBrokenAttributes(sub *substrate.Substrate) e
 			delete(k.CapacityNode, capacity)
 		} else if err != nil {
 			return errors.Wrapf(err, "couldn't get capacity contract id %d ", capacity)
+		}
+		_, err = sub.GetDeployment(deploymentID)
+		if err != nil {
+			return fmt.Errorf("couldn't get deployment with id %d. %w", deploymentID, err)
 		}
 
 	}
@@ -345,7 +351,7 @@ func (k *NetworkDeployer) Validate(ctx context.Context, sub *substrate.Substrate
 		return fmt.Errorf("subnet in iprange %s should be 16", k.IPRange.String())
 	}
 
-	return isNodesUp(ctx, sub, k.Nodes, k.ncPool)
+	return isNodesUp(ctx, sub, k.NodeIDs, k.ncPool)
 }
 
 func (k *NetworkDeployer) ValidateDelete(ctx context.Context) error {
@@ -359,39 +365,44 @@ func (k *NetworkDeployer) storeState(d *schema.ResourceData, state state.StateI)
 		nodeDeploymentID[fmt.Sprintf("%d", node)] = int(id)
 	}
 
+	capacityDeploymentMap := map[string]interface{}{}
+	for capacity, deployment := range k.CapacityDeploymentMap {
+		capacityDeploymentMap[fmt.Sprintf("%d", capacity)] = int(deployment)
+	}
+
 	nodesIPRange := make(map[string]interface{})
 	for node, r := range k.NodesIPRange {
 		nodesIPRange[fmt.Sprintf("%d", node)] = r.String()
 	}
 
 	nodes := make([]uint32, 0)
-	for _, node := range k.Nodes {
+	for _, node := range k.NodeIDs {
 		if _, ok := k.NodeDeploymentID[node]; ok {
 			nodes = append(nodes, node)
 		}
 	}
 	for node := range k.NodeDeploymentID {
-		if !isIn[uint32](nodes, node) {
+		if !includes[uint32](nodes, node) {
 			if k.PublicNodeID == node {
 				continue
 			}
 			nodes = append(nodes, node)
 		}
 	}
+
 	log.Printf("setting deployer object nodes: %v\n", nodes)
 	// update network local status
 	k.updateNetworkLocalState(state)
 
-	k.Nodes = nodes
+	k.NodeIDs = nodes
 
 	log.Printf("storing nodes: %v\n", nodes)
-	d.Set("nodes", nodes)
+	d.Set("node_ids", nodes)
 	d.Set("ip_range", k.IPRange.String())
 	d.Set("access_wg_config", k.AccessWGConfig)
 	if k.ExternalIP == nil {
 		d.Set("external_ip", nil)
 	} else {
-
 		d.Set("external_ip", k.ExternalIP.String())
 	}
 	d.Set("external_sk", k.ExternalSK.String())
@@ -399,6 +410,7 @@ func (k *NetworkDeployer) storeState(d *schema.ResourceData, state state.StateI)
 	// plural or singular?
 	d.Set("nodes_ip_range", nodesIPRange)
 	d.Set("node_deployment_id", nodeDeploymentID)
+	d.Set("capacity_deployment_map", capacityDeploymentMap)
 }
 
 func (k *NetworkDeployer) updateNetworkLocalState(state state.StateI) {
@@ -411,7 +423,7 @@ func (k *NetworkDeployer) updateNetworkLocalState(state state.StateI) {
 }
 
 func nextFreeOctet(used []byte, start *byte) error {
-	for isIn[byte](used, *start) && *start <= 254 {
+	for includes[byte](used, *start) && *start <= 254 {
 		*start += 1
 	}
 	if *start == 255 {
@@ -425,7 +437,7 @@ func (k *NetworkDeployer) assignNodesIPs(nodes []uint32) error {
 	l := len(k.IPRange.IP)
 	usedIPs := make([]byte, 0) // the third octet
 	for node, ip := range k.NodesIPRange {
-		if isIn[uint32](nodes, node) {
+		if includes[uint32](nodes, node) {
 			usedIPs = append(usedIPs, ip.IP[l-2])
 			ips[node] = ip
 		}
@@ -564,7 +576,7 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 	needsIPv4Access := k.AddWGAccess || (len(hiddenNodes) != 0 && len(hiddenNodes)+len(accessibleNodes) > 1)
 	if needsIPv4Access {
 		// if ipv4 access is needed, k.publicNodeID should always be set to some node
-		if !isIn[uint32](accessibleNodes, k.PublicNodeID) {
+		if !includes[uint32](accessibleNodes, k.PublicNodeID) {
 			accessibleNodes = append(accessibleNodes, k.PublicNodeID)
 		}
 		if endpoints[k.PublicNodeID] == "" { // old or new outsider
@@ -885,11 +897,6 @@ func resourceNetworkDelete(ctx context.Context, d *schema.ResourceData, meta int
 //
 // an already used farm is preferred to create the capacity contract on. if no farm is eligible, a random farm is selected.
 func (k *NetworkDeployer) CreateAccessNodeCapacity() (contractID uint64, err error) {
-	var minFreeIPs *uint64
-	var dedicated *bool
-	*minFreeIPs = 1
-	*dedicated = false
-
 	// preferebly choose a farm used with the capacity contracts, if not, choose a random one
 	farmID, err := k.getPreferrableFarm()
 	if err != nil {
@@ -917,10 +924,8 @@ func (k *NetworkDeployer) CreateAccessNodeCapacity() (contractID uint64, err err
 // this farm is preferrably one of the farms already used in provided capacity contracts.
 // if non is eligible, a random eligible farm is chosen
 func (k *NetworkDeployer) getPreferrableFarm() (uint64, error) {
-	var freeIP *uint64
-	var dedicated *bool
-	*freeIP = uint64(1)
-	*dedicated = false
+	freeIP := uint64(1)
+	dedicated := false
 	for _, id := range k.CapacityIDs {
 		contract, err := k.APIClient.substrateConn.GetContract(id)
 		if err != nil {
@@ -931,28 +936,27 @@ func (k *NetworkDeployer) getPreferrableFarm() (uint64, error) {
 		if err != nil {
 			return 0, fmt.Errorf("couldn't get node with id %d. %w", id, err)
 		}
-		var farmID *uint64
-		*farmID = uint64(node.FarmID)
+		farmID := uint64(node.FarmID)
 		_, cnt, err := k.APIClient.grid_client.Farms(types.FarmFilter{
-			FarmID:  farmID,
-			FreeIPs: freeIP,
+			FarmID:  &farmID,
+			FreeIPs: &freeIP,
 		}, types.Limit{
 			Size: 1,
 		})
 		if cnt == 0 {
-			log.Printf("couldn't get farm with id %d", *farmID)
+			log.Printf("couldn't get farm with id %d", &farmID)
 			continue
 		}
 		if err != nil {
-			log.Printf("couldn't get farm with id %d. %w", *farmID, err)
+			log.Printf("couldn't get farm with id %d. %w", &farmID, err)
 			continue
 		}
-		return *farmID, nil
+		return farmID, nil
 	}
 	// non is eligible, choose a random eligible farm
 	farms, cnt, err := k.APIClient.grid_client.Farms(types.FarmFilter{
-		FreeIPs:   freeIP,
-		Dedicated: dedicated,
+		FreeIPs:   &freeIP,
+		Dedicated: &dedicated,
 	},
 		types.Limit{
 			Size: 1,
@@ -985,7 +989,7 @@ func (k *NetworkDeployer) deleteAccessNodeCapacity() error {
 // updateAccessNodeCapacity should decide whether to create a new capacity for an access node, or to delete it if not needed any more.
 func (k *NetworkDeployer) updateAccessNodeCapacity(ctx context.Context) error {
 	// if capacity contract is needed, create it if not created
-	atLeastHiddenNode, err := k.haveHiddenNodes(ctx)
+	atLeastHiddenNode, err := k.hasHiddenNodes(ctx)
 	if err != nil {
 		return fmt.Errorf("couldn't get network hidden nodes. %w", err)
 	}
@@ -1026,9 +1030,9 @@ func (k *NetworkDeployer) updateAccessNodeCapacity(ctx context.Context) error {
 	return nil
 }
 
-// haveHiddenNodes returns a boolean indicating whether or not the set of nodes the network should be deployed on have at least one hidden node.
-func (k *NetworkDeployer) haveHiddenNodes(ctx context.Context) (bool, error) {
-	for _, node := range k.Nodes {
+// hasHiddenNodes returns a boolean indicating whether or not the set of nodes the network should be deployed on have at least one hidden node.
+func (k *NetworkDeployer) hasHiddenNodes(ctx context.Context) (bool, error) {
+	for _, node := range k.NodeIDs {
 		nodeClient, err := k.ncPool.GetNodeClient(k.APIClient.substrateConn, node)
 		if err != nil {
 			return false, fmt.Errorf("couldn't get node client. %w", err)

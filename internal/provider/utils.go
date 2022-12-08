@@ -13,20 +13,13 @@ type Chars interface {
 	byte | string
 }
 
-func isIn[N Number | Chars](l []N, i N) bool {
+func includes[N Number | Chars](l []N, i N) bool {
 	for _, x := range l {
 		if i == x {
 			return true
 		}
 	}
 	return false
-}
-func SumIntsOrFloats[K comparable, V int64 | float64](m map[K]V) V {
-	var s V
-	for _, v := range m {
-		s += v
-	}
-	return s
 }
 
 func IsValidContract(sub *substrate.Substrate, contractID uint64) (bool, error) {
