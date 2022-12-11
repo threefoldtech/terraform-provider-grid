@@ -51,7 +51,7 @@ locals {
 
   master = {
     name        = "mr"
-    node        = 2
+    node        = 12
     cpu         = 2
     memory      = 1024
     disk_name   = "mrdisk"

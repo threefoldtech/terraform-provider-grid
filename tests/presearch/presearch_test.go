@@ -61,7 +61,7 @@ func TestPreSearchDeployment(t *testing.T) {
 	res, _ := tests.RemoteRun("root", ip, "cat /proc/1/environ")
 	assert.Contains(t, string(res), "PRESEARCH_REGISTRATION_CODE=e5083a8d0a6362c6cf7a3078bfac81e3")
 
-	time.Sleep(30 * time.Second) // Sleeps for 30 seconds
+	time.Sleep(60 * time.Second) // Sleeps for 60 seconds
 
 	res1, _ := tests.RemoteRun("root", ip, "zinit list")
 	assert.Contains(t, res1, "prenode: Success")
