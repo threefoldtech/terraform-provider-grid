@@ -443,17 +443,6 @@ func (k *NetworkDeployer) storeState(d *schema.ResourceData, state state.StateI)
 	return nil
 }
 
-func WrapErrors(err1, err2 error) error {
-	if err1 != nil && err2 == nil {
-		return err1
-	} else if err1 == nil && err2 != nil {
-		return err2
-	} else if err1 != nil && err2 != nil {
-		return fmt.Errorf("%w. %w", err1, err2)
-	}
-	return nil
-}
-
 func (k *NetworkDeployer) updateNetworkLocalState(state state.StateI) {
 	ns := state.GetNetworkState()
 	ns.DeleteNetwork(k.Name)
@@ -975,7 +964,7 @@ func (k *NetworkDeployer) getPreferrableFarm() (uint64, error) {
 	for _, id := range k.CapacityIDs {
 		contract, err := k.APIClient.substrateConn.GetContract(id)
 		if err != nil {
-			return 0, fmt.Errorf("couldn't get contract with id %d. %w", id, err)
+			return 0, fmt.Errorf("couldn't get capacity contract with id %d. %w", id, err)
 		}
 		nodeID := uint32(contract.ContractType.CapacityReservationContract.NodeID)
 		node, err := k.APIClient.substrateConn.GetNode(nodeID)
@@ -1086,6 +1075,8 @@ func (k *NetworkDeployer) hasHiddenNodes(ctx context.Context) (bool, error) {
 		_, err = getNodeEndpoint(ctx, nodeClient)
 		if err != nil && errors.Is(err, ErrNoAccessibleInterfaceFound) {
 			return true, nil
+		} else if err != nil {
+			return false, fmt.Errorf("couldn't get node %d endpoint. %w", node, err)
 		}
 	}
 	return false, nil
