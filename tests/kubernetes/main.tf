@@ -24,13 +24,12 @@ resource "grid_network" "net1" {
 
 resource "grid_kubernetes" "k8s1" {
   network_name = grid_network.net1.name
-  nodes_ip_range = grid_network.net1.nodes_ip_range 
   token = "12345678910122"
   ssh_key =  var.public_key
 
   master {
     disk_size = 22
-    node = 7
+    node = 5
     name = "mr"
     cpu = 2
     publicip = true

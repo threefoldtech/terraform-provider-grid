@@ -25,7 +25,6 @@ resource "grid_network" "net1" {
 resource "grid_deployment" "d1" {
   node = 2
   network_name = grid_network.net1.name
-  ip_range = lookup(grid_network.net1.nodes_ip_range, 2, "")
   vms {
     name = "vm1"
     flist = "https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-20.04.flist"
