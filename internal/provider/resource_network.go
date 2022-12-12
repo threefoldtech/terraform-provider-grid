@@ -293,7 +293,7 @@ func assignNodesToCapacities(contractIDs []uint64, nodeCapacityID map[uint32]uin
 			return nil, fmt.Errorf("couldn't get capacity contract with id %d. %w", id, err)
 		}
 		node := uint32(contract.ContractType.CapacityReservationContract.NodeID)
-		if includes[uint64](contractIDs, nodeCapacityID[node]) {
+		if includes(contractIDs, nodeCapacityID[node]) {
 			// this node is already assigned to another capacity contract that exists in contarctIDs, no need to reset it
 			continue
 		}
@@ -427,7 +427,7 @@ func (k *NetworkDeployer) updateNetworkLocalState(state state.StateI) {
 }
 
 func nextFreeOctet(used []byte, start *byte) error {
-	for includes[byte](used, *start) && *start <= 254 {
+	for includes(used, *start) && *start <= 254 {
 		*start += 1
 	}
 	if *start == 255 {
@@ -441,7 +441,7 @@ func (k *NetworkDeployer) assignNodesIPs(nodes []uint32) error {
 	l := len(k.IPRange.IP)
 	usedIPs := make([]byte, 0) // the third octet
 	for node, ip := range k.NodesIPRange {
-		if includes[uint32](nodes, node) {
+		if includes(nodes, node) {
 			usedIPs = append(usedIPs, ip.IP[l-2])
 			ips[node] = ip
 		}
@@ -580,7 +580,7 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 	needsIPv4Access := k.AddWGAccess || (len(hiddenNodes) != 0 && len(hiddenNodes)+len(accessibleNodes) > 1)
 	if needsIPv4Access {
 		// if ipv4 access is needed, k.publicNodeID should always be set to some node
-		if !includes[uint32](accessibleNodes, k.PublicNodeID) {
+		if !includes(accessibleNodes, k.PublicNodeID) {
 			accessibleNodes = append(accessibleNodes, k.PublicNodeID)
 		}
 		if endpoints[k.PublicNodeID] == "" { // old or new outsider
@@ -816,7 +816,7 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 	err = deployer.storeState(d, apiClient.state)
 	d.SetId(uuid.New().String())
 	if err != nil {
-		diags = append(diags, diag.FromErr(fmt.Errorf("error while storing state", err))...)
+		diags = append(diags, diag.FromErr(fmt.Errorf("error while storing state. %w", err))...)
 	}
 	return diags
 }
@@ -845,7 +845,7 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 	}
 	err = deployer.storeState(d, apiClient.state)
 	if err != nil {
-		diags = append(diags, diag.FromErr(fmt.Errorf("error while storing state", err))...)
+		diags = append(diags, diag.FromErr(fmt.Errorf("error while storing state. %w", err))...)
 	}
 	return diags
 }
@@ -873,7 +873,7 @@ func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta inter
 	}
 	err = deployer.storeState(d, apiClient.state)
 	if err != nil {
-		return diag.FromErr(fmt.Errorf("error while storing state", err))
+		return diag.FromErr(fmt.Errorf("error while storing state. %w", err))
 	}
 	return diags
 }
@@ -896,7 +896,7 @@ func resourceNetworkDelete(ctx context.Context, d *schema.ResourceData, meta int
 	} else {
 		err = deployer.storeState(d, apiClient.state)
 		if err != nil {
-			diags = append(diags, diag.FromErr(fmt.Errorf("error while storing state", err))...)
+			diags = append(diags, diag.FromErr(fmt.Errorf("error while storing state. %w", err))...)
 		}
 	}
 	return diags
@@ -918,7 +918,7 @@ func (k *NetworkDeployer) CreateAccessNodeCapacity() (contractID uint64, err err
 		MRU: 0,
 	}
 	// log chosen farm
-	log.Printf("farm %d was chosen to create capacity contract on for wg access. %d", farmID)
+	log.Printf("farm %d was chosen to create capacity contract on for wg access.", farmID)
 
 	policy := substrate.WithCapacityPolicy(resources, substrate.NodeFeatures{IsPublicNode: true})
 	contractID, err = k.APIClient.substrateConn.CreateCapacityReservationContract(k.APIClient.identity, uint32(farmID), policy, nil)

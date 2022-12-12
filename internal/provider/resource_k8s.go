@@ -495,7 +495,7 @@ func (k *K8sDeployer) storeState(d *schema.ResourceData, cl *apiClient) error {
 	}
 	capacityDeploymentMap := make(map[string]interface{})
 	for capacityId, deploymentId := range k.CapacityDeploymentMap {
-		capacityDeploymentMap[fmt.Sprint("%d", capacityId)] = int(deploymentId)
+		capacityDeploymentMap[fmt.Sprint(capacityId)] = int(deploymentId)
 	}
 	log.Printf("master data: %v\n", k.Master)
 	if k.Master == nil {
@@ -824,10 +824,10 @@ func (k *K8sDeployer) removeDeletedContracts(ctx context.Context, sub *substrate
 		if !cont.State.IsDeleted {
 			_, err = sub.GetDeployment(deploymentID)
 			if err != nil {
-				if !errors.Is(err, substrate.ErrNotFound) {
-					return errors.Wrapf(err, "failed to get deployment with id: %d", deploymentID)
+				if errors.Is(err, substrate.ErrNotFound) {
 					continue
 				}
+				return errors.Wrapf(err, "failed to get deployment with id: %d", deploymentID)
 			}
 			capacityDeploymentMap[capacityId] = deploymentID
 		}
@@ -1067,7 +1067,7 @@ func (k *K8sNodeData) GenerateK8sWorkload(deployer *K8sDeployer, masterIP string
 
 func (k *K8sDeployer) getK8sFreeIP(ipRange gridtypes.IPNet, nodeID uint32) (string, error) {
 	for i := byte(2); i <= byte(255); i++ {
-		if !includes[byte](k.NodeUsedIPs[nodeID], i) {
+		if !includes(k.NodeUsedIPs[nodeID], i) {
 			k.NodeUsedIPs[nodeID] = append(k.NodeUsedIPs[nodeID], i)
 			ip := ipRange.IP.To4()
 			ip[3] = i

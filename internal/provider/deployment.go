@@ -114,7 +114,7 @@ func (d *DeploymentDeployer) assignNodesIPs() error {
 		return errors.Wrapf(err, "invalid ip %s", d.IPRange)
 	}
 	for _, vm := range d.VMs {
-		if vm.IP != "" && cidr.Contains(net.ParseIP(vm.IP)) && !includes[byte](usedIPs, net.ParseIP(vm.IP)[3]) {
+		if vm.IP != "" && cidr.Contains(net.ParseIP(vm.IP)) && !includes(usedIPs, net.ParseIP(vm.IP)[3]) {
 			usedIPs = append(usedIPs, net.ParseIP(vm.IP)[3])
 		}
 	}
@@ -125,7 +125,7 @@ func (d *DeploymentDeployer) assignNodesIPs() error {
 		}
 		ip := cidr.IP
 		ip[3] = cur
-		for includes[byte](usedIPs, ip[3]) {
+		for includes(usedIPs, ip[3]) {
 			if cur == 254 {
 				return errors.New("all 253 ips of the network are exhausted")
 			}
@@ -227,7 +227,7 @@ func (d *DeploymentDeployer) syncContract(sub *substrate.Substrate) error {
 	if d.Id == "" {
 		return nil
 	}
-	valid, err := IsValidContract(sub, d.ID())
+	valid, err := IsValidDeployment(sub, d.ID())
 	if err != nil {
 		return errors.Wrap(err, "error checking contract validity")
 	}
