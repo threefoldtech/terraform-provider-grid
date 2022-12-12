@@ -77,19 +77,20 @@ func (k *GatewayFQDNDeployer) Validate(ctx context.Context, sub *substrate.Subst
 	return isNodesUp(ctx, sub, []uint32{k.Node}, k.ncPool)
 }
 
-func (k *GatewayFQDNDeployer) Marshal(d *schema.ResourceData) {
+func (k *GatewayFQDNDeployer) Marshal(d *schema.ResourceData) error {
 
 	nodeDeploymentID := make(map[string]interface{})
 	for node, id := range k.NodeDeploymentID {
 		nodeDeploymentID[fmt.Sprintf("%d", node)] = int(id)
 	}
-
-	d.Set("node", k.Node)
-	d.Set("tls_passthrough", k.Gw.TLSPassthrough)
-	d.Set("backends", k.Gw.Backends)
-	d.Set("fqdn", k.Gw.FQDN)
-	d.Set("node_deployment_id", nodeDeploymentID)
+	err := errSet{}
+	err.Push(d.Set("node", k.Node))
+	err.Push(d.Set("tls_passthrough", k.Gw.TLSPassthrough))
+	err.Push(d.Set("backends", k.Gw.Backends))
+	err.Push(d.Set("fqdn", k.Gw.FQDN))
+	err.Push(d.Set("node_deployment_id", nodeDeploymentID))
 	d.SetId(k.ID)
+	return err.error()
 }
 func (k *GatewayFQDNDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
 	deployments := make(map[uint32]gridtypes.Deployment)

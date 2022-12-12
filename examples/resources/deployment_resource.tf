@@ -9,15 +9,23 @@ terraform {
 provider "grid" {    
 }
 
+resource "grid_capacity_reserver" "reserver" {
+  farm_id = 1
+  public = true
+  cru = 4
+  mru = 4096
+  sru = 6
+}
+
 resource "grid_network" "net1" {
-    nodes = [1, 3, 2, 4]
+    capacity_id = grid_capacity_reserver.reserver.capacity_contract_id
     ip_range = "172.20.0.0/16"
     name = "net1"
     description = "new network"
 }
 
 resource "grid_deployment" "d1" {
-  node = 1
+  capacity_id = grid_capacity_reserver.reserver.capacity_contract_id
   network_name = grid_network.net1.name
   ip_range = grid_network.net1.deployment_info[0].ip_range
 
@@ -68,7 +76,7 @@ resource "grid_deployment" "d1" {
 }
 
 resource "grid_deployment" "d2" {
-  node = 2
+  capacity_id = grid_capacity_reserver.reserver.capacity_contract_id
   network_name = grid_network.net1.name
   ip_range = grid_network.net1.deployment_info[2].ip_range
   disks {

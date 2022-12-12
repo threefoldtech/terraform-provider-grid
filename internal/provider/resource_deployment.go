@@ -25,15 +25,15 @@ func resourceDeployment() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
-
 			"node": {
 				Type:        schema.TypeInt,
 				Required:    true,
 				Description: "Node id to place the deployment on",
 			},
-			"capacity_reservation_contract_id": {
+			"capacity_id": {
 				Type:        schema.TypeInt,
 				Required:    true,
+				ForceNew:    true,
 				Description: "Capacity reservation contract id from capacity reserver",
 			},
 			"name": {
@@ -45,12 +45,6 @@ func resourceDeployment() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 				Default:  "Virtual Machine",
-			},
-			"solution_provider": {
-				Type:        schema.TypeInt,
-				Optional:    true,
-				Default:     0,
-				Description: "Solution provider ID",
 			},
 			"ip_range": {
 				Type:        schema.TypeString,
