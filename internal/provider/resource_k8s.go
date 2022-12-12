@@ -685,9 +685,9 @@ func (k *K8sDeployer) Cancel(ctx context.Context, sub *substrate.Substrate, d *s
 	return err
 }
 
-func printDeployments(dls map[uint32]gridtypes.Deployment) {
-	for node, dl := range dls {
-		log.Printf("node id: %d\n", node)
+func printDeployments(dls map[uint64]gridtypes.Deployment) {
+	for capacityID, dl := range dls {
+		log.Printf("capacity id: %d\n", capacityID)
 		enc := json.NewEncoder(log.Writer())
 		enc.SetIndent("", "  ")
 		enc.Encode(dl)
@@ -986,7 +986,7 @@ func (k *K8sNodeData) GenerateK8sWorkload(deployer *K8sDeployer, masterIP string
 
 func (k *K8sDeployer) getK8sFreeIP(ipRange gridtypes.IPNet, nodeID uint32) (string, error) {
 	for i := byte(2); i <= byte(255); i++ {
-		if !isInByte(k.NodeUsedIPs[nodeID], i) {
+		if !includes[byte](k.NodeUsedIPs[nodeID], i) {
 			k.NodeUsedIPs[nodeID] = append(k.NodeUsedIPs[nodeID], i)
 			ip := ipRange.IP.To4()
 			ip[3] = i

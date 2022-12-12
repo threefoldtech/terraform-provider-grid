@@ -5,34 +5,15 @@ import (
 	"github.com/threefoldtech/substrate-client"
 )
 
-func isIn(l []uint16, i uint16) bool {
-	for _, x := range l {
-		if i == x {
-			return true
-		}
-	}
-	return false
+type Number interface {
+	int | int8 | int16 | int32 | int64 | uint | uint8 | uint16 | uint32 | uint64
 }
 
-func isInByte(l []byte, i byte) bool {
-	for _, x := range l {
-		if i == x {
-			return true
-		}
-	}
-	return false
+type Chars interface {
+	byte | string
 }
 
-func isInUint32(l []uint32, i uint32) bool {
-	for _, x := range l {
-		if i == x {
-			return true
-		}
-	}
-	return false
-}
-
-func isInStr(l []string, i string) bool {
+func includes[N Number | Chars](l []N, i N) bool {
 	for _, x := range l {
 		if i == x {
 			return true
