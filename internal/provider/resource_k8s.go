@@ -488,7 +488,7 @@ func (d *K8sDeployer) retainChecksums(workers []interface{}, master interface{})
 	}
 }
 
-func (k *K8sDeployer) storeState(d *schema.ResourceData, cl *apiClient) {
+func (k *K8sDeployer) storeState(d *schema.ResourceData, cl *apiClient) error {
 	workers := make([]interface{}, 0)
 	for _, w := range k.Workers {
 		workers = append(workers, w.Dictify())
@@ -506,12 +506,14 @@ func (k *K8sDeployer) storeState(d *schema.ResourceData, cl *apiClient) {
 
 	l := []interface{}{master}
 	k.updateNetworkState(cl.substrateConn, d, cl.state)
-	d.Set("master", l)
-	d.Set("workers", workers)
-	d.Set("token", k.Token)
-	d.Set("ssh_key", k.SSHKey)
-	d.Set("network_name", k.NetworkName)
-	d.Set("capacity_deployment_map", capacityDeploymentMap)
+	err := errSet{}
+	err.Push(d.Set("master", l))
+	err.Push(d.Set("workers", workers))
+	err.Push(d.Set("token", k.Token))
+	err.Push(d.Set("ssh_key", k.SSHKey))
+	err.Push(d.Set("network_name", k.NetworkName))
+	err.Push(d.Set("capacity_deployment_map", capacityDeploymentMap))
+	return err.error()
 }
 
 func (k *K8sDeployer) updateNetworkState(sub *substrate.Substrate, d *schema.ResourceData, state state.StateI) {

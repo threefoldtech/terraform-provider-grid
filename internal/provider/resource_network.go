@@ -414,10 +414,7 @@ func (k *NetworkDeployer) storeState(d *schema.ResourceData, state state.StateI)
 	err.Push(d.Set(NetworkSchemaNodeCapacityMap, nodeCapacity))
 	err.Push(d.Set(NetworkSchemaAccessNodeCapacityID, k.AccessNodeCapacityID))
 	err.Push(d.Set(NetworkSchemaCapacityIDs, k.CapacityIDs))
-	if len(err.errs) != 0 {
-		return &err
-	}
-	return nil
+	return err.error()
 }
 
 func (k *NetworkDeployer) updateNetworkLocalState(state state.StateI) {
