@@ -227,13 +227,13 @@ func (d *DeploymentDeployer) syncContract(sub *substrate.Substrate) error {
 	if d.Id == "" {
 		return nil
 	}
-	err := IsValidDeployment(sub, d.ID())
-	if err == substrate.ErrNotFound {
-		d.Id = ""
-		return nil
-	}
+	valid, err := IsValidDeployment(sub, d.ID())
 	if err != nil {
 		return errors.Wrap(err, "error checking contract validity")
+	}
+	if !valid {
+		d.Id = ""
+		return nil
 	}
 	return nil
 }

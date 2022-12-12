@@ -9,9 +9,10 @@ import (
 
 func IsValidNameContract(sub *substrate.Substrate, contractID uint64) (bool, error) {
 	contract, err := sub.GetContract(contractID)
-	if errors.Is(err, substrate.ErrNotFound) || (contract != nil && !contract.State.IsCreated) {
+	if errors.Is(err, substrate.ErrNotFound) || (err == nil && !contract.State.IsCreated) {
 		return false, nil
-	} else if err != nil {
+	}
+	if err != nil {
 		return false, errors.Wrapf(err, "couldn't get contract %d info", contractID)
 	}
 	return true, nil
@@ -19,22 +20,25 @@ func IsValidNameContract(sub *substrate.Substrate, contractID uint64) (bool, err
 
 func IsValidCapacityReservationContract(sub *substrate.Substrate, contractID uint64) error {
 	contract, err := sub.GetContract(contractID)
-	if !contract.State.IsCreated {
-		return fmt.Errorf("capacity reservation contract %d not in a created state", contractID)
-	}
 	if err != nil {
 		return errors.Wrapf(err, "couldn't get capacity reservation contract %d info", contractID)
+	}
+	if !contract.State.IsCreated {
+		return fmt.Errorf("capacity reservation contract %d not in a created state", contractID)
 	}
 	return nil
 }
 
-func IsValidDeployment(sub *substrate.Substrate, deploymentID uint64) error {
+func IsValidDeployment(sub *substrate.Substrate, deploymentID uint64) (bool, error) {
 	_, err := sub.GetDeployment(deploymentID)
 
-	if err != nil {
-		return errors.Wrapf(err, "couldn't get deployment %d info", deploymentID)
+	if err != nil && err != substrate.ErrNotFound {
+		return false, errors.Wrapf(err, "couldn't get deployment %d info", deploymentID)
 	}
-	return nil
+	if err == substrate.ErrNotFound {
+		return false, nil
+	}
+	return true, nil
 }
 func CheckInvalidContracts(sub *substrate.Substrate, deployments map[uint64]uint64) (err error) {
 	for contractID, deploymentID := range deployments {
@@ -42,11 +46,13 @@ func CheckInvalidContracts(sub *substrate.Substrate, deployments map[uint64]uint
 		if err != nil {
 			return err
 		}
-		err = IsValidDeployment(sub, deploymentID)
+		valid, err := IsValidDeployment(sub, deploymentID)
 		if err != nil {
 			return err
 		}
-
+		if !valid {
+			return fmt.Errorf("deployment with id %d is not valid", deploymentID)
+		}
 	}
 	return nil
 }
