@@ -46,12 +46,6 @@ func resourceDeployment() *schema.Resource {
 				Optional: true,
 				Default:  "Virtual Machine",
 			},
-			"solution_provider": {
-				Type:        schema.TypeInt,
-				Optional:    true,
-				Default:     0,
-				Description: "Solution provider ID",
-			},
 			"ip_range": {
 				Type:        schema.TypeString,
 				Computed:    true,

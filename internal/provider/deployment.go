@@ -71,13 +71,6 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 		qsfs = append(qsfs, data)
 	}
 	pool := client.NewNodeClientPool(apiClient.rmb)
-	solutionProviderVal := uint64(d.Get("solution_provider").(int))
-	var solutionProvider *uint64
-	if solutionProviderVal == 0 {
-		solutionProvider = nil
-	} else {
-		solutionProvider = &solutionProviderVal
-	}
 	deploymentData := DeploymentData{
 		Name:        d.Get("name").(string),
 		Type:        "vm",
@@ -104,7 +97,7 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 		NetworkName: networkName,
 		APIClient:   apiClient,
 		ncPool:      pool,
-		deployer:    deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, solutionProvider, string(deploymentDataStr)),
+		deployer:    deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, nil, string(deploymentDataStr)),
 	}
 	return deploymentDeployer, nil
 }
@@ -171,7 +164,7 @@ func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context)
 	return map[uint64]gridtypes.Deployment{d.CapacityID: dl}, nil
 }
 
-func (d *DeploymentDeployer) Marshal(r *schema.ResourceData) {
+func (d *DeploymentDeployer) Marshal(r *schema.ResourceData) error {
 	vms := make([]interface{}, 0)
 	disks := make([]interface{}, 0)
 	zdbs := make([]interface{}, 0)
@@ -188,14 +181,17 @@ func (d *DeploymentDeployer) Marshal(r *schema.ResourceData) {
 	for _, q := range d.QSFSs {
 		qsfs = append(zdbs, q.Dictify())
 	}
-	r.Set("vms", vms)
-	r.Set("zdbs", zdbs)
-	r.Set("disks", disks)
-	r.Set("qsfs", qsfs)
-	r.Set("node", d.NodeID)
-	r.Set("network_name", d.NetworkName)
-	r.Set("ip_range", d.IPRange)
+	err := errSet{}
+	err.Push(r.Set("vms", vms))
+	err.Push(r.Set("zdbs", zdbs))
+	err.Push(r.Set("disks", disks))
+	err.Push(r.Set("qsfs", qsfs))
+	err.Push(r.Set("node", d.NodeID))
+	err.Push(r.Set("network_name", d.NetworkName))
+	err.Push(r.Set("ip_range", d.IPRange))
 	r.SetId(d.Id)
+
+	return err.error()
 }
 
 func (d *DeploymentDeployer) GetOldDeployments(ctx context.Context) (map[uint64]uint64, error) {
