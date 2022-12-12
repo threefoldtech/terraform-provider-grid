@@ -398,47 +398,24 @@ func (k *NetworkDeployer) storeState(d *schema.ResourceData, state state.StateI)
 	k.NodeIDs = nodes
 
 	log.Printf("storing nodes: %v\n", nodes)
-	var err, errSet error
-	errSet = d.Set(NetworkSchemaNodeIDs, nodes)
-	err = WrapErrors(err, errors.Wrapf(errSet, "couldn't set node ids"))
-
-	errSet = d.Set(NetworkSchemaIPRange, k.IPRange.String())
-	err = WrapErrors(err, errors.Wrapf(errSet, "couldn't set network ip range"))
-
-	errSet = d.Set(NetworkSchemaAccessWGConfig, k.AccessWGConfig)
-	err = WrapErrors(err, errors.Wrapf(errSet, "couldn't set access wg config"))
-
+	err := errSet{}
+	err.Push(d.Set(NetworkSchemaNodeIDs, nodes))
+	err.Push(d.Set(NetworkSchemaIPRange, k.IPRange.String()))
+	err.Push(d.Set(NetworkSchemaAccessWGConfig, k.AccessWGConfig))
 	if k.ExternalIP == nil {
-		errSet = d.Set(NetworkSchemaExternalIP, nil)
+		err.Push(d.Set(NetworkSchemaExternalIP, nil))
 	} else {
-		errSet = d.Set(NetworkSchemaExternalIP, k.ExternalIP.String())
+		err.Push(d.Set(NetworkSchemaExternalIP, k.ExternalIP.String()))
 	}
-	err = WrapErrors(err, errors.Wrapf(errSet, "couldn't set external ip"))
-
-	errSet = d.Set(NetworkSchemaExternalSK, k.ExternalSK.String())
-	err = WrapErrors(err, errors.Wrapf(errSet, "couldn't set external sk"))
-
-	errSet = d.Set(NetworkSchemaPublicNodeID, k.PublicNodeID)
-	err = WrapErrors(err, errors.Wrapf(errSet, "couldn't set public node id"))
-
-	// plural or singular?
-	errSet = d.Set(NetworkSchemaNodesIPRange, nodesIPRange)
-	err = WrapErrors(err, errors.Wrapf(errSet, "couldn't set nodes ip range"))
-
-	errSet = d.Set(NetworkSchemaCapacityDeploymentMap, capacityDeploymentMap)
-	err = WrapErrors(err, errors.Wrapf(errSet, "couldn't set capacity deployment id"))
-
-	errSet = d.Set(NetworkSchemaNodeCapacityMap, nodeCapacity)
-	err = WrapErrors(err, errors.Wrapf(errSet, "couldn't set node capacity map"))
-
-	errSet = d.Set(NetworkSchemaAccessNodeCapacityID, k.AccessNodeCapacityID)
-	err = WrapErrors(err, errors.Wrapf(errSet, "couldn't set access node capacity id"))
-
-	errSet = d.Set(NetworkSchemaCapacityIDs, k.CapacityIDs)
-	err = WrapErrors(err, errors.Wrapf(errSet, "couldn't set caapcity ids"))
-
-	if err != nil {
-		return fmt.Errorf("provider encountered one or more issues while trying to store it's state. %w", err)
+	err.Push(d.Set(NetworkSchemaExternalSK, k.ExternalSK.String()))
+	err.Push(d.Set(NetworkSchemaPublicNodeID, k.PublicNodeID))
+	err.Push(d.Set(NetworkSchemaNodesIPRange, nodesIPRange))
+	err.Push(d.Set(NetworkSchemaCapacityDeploymentMap, capacityDeploymentMap))
+	err.Push(d.Set(NetworkSchemaNodeCapacityMap, nodeCapacity))
+	err.Push(d.Set(NetworkSchemaAccessNodeCapacityID, k.AccessNodeCapacityID))
+	err.Push(d.Set(NetworkSchemaCapacityIDs, k.CapacityIDs))
+	if len(err.errs) != 0 {
+		return &err
 	}
 	return nil
 }
