@@ -1,8 +1,6 @@
 package provider
 
 import (
-	"fmt"
-
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/substrate-client"
 )
@@ -82,17 +80,6 @@ func EnsureContractCanceled(sub *substrate.Substrate, identity substrate.Identit
 	}
 	if err := sub.CancelContract(identity, contractID); err != nil && err.Error() != "ContractNotExists" {
 		return err
-	}
-	return nil
-}
-
-func WrapErrors(err1, err2 error) error {
-	if err1 != nil && err2 == nil {
-		return err1
-	} else if err1 == nil && err2 != nil {
-		return err2
-	} else if err1 != nil && err2 != nil {
-		return fmt.Errorf("%w. %w", err1, err2)
 	}
 	return nil
 }
