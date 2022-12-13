@@ -10,11 +10,12 @@ import (
 	"github.com/pkg/errors"
 	proxytypes "github.com/threefoldtech/grid_proxy_server/pkg/types"
 	"github.com/threefoldtech/substrate-client"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
-func (d *DeployerImpl) GetDeploymentObjects(ctx context.Context, sub *substrate.Substrate, dls map[uint64]uint64) (map[uint64]gridtypes.Deployment, error) {
+func (d *DeployerImpl) GetDeploymentObjects(ctx context.Context, sub subi.Substrate, dls map[uint64]uint64) (map[uint64]gridtypes.Deployment, error) {
 	res := make(map[uint64]gridtypes.Deployment)
 	for capacityID, dlID := range dls {
 		contract, err := sub.GetContract(capacityID)
@@ -142,7 +143,7 @@ func addCapacity(cap *proxytypes.Capacity, add *gridtypes.Capacity) {
 	cap.HRU += add.HRU
 }
 
-func EnsureDeploymentCanceled(sub *substrate.Substrate, identity substrate.Identity, deploymentID uint64) error {
+func EnsureDeploymentCanceled(sub subi.Substrate, identity substrate.Identity, deploymentID uint64) error {
 	if deploymentID == 0 {
 		return nil
 	}
