@@ -15,6 +15,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/go-rmb"
 	"github.com/threefoldtech/substrate-client"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 )
 
 const (
@@ -23,7 +24,7 @@ const (
 
 type TwinResolver struct {
 	cache  *cache.Cache
-	client *substrate.Substrate
+	client subi.Substrate
 }
 type ProxyBus struct {
 	signer      substrate.Identity
@@ -33,7 +34,7 @@ type ProxyBus struct {
 	resolver    TwinResolver
 }
 
-func NewProxyBus(endpoint string, twinID uint32, sub *substrate.Substrate, signer substrate.Identity, verifyReply bool) (*ProxyBus, error) {
+func NewProxyBus(endpoint string, twinID uint32, sub subi.Substrate, signer substrate.Identity, verifyReply bool) (*ProxyBus, error) {
 	if len(endpoint) != 0 && endpoint[len(endpoint)-1] == '/' {
 		endpoint = endpoint[:len(endpoint)-1]
 	}

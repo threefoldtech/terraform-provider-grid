@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/substrate-client"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 )
 
 func resourceDeployment() *schema.Resource {
@@ -418,7 +418,7 @@ func resourceDeployment() *schema.Resource {
 	}
 }
 
-func resourceDeploymentCreate(ctx context.Context, sub *substrate.Substrate, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
+func resourceDeploymentCreate(ctx context.Context, sub subi.Substrate, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
 	deployer, err := getDeploymentDeployer(d, apiClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
@@ -427,7 +427,7 @@ func resourceDeploymentCreate(ctx context.Context, sub *substrate.Substrate, d *
 	return &deployer, deployer.Deploy(ctx, sub)
 }
 
-func resourceDeploymentRead(ctx context.Context, sub *substrate.Substrate, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
+func resourceDeploymentRead(ctx context.Context, sub subi.Substrate, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
 	deployer, err := getDeploymentDeployer(d, apiClient)
 	if err != nil {
 		return nil, err
@@ -435,7 +435,7 @@ func resourceDeploymentRead(ctx context.Context, sub *substrate.Substrate, d *sc
 	return &deployer, nil
 }
 
-func resourceDeploymentUpdate(ctx context.Context, sub *substrate.Substrate, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
+func resourceDeploymentUpdate(ctx context.Context, sub subi.Substrate, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
 	if d.HasChange("node") {
 		oldContractID, err := strconv.ParseUint(d.Id(), 10, 64)
 		if err != nil {
@@ -455,7 +455,7 @@ func resourceDeploymentUpdate(ctx context.Context, sub *substrate.Substrate, d *
 	return &deployer, deployer.Deploy(ctx, sub)
 }
 
-func resourceDeploymentDelete(ctx context.Context, sub *substrate.Substrate, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
+func resourceDeploymentDelete(ctx context.Context, sub subi.Substrate, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
 	deployer, err := getDeploymentDeployer(d, apiClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")

@@ -5,7 +5,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/substrate-client"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 )
 
 func resourceGatewayFQDNProxy() *schema.Resource {
@@ -77,7 +77,7 @@ func resourceGatewayFQDNProxy() *schema.Resource {
 	}
 }
 
-func resourceGatewayFQDNCreate(ctx context.Context, sub *substrate.Substrate, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
+func resourceGatewayFQDNCreate(ctx context.Context, sub subi.Substrate, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
 	deployer, err := NewGatewayFQDNDeployer(ctx, d, apiClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
@@ -85,7 +85,7 @@ func resourceGatewayFQDNCreate(ctx context.Context, sub *substrate.Substrate, d 
 	return &deployer, deployer.Deploy(ctx, sub)
 }
 
-func resourceGatewayFQDNUpdate(ctx context.Context, sub *substrate.Substrate, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
+func resourceGatewayFQDNUpdate(ctx context.Context, sub subi.Substrate, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
 	deployer, err := NewGatewayFQDNDeployer(ctx, d, apiClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
@@ -94,7 +94,7 @@ func resourceGatewayFQDNUpdate(ctx context.Context, sub *substrate.Substrate, d 
 	return &deployer, deployer.Deploy(ctx, sub)
 }
 
-func resourceGatewayFQDNRead(ctx context.Context, sub *substrate.Substrate, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
+func resourceGatewayFQDNRead(ctx context.Context, sub subi.Substrate, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
 	deployer, err := NewGatewayFQDNDeployer(ctx, d, apiClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
@@ -102,7 +102,7 @@ func resourceGatewayFQDNRead(ctx context.Context, sub *substrate.Substrate, d *s
 	return &deployer, nil
 }
 
-func resourceGatewayFQDNDelete(ctx context.Context, sub *substrate.Substrate, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
+func resourceGatewayFQDNDelete(ctx context.Context, sub subi.Substrate, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
 	deployer, err := NewGatewayFQDNDeployer(ctx, d, apiClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")

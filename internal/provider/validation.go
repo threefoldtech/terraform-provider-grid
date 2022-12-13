@@ -11,10 +11,11 @@ import (
 	"github.com/gomodule/redigo/redis"
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/substrate-client"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 )
 
 // validateAccount checks the mnemonics is associated with an account with key type ed25519
-func validateAccount(apiClient *apiClient, sub *substrate.Substrate) error {
+func validateAccount(apiClient *apiClient, sub subi.Substrate) error {
 	_, err := sub.GetAccount(apiClient.identity)
 	if err != nil && !errors.Is(err, substrate.ErrAccountNotFound) {
 		return errors.Wrap(err, "failed to get account with the given mnemonics")
@@ -52,7 +53,7 @@ func validateRedis(apiClient *apiClient) error {
 	return nil
 }
 
-func validateYggdrasil(apiClient *apiClient, sub *substrate.Substrate) error {
+func validateYggdrasil(apiClient *apiClient, sub subi.Substrate) error {
 	twinObj, err := sub.GetTwin(apiClient.twin_id)
 	if err != nil {
 		return errors.Wrapf(err, "coudln't get twin %d from substrate", apiClient.twin_id)
@@ -95,7 +96,7 @@ func validateYggdrasil(apiClient *apiClient, sub *substrate.Substrate) error {
 	return nil
 }
 
-func validateRMB(apiClient *apiClient, sub *substrate.Substrate) error {
+func validateRMB(apiClient *apiClient, sub subi.Substrate) error {
 	if err := validateRedis(apiClient); err != nil {
 		return err
 	}
@@ -116,7 +117,7 @@ func validateRMBProxy(apiClient *apiClient) error {
 	return nil
 }
 
-func preValidate(apiClient *apiClient, sub *substrate.Substrate) error {
+func preValidate(apiClient *apiClient, sub subi.Substrate) error {
 	if apiClient.use_rmb_proxy {
 		return validateRMBProxy(apiClient)
 	} else {
@@ -124,7 +125,7 @@ func preValidate(apiClient *apiClient, sub *substrate.Substrate) error {
 	}
 }
 
-func validateAccountMoneyForExtrinsics(sub *substrate.Substrate, identity substrate.Identity) error {
+func validateAccountMoneyForExtrinsics(sub subi.Substrate, identity substrate.Identity) error {
 	acc, err := sub.GetAccount(identity)
 	if err != nil && !errors.Is(err, substrate.ErrAccountNotFound) {
 		return errors.Wrap(err, "failed to get account with the given mnemonics")
