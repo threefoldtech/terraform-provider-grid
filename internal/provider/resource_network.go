@@ -70,8 +70,11 @@ func resourceNetwork() *schema.Resource {
 				Default:  "",
 			},
 			NetworkSchemaCapacityIDs: {
-				Type:        schema.TypeList,
-				Required:    true,
+				Type:     schema.TypeList,
+				Required: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeInt,
+				},
 				Description: "List of capacity contract ids that the user wants to deploy network on",
 			},
 			NetworkSchemaCapacityDeploymentMap: {
