@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	substrate "github.com/threefoldtech/substrate-client"
+	subi "github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	gridtypes "github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
@@ -37,7 +37,7 @@ func (m *MockDeployer) EXPECT() *MockDeployerMockRecorder {
 }
 
 // Deploy mocks base method.
-func (m *MockDeployer) Deploy(ctx context.Context, sub *substrate.Substrate, oldDeployments map[uint64]uint64, newDeployments map[uint64]gridtypes.Deployment) (map[uint64]uint64, error) {
+func (m *MockDeployer) Deploy(ctx context.Context, sub subi.Substrate, oldDeployments map[uint64]uint64, newDeployments map[uint64]gridtypes.Deployment) (map[uint64]uint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Deploy", ctx, sub, oldDeployments, newDeployments)
 	ret0, _ := ret[0].(map[uint64]uint64)
@@ -52,7 +52,7 @@ func (mr *MockDeployerMockRecorder) Deploy(ctx, sub, oldDeployments, newDeployme
 }
 
 // GetDeploymentObjects mocks base method.
-func (m *MockDeployer) GetDeploymentObjects(ctx context.Context, sub *substrate.Substrate, dls map[uint64]uint64) (map[uint64]gridtypes.Deployment, error) {
+func (m *MockDeployer) GetDeploymentObjects(ctx context.Context, sub subi.Substrate, dls map[uint64]uint64) (map[uint64]gridtypes.Deployment, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetDeploymentObjects", ctx, sub, dls)
 	ret0, _ := ret[0].(map[uint64]gridtypes.Deployment)

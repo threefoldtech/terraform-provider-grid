@@ -8,8 +8,8 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	substrate "github.com/threefoldtech/substrate-client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
+	subi "github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 )
 
 // MockNodeClientCollection is a mock of NodeClientCollection interface.
@@ -36,7 +36,7 @@ func (m *MockNodeClientCollection) EXPECT() *MockNodeClientCollectionMockRecorde
 }
 
 // GetNodeClient mocks base method.
-func (m *MockNodeClientCollection) GetNodeClient(sub *substrate.Substrate, nodeID uint32) (*client.NodeClient, error) {
+func (m *MockNodeClientCollection) GetNodeClient(sub subi.Substrate, nodeID uint32) (*client.NodeClient, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetNodeClient", sub, nodeID)
 	ret0, _ := ret[0].(*client.NodeClient)
