@@ -10,8 +10,8 @@ import (
 	"time"
 
 	gormb "github.com/threefoldtech/go-rmb"
-	"github.com/threefoldtech/substrate-client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
@@ -55,7 +55,7 @@ func isNodeUp(ctx context.Context, nc *client.NodeClient) error {
 	return nil
 }
 
-func isNodesUp(ctx context.Context, sub *substrate.Substrate, nodes []uint32, nc client.NodeClientCollection) error {
+func isNodesUp(ctx context.Context, sub subi.Substrate, nodes []uint32, nc client.NodeClientCollection) error {
 	for _, node := range nodes {
 		cl, err := nc.GetNodeClient(sub, node)
 		if err != nil {

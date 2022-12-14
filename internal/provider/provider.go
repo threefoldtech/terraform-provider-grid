@@ -13,6 +13,7 @@ import (
 	"github.com/threefoldtech/substrate-client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/state"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/rmb"
 )
 
@@ -47,8 +48,8 @@ func init() {
 	// }
 }
 
-func New(version string, st state.StateI) (func() *schema.Provider, *substrate.Substrate) {
-	var substrateConnection *substrate.Substrate
+func New(version string, st state.StateI) (func() *schema.Provider, subi.Substrate) {
+	var substrateConnection subi.Substrate
 	return func() *schema.Provider {
 		p := &schema.Provider{
 			Schema: map[string]*schema.Schema{
@@ -129,14 +130,14 @@ type apiClient struct {
 	use_rmb_proxy bool
 	grid_client   proxy.Client
 	rmb           rmb.Client
-	substrateConn *substrate.Substrate
+	substrateConn subi.Substrate
 	manager       substrate.Manager
 	identity      substrate.Identity
 	state         state.StateI
 }
 
-func providerConfigure(st state.StateI) (func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics), *substrate.Substrate) {
-	var substrateConn *substrate.Substrate
+func providerConfigure(st state.StateI) (func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics), subi.Substrate) {
+	var substrateConn subi.Substrate
 	return func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 		rand.Seed(time.Now().UnixNano())
 		var err error

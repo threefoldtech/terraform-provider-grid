@@ -5,15 +5,15 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/threefoldtech/substrate-client"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 )
 
 type Marshalable interface {
 	Marshal(d *schema.ResourceData) error
-	sync(ctx context.Context, sub *substrate.Substrate, cl *apiClient) (err error)
+	sync(ctx context.Context, sub subi.Substrate, cl *apiClient) (err error)
 }
 
-type Action func(context.Context, *substrate.Substrate, *schema.ResourceData, *apiClient) (Marshalable, error)
+type Action func(context.Context, subi.Substrate, *schema.ResourceData, *apiClient) (Marshalable, error)
 
 func ResourceFunc(a Action) func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
 	return func(ctx context.Context, d *schema.ResourceData, i interface{}) (diags diag.Diagnostics) {

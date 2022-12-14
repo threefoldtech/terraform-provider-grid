@@ -17,6 +17,7 @@ import (
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/deployer"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/state"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
@@ -278,7 +279,7 @@ type K8sDeployer struct {
 	deployer    deployer.Deployer
 }
 
-func NewK8sNodeData(m map[string]interface{}, sub *substrate.Substrate) (K8sNodeData, error) {
+func NewK8sNodeData(m map[string]interface{}, sub subi.Substrate) (K8sNodeData, error) {
 	capacityId := uint64(m["capacity_id"].(int))
 	nodeId, err := getNodeIdByCapacityId(sub, capacityId)
 	if err != nil {
@@ -345,7 +346,7 @@ func NewK8sDeployer(d *schema.ResourceData, apiClient *apiClient) (K8sDeployer, 
 	}
 	masterNodeId, err := getNodeIdByCapacityId(apiClient.substrateConn, master.CapacityId)
 	if err != nil {
-		return K8sDeployer{}, errors.Wrapf(err, "couldn't get master node Id, CapacityId: ", master.CapacityId)
+		return K8sDeployer{}, errors.Wrapf(err, "couldn't get master node Id, CapacityId: %d", master.CapacityId)
 	}
 	master.Node = masterNodeId
 	workers := make([]K8sNodeData, 0)
@@ -442,14 +443,14 @@ func (k *K8sNodeData) Dictify() map[string]interface{} {
 }
 
 // invalidateBrokenAttributes removes outdated attrs and deleted contracts
-func (k *K8sDeployer) invalidateBrokenAttributes(sub *substrate.Substrate) error {
+func (k *K8sDeployer) invalidateBrokenAttributes(sub subi.Substrate) error {
 	newWorkers := make([]K8sNodeData, 0)
 
 	validNodes := make(map[uint32]struct{})
 	for capacityId := range k.CapacityDeploymentMap {
 		nodeId, err := getNodeIdByCapacityId(sub, capacityId)
 		if err != nil {
-			return errors.Wrapf(err, "couldn't get node id for capacity Id", capacityId)
+			return errors.Wrapf(err, "couldn't get node id for capacity Id: %d", capacityId)
 		}
 		contract, err := sub.GetContract(capacityId)
 		if (err == nil && !contract.State.IsCreated) || errors.Is(err, substrate.ErrNotFound) {
@@ -516,7 +517,7 @@ func (k *K8sDeployer) storeState(d *schema.ResourceData, cl *apiClient) error {
 	return err.error()
 }
 
-func (k *K8sDeployer) updateNetworkState(sub *substrate.Substrate, d *schema.ResourceData, state state.StateI) {
+func (k *K8sDeployer) updateNetworkState(sub subi.Substrate, d *schema.ResourceData, state state.StateI) {
 	ns := state.GetNetworkState()
 	network := ns.GetNetwork(k.NetworkName)
 	before, _ := d.GetChange("capacity_deployment_map")
@@ -683,7 +684,7 @@ func (k *K8sDeployer) validateToken(ctx context.Context) error {
 	return nil
 }
 
-func (k *K8sDeployer) Validate(ctx context.Context, sub *substrate.Substrate) error {
+func (k *K8sDeployer) Validate(ctx context.Context, sub subi.Substrate) error {
 	if err := k.validateToken(ctx); err != nil {
 		return err
 	}
@@ -705,7 +706,7 @@ func (k *K8sDeployer) Validate(ctx context.Context, sub *substrate.Substrate) er
 	return isNodesUp(ctx, sub, nodes, k.ncPool)
 }
 
-func (k *K8sDeployer) Deploy(ctx context.Context, sub *substrate.Substrate, d *schema.ResourceData, cl *apiClient) error {
+func (k *K8sDeployer) Deploy(ctx context.Context, sub subi.Substrate, d *schema.ResourceData, cl *apiClient) error {
 	if err := k.validateChecksums(); err != nil {
 		return err
 	}
@@ -720,7 +721,7 @@ func (k *K8sDeployer) Deploy(ctx context.Context, sub *substrate.Substrate, d *s
 	return err
 }
 
-func (k *K8sDeployer) Cancel(ctx context.Context, sub *substrate.Substrate, d *schema.ResourceData, cl *apiClient) error {
+func (k *K8sDeployer) Cancel(ctx context.Context, sub subi.Substrate, d *schema.ResourceData, cl *apiClient) error {
 	newDeployments := make(map[uint64]gridtypes.Deployment)
 
 	currentDeployments, err := k.deployer.Deploy(ctx, sub, k.CapacityDeploymentMap, newDeployments)
@@ -756,7 +757,7 @@ func (k *K8sDeployer) removeUsedIPsFromLocalState(cl *apiClient) {
 	}
 }
 
-func (k *K8sDeployer) updateState(ctx context.Context, sub *substrate.Substrate, currentDeploymentIDs map[uint64]uint64, d *schema.ResourceData, cl *apiClient) error {
+func (k *K8sDeployer) updateState(ctx context.Context, sub subi.Substrate, currentDeploymentIDs map[uint64]uint64, d *schema.ResourceData, cl *apiClient) error {
 	log.Printf("current deployments\n")
 	k.CapacityDeploymentMap = currentDeploymentIDs
 	currentDeployments, err := k.deployer.GetDeploymentObjects(ctx, sub, currentDeploymentIDs)
@@ -812,7 +813,7 @@ func (k *K8sDeployer) updateState(ctx context.Context, sub *substrate.Substrate,
 	return nil
 }
 
-func (k *K8sDeployer) removeDeletedContracts(ctx context.Context, sub *substrate.Substrate) error {
+func (k *K8sDeployer) removeDeletedContracts(ctx context.Context, sub subi.Substrate) error {
 	capacityDeploymentMap := make(map[uint64]uint64)
 	for capacityId, deploymentID := range k.CapacityDeploymentMap {
 
@@ -837,16 +838,7 @@ func (k *K8sDeployer) removeDeletedContracts(ctx context.Context, sub *substrate
 	return nil
 }
 
-func getNodeIdByCapacityId(sub *substrate.Substrate, capacityId uint64) (uint32, error) {
-	contract, err := sub.GetContract(capacityId)
-	if err != nil {
-		return 0, errors.Wrapf(err, "couldn't get capacity reservation contract with Id: (%d)", capacityId)
-	}
-	nodeId := uint32(contract.ContractType.CapacityReservationContract.NodeID)
-	return nodeId, nil
-}
-
-func (k *K8sDeployer) updateFromRemote(ctx context.Context, sub *substrate.Substrate) error {
+func (k *K8sDeployer) updateFromRemote(ctx context.Context, sub subi.Substrate) error {
 	if err := k.removeDeletedContracts(ctx, sub); err != nil {
 		return errors.Wrap(err, "failed to remove deleted contracts")
 	}
@@ -863,7 +855,7 @@ func (k *K8sDeployer) updateFromRemote(ctx context.Context, sub *substrate.Subst
 			if w.Type == zos.ZMachineType {
 				d, err := w.WorkloadData()
 				if err != nil {
-					log.Printf("failed to get workload data %s", err)
+					return errors.Wrapf(err, "failed to get workload data deploymentId: %d", dl.DeploymentID)
 				}
 				SSHKey := d.(*zos.ZMachine).Env["SSH_KEY"]
 				token := d.(*zos.ZMachine).Env["K3S_TOKEN"]
@@ -908,16 +900,14 @@ func (k *K8sDeployer) updateFromRemote(ctx context.Context, sub *substrate.Subst
 			} else if w.Type == zos.PublicIPType {
 				d := zos.PublicIPResult{}
 				if err := json.Unmarshal(w.Result.Data, &d); err != nil {
-					log.Printf("failed to load pubip data %s", err)
-					continue
+					return errors.Wrapf(err, "failed to load pubip data: %d", dl.DeploymentID)
 				}
 				publicIPs[string(w.Name)] = d.IP.String()
 				publicIP6s[string(w.Name)] = d.IPv6.String()
 			} else if w.Type == zos.ZMountType {
 				d, err := w.WorkloadData()
 				if err != nil {
-					log.Printf("failed to load disk data %s", err)
-					continue
+					return errors.Wrapf(err, "failed to load disk data: %d", dl.DeploymentID)
 				}
 				diskSize[string(w.Name)] = int(d.(*zos.ZMount).Size / gridtypes.Gigabyte)
 			}

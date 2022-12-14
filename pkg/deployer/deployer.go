@@ -12,12 +12,13 @@ import (
 	proxy "github.com/threefoldtech/grid_proxy_server/pkg/client"
 	"github.com/threefoldtech/substrate-client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
 type Deployer interface {
-	Deploy(ctx context.Context, sub *substrate.Substrate, oldDeployments map[uint64]uint64, newDeployments map[uint64]gridtypes.Deployment) (map[uint64]uint64, error)
-	GetDeploymentObjects(ctx context.Context, sub *substrate.Substrate, dls map[uint64]uint64) (map[uint64]gridtypes.Deployment, error)
+	Deploy(ctx context.Context, sub subi.Substrate, oldDeployments map[uint64]uint64, newDeployments map[uint64]gridtypes.Deployment) (map[uint64]uint64, error)
+	GetDeploymentObjects(ctx context.Context, sub subi.Substrate, dls map[uint64]uint64) (map[uint64]gridtypes.Deployment, error)
 }
 
 type DeployerImpl struct {
@@ -50,7 +51,7 @@ func NewDeployer(
 	}
 }
 
-func (d *DeployerImpl) Deploy(ctx context.Context, sub *substrate.Substrate, oldDeploymentIDs map[uint64]uint64, newDeployments map[uint64]gridtypes.Deployment) (map[uint64]uint64, error) {
+func (d *DeployerImpl) Deploy(ctx context.Context, sub subi.Substrate, oldDeploymentIDs map[uint64]uint64, newDeployments map[uint64]gridtypes.Deployment) (map[uint64]uint64, error) {
 	oldDeployments, oldErr := d.GetDeploymentObjects(ctx, sub, oldDeploymentIDs)
 	if oldErr == nil {
 		// check resources only when old deployments are readable
@@ -80,7 +81,7 @@ func (d *DeployerImpl) Deploy(ctx context.Context, sub *substrate.Substrate, old
 
 func (d *DeployerImpl) deploy(
 	ctx context.Context,
-	sub *substrate.Substrate,
+	sub subi.Substrate,
 	oldDeployments map[uint64]uint64,
 	newDeployments map[uint64]gridtypes.Deployment,
 	revertOnFailure bool,
