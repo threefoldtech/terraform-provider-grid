@@ -98,6 +98,12 @@ func (k *GatewayNameDeployer) Marshal(d *schema.ResourceData) error {
 	}
 
 	err := errSet{}
+	for Error := range err.errs{
+		if Error != 0 {
+			return err.error()
+		}
+	}
+
 	d.SetId(k.ID)
 	err.Push(d.Set("node", k.NodeID))
 	err.Push(d.Set("tls_passthrough", k.Gw.TLSPassthrough))
