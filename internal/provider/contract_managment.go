@@ -9,7 +9,10 @@ import (
 
 func IsValidNameContract(sub *substrate.Substrate, contractID uint64) (bool, error) {
 	contract, err := sub.GetContract(contractID)
-	if errors.Is(err, substrate.ErrNotFound) || (err == nil && !contract.State.IsCreated) {
+	if errors.Is(err, substrate.ErrNotFound) {
+		return false, nil
+	}
+	if err == nil && !contract.State.IsCreated {
 		return false, nil
 	}
 	if err != nil {
@@ -62,14 +65,14 @@ func InvalidateNameContract(sub *substrate.Substrate, identity substrate.Identit
 		return 0, nil
 	}
 
-	valid, err := IsValidNameContract(sub,contractID)
+	valid, err := IsValidNameContract(sub, contractID)
 	if err != nil {
-		return 0, errors.Wrapf(err,"Couldn't validate name contract for contract ",contractID)
+		return 0, errors.Wrapf(err, "Couldn't validate name contract for contract ", contractID)
 	}
 	if !valid {
-		return 0, errors.Wrapf(err,"Name contract isn't valid for contract ",contractID)
+		return 0, errors.Wrapf(err, "Name contract isn't valid for contract ", contractID)
 	}
-	
+
 	contract, err := sub.GetContract(contractID)
 
 	if errors.Is(err, substrate.ErrNotFound) {
