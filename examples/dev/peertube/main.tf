@@ -20,7 +20,7 @@ locals {
 
 resource "grid_capacity_reserver" "cap1" {
   farm   = 1
-  cpu    = 1
+  cpu    = 2
   memory = 4096
   ssd    = 5
   public = true
