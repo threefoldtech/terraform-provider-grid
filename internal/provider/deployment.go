@@ -78,7 +78,7 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 	}
 	deploymentDataStr, err := json.Marshal(deploymentData)
 	if err != nil {
-		log.Printf("error parsing deploymentdata: %s", err.Error())
+		return DeploymentDeployer{}, errors.Wrapf(err,"error parsing deploymentdata: %s" )
 	}
 
 	networkingState := apiClient.state.GetNetworkState()
