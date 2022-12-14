@@ -141,7 +141,7 @@ func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context)
 	dl := workloads.NewDeployment(d.APIClient.twin_id)
 	err := d.assignNodesIPs()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to assign node ips")
+		return nil, errors.Wrapf(err, "failed to assign node ips with capacity id (%d)",d.CapacityID)
 	}
 	for _, disk := range d.Disks {
 		dl.Workloads = append(dl.Workloads, disk.GenerateDiskWorkload())
