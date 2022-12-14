@@ -76,16 +76,16 @@ func InvalidateNameContract(sub subi.Substrate, identity substrate.Identity, con
 
 	valid, err := IsValidNameContract(sub, contractID)
 	if err != nil {
-		return 0, errors.Wrapf(err, "Couldn't validate name contract for contract ", contractID)
+		return 0, errors.Wrapf(err, "Couldn't validate name contract for contract %d", contractID)
 	}
 	if !valid {
-		return 0, errors.Wrapf(err, "Name contract isn't valid for contract ", contractID)
+		return 0, errors.Wrapf(err, "Name contract isn't valid for contract %d", contractID)
 	}
 
 	contract, err := sub.GetContract(contractID)
 
 	if errors.Is(err, substrate.ErrNotFound) {
-		return 0, errors.Wrapf(err, "couldn't find error for contract ", contractID)
+		return 0, errors.Wrapf(err, "couldn't find error for contract %d", contractID)
 	}
 	if err != nil {
 		return 0, errors.Wrap(err, "couldn't get name contract info")
@@ -97,7 +97,7 @@ func InvalidateNameContract(sub subi.Substrate, identity substrate.Identity, con
 	if contract.ContractType.NameContract.Name != name {
 		err := sub.CancelContract(identity, contractID)
 		if err != nil {
-			return 0, errors.Wrapf(err, "failed to cleanup unmatching name contract for contract",contractID )
+			return 0, errors.Wrapf(err, "failed to cleanup unmatching name contract for contract %d",contractID )
 		}
 		return 0, nil
 	}
