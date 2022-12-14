@@ -15,7 +15,7 @@ website/node_modules
 .vagrant/
 *.backup
 ./*.tfstate
-.terraform/
+**/.terraform*
 *.log
 *.bak
 *~
@@ -24,7 +24,6 @@ website/node_modules
 *.iml
 *.test
 *.iml
-
 website/vendor
 
 # Test exclusions

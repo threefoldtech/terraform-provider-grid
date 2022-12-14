@@ -20,10 +20,16 @@ func dataSourceGatewayDomain() *schema.Resource {
 		ReadContext: dataSourceGatewayRead,
 
 		Schema: map[string]*schema.Schema{
-			"node": {
+			"capacity_id": {
 				Type:        schema.TypeInt,
 				Required:    true,
-				Description: "Node ID of the gateway",
+				ForceNew:    true,
+				Description: "Capacity reservation contract id from capacity reserver",
+			},
+			"node_id": {
+				Type:        schema.TypeInt,
+				Computed:    true,
+				Description: "The gateway's node id",
 			},
 			"name": {
 				Type:        schema.TypeString,
@@ -42,7 +48,11 @@ func dataSourceGatewayDomain() *schema.Resource {
 // TODO: make this non failing
 func dataSourceGatewayRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	apiClient := meta.(*apiClient)
-	nodeID := uint32(d.Get("node").(int))
+	capacityID := uint64(d.Get("capacity_id").(int))
+	nodeID, err := getNodeIdByCapacityId(apiClient.substrateConn, capacityID)
+	if err != nil {
+		return diag.FromErr(errors.Wrapf(err, "couldn't get nodeId from capacityID: %d", capacityID))
+	}
 	name := d.Get("name").(string)
 	ncPool := client.NewNodeClientPool(apiClient.rmb)
 	nodeClient, err := ncPool.GetNodeClient(apiClient.substrateConn, nodeID)
@@ -59,7 +69,13 @@ func dataSourceGatewayRead(ctx context.Context, d *schema.ResourceData, meta int
 		return diag.FromErr(errors.New("node doesn't contain a domain in its public config"))
 	}
 	fqdn := fmt.Sprintf("%s.%s", name, cfg.Domain)
-	d.Set("fqdn", fqdn)
+	errset := errSet{}
+	errset.Push(d.Set("fqdn", fqdn))
+	errset.Push(d.Set("node_id", nodeID))
 	d.SetId(strconv.FormatInt(time.Now().Unix(), 10))
+	if errset.error() != nil {
+		diag.FromErr(errset.error())
+	}
+
 	return nil
 }
