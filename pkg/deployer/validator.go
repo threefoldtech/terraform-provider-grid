@@ -91,11 +91,11 @@ func (d *ValidatorImpl) Validate(ctx context.Context, sub subi.Substrate, oldDep
 	}
 	for capacityID, dl := range newDeployments {
 		// dl := info.Deployment
-		oldDl, alreadyExists := oldDeployments[capacityID]
+		oldDl, ok := oldDeployments[capacityID]
 		// oldDl := oldDlInfo
 		contract, err := sub.GetContract(capacityID)
 		if err != nil {
-			return errors.Wrap(err, "failed to get capacity contract")
+			return errors.Wrapf(err, "failed to get capacity contract for ",capacityID)
 		}
 		nodeID := contract.ContractType.CapacityReservationContract.NodeID
 		if err := dl.Valid(); err != nil {
@@ -108,7 +108,7 @@ func (d *ValidatorImpl) Validate(ctx context.Context, sub subi.Substrate, oldDep
 
 		requiredIPs := int(countDeploymentPublicIPs(dl))
 		nodeInfo := nodeMap[uint32(nodeID)]
-		if alreadyExists {
+		if ok {
 			oldCap, err := capacity(oldDl)
 			if err != nil {
 				return errors.Wrapf(err, "couldn't read old deployment %d of node %d capacity", oldDl.DeploymentID, capacityID)
