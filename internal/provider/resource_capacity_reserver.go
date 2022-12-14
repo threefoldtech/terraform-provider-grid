@@ -12,16 +12,16 @@ import (
 )
 
 type Capacity struct {
-	Farm               uint32 `name:"farm"`
-	CapacityContractID uint64 `name:"capacity_contract_id"`
-	CPU                int    `name:"cpu"`
-	Memory             int    `name:"memory"`
-	SSD                int    `name:"ssd"`
-	HDD                int    `name:"hdd"`
-	SolutionProvider   uint64 `name:"solution_provider"`
-	Public             bool   `name:"public"`
-	Node               uint32 `name:"node"`
-	GroupID            uint32 `name:"group_id"`
+	Farm             uint32 `name:"farm"`
+	CapacityID       uint64 `name:"capacity_id"`
+	CPU              int    `name:"cpu"`
+	Memory           int    `name:"memory"`
+	SSD              int    `name:"ssd"`
+	HDD              int    `name:"hdd"`
+	SolutionProvider uint64 `name:"solution_provider"`
+	Public           bool   `name:"public"`
+	Node             uint32 `name:"node"`
+	GroupID          uint32 `name:"group_id"`
 }
 
 var ErrNonChangeable = errors.New("this field cannot be updated. please delete the resource and recreate it")
@@ -36,7 +36,7 @@ func resourceCapacityReserver() *schema.Resource {
 		DeleteContext: resourceCapacityDelete,
 
 		Schema: map[string]*schema.Schema{
-			"capacity_contract_id": {
+			"capacity_id": {
 				Type:     schema.TypeList,
 				Computed: true,
 				Elem: &schema.Schema{
@@ -103,12 +103,15 @@ func resourceCapacityRead(ctx context.Context, d *schema.ResourceData, meta inte
 	apiClient := meta.(apiClient)
 	var diags diag.Diagnostics
 	capacityReserver := NewCapacity(d)
-	_, err := apiClient.substrateConn.GetContract(capacityReserver.CapacityContractID)
-	if err != nil && errors.Is(err, substrate.ErrNotFound) {
-		d.SetId("")
-	} else if err != nil {
-		diags = append(diags, diag.FromErr(err)...)
-		return diags
+	_, err := apiClient.substrateConn.GetContract(capacityReserver.CapacityID)
+	if err != nil {
+		switch {
+		case errors.Is(err, substrate.ErrNotFound):
+			d.SetId("")
+		default:
+			diags = append(diags, diag.FromErr(err)...)
+			return diags
+		}
 	}
 	return nil
 }
@@ -131,7 +134,7 @@ func resourceCapacityCreate(ctx context.Context, d *schema.ResourceData, meta in
 	}
 	// this will call reserve capacity and set node ids in deployments
 
-	d.SetId(strconv.FormatUint(capacityReserver.CapacityContractID, 10))
+	d.SetId(strconv.FormatUint(capacityReserver.CapacityID, 10))
 	return diags
 }
 func resourceCapacityUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -172,16 +175,16 @@ func resourceCapacityDelete(ctx context.Context, d *schema.ResourceData, meta in
 
 func NewCapacity(d *schema.ResourceData) Capacity {
 	return Capacity{
-		Farm:               d.Get("farm").(uint32),
-		CapacityContractID: d.Get("capacity_contract_id").(uint64),
-		CPU:                d.Get("cpu").(int),
-		Memory:             d.Get("memory").(int),
-		SSD:                d.Get("ssd").(int),
-		HDD:                d.Get("hdd").(int),
-		SolutionProvider:   d.Get("solution_provider").(uint64),
-		Public:             d.Get("public").(bool),
-		Node:               d.Get("node").(uint32),
-		GroupID:            d.Get("group_id").(uint32),
+		Farm:             d.Get("farm").(uint32),
+		CapacityID:       d.Get("capacity_id").(uint64),
+		CPU:              d.Get("cpu").(int),
+		Memory:           d.Get("memory").(int),
+		SSD:              d.Get("ssd").(int),
+		HDD:              d.Get("hdd").(int),
+		SolutionProvider: d.Get("solution_provider").(uint64),
+		Public:           d.Get("public").(bool),
+		Node:             d.Get("node").(uint32),
+		GroupID:          d.Get("group_id").(uint32),
 	}
 }
 
@@ -189,7 +192,7 @@ func (c *Capacity) updateState(d *schema.ResourceData) error {
 	var setErr error
 	err := d.Set("cpu", c.CPU)
 	setErr = errors.Wrap(setErr, err.Error())
-	err = d.Set("capacity_contract_id", c.CapacityContractID)
+	err = d.Set("capacity_id", c.CapacityID)
 	setErr = errors.Wrap(setErr, err.Error())
 	err = d.Set("farm", c.Farm)
 	setErr = errors.Wrap(setErr, err.Error())
@@ -232,16 +235,16 @@ func (c *Capacity) Create(cl apiClient) error {
 	} else {
 		solutionProvider = nil
 	}
-	contractID, err := cl.substrateConn.CreateCapacityReservationContract(cl.identity, c.Farm, policy, solutionProvider)
+	capacityID, err := cl.substrateConn.CreateCapacityReservationContract(cl.identity, c.Farm, policy, solutionProvider)
 	if err != nil {
 		return err
 	}
-	contract, err := cl.substrateConn.GetContract(contractID)
+	contract, err := cl.substrateConn.GetContract(capacityID)
 	if err != nil {
 		return err
 	}
 	c.Node = uint32(contract.ContractType.CapacityReservationContract.NodeID)
-	c.CapacityContractID = contractID
+	c.CapacityID = capacityID
 	return nil
 }
 
@@ -252,15 +255,12 @@ func (c *Capacity) Update(cl apiClient) error {
 		MRU: types.U64(c.Memory),
 		CRU: types.U64(c.CPU),
 	}
-	err := cl.substrateConn.UpdateCapacityReservationContract(cl.identity, c.CapacityContractID, resource)
-	if err != nil {
-		return err
-	}
-	return nil
+	return cl.substrateConn.UpdateCapacityReservationContract(cl.identity, c.CapacityID, resource)
+
 }
 
 func (c *Capacity) Delete(cl apiClient) error {
-	return cl.substrateConn.CancelContract(cl.identity, c.CapacityContractID)
+	return cl.substrateConn.CancelContract(cl.identity, c.CapacityID)
 }
 
 // checks if a non-changeable field has changed, and warn user if so
