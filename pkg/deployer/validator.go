@@ -30,7 +30,7 @@ func (d *ValidatorImpl) Validate(ctx context.Context, sub subi.Substrate, oldDep
 	for capacityID := range oldDeployments {
 		contract, err := sub.GetContract(capacityID)
 		if err != nil {
-			return errors.Wrap(err, "failed to get capacity contract")
+			return errors.Wrapf(err, "failed to get capacity contract with id %d",contract.ContractID)
 		}
 		nodeID := contract.ContractType.CapacityReservationContract.NodeID
 		nodeInfo, err := d.gridClient.Node(uint32(nodeID))
