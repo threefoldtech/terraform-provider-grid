@@ -61,7 +61,17 @@ func InvalidateNameContract(sub *substrate.Substrate, identity substrate.Identit
 	if contractID == 0 {
 		return 0, nil
 	}
+
+	valid, err := IsValidNameContract(sub,contractID)
+	if err != nil {
+		return 0, errors.Wrapf(err,"Couldn't validate name contract for contract ",contractID)
+	}
+	if !valid {
+		return 0, errors.Wrapf(err,"Name contract isn't valid for contract ",contractID)
+	}
+	
 	contract, err := sub.GetContract(contractID)
+
 	if errors.Is(err, substrate.ErrNotFound) {
 		return 0, nil
 	}
