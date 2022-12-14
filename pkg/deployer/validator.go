@@ -80,7 +80,7 @@ func (d *ValidatorImpl) Validate(ctx context.Context, sub subi.Substrate, oldDep
 		// dl := info.Deployment
 		contract, err := sub.GetContract(capacityID)
 		if err != nil {
-			return errors.Wrap(err, "failed to get capacity contract")
+			return errors.Wrapf(err, "failed to get capacity contract for ",capacityID)
 		}
 		nodeID := contract.ContractType.CapacityReservationContract.NodeID
 		nodeData, ok := nodeMap[uint32(nodeID)]
