@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/patrickmn/go-cache"
@@ -35,7 +36,7 @@ type ProxyBus struct {
 
 func NewProxyBus(endpoint string, twinID uint32, sub *substrate.Substrate, signer substrate.Identity, verifyReply bool) (*ProxyBus, error) {
 	if len(endpoint) != 0 && endpoint[len(endpoint)-1] == '/' {
-		endpoint = endpoint[:len(endpoint)-1]
+		endpoint = strings.TrimSuffix(endpoint,"/")
 	}
 
 	return &ProxyBus{
