@@ -14,7 +14,7 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.7.1
-	github.com/threefoldtech/go-rmb v0.2.1
+	github.com/threefoldtech/go-rmb v0.2.2
 	github.com/threefoldtech/substrate-client v0.0.0-20221129080858-a6ca4c8a3873
 	github.com/threefoldtech/zos v0.5.6-0.20221129115828-94ca13ccd8a6
 	golang.org/x/net v0.0.0-20220403103023-749bd193bc2b // indirect
