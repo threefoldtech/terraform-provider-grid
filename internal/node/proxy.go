@@ -138,7 +138,7 @@ func (r TwinResolver) PublicKey(twinId uint32) ([]byte, error) {
 	if ok {
 		return cached.([]byte), nil
 	}
-	twin, err := r.client.GetTwin(uint32(twinId))
+	twin, err := r.client.GetTwin(twinId)
 	if err != nil {
 		return nil, err
 	}
