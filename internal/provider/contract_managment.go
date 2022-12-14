@@ -97,7 +97,7 @@ func InvalidateNameContract(sub subi.Substrate, identity substrate.Identity, con
 	if contract.ContractType.NameContract.Name != name {
 		err := sub.CancelContract(identity, contractID)
 		if err != nil {
-			return 0, errors.Wrap(err, "failed to cleanup unmatching name contract")
+			return 0, errors.Wrapf(err, "failed to cleanup unmatching name contract for contract",contractID )
 		}
 		return 0, nil
 	}
