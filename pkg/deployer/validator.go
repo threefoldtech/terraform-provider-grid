@@ -85,7 +85,7 @@ func (d *ValidatorImpl) Validate(ctx context.Context, sub subi.Substrate, oldDep
 		nodeID := contract.ContractType.CapacityReservationContract.NodeID
 		nodeData, ok := nodeMap[uint32(nodeID)]
 		if !ok {
-			return fmt.Errorf("node %d not returned from the grid proxy", capacityID)
+			return fmt.Errorf("node with capcity %d not returned from the grid proxy", capacityID)
 		}
 		farmIPs[nodeData.FarmID] += int(countDeploymentPublicIPs(dl))
 	}
