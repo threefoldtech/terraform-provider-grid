@@ -45,7 +45,7 @@ func IsValidDeployment(sub subi.Substrate, deploymentID uint64) (bool, error) {
 	return true, nil
 }
 
-func IsInvalidContract(sub *substrate.Substrate,contractID uint64, deploymentID uint64)(err error){
+func IsInvalidContract(sub *substrate.Substrate, contractID uint64, deploymentID uint64) (err error) {
 	err = IsValidCapacityReservationContract(sub, contractID)
 	if err != nil {
 		return err
@@ -61,7 +61,7 @@ func IsInvalidContract(sub *substrate.Substrate,contractID uint64, deploymentID 
 }
 func CheckInvalidContracts(sub *substrate.Substrate, deployments map[uint64]uint64) (err error) {
 	for contractID, deploymentID := range deployments {
-		err := IsInvalidContract(sub,contractID,deploymentID)
+		err := IsInvalidContract(sub, contractID, deploymentID)
 		if err != nil {
 			return err
 		}
@@ -85,7 +85,7 @@ func InvalidateNameContract(sub subi.Substrate, identity substrate.Identity, con
 	contract, err := sub.GetContract(contractID)
 
 	if errors.Is(err, substrate.ErrNotFound) {
-		return 0, nil
+		return 0, errors.Wrapf(err, "couldn't find error for contract ", contractID)
 	}
 	if err != nil {
 		return 0, errors.Wrap(err, "couldn't get name contract info")
