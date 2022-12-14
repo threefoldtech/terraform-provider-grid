@@ -21,9 +21,7 @@ func constructTestDeployer(ctrl *gomock.Controller) DeploymentDeployer {
 	pool := mock.NewMockNodeClientCollection(ctrl)
 	deployer := mock.NewMockDeployer(ctrl)
 	sub := mock.NewMockSubstrate(ctrl)
-	// manager := mock.NewMockManager(ctrl)
 	state := mock.NewMockStateI(ctrl)
-	// manager.EXPECT().SubstrateExt().Return(sub, nil).AnyTimes()
 	identity := mock.NewMockIdentity(ctrl)
 	identity.EXPECT().PublicKey().Return([]byte("")).AnyTimes()
 	return DeploymentDeployer{
