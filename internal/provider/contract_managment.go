@@ -43,18 +43,27 @@ func IsValidDeployment(sub *substrate.Substrate, deploymentID uint64) (bool, err
 	}
 	return true, nil
 }
+
+func IsInvalidContract(sub *substrate.Substrate, contractID uint64, deploymentID uint64) (err error) {
+	err = IsValidCapacityReservationContract(sub, contractID)
+	if err != nil {
+		return err
+	}
+	valid, err := IsValidDeployment(sub, deploymentID)
+	if err != nil {
+		return err
+	}
+	if !valid {
+		return fmt.Errorf("deployment with id %d is not valid", deploymentID)
+	}
+	return nil
+}
+
 func CheckInvalidContracts(sub *substrate.Substrate, deployments map[uint64]uint64) (err error) {
 	for contractID, deploymentID := range deployments {
-		err := IsValidCapacityReservationContract(sub, contractID)
+		err := IsInvalidContract(sub, contractID, deploymentID)
 		if err != nil {
 			return err
-		}
-		valid, err := IsValidDeployment(sub, deploymentID)
-		if err != nil {
-			return err
-		}
-		if !valid {
-			return fmt.Errorf("deployment with id %d is not valid", deploymentID)
 		}
 	}
 	return nil
