@@ -134,10 +134,10 @@ func (d *ValidatorImpl) Validate(ctx context.Context, sub *substrate.Substrate, 
 			return fmt.Errorf("farm %d doesn't have enough public ips", nodeInfo.FarmID)
 		}
 		if hasWorkload(&dl, zos.GatewayFQDNProxyType) && nodeInfo.PublicConfig.Ipv4 == "" {
-			return fmt.Errorf("node %d can't deploy a fqdn workload as it doesn't have a public ipv4 configured", capacityID)
+			return fmt.Errorf("capacity id %d can't deploy a fqdn workload as it doesn't have a public ipv4 configured", capacityID)
 		}
 		if hasWorkload(&dl, zos.GatewayNameProxyType) && nodeInfo.PublicConfig.Domain == "" {
-			return fmt.Errorf("node %d can't deploy a gateway name workload as it doesn't have a domain configured", capacityID)
+			return fmt.Errorf("capacity id %d can't deploy a gateway name workload as it doesn't have a domain configured", capacityID)
 		}
 		mrus := nodeInfo.Capacity.Total.MRU - nodeInfo.Capacity.Used.MRU
 		hrus := nodeInfo.Capacity.Total.HRU - nodeInfo.Capacity.Used.HRU
@@ -150,7 +150,7 @@ func (d *ValidatorImpl) Validate(ctx context.Context, sub *substrate.Substrate, 
 				MRU: mrus,
 				SRU: srus,
 			}
-			return fmt.Errorf("node %d doesn't have enough resources. needed: %v, free: %v", capacityID, capacityPrettyPrint(needed), capacityPrettyPrint(free))
+			return fmt.Errorf("capacity id %d doesn't have enough resources. needed: %v, free: %v", capacityID, capacityPrettyPrint(needed), capacityPrettyPrint(free))
 		}
 	}
 	return nil
