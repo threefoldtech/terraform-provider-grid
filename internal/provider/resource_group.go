@@ -42,36 +42,3 @@ func resourceGroupRead(ctx context.Context, d *schema.ResourceData, meta interfa
 	return nil
 }
 
-func resourceGroupCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	cl := meta.(apiClient)
-	var diags diag.Diagnostics
-	group_id, err := cl.substrateConn.CreateGroup(cl.identity)
-	if err != nil {
-		diags = append(diags, diag.FromErr(err)...)
-	}
-
-	d.SetId(strconv.Itoa(int(group_id)))
-	return nil
-}
-
-func resourceGroupUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	var diags diag.Diagnostics
-	diags = append(diags, diag.FromErr(errors.New("Updating groups in not allowed"))...)
-	return nil
-}
-
-func resourceGroupDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	cl := meta.(apiClient)
-	var diags diag.Diagnostics
-	group_id, err := strconv.ParseUint(d.Id(), 10, 32)
-	if err != nil {
-		diags = append(diags, diag.FromErr(err)...)
-	}
-	err = cl.substrateConn.DeleteGroup(cl.identity, uint32(group_id))
-	if err != nil {
-		diags = append(diags, diag.FromErr(err)...)
-	}
-
-	d.SetId("")
-	return nil
-}

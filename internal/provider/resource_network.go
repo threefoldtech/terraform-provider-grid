@@ -818,6 +818,9 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 		}
 	}
 	err = deployer.storeState(d, apiClient.state)
+	if err != nil {
+		return nil
+	}
 	d.SetId(uuid.New().String())
 	if err != nil {
 		diags = append(diags, diag.FromErr(fmt.Errorf("error while storing state. %w", err))...)

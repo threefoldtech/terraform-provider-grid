@@ -25,9 +25,9 @@ func resourceDeployment() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
-			"node": {
+			"node_id": {
 				Type:        schema.TypeInt,
-				Required:    true,
+				Required:    false,
 				Description: "Node id to place the deployment on",
 			},
 			"capacity_id": {
