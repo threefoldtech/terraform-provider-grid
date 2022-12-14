@@ -28,7 +28,7 @@ func (k *NodeClientPool) GetNodeClient(sub *substrate.Substrate, nodeID uint32) 
 	}
 	node, err := sub.GetNode(nodeID)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get node")
+		return nil, errors.Wrapf(err, "failed to get node ",nodeID)
 	}
 	twinID := node.TwinID
 
