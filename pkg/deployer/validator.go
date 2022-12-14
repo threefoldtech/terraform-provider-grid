@@ -80,7 +80,7 @@ func (d *ValidatorImpl) Validate(ctx context.Context, sub subi.Substrate, oldDep
 		// dl := info.Deployment
 		contract, err := sub.GetContract(capacityID)
 		if err != nil {
-			return errors.Wrap(err, "failed to get capacity contract")
+			return errors.Wrapf(err, "failed to get capacity contract for ",capacityID)
 		}
 		nodeID := contract.ContractType.CapacityReservationContract.NodeID
 		nodeData, ok := nodeMap[uint32(nodeID)]
@@ -91,11 +91,11 @@ func (d *ValidatorImpl) Validate(ctx context.Context, sub subi.Substrate, oldDep
 	}
 	for capacityID, dl := range newDeployments {
 		// dl := info.Deployment
-		oldDl, alreadyExists := oldDeployments[capacityID]
+		oldDl, ok := oldDeployments[capacityID]
 		// oldDl := oldDlInfo
 		contract, err := sub.GetContract(capacityID)
 		if err != nil {
-			return errors.Wrap(err, "failed to get capacity contract")
+			return errors.Wrapf(err, "failed to get capacity contract for ",capacityID)
 		}
 		nodeID := contract.ContractType.CapacityReservationContract.NodeID
 		if err := dl.Valid(); err != nil {
@@ -108,7 +108,7 @@ func (d *ValidatorImpl) Validate(ctx context.Context, sub subi.Substrate, oldDep
 
 		requiredIPs := int(countDeploymentPublicIPs(dl))
 		nodeInfo := nodeMap[uint32(nodeID)]
-		if alreadyExists {
+		if ok {
 			oldCap, err := capacity(oldDl)
 			if err != nil {
 				return errors.Wrapf(err, "couldn't read old deployment %d of node %d capacity", oldDl.DeploymentID, capacityID)
@@ -134,10 +134,10 @@ func (d *ValidatorImpl) Validate(ctx context.Context, sub subi.Substrate, oldDep
 			return fmt.Errorf("farm %d doesn't have enough public ips", nodeInfo.FarmID)
 		}
 		if hasWorkload(&dl, zos.GatewayFQDNProxyType) && nodeInfo.PublicConfig.Ipv4 == "" {
-			return fmt.Errorf("node %d can't deploy a fqdn workload as it doesn't have a public ipv4 configured", capacityID)
+			return fmt.Errorf("capacity id %d can't deploy a fqdn workload as it doesn't have a public ipv4 configured", capacityID)
 		}
 		if hasWorkload(&dl, zos.GatewayNameProxyType) && nodeInfo.PublicConfig.Domain == "" {
-			return fmt.Errorf("node %d can't deploy a gateway name workload as it doesn't have a domain configured", capacityID)
+			return fmt.Errorf("capacity id %d can't deploy a gateway name workload as it doesn't have a domain configured", capacityID)
 		}
 		mrus := nodeInfo.Capacity.Total.MRU - nodeInfo.Capacity.Used.MRU
 		hrus := nodeInfo.Capacity.Total.HRU - nodeInfo.Capacity.Used.HRU
@@ -150,7 +150,7 @@ func (d *ValidatorImpl) Validate(ctx context.Context, sub subi.Substrate, oldDep
 				MRU: mrus,
 				SRU: srus,
 			}
-			return fmt.Errorf("node %d doesn't have enough resources. needed: %v, free: %v", capacityID, capacityPrettyPrint(needed), capacityPrettyPrint(free))
+			return fmt.Errorf("capacity id %d doesn't have enough resources. needed: %v, free: %v", capacityID, capacityPrettyPrint(needed), capacityPrettyPrint(free))
 		}
 	}
 	return nil

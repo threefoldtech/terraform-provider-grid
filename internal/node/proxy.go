@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/patrickmn/go-cache"
@@ -36,7 +37,7 @@ type ProxyBus struct {
 
 func NewProxyBus(endpoint string, twinID uint32, sub subi.Substrate, signer substrate.Identity, verifyReply bool) (*ProxyBus, error) {
 	if len(endpoint) != 0 && endpoint[len(endpoint)-1] == '/' {
-		endpoint = endpoint[:len(endpoint)-1]
+		endpoint = strings.TrimSuffix(endpoint,"/")
 	}
 
 	return &ProxyBus{
@@ -97,7 +98,7 @@ func (r *ProxyBus) Call(ctx context.Context, twin uint32, fn string, data interf
 	if err != nil {
 		return errors.Wrap(err, "couldn't poll response")
 	}
-	pk, err := r.resolver.PublicKey(int(twin))
+	pk, err := r.resolver.PublicKey(twin)
 	if err != nil {
 		return errors.Wrap(err, "couldn't get twin public key")
 	}
@@ -132,17 +133,17 @@ func (r *ProxyBus) Call(ctx context.Context, twin uint32, fn string, data interf
 	return nil
 }
 
-func (r TwinResolver) PublicKey(twin int) ([]byte, error) {
-	key := fmt.Sprintf("pk:%d", twin)
+func (r TwinResolver) PublicKey(twinId uint32) ([]byte, error) {
+	key := fmt.Sprintf("pk:%d", twinId)
 	cached, ok := r.cache.Get(key)
 	if ok {
 		return cached.([]byte), nil
 	}
-	twinObj, err := r.client.GetTwin(uint32(twin))
+	twin, err := r.client.GetTwin(twinId)
 	if err != nil {
 		return nil, err
 	}
-	pk := twinObj.Account.PublicKey()
+	pk := twin.Account.PublicKey()
 	r.cache.Set(key, pk, cache.DefaultExpiration)
 	return pk, nil
 }

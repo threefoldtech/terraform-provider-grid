@@ -93,6 +93,11 @@ func (k *GatewayFQDNDeployer) Marshal(d *schema.ResourceData) error {
 	}
 
 	err := errSet{}
+	for Error := range err.errs{
+		if Error != 0 {
+			return err.error()
+		}
+	}
 	err.Push(d.Set("node", k.NodeID))
 	err.Push(d.Set("tls_passthrough", k.Gw.TLSPassthrough))
 	err.Push(d.Set("backends", k.Gw.Backends))

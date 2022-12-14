@@ -78,7 +78,7 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 	}
 	deploymentDataStr, err := json.Marshal(deploymentData)
 	if err != nil {
-		log.Printf("error parsing deploymentdata: %s", err.Error())
+		return DeploymentDeployer{}, errors.Wrapf(err,"error parsing deploymentdata: %s" )
 	}
 
 	networkingState := apiClient.state.GetNetworkState()
@@ -111,7 +111,7 @@ func (d *DeploymentDeployer) assignNodesIPs() error {
 	}
 	_, cidr, err := net.ParseCIDR(d.IPRange)
 	if err != nil {
-		return errors.Wrapf(err, "invalid ip %s", d.IPRange)
+		return errors.Wrapf(err, "invalid ip range %s", d.IPRange)
 	}
 	for _, vm := range d.VMs {
 		if vm.IP != "" && cidr.Contains(net.ParseIP(vm.IP)) && !includes(usedIPs, net.ParseIP(vm.IP)[3]) {
@@ -229,7 +229,7 @@ func (d *DeploymentDeployer) syncContract(sub subi.Substrate) error {
 	}
 	valid, err := IsValidDeployment(sub, d.ID())
 	if err != nil {
-		return errors.Wrap(err, "error checking contract validity")
+		return errors.Wrapf(err, "error checking contract validity for deployment id (%d)", d.ID())
 	}
 	if !valid {
 		d.Id = ""
@@ -382,7 +382,7 @@ func (d *DeploymentDeployer) Deploy(ctx context.Context, sub subi.Substrate) err
 	}
 	currentDeployments, err := d.deployer.Deploy(ctx, sub, oldDeployments, newDeployments)
 	if currentDeployments[d.CapacityID] != 0 {
-		d.Id = fmt.Sprintf("%d", currentDeployments[d.CapacityID])
+		d.Id = fmt.Sprint("%d", currentDeployments[d.CapacityID])
 	}
 	return err
 }
@@ -396,7 +396,7 @@ func (d *DeploymentDeployer) Cancel(ctx context.Context, sub subi.Substrate) err
 	currentDeployments, err := d.deployer.Deploy(ctx, sub, oldDeployments, newDeployments)
 	id := currentDeployments[d.CapacityID]
 	if id != 0 {
-		d.Id = fmt.Sprintf("%d", id)
+		d.Id = fmt.Sprint("%d", id)
 	} else {
 		d.Id = ""
 	}
