@@ -5,7 +5,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/substrate-client"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 )
 
 func resourceGatewayNameProxy() *schema.Resource {
@@ -80,7 +80,7 @@ func resourceGatewayNameProxy() *schema.Resource {
 	}
 }
 
-func resourceGatewayNameCreate(ctx context.Context, sub *substrate.Substrate, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
+func resourceGatewayNameCreate(ctx context.Context, sub subi.Substrate, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
 	deployer, err := NewGatewayNameDeployer(d, apiClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
@@ -88,7 +88,7 @@ func resourceGatewayNameCreate(ctx context.Context, sub *substrate.Substrate, d 
 	return &deployer, deployer.Deploy(ctx, sub)
 }
 
-func resourceGatewayNameUpdate(ctx context.Context, sub *substrate.Substrate, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
+func resourceGatewayNameUpdate(ctx context.Context, sub subi.Substrate, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
 	deployer, err := NewGatewayNameDeployer(d, apiClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
@@ -97,7 +97,7 @@ func resourceGatewayNameUpdate(ctx context.Context, sub *substrate.Substrate, d 
 	return &deployer, deployer.Deploy(ctx, sub)
 }
 
-func resourceGatewayNameRead(ctx context.Context, sub *substrate.Substrate, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
+func resourceGatewayNameRead(ctx context.Context, sub subi.Substrate, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
 	deployer, err := NewGatewayNameDeployer(d, apiClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
@@ -106,7 +106,7 @@ func resourceGatewayNameRead(ctx context.Context, sub *substrate.Substrate, d *s
 	return &deployer, nil
 }
 
-func resourceGatewayNameDelete(ctx context.Context, sub *substrate.Substrate, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
+func resourceGatewayNameDelete(ctx context.Context, sub subi.Substrate, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
 	deployer, err := NewGatewayNameDeployer(d, apiClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")

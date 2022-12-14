@@ -11,9 +11,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/substrate-client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/deployer"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -44,7 +44,7 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 	capacityID := d.Get("capacity_id").(uint64)
 	contract, err := apiClient.substrateConn.GetContract(capacityID)
 	if err != nil {
-		errors.Wrapf(err, "failed to get capacity contract for contract (%d)", contract)
+		errors.Wrapf(err, "failed to get capacity contract for contract (%d)", capacityID)
 	}
 	nodeID := uint32(contract.ContractType.CapacityReservationContract.NodeID)
 	disks := make([]workloads.Disk, 0)
@@ -223,7 +223,7 @@ func (d *DeploymentDeployer) ID() uint64 {
 
 }
 
-func (d *DeploymentDeployer) syncContract(sub *substrate.Substrate) error {
+func (d *DeploymentDeployer) syncContract(sub subi.Substrate) error {
 	if d.Id == "" {
 		return nil
 	}
@@ -237,7 +237,7 @@ func (d *DeploymentDeployer) syncContract(sub *substrate.Substrate) error {
 	}
 	return nil
 }
-func (d *DeploymentDeployer) sync(ctx context.Context, sub *substrate.Substrate, cl *apiClient) error {
+func (d *DeploymentDeployer) sync(ctx context.Context, sub subi.Substrate, cl *apiClient) error {
 	if err := d.syncContract(sub); err != nil {
 		return err
 	}
@@ -368,7 +368,7 @@ func (d *DeploymentDeployer) validate() error {
 	}
 	return nil
 }
-func (d *DeploymentDeployer) Deploy(ctx context.Context, sub *substrate.Substrate) error {
+func (d *DeploymentDeployer) Deploy(ctx context.Context, sub subi.Substrate) error {
 	if err := d.validate(); err != nil {
 		return err
 	}
@@ -387,7 +387,7 @@ func (d *DeploymentDeployer) Deploy(ctx context.Context, sub *substrate.Substrat
 	return err
 }
 
-func (d *DeploymentDeployer) Cancel(ctx context.Context, sub *substrate.Substrate) error {
+func (d *DeploymentDeployer) Cancel(ctx context.Context, sub subi.Substrate) error {
 	newDeployments := make(map[uint64]gridtypes.Deployment)
 	oldDeployments, err := d.GetOldDeployments(ctx)
 	if err != nil {

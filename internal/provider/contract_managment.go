@@ -5,9 +5,10 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/substrate-client"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 )
 
-func IsValidNameContract(sub *substrate.Substrate, contractID uint64) (bool, error) {
+func IsValidNameContract(sub subi.Substrate, contractID uint64) (bool, error) {
 	contract, err := sub.GetContract(contractID)
 	if errors.Is(err, substrate.ErrNotFound) || (err == nil && !contract.State.IsCreated) {
 		return false, nil
@@ -18,7 +19,7 @@ func IsValidNameContract(sub *substrate.Substrate, contractID uint64) (bool, err
 	return true, nil
 }
 
-func IsValidCapacityReservationContract(sub *substrate.Substrate, contractID uint64) error {
+func IsValidCapacityReservationContract(sub subi.Substrate, contractID uint64) error {
 	contract, err := sub.GetContract(contractID)
 	if err != nil {
 		return errors.Wrapf(err, "couldn't get capacity reservation contract %d info", contractID)
@@ -29,7 +30,7 @@ func IsValidCapacityReservationContract(sub *substrate.Substrate, contractID uin
 	return nil
 }
 
-func IsValidDeployment(sub *substrate.Substrate, deploymentID uint64) (bool, error) {
+func IsValidDeployment(sub subi.Substrate, deploymentID uint64) (bool, error) {
 	_, err := sub.GetDeployment(deploymentID)
 
 	if err != nil && err != substrate.ErrNotFound {
@@ -40,7 +41,7 @@ func IsValidDeployment(sub *substrate.Substrate, deploymentID uint64) (bool, err
 	}
 	return true, nil
 }
-func CheckInvalidContracts(sub *substrate.Substrate, deployments map[uint64]uint64) (err error) {
+func CheckInvalidContracts(sub subi.Substrate, deployments map[uint64]uint64) (err error) {
 	for contractID, deploymentID := range deployments {
 		err := IsValidCapacityReservationContract(sub, contractID)
 		if err != nil {
@@ -57,7 +58,7 @@ func CheckInvalidContracts(sub *substrate.Substrate, deployments map[uint64]uint
 	return nil
 }
 
-func InvalidateNameContract(sub *substrate.Substrate, identity substrate.Identity, contractID uint64, name string) (uint64, error) {
+func InvalidateNameContract(sub subi.Substrate, identity substrate.Identity, contractID uint64, name string) (uint64, error) {
 	if contractID == 0 {
 		return 0, nil
 	}
@@ -83,7 +84,7 @@ func InvalidateNameContract(sub *substrate.Substrate, identity substrate.Identit
 	return contractID, nil
 }
 
-func EnsureContractCanceled(sub *substrate.Substrate, identity substrate.Identity, contractID uint64) error {
+func EnsureContractCanceled(sub subi.Substrate, identity substrate.Identity, contractID uint64) error {
 	if contractID == 0 {
 		return nil
 	}

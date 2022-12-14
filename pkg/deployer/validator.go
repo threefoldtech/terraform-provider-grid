@@ -7,13 +7,13 @@ import (
 	"github.com/pkg/errors"
 	proxy "github.com/threefoldtech/grid_proxy_server/pkg/client"
 	proxytypes "github.com/threefoldtech/grid_proxy_server/pkg/types"
-	"github.com/threefoldtech/substrate-client"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
 type Validator interface {
-	Validate(ctx context.Context, sub *substrate.Substrate, oldDeployments map[uint64]gridtypes.Deployment, newDeployments map[uint64]gridtypes.Deployment) error
+	Validate(ctx context.Context, sub subi.Substrate, oldDeployments map[uint64]gridtypes.Deployment, newDeployments map[uint64]gridtypes.Deployment) error
 }
 
 type ValidatorImpl struct {
@@ -24,7 +24,7 @@ type ValidatorImpl struct {
 //
 //	errors that may arise because of dead nodes are ignored.
 //	if a real error dodges the validation, it'll be fail anyway in the deploying phase
-func (d *ValidatorImpl) Validate(ctx context.Context, sub *substrate.Substrate, oldDeployments map[uint64]gridtypes.Deployment, newDeployments map[uint64]gridtypes.Deployment) error {
+func (d *ValidatorImpl) Validate(ctx context.Context, sub subi.Substrate, oldDeployments map[uint64]gridtypes.Deployment, newDeployments map[uint64]gridtypes.Deployment) error {
 	farmIPs := make(map[int]int)
 	nodeMap := make(map[uint32]proxytypes.NodeWithNestedCapacity)
 	for capacityID := range oldDeployments {

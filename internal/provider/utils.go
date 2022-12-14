@@ -2,7 +2,7 @@ package provider
 
 import (
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/substrate-client"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 )
 
 type Number interface {
@@ -22,7 +22,7 @@ func includes[N Number | Chars](l []N, i N) bool {
 	return false
 }
 
-func getNodeIdByCapacityId(sub *substrate.Substrate, capacityId uint64) (uint32, error) {
+func getNodeIdByCapacityId(sub subi.Substrate, capacityId uint64) (uint32, error) {
 	contract, err := sub.GetContract(capacityId)
 	if err != nil {
 		return 0, errors.Wrapf(err, "failed to getNodeIdByCapacity, capacityId: (%d)", capacityId)

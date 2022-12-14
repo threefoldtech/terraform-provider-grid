@@ -9,9 +9,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/substrate-client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/deployer"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -81,7 +81,7 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 	return deployer, nil
 }
 
-func (k *GatewayFQDNDeployer) Validate(ctx context.Context, sub *substrate.Substrate) error {
+func (k *GatewayFQDNDeployer) Validate(ctx context.Context, sub subi.Substrate) error {
 	return isNodesUp(ctx, sub, []uint32{k.NodeID}, k.ncPool)
 }
 
@@ -109,7 +109,7 @@ func (k *GatewayFQDNDeployer) GenerateVersionlessDeployments(ctx context.Context
 	return deployments, nil
 }
 
-func (k *GatewayFQDNDeployer) Deploy(ctx context.Context, sub *substrate.Substrate) error {
+func (k *GatewayFQDNDeployer) Deploy(ctx context.Context, sub subi.Substrate) error {
 	if err := k.Validate(ctx, sub); err != nil {
 		return err
 	}
@@ -124,7 +124,7 @@ func (k *GatewayFQDNDeployer) Deploy(ctx context.Context, sub *substrate.Substra
 	return err
 }
 
-func (k *GatewayFQDNDeployer) syncContracts(ctx context.Context, sub *substrate.Substrate) (err error) {
+func (k *GatewayFQDNDeployer) syncContracts(ctx context.Context, sub subi.Substrate) (err error) {
 	if err := CheckInvalidContracts(sub, k.CapacityDeploymentMap); err != nil {
 		return err
 	}
@@ -134,7 +134,7 @@ func (k *GatewayFQDNDeployer) syncContracts(ctx context.Context, sub *substrate.
 	}
 	return nil
 }
-func (k *GatewayFQDNDeployer) sync(ctx context.Context, sub *substrate.Substrate, cl *apiClient) error {
+func (k *GatewayFQDNDeployer) sync(ctx context.Context, sub subi.Substrate, cl *apiClient) error {
 	if err := k.syncContracts(ctx, sub); err != nil {
 		return errors.Wrap(err, "couldn't sync contracts")
 	}
@@ -155,7 +155,7 @@ func (k *GatewayFQDNDeployer) sync(ctx context.Context, sub *substrate.Substrate
 	return nil
 }
 
-func (k *GatewayFQDNDeployer) Cancel(ctx context.Context, sub *substrate.Substrate) (err error) {
+func (k *GatewayFQDNDeployer) Cancel(ctx context.Context, sub subi.Substrate) (err error) {
 	newDeployments := make(map[uint64]gridtypes.Deployment)
 
 	k.CapacityDeploymentMap, err = k.deployer.Deploy(ctx, sub, k.CapacityDeploymentMap, newDeployments)
