@@ -14,9 +14,9 @@ provider "grid" {
 }
 resource "grid_capacity_reserver" "cap1" {
   farm   = 1
-  cpu    = 1
-  memory = 1024
-  ssd    = 2
+  cpu    = 4
+  memory = 8096
+  ssd    = 100
   public = true
 
 }

@@ -36,9 +36,7 @@ type ProxyBus struct {
 }
 
 func NewProxyBus(endpoint string, twinID uint32, sub subi.Substrate, signer substrate.Identity, verifyReply bool) (*ProxyBus, error) {
-	if len(endpoint) != 0 && endpoint[len(endpoint)-1] == '/' {
-		endpoint = strings.TrimSuffix(endpoint,"/")
-	}
+	endpoint = strings.TrimSuffix(endpoint,"/")
 
 	return &ProxyBus{
 		signer,
