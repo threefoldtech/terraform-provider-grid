@@ -9,8 +9,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	proxy "github.com/threefoldtech/grid_proxy_server/pkg/client"
-	proxytypes "github.com/threefoldtech/grid_proxy_server/pkg/types"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
@@ -54,64 +52,6 @@ Endpoint = %s
 	`, Address, AccessPrivatekey, NodePublicKey, NetworkIPRange, NodeEndpoint)
 }
 
-func getPublicNode(ctx context.Context, gridClient proxy.Client, preferedNodes []uint32) (uint32, error) {
-	preferedNodesSet := make(map[int]struct{})
-	for _, node := range preferedNodes {
-		preferedNodesSet[int(node)] = struct{}{}
-	}
-	nodes, _, err := gridClient.Nodes(proxytypes.NodeFilter{
-		IPv4:   &trueVal,
-		Status: &statusUp,
-	}, proxytypes.Limit{})
-	if err != nil {
-		return 0, errors.Wrap(err, "couldn't fetch nodes from the rmb proxy")
-	}
-	// force add preferred nodes
-	nodeMap := make(map[int]struct{})
-	for _, node := range nodes {
-		nodeMap[node.NodeID] = struct{}{}
-	}
-	for _, node := range preferedNodes {
-		if _, ok := nodeMap[int(node)]; ok {
-			continue
-		}
-		nodeInfo, err := gridClient.Node(node)
-		if err != nil {
-			log.Printf("failed to get node %d from the grid proxy", node)
-			continue
-		}
-		if nodeInfo.PublicConfig.Ipv4 == "" {
-			continue
-		}
-		if nodeInfo.Status != "up" {
-			continue
-		}
-		nodes = append(nodes, proxytypes.Node{
-			PublicConfig: nodeInfo.PublicConfig,
-		})
-	}
-	lastPrefered := 0
-	for i := range nodes {
-		if _, ok := preferedNodesSet[nodes[i].NodeID]; ok {
-			nodes[i], nodes[lastPrefered] = nodes[lastPrefered], nodes[i]
-			lastPrefered++
-		}
-	}
-	for _, node := range nodes {
-		log.Printf("found a node with ipv4 public config: %d %s\n", node.NodeID, node.PublicConfig.Ipv4)
-		ip, _, err := net.ParseCIDR(node.PublicConfig.Ipv4)
-		if err != nil {
-			log.Printf("couldn't parse public ip %s of node %d: %s", node.PublicConfig.Ipv4, node.NodeID, err.Error())
-			continue
-		}
-		if ip.IsPrivate() {
-			log.Printf("public ip %s of node %d is private", node.PublicConfig.Ipv4, node.NodeID)
-			continue
-		}
-		return uint32(node.NodeID), nil
-	}
-	return 0, errors.New("no nodes with public ipv4")
-}
 func getNodeFreeWGPort(ctx context.Context, nodeClient *client.NodeClient, nodeId uint32) (int, error) {
 	rand.Seed(time.Now().UnixNano())
 	freeports, err := nodeClient.NetworkListWGPorts(ctx)
