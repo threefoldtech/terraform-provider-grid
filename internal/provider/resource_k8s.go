@@ -838,15 +838,6 @@ func (k *K8sDeployer) removeDeletedContracts(ctx context.Context, sub subi.Subst
 	return nil
 }
 
-func getNodeIdByCapacityId(sub subi.Substrate, capacityId uint64) (uint32, error) {
-	contract, err := sub.GetContract(capacityId)
-	if err != nil {
-		return 0, errors.Wrapf(err, "couldn't get capacity reservation contract with Id: (%d)", capacityId)
-	}
-	nodeId := uint32(contract.ContractType.CapacityReservationContract.NodeID)
-	return nodeId, nil
-}
-
 func (k *K8sDeployer) updateFromRemote(ctx context.Context, sub subi.Substrate) error {
 	if err := k.removeDeletedContracts(ctx, sub); err != nil {
 		return errors.Wrap(err, "failed to remove deleted contracts")
@@ -864,7 +855,7 @@ func (k *K8sDeployer) updateFromRemote(ctx context.Context, sub subi.Substrate) 
 			if w.Type == zos.ZMachineType {
 				d, err := w.WorkloadData()
 				if err != nil {
-					log.Printf("failed to get workload data %s", err)
+					return errors.Wrapf(err, "failed to get workload data deploymentId: %d", dl.DeploymentID)
 				}
 				SSHKey := d.(*zos.ZMachine).Env["SSH_KEY"]
 				token := d.(*zos.ZMachine).Env["K3S_TOKEN"]
@@ -909,16 +900,14 @@ func (k *K8sDeployer) updateFromRemote(ctx context.Context, sub subi.Substrate) 
 			} else if w.Type == zos.PublicIPType {
 				d := zos.PublicIPResult{}
 				if err := json.Unmarshal(w.Result.Data, &d); err != nil {
-					log.Printf("failed to load pubip data %s", err)
-					continue
+					return errors.Wrapf(err, "failed to load pubip data: %d", dl.DeploymentID)
 				}
 				publicIPs[string(w.Name)] = d.IP.String()
 				publicIP6s[string(w.Name)] = d.IPv6.String()
 			} else if w.Type == zos.ZMountType {
 				d, err := w.WorkloadData()
 				if err != nil {
-					log.Printf("failed to load disk data %s", err)
-					continue
+					return errors.Wrapf(err, "failed to load disk data: %d", dl.DeploymentID)
 				}
 				diskSize[string(w.Name)] = int(d.(*zos.ZMount).Size / gridtypes.Gigabyte)
 			}
