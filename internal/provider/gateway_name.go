@@ -63,7 +63,9 @@ func NewGatewayNameDeployer(d *schema.ResourceData, apiClient *apiClient) (Gatew
 	}
 	deploymentDataStr, err := json.Marshal(deploymentData)
 	if err != nil {
-		log.Printf("error parsing deploymentdata: %s", err.Error())
+		return GatewayNameDeployer{},errors.Wrapf(err,"couldn't marshal deployment data with node id %d",nodeID)
+
+		// log.Printf("error parsing deploymentdata: %s", err.Error())
 	}
 	deployer := GatewayNameDeployer{
 		Gw: workloads.GatewayNameProxy{
@@ -105,7 +107,7 @@ func (k *GatewayNameDeployer) Marshal(d *schema.ResourceData) error {
 	}
 
 	d.SetId(k.ID)
-	err.Push(d.Set("node", k.NodeID))
+	err.Push(d.Set("node_id", k.NodeID))
 	err.Push(d.Set("tls_passthrough", k.Gw.TLSPassthrough))
 	err.Push(d.Set("backends", k.Gw.Backends))
 	err.Push(d.Set("fqdn", k.Gw.FQDN))
@@ -136,7 +138,7 @@ func (k *GatewayNameDeployer) InvalidateNameContract(ctx context.Context, sub su
 }
 func (k *GatewayNameDeployer) Deploy(ctx context.Context, sub subi.Substrate) error {
 	if err := k.Validate(ctx, sub); err != nil {
-		return err
+		return errors.Wrapf(err,"couldn't validate gateway name with capacity id (%d)",k.CapacityID)
 	}
 	newDeployments, err := k.GenerateVersionlessDeployments(ctx)
 	if err != nil {
@@ -148,7 +150,7 @@ func (k *GatewayNameDeployer) Deploy(ctx context.Context, sub subi.Substrate) er
 	if k.NameContractID == 0 {
 		k.NameContractID, err = sub.CreateNameContract(k.APIClient.identity, k.Gw.Name)
 		if err != nil {
-			return err
+			return errors.Wrapf(err,"couldn't create name contract for name contract id (%d)",k.NameContractID)
 		}
 	}
 	if k.ID == "" {
@@ -181,7 +183,7 @@ func (k *GatewayNameDeployer) sync(ctx context.Context, sub subi.Substrate, cl *
 	}
 	dls, err := k.deployer.GetDeploymentObjects(ctx, sub, k.CapacityDeploymentMap)
 	if err != nil {
-		return errors.Wrap(err, "couldn't get deployment objects")
+		return errors.Wrapf(err, "couldn't get deployment objects with capacity id (%d)", k.CapacityID)
 	}
 	dl := dls[k.CapacityID]
 	wl, err := dl.Get(gridtypes.Name(k.Gw.Name))
