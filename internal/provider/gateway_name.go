@@ -184,7 +184,10 @@ func (k *GatewayNameDeployer) sync(ctx context.Context, sub subi.Substrate, cl *
 		return errors.Wrap(err, "couldn't get deployment objects")
 	}
 	dl := dls[k.CapacityID]
-	wl, _ := dl.Get(gridtypes.Name(k.Gw.Name))
+	wl, err := dl.Get(gridtypes.Name(k.Gw.Name))
+	if err != nil {
+		return errors.Wrapf(err,"couldn't get gateway name workload with name %s",k.Gw.Name)
+	}
 	k.Gw = workloads.GatewayNameProxy{}
 	// if the node acknowledges it, we are golden
 	if wl != nil && wl.Result.State.IsOkay() {
