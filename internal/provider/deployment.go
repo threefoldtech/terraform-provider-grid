@@ -186,7 +186,7 @@ func (d *DeploymentDeployer) Marshal(r *schema.ResourceData) error {
 	err.Push(r.Set("zdbs", zdbs))
 	err.Push(r.Set("disks", disks))
 	err.Push(r.Set("qsfs", qsfs))
-	err.Push(r.Set("node", d.NodeID))
+	err.Push(r.Set("node_id", d.NodeID))
 	err.Push(r.Set("network_name", d.NetworkName))
 	err.Push(r.Set("ip_range", d.IPRange))
 	r.SetId(d.Id)
@@ -247,7 +247,7 @@ func (d *DeploymentDeployer) sync(ctx context.Context, sub subi.Substrate, cl *a
 	}
 	currentDeployments, err := d.deployer.GetDeploymentObjects(ctx, sub, map[uint64]uint64{d.CapacityID: d.ID()})
 	if err != nil {
-		return errors.Wrap(err, "failed to get deployments to update local state")
+		return errors.Wrapf(err, "failed to get deployments with deployment id %d to update local state with capacity id %d",d.ID(),d.CapacityID)
 	}
 	dl := currentDeployments[d.CapacityID]
 	var vms []workloads.VM
@@ -374,7 +374,7 @@ func (d *DeploymentDeployer) Deploy(ctx context.Context, sub subi.Substrate) err
 	}
 	newDeployments, err := d.GenerateVersionlessDeployments(ctx)
 	if err != nil {
-		return errors.Wrap(err, "couldn't generate deployments data")
+		return errors.Wrapf(err, "couldn't generate deployments data with deployment id %d",d.ID())
 	}
 	oldDeployments, err := d.GetOldDeployments(ctx)
 	if err != nil {
@@ -382,7 +382,7 @@ func (d *DeploymentDeployer) Deploy(ctx context.Context, sub subi.Substrate) err
 	}
 	currentDeployments, err := d.deployer.Deploy(ctx, sub, oldDeployments, newDeployments)
 	if currentDeployments[d.CapacityID] != 0 {
-		d.Id = fmt.Sprint("%d", currentDeployments[d.CapacityID])
+		d.Id = fmt.Sprint(currentDeployments[d.CapacityID])
 	}
 	return err
 }
@@ -391,12 +391,12 @@ func (d *DeploymentDeployer) Cancel(ctx context.Context, sub subi.Substrate) err
 	newDeployments := make(map[uint64]gridtypes.Deployment)
 	oldDeployments, err := d.GetOldDeployments(ctx)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "couldn't get old deployments data")
 	}
 	currentDeployments, err := d.deployer.Deploy(ctx, sub, oldDeployments, newDeployments)
 	id := currentDeployments[d.CapacityID]
 	if id != 0 {
-		d.Id = fmt.Sprint("%d", id)
+		d.Id = fmt.Sprint(id)
 	} else {
 		d.Id = ""
 	}
