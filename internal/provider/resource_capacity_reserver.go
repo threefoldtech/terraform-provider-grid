@@ -12,7 +12,7 @@ import (
 )
 
 type Capacity struct {
-	Farm             uint32 `name:"farm"`
+	FarmID           uint32 `name:"farm_id"`
 	CapacityID       uint64 `name:"capacity_id"`
 	CPU              int    `name:"cpu"`
 	Memory           int    `name:"memory"`
@@ -20,7 +20,7 @@ type Capacity struct {
 	HDD              int    `name:"hdd"`
 	SolutionProvider uint64 `name:"solution_provider"`
 	Public           bool   `name:"public"`
-	Node             uint32 `name:"node"`
+	NodeID           uint32 `name:"node_id"`
 	GroupID          uint32 `name:"group_id"`
 }
 
@@ -44,7 +44,7 @@ func resourceCapacityReserver() *schema.Resource {
 				},
 				Description: "List of nodes to add to the network",
 			},
-			"farm": {
+			"farm_id": {
 				Type:        schema.TypeInt,
 				Required:    true,
 				Description: "Farm id of deployment",
@@ -84,7 +84,7 @@ func resourceCapacityReserver() *schema.Resource {
 				Default:     false,
 				Description: "node has public ip",
 			},
-			"node": {
+			"node_id": {
 				Type:        schema.TypeInt,
 				Computed:    true,
 				Description: "node id",
@@ -175,7 +175,7 @@ func resourceCapacityDelete(ctx context.Context, d *schema.ResourceData, meta in
 
 func NewCapacity(d *schema.ResourceData) Capacity {
 	return Capacity{
-		Farm:             d.Get("farm").(uint32),
+		FarmID:           d.Get("farm_id").(uint32),
 		CapacityID:       d.Get("capacity_id").(uint64),
 		CPU:              d.Get("cpu").(int),
 		Memory:           d.Get("memory").(int),
@@ -183,7 +183,7 @@ func NewCapacity(d *schema.ResourceData) Capacity {
 		HDD:              d.Get("hdd").(int),
 		SolutionProvider: d.Get("solution_provider").(uint64),
 		Public:           d.Get("public").(bool),
-		Node:             d.Get("node").(uint32),
+		NodeID:           d.Get("node_id").(uint32),
 		GroupID:          d.Get("group_id").(uint32),
 	}
 }
@@ -194,7 +194,7 @@ func (c *Capacity) updateState(d *schema.ResourceData) error {
 	setErr = errors.Wrap(setErr, err.Error())
 	err = d.Set("capacity_id", c.CapacityID)
 	setErr = errors.Wrap(setErr, err.Error())
-	err = d.Set("farm", c.Farm)
+	err = d.Set("farm", c.FarmID)
 	setErr = errors.Wrap(setErr, err.Error())
 	err = d.Set("group_id", c.GroupID)
 	setErr = errors.Wrap(setErr, err.Error())
@@ -202,7 +202,7 @@ func (c *Capacity) updateState(d *schema.ResourceData) error {
 	setErr = errors.Wrap(setErr, err.Error())
 	err = d.Set("memory", c.Memory)
 	setErr = errors.Wrap(setErr, err.Error())
-	err = d.Set("node", c.Node)
+	err = d.Set("node", c.NodeID)
 	setErr = errors.Wrap(setErr, err.Error())
 	err = d.Set("public", c.Public)
 	setErr = errors.Wrap(setErr, err.Error())
@@ -235,7 +235,7 @@ func (c *Capacity) Create(cl apiClient) error {
 	} else {
 		solutionProvider = nil
 	}
-	capacityID, err := cl.substrateConn.CreateCapacityReservationContract(cl.identity, c.Farm, policy, solutionProvider)
+	capacityID, err := cl.substrateConn.CreateCapacityReservationContract(cl.identity, c.FarmID, policy, solutionProvider)
 	if err != nil {
 		return err
 	}
@@ -243,7 +243,7 @@ func (c *Capacity) Create(cl apiClient) error {
 	if err != nil {
 		return err
 	}
-	c.Node = uint32(contract.ContractType.CapacityReservationContract.NodeID)
+	c.NodeID = uint32(contract.ContractType.CapacityReservationContract.NodeID)
 	c.CapacityID = capacityID
 	return nil
 }
