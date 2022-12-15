@@ -112,6 +112,7 @@ func New(version string, st state.StateI) (func() *schema.Provider, subi.Substra
 				"grid_name_proxy":        resourceGatewayNameProxy(),
 				"grid_fqdn_proxy":        resourceGatewayFQDNProxy(),
 				"grid_capacity_reserver": resourceCapacityReserver(),
+				"resource_group":		  resourceGroup(),
 			},
 		}
 		configFunc, sub := providerConfigure(st)

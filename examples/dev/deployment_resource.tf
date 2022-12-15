@@ -86,7 +86,7 @@ resource "grid_deployment" "d1" {
 }
 
 resource "grid_deployment" "d2" {
-  capacity_id  = grid_capacity_reserver.cap1.capacity_id
+  capacity_id  = grid_capacity_reserver.cap2.capacity_id
   network_name = grid_network.net1.name
   ip_range     = grid_network.net1.deployment_info[2].ip_range
   disks {

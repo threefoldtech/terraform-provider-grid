@@ -20,7 +20,7 @@ resource "grid_capacity_reserver" "cap1" {
 
 }
 resource "grid_network" "net1" {
-  nodes         = [1]
+  capacity_id   = grid_capacity_reserver.cap1.capacity_id
   ip_range      = "10.1.0.0/16"
   name          = local.name
   description   = "newer network"
@@ -29,7 +29,7 @@ resource "grid_network" "net1" {
 
 resource "grid_deployment" "swarm1" {
   name         = local.name
-  node         = 1
+  capacity_id   = grid_capacity_reserver.cap1.capacity_id
   network_name = grid_network.net1.name
   vms {
     name        = "swarmManager1"

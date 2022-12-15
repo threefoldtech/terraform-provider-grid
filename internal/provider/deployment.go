@@ -213,6 +213,8 @@ func (d *DeploymentDeployer) Nullify() {
 	d.Disks = nil
 	d.ZDBs = nil
 	d.Id = ""
+	d.IPRange = ""
+	d.NetworkName = ""
 }
 func (d *DeploymentDeployer) ID() uint64 {
 	id, err := strconv.ParseUint(d.Id, 10, 64)

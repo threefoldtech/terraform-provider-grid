@@ -202,7 +202,7 @@ func (c *Capacity) updateState(d *schema.ResourceData) error {
 	setErr = errors.Wrap(setErr, err.Error())
 	err = d.Set("memory", c.Memory)
 	setErr = errors.Wrap(setErr, err.Error())
-	err = d.Set("node", c.NodeID)
+	err = d.Set("node_id", c.NodeID)
 	setErr = errors.Wrap(setErr, err.Error())
 	err = d.Set("public", c.Public)
 	setErr = errors.Wrap(setErr, err.Error())
