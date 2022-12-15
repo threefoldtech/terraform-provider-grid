@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -60,7 +59,7 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 	}
 	deploymentDataStr, err := json.Marshal(deploymentData)
 	if err != nil {
-		log.Printf("error parsing deploymentdata: %s", err.Error())
+		return GatewayFQDNDeployer{},errors.Wrapf(err,"error parsing deployment data with node (%d)",nodeID)
 	}
 	deployer := GatewayFQDNDeployer{
 		Gw: workloads.GatewayFQDNProxy{
@@ -98,7 +97,7 @@ func (k *GatewayFQDNDeployer) Marshal(d *schema.ResourceData) error {
 			return err.error()
 		}
 	}
-	err.Push(d.Set("node", k.NodeID))
+	err.Push(d.Set("node_id", k.NodeID))
 	err.Push(d.Set("tls_passthrough", k.Gw.TLSPassthrough))
 	err.Push(d.Set("backends", k.Gw.Backends))
 	err.Push(d.Set("fqdn", k.Gw.FQDN))
@@ -120,7 +119,7 @@ func (k *GatewayFQDNDeployer) Deploy(ctx context.Context, sub subi.Substrate) er
 	}
 	newDeployments, err := k.GenerateVersionlessDeployments(ctx)
 	if err != nil {
-		return errors.Wrap(err, "couldn't generate deployments data")
+		return errors.Wrapf(err, "couldn't generate deployments data with capacity id %d", k.CapacityID)
 	}
 	k.CapacityDeploymentMap, err = k.deployer.Deploy(ctx, sub, k.CapacityDeploymentMap, newDeployments)
 	if k.ID == "" && k.CapacityDeploymentMap[k.CapacityID] != 0 {
@@ -146,7 +145,7 @@ func (k *GatewayFQDNDeployer) sync(ctx context.Context, sub subi.Substrate, cl *
 
 	dls, err := k.deployer.GetDeploymentObjects(ctx, sub, k.CapacityDeploymentMap)
 	if err != nil {
-		return errors.Wrap(err, "couldn't get deployment objects")
+		return errors.Wrapf(err, "couldn't get deployment objects with capacity id %d",k.CapacityID)
 	}
 	dl := dls[k.CapacityID]
 	wl, _ := dl.Get(gridtypes.Name(k.Gw.Name))
