@@ -35,7 +35,7 @@ func (d *ValidatorImpl) Validate(ctx context.Context, sub subi.Substrate, oldDep
 		nodeID := contract.ContractType.CapacityReservationContract.NodeID
 		nodeInfo, err := d.gridClient.Node(uint32(nodeID))
 		if err != nil {
-			return errors.Wrapf(err, "couldn't get node %d data from the grid proxy", capacityID)
+			return errors.Wrapf(err, "couldn't get node %d data with capacity id %d from the grid proxy ", nodeID,capacityID)
 		}
 		nodeMap[uint32(nodeID)] = nodeInfo
 		farmIPs[nodeInfo.FarmID] = 0

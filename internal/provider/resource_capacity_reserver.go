@@ -194,7 +194,7 @@ func (c *Capacity) updateState(d *schema.ResourceData) error {
 	setErr = errors.Wrap(setErr, err.Error())
 	err = d.Set("capacity_id", c.CapacityID)
 	setErr = errors.Wrap(setErr, err.Error())
-	err = d.Set("farm", c.FarmID)
+	err = d.Set("farm_id", c.FarmID)
 	setErr = errors.Wrap(setErr, err.Error())
 	err = d.Set("group_id", c.GroupID)
 	setErr = errors.Wrap(setErr, err.Error())
@@ -265,7 +265,7 @@ func (c *Capacity) Delete(cl apiClient) error {
 
 // checks if a non-changeable field has changed, and warn user if so
 func validateCapacityChanges(d *schema.ResourceData) error {
-	nonChangeable := []string{"farm", "solution_provider", "public", "group_id"}
+	nonChangeable := []string{"farm_id", "solution_provider", "public", "group_id"}
 	for _, field := range nonChangeable {
 		if d.HasChange(field) {
 			return ErrNonChangeable

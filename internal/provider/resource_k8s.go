@@ -83,7 +83,7 @@ func resourceKubernetes() *schema.Resource {
 							Required:    true,
 							Description: "Master name",
 						},
-						"node": {
+						"node_id": {
 							Type:        schema.TypeInt,
 							Computed:    true,
 							Description: "Node ID",
@@ -181,7 +181,7 @@ func resourceKubernetes() *schema.Resource {
 							Required:    true,
 							Description: "Data disk size in GBs",
 						},
-						"node": {
+						"node_id": {
 							Type:        schema.TypeInt,
 							Computed:    true,
 							Description: "Node ID",
@@ -426,7 +426,7 @@ func NewK8sDeployer(d *schema.ResourceData, apiClient *apiClient) (K8sDeployer, 
 func (k *K8sNodeData) Dictify() map[string]interface{} {
 	res := make(map[string]interface{})
 	res["name"] = k.Name
-	res["node"] = uint64(k.Node)
+	res["node_id"] = uint64(k.Node)
 	res["capacity_id"] = uint64(k.CapacityId)
 	res["disk_size"] = k.DiskSize
 	res["publicip"] = k.PublicIP
