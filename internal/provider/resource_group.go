@@ -51,13 +51,13 @@ func resourceGroupCreate(ctx context.Context, d *schema.ResourceData, meta inter
 	}	
 
 	d.SetId(strconv.Itoa(int(group_id)))	
-	return nil	
+	return diags
 }	
 
 func resourceGroupUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {	
 	var diags diag.Diagnostics	
 	diags = append(diags, diag.FromErr(errors.New("Updating groups in not allowed"))...)	
-	return nil	
+	return diags	
 }	
 
 func resourceGroupDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {	
@@ -73,5 +73,5 @@ func resourceGroupDelete(ctx context.Context, d *schema.ResourceData, meta inter
 	}	
 
 	d.SetId("")	
-	return nil	
+	return diags	
 }
