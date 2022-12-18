@@ -20,13 +20,13 @@ require (
 	github.com/threefoldtech/substrate-client-qa v0.0.1
 	github.com/threefoldtech/substrate-client-test v0.0.1
 	github.com/threefoldtech/zos v0.5.6-0.20220823125932-7df5043ab018
-	golang.org/x/net v0.0.0-20220403103023-749bd193bc2b // indirect
+	golang.org/x/net v0.0.0-20220425223048-2871e0cb64e4 // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20210803171230-4253848d036c
 )
 
 require (
 	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e
-	github.com/threefoldtech/grid_proxy_server v1.5.5
+	github.com/threefoldtech/grid_proxy_server v1.6.5
 	github.com/threefoldtech/substrate-client-dev v0.0.1
 	github.com/vedhavyas/go-subkey v1.0.3
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
