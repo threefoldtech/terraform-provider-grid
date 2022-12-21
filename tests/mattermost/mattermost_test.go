@@ -1,15 +1,12 @@
-//go:build integration
-// +build integration
-
 package test
 
 import (
+	"os"
+	"testing"
+
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
 	"github.com/threefoldtech/terraform-provider-grid/tests"
-	"os"
-	"os/exec"
-	"testing"
 )
 
 func TestMattermostDeployment(t *testing.T) {
@@ -43,15 +40,8 @@ func TestMattermostDeployment(t *testing.T) {
 	ip := terraform.Output(t, terraformOptions, "ygg_ip")
 	assert.NotEmpty(t, ip)
 
-
-	status := false
-	status = tests.Wait(ip, "22")
-	if status == false {
-		t.Errorf("public ip not reachable")
-	}
-
-	out, _ := exec.Command("ping", ip, "-c 5", "-i 3", "-w 10").Output()
-	assert.NotContains(t, string(out), "Destination Host Unreachable")
+	err := tests.Wait(ip, "22")
+	assert.NoError(t, err)
 
 	// Check that env variables set successfully
 	res, _ := tests.RemoteRun("root", ip, "cat /proc/1/environ")

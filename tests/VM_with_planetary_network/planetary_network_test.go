@@ -1,6 +1,3 @@
-//go:build integration
-// +build integration
-
 package test
 
 import (
@@ -43,18 +40,15 @@ func TestSingleNodeDeployment(t *testing.T) {
 	// Check that the outputs not empty
 	publicIP := terraform.Output(t, terraformOptions, "public_ip")
 	assert.NotEmpty(t, publicIP)
+	publicIP, err := tests.IPFromCidr(publicIP)
+	assert.NoError(t, err, "error parsing public ip")
 
 	yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
 	assert.NotEmpty(t, yggIP)
 
-	status := false
-	status = tests.Wait(yggIP, "22")
-	if status == false {
-		t.Errorf("Yggdrasil IP not reachable")
-	}
-
 	verifyIPs := []string{publicIP, yggIP}
-	tests.VerifyIPs("", verifyIPs)
+	err = tests.VerifyIPs("", verifyIPs)
+	assert.NoError(t, err, "ips not reachable")
 	defer tests.DownWG()
 
 	// ssh to VM by ygg_ip

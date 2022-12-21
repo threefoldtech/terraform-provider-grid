@@ -8,7 +8,6 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"strings"
 	"time"
 
 	"github.com/goombaio/namegenerator"
@@ -87,23 +86,20 @@ func RemoteRun(user string, addr string, cmd string) (string, error) {
 	return b.String(), err
 }
 
-func VerifyIPs(wgConfig string, verifyIPs []string) bool {
+func VerifyIPs(wgConfig string, verifyIPs []string) error {
 	UpWg(wgConfig)
+	for _, ip := range verifyIPs {
 
-	for i := 0; i < len(verifyIPs); i++ {
-		out, _ := exec.Command("ping", verifyIPs[i], "-c 5", "-i 3", "-w 10").Output()
-		if strings.Contains(string(out), "Destination Host Unreachable") {
-			return false
+		err := Wait(ip, "22")
+		if err != nil {
+			return err
+		}
+		_, err = RemoteRun("root", ip, "ls")
+		if err != nil {
+			return err
 		}
 	}
-
-	for i := 0; i < len(verifyIPs); i++ {
-		res, _ := RemoteRun("root", verifyIPs[i], "ifconfig")
-		if !strings.Contains(string(res), verifyIPs[i]) {
-			return false
-		}
-	}
-	return true
+	return nil
 }
 
 func RandomName() string {
@@ -114,15 +110,24 @@ func RandomName() string {
 
 	return name
 }
+func IPFromCidr(cidr string) (string, error) {
+	ip, _, err := net.ParseCIDR(cidr)
+	if err != nil {
+		return "", err
+	}
+	return ip.String(), nil
+}
 
-func Wait(addr string, port string) bool {
+func Wait(addr string, port string) error {
+	var err error
 	for t := time.Now(); time.Since(t) < 3*time.Minute; {
-		_, err := net.DialTimeout("tcp", net.JoinHostPort(addr, "22"), time.Second*12)
+		con, err := net.DialTimeout("tcp", net.JoinHostPort(addr, port), time.Second*12)
+		con.Close()
 		if err == nil {
-			return true
+			return nil
 		}
 	}
-	return true
+	return err
 }
 
 func SshKeys() {

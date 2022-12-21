@@ -1,15 +1,12 @@
-//go:build integration
-// +build integration
-
 package test
 
 import (
+	"os"
+	"testing"
+
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
 	"github.com/threefoldtech/terraform-provider-grid/tests"
-	"os"
-	"os/exec"
-	"testing"
 )
 
 func TestTaigaDeployment(t *testing.T) {
@@ -49,12 +46,8 @@ func TestTaigaDeployment(t *testing.T) {
 
 	// Check that vm is reachable
 	ip := publicIp
-	status := false
-	status = tests.Wait(ip, "22")
-	if status == false {
-		t.Errorf("public ip not reachable")
-	}
-
+	err := tests.Wait(ip, "22")
+	assert.NoError(t, err)
 
 	// Check that env variables set successfully
 	res, _ := tests.RemoteRun("root", ip, "cat /proc/1/environ")
@@ -65,11 +58,6 @@ func TestTaigaDeployment(t *testing.T) {
 
 	//check the webpage
 	webip := webIp
-	status1 := false
-	status1 = tests.Wait(webip, "22")
-	if status1 == false {
-		t.Errorf("public ip not reachable")
-	}
-	out1, _ := exec.Command("ping", webip, "-c 5", "-i 3", "-w 10").Output()
-	assert.NotContains(t, string(out1), "Destination Host Unreachable")
+	err = tests.Wait(webip, "22")
+	assert.NoError(t, err)
 }

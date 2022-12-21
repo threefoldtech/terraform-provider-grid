@@ -1,15 +1,10 @@
-//go:build integration
-// +build integration
-
 package test
 
 import (
 	"os"
-	"os/exec"
+	"strings"
 	"testing"
 	"time"
-
-	"strings"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
@@ -56,21 +51,15 @@ func TestKubernetesDeployment(t *testing.T) {
 	defer tests.DownWG()
 
 	// Check that master is reachable
-	masterIP := strings.Split(masterPublicIP, "/")[0]
-	status := false
-	status = tests.Wait(masterIP, "22")
-	if status == false {
-		t.Errorf("public ip not reachable")
-	}
-
-	out, _ := exec.Command("ping", masterPublicIP, "-c 5", "-i 3", "-w 10").Output()
-	assert.NotContains(t, string(out), "Destination Host Unreachable")
-
+	masterIP, err := tests.IPFromCidr(masterPublicIP)
+	assert.NoError(t, err, "error parsing master node ip")
+	err = tests.Wait(masterIP, "22")
+	assert.NoError(t, err, "can not reach master node")
 	// ssh to master node
 	time.Sleep(30 * (time.Second))
-	res, errors := tests.RemoteRun("root", masterIP, "kubectl get node")
+	res, err := tests.RemoteRun("root", masterIP, "kubectl get node")
 	res = strings.Trim(res, "\n")
-	assert.Empty(t, errors)
+	assert.Empty(t, err, "can not ssh to master node, IP: ", masterIP)
 
 	// Check worker deployed number
 	nodes := strings.Split(string(res), "\n")[1:]

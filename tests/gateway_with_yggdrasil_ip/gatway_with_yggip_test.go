@@ -1,11 +1,7 @@
-//go:build integration
-// +build integration
-
 package test
 
 import (
 	"os"
-	"os/exec"
 	"testing"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
@@ -48,16 +44,11 @@ func TestSingleNodeDeployment(t *testing.T) {
 	fqdn := terraform.Output(t, terraformOptions, "fqdn")
 	assert.NotEmpty(t, fqdn)
 
-	out, _ := exec.Command("ping", yggIP, "-c 5", "-i 3", "-w 10").Output()
-	assert.NotContains(t, string(out), "Destination Host Unreachable")
-
 	// ssh to VM and check if yggdrasil is active
-	status := false
-	status = tests.Wait(yggIP, "22")
-	if status == false {
-		t.Errorf("ygg ip not reachable")
-	}
+	err := tests.Wait(yggIP, "22")
+	assert.NoError(t, err, "can not reach yggIP")
 
-	out1, _ := exec.Command("ping", fqdn, "-c 5", "-i 3", "-w 10").Output()
-	assert.NotContains(t, string(out1), "Destination Host Unreachable")
+	err = tests.Wait(fqdn, "443")
+	assert.NoError(t, err)
+
 }

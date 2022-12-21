@@ -1,17 +1,13 @@
-//go:build integration
-// +build integration
-
 package test
 
 import (
+	"os"
+	"testing"
+	"time"
+
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
 	"github.com/threefoldtech/terraform-provider-grid/tests"
-	"os"
-	"os/exec"
-	"strings"
-	"testing"
-	"time"
 )
 
 func TestPreSearchDeployment(t *testing.T) {
@@ -43,26 +39,20 @@ func TestPreSearchDeployment(t *testing.T) {
 	terraform.InitAndApply(t, terraformOptions)
 
 	// Check that the outputs not empty
-	publicIp := terraform.Output(t, terraformOptions, "public_ip")
-	assert.NotEmpty(t, publicIp)
-
+	publicIP := terraform.Output(t, terraformOptions, "public_ip")
+	assert.NotEmpty(t, publicIP)
+	publicIP, err := tests.IPFromCidr(publicIP)
+	assert.NoError(t, err)
 	// Check that vm is reachable
-	ip := strings.Split(publicIp, "/")[0]
-	status := false
-	status = tests.Wait(ip, "22")
-	if status == false {
-		t.Errorf("public ip not reachable")
-	}
-
-	out, _ := exec.Command("ping", ip, "-c 5", "-i 3", "-w 10").Output()
-	assert.NotContains(t, string(out), "Destination Host Unreachable")
+	err = tests.Wait(publicIP, "22")
+	assert.NoError(t, err)
 
 	// Check that env variables set successfully
-	res, _ := tests.RemoteRun("root", ip, "cat /proc/1/environ")
+	res, _ := tests.RemoteRun("root", publicIP, "cat /proc/1/environ")
 	assert.Contains(t, string(res), "PRESEARCH_REGISTRATION_CODE=e5083a8d0a6362c6cf7a3078bfac81e3")
 
 	time.Sleep(60 * time.Second) // Sleeps for 60 seconds
 
-	res1, _ := tests.RemoteRun("root", ip, "zinit list")
+	res1, _ := tests.RemoteRun("root", publicIP, "zinit list")
 	assert.Contains(t, res1, "prenode: Success")
 }

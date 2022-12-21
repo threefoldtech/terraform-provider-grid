@@ -1,11 +1,7 @@
-//go:build integration
-// +build integration
-
 package test
 
 import (
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
@@ -50,14 +46,13 @@ func TestMountWithBiggerFileDeployment(t *testing.T) {
 	defer tests.DownWG()
 
 	// ssh to VM and try to create a file with size 1G.
-	pIP := strings.Split(publicIP, "/")[0]
-	status := false
-	status = tests.Wait(pIP, "22")
-	if status == false {
-		t.Errorf("public ip not reachable")
-	}
+	publicIP, err := tests.IPFromCidr(publicIP)
+	assert.NoError(t, err)
 
-	_, err := tests.RemoteRun("root", pIP, "cd /app/ && dd if=/dev/vda bs=1G count=1 of=test.txt")
+	err = tests.Wait(publicIP, "22")
+	assert.NoError(t, err)
+
+	_, err = tests.RemoteRun("root", publicIP, "cd /app/ && dd if=/dev/vda bs=1G count=1 of=test.txt")
 	if err == nil {
 		t.Errorf("should fail with out of memory")
 	}

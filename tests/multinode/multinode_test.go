@@ -1,10 +1,6 @@
-//go:build integration
-// +build integration
-
 package test
 
 import (
-	"strings"
 	"testing"
 
 	"os"
@@ -44,29 +40,29 @@ func TestMultiNodeDeployment(t *testing.T) {
 	// Check that the outputs not empty
 	node1Container1IP := terraform.Output(t, terraformOptions, "node1_container1_ip")
 	assert.NotEmpty(t, node1Container1IP)
+	node1Container1IP, err := tests.IPFromCidr(node1Container1IP)
+	assert.NoError(t, err, "error parsing node1Container1IP")
 
 	node2Container1IP := terraform.Output(t, terraformOptions, "node2_container1_ip")
 	assert.NotEmpty(t, node2Container1IP)
+	node2Container1IP, err = tests.IPFromCidr(node2Container1IP)
+	assert.NoError(t, err, "error parsing node2Container2IP")
 
 	publicIP := terraform.Output(t, terraformOptions, "public_ip")
 	assert.NotEmpty(t, publicIP)
+	publicIP, err = tests.IPFromCidr(publicIP)
+	assert.NoError(t, err, "error parsing public ip")
 
 	// Up wireguard
 	wgConfig := terraform.Output(t, terraformOptions, "wg_config")
 	assert.NotEmpty(t, wgConfig)
 
-	verifyIPs := []string{node1Container1IP, node1Container1IP}
-	tests.VerifyIPs(wgConfig, verifyIPs)
+	verifyIPs := []string{publicIP, node1Container1IP, node2Container1IP}
+	err = tests.VerifyIPs(wgConfig, verifyIPs)
+	assert.NoError(t, err, "ips not reachable")
 	defer tests.DownWG()
 
-	pIP := strings.Split(publicIP, "/")[0]
-	status := false
-	status = tests.Wait(pIP, "22")
-	if status == false {
-		t.Errorf("ip not reachable")
-	}
-
 	// Check that env variables set successfully
-	res, _ := tests.RemoteRun("root", pIP, "cat /proc/1/environ")
+	res, _ := tests.RemoteRun("root", publicIP, "cat /proc/1/environ")
 	assert.Contains(t, string(res), "TEST_VAR=this value for test")
 }
