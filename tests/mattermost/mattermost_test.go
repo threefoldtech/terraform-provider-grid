@@ -1,15 +1,13 @@
-//go:build integration
-// +build integration
-
 package test
 
 import (
+	"log"
+	"os/exec"
+	"testing"
+
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
 	"github.com/threefoldtech/terraform-provider-grid/tests"
-	"os"
-	"os/exec"
-	"testing"
 )
 
 func TestMattermostDeployment(t *testing.T) {
@@ -26,12 +24,15 @@ func TestMattermostDeployment(t *testing.T) {
 
 	// retryable errors in terraform testing.
 	// generate ssh keys for test
-	tests.SSHKeys()
-	publicKey := os.Getenv("PUBLICKEY")
+	pk, sk, err := tests.SshKeys()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./",
 		Vars: map[string]interface{}{
-			"public_key": publicKey,
+			"public_key": pk,
 		},
 		Parallelism: 1,
 	})
@@ -43,22 +44,21 @@ func TestMattermostDeployment(t *testing.T) {
 	ip := terraform.Output(t, terraformOptions, "ygg_ip")
 	assert.NotEmpty(t, ip)
 
-	status := false
-	status = tests.Wait(ip, "22")
-	if status == false {
-		t.Errorf("public ip not reachable")
-	}
+	err = tests.Wait(ip, "22")
+	assert.NoError(t, err)
 
 	out, _ := exec.Command("ping", ip, "-c 5", "-i 3", "-w 10").Output()
 	assert.NotContains(t, string(out), "Destination Host Unreachable")
 
 	// Check that env variables set successfully
-	res, _ := tests.RemoteRun("root", ip, "cat /proc/1/environ")
+	res, err := tests.RemoteRun("root", ip, "cat /proc/1/environ", sk)
+	assert.NoError(t, err)
 	assert.Contains(t, string(res), "TEST_VAR=this value for test")
 
 	// Check that the solution is running successfully
 
-	res1, _ := tests.RemoteRun("root", ip, "zinit list")
-	assert.Contains(t, res1, "mattermost: Running")
+	res, err = tests.RemoteRun("root", ip, "zinit list", sk)
+	assert.NoError(t, err)
+	assert.Contains(t, res, "mattermost: Running")
 
 }

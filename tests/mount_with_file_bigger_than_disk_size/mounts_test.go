@@ -1,10 +1,7 @@
-//go:build integration
-// +build integration
-
 package test
 
 import (
-	"os"
+	"log"
 	"strings"
 	"testing"
 
@@ -27,12 +24,15 @@ func TestMountWithBiggerFileDeployment(t *testing.T) {
 
 	// retryable errors in terraform testing.
 	// generate ssh keys for test
-	tests.SSHKeys()
-	publicKey := os.Getenv("PUBLICKEY")
+	pk, sk, err := tests.SshKeys()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./",
 		Vars: map[string]interface{}{
-			"public_key": publicKey,
+			"public_key": pk,
 		},
 		Parallelism: 1,
 	})
@@ -46,18 +46,22 @@ func TestMountWithBiggerFileDeployment(t *testing.T) {
 	// Up wireguard
 	wgConfig := terraform.Output(t, terraformOptions, "wg_config")
 	assert.NotEmpty(t, wgConfig)
-	tests.UpWg(wgConfig)
-	defer tests.DownWG()
+	_, err = tests.UpWg(wgConfig)
+	assert.NoError(t, err)
+	defer func() {
+		_, err := tests.DownWG()
+		assert.NoError(t, err)
+	}()
 
 	// ssh to VM and try to create a file with size 1G.
 	pIP := strings.Split(publicIP, "/")[0]
-	status := false
-	status = tests.Wait(pIP, "22")
-	if status == false {
-		t.Errorf("public ip not reachable")
-	}
+	err = tests.Wait(pIP, "22")
+	assert.NoError(t, err)
+	res, err := tests.RemoteRun("root", pIP, "cd /app/ && dd if=/dev/vda bs=1G count=1 of=test.txt", sk)
+	assert.NoError(t, err)
+	assert.Contains(t, string(res), "TEST_VAR=this value for test")
 
-	_, err := tests.RemoteRun("root", pIP, "cd /app/ && dd if=/dev/vda bs=1G count=1 of=test.txt")
+	_, err = tests.RemoteRun("root", pIP, "cd /app/ && dd if=/dev/vda bs=1G count=1 of=test.txt", sk)
 	if err == nil {
 		t.Errorf("should fail with out of memory")
 	}

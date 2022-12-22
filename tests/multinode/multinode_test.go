@@ -1,13 +1,9 @@
-//go:build integration
-// +build integration
-
 package test
 
 import (
+	"log"
 	"strings"
 	"testing"
-
-	"os"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
@@ -28,12 +24,15 @@ func TestMultiNodeDeployment(t *testing.T) {
 
 	// retryable errors in terraform testing.
 	// generate ssh keys for test
-	tests.SSHKeys()
-	publicKey := os.Getenv("PUBLICKEY")
+	pk, sk, err := tests.SshKeys()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./",
 		Vars: map[string]interface{}{
-			"public_key": publicKey,
+			"public_key": pk,
 		},
 		Parallelism: 1,
 	})
@@ -56,17 +55,21 @@ func TestMultiNodeDeployment(t *testing.T) {
 	assert.NotEmpty(t, wgConfig)
 
 	verifyIPs := []string{node1Container1IP, node1Container1IP}
-	tests.VerifyIPs(wgConfig, verifyIPs)
-	defer tests.DownWG()
+	_, err = tests.UpWg(wgConfig)
+	assert.NoError(t, err)
+	err = tests.VerifyIPs(wgConfig, verifyIPs, sk)
+	assert.NoError(t, err)
+	defer func() {
+		_, err := tests.DownWG()
+		assert.NoError(t, err)
+	}()
 
 	pIP := strings.Split(publicIP, "/")[0]
-	status := false
-	status = tests.Wait(pIP, "22")
-	if status == false {
-		t.Errorf("ip not reachable")
-	}
+	err = tests.Wait(pIP, "22")
+	assert.NoError(t, err)
 
 	// Check that env variables set successfully
-	res, _ := tests.RemoteRun("root", pIP, "cat /proc/1/environ")
+	res, err := tests.RemoteRun("root", pIP, "cat /proc/1/environ", sk)
+	assert.NoError(t, err)
 	assert.Contains(t, string(res), "TEST_VAR=this value for test")
 }

@@ -1,10 +1,7 @@
-//go:build integration
-// +build integration
-
 package test
 
 import (
-	"os"
+	"log"
 	"os/exec"
 	"testing"
 
@@ -28,12 +25,15 @@ func TestSingleNodeDeployment(t *testing.T) {
 
 	// retryable errors in terraform testing.
 	// generate ssh keys for test
-	tests.SSHKeys()
-	publicKey := os.Getenv("PUBLICKEY")
+	pk, _, err := tests.SshKeys()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./",
 		Vars: map[string]interface{}{
-			"public_key": publicKey,
+			"public_key": pk,
 		},
 		Parallelism: 1,
 	})
@@ -52,11 +52,8 @@ func TestSingleNodeDeployment(t *testing.T) {
 	assert.NotContains(t, string(out), "Destination Host Unreachable")
 
 	// ssh to VM and check if yggdrasil is active
-	status := false
-	status = tests.Wait(yggIP, "22")
-	if status == false {
-		t.Errorf("ygg ip not reachable")
-	}
+	err = tests.Wait(yggIP, "22")
+	assert.NoError(t, err)
 
 	out1, _ := exec.Command("ping", fqdn, "-c 5", "-i 3", "-w 10").Output()
 	assert.NotContains(t, string(out1), "Destination Host Unreachable")

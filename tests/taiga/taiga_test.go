@@ -1,15 +1,14 @@
-//go:build integration
-// +build integration
-
 package test
 
 import (
+	"log"
+	"os/exec"
+	"strings"
+	"testing"
+
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
 	"github.com/threefoldtech/terraform-provider-grid/tests"
-	"os"
-	"os/exec"
-	"testing"
 )
 
 func TestTaigaDeployment(t *testing.T) {
@@ -27,12 +26,14 @@ func TestTaigaDeployment(t *testing.T) {
 
 	// retryable errors in terraform testing.
 	// generate ssh keys for test
-	tests.SSHKeys()
-	publicKey := os.Getenv("PUBLICKEY")
+	pk, sk, err := tests.SshKeys()
+	if err != nil {
+		log.Fatal(err)
+	}
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./",
 		Vars: map[string]interface{}{
-			"public_key": publicKey,
+			"public_key": pk,
 		},
 		Parallelism: 1,
 	})
@@ -48,27 +49,23 @@ func TestTaigaDeployment(t *testing.T) {
 	assert.NotEmpty(t, webIp)
 
 	// Check that vm is reachable
-	ip := publicIp
-	status := false
-	status = tests.Wait(ip, "22")
-	if status == false {
-		t.Errorf("public ip not reachable")
-	}
+	publicIp = strings.Split(publicIp, "/")[0]
+	err = tests.Wait(publicIp, "22")
+	assert.NoError(t, err)
 
 	// Check that env variables set successfully
-	res, _ := tests.RemoteRun("root", ip, "cat /proc/1/environ")
+	res, err := tests.RemoteRun("root", publicIp, "cat /proc/1/environ", sk)
+	assert.NoError(t, err)
 	assert.Contains(t, string(res), "TEST_VAR=this value for test")
 
-	res1, _ := tests.RemoteRun("root", ip, "zinit list")
-	assert.Contains(t, res1, "taiga: Running")
+	res, err = tests.RemoteRun("root", publicIp, "zinit list", sk)
+	assert.NoError(t, err)
+	assert.Contains(t, res, "taiga: Running")
 
 	//check the webpage
-	webip := webIp
-	status1 := false
-	status1 = tests.Wait(webip, "22")
-	if status1 == false {
-		t.Errorf("public ip not reachable")
-	}
-	out1, _ := exec.Command("ping", webip, "-c 5", "-i 3", "-w 10").Output()
+	err = tests.Wait(webIp, "22")
+	assert.NoError(t, err)
+
+	out1, _ := exec.Command("ping", webIp, "-c 5", "-i 3", "-w 10").Output()
 	assert.NotContains(t, string(out1), "Destination Host Unreachable")
 }
