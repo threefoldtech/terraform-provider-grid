@@ -1,7 +1,7 @@
 package test
 
 import (
-	"os"
+	"log"
 	"strings"
 	"testing"
 	"time"
@@ -12,14 +12,16 @@ import (
 )
 
 func TestKubernetesDeployment(t *testing.T) {
-	tests.SshKeys()
-	sshKey := os.Getenv("PUBLICKEY")
+	pk, sk, err := tests.SshKeys()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./",
 		Parallelism:  1,
 		Vars: map[string]interface{}{
-			"ssh":           sshKey,
+			"ssh":           pk,
 			"network_nodes": []int{12, 219},
 			"workers": []map[string]interface{}{
 				{
@@ -51,7 +53,7 @@ func TestKubernetesDeployment(t *testing.T) {
 	})
 
 	terraform.InitAndApply(t, terraformOptions)
-	assertDeploymentStatus(t, terraformOptions)
+	assertDeploymentStatus(t, terraformOptions, sk)
 
 	terraformOptions.Vars["workers"] = []map[string]interface{}{
 		{
@@ -97,18 +99,18 @@ func TestKubernetesDeployment(t *testing.T) {
 	}
 
 	terraform.Apply(t, terraformOptions)
-	assertDeploymentStatus(t, terraformOptions)
+	assertDeploymentStatus(t, terraformOptions, sk)
 	terraform.Destroy(t, terraformOptions)
 }
 
-func assertDeploymentStatus(t *testing.T, terraformOptions *terraform.Options) {
+func assertDeploymentStatus(t *testing.T, terraformOptions *terraform.Options, sk string) {
 	t.Helper()
 
 	masterYggIP := terraform.Output(t, terraformOptions, "master_yggip")
 	assert.NotEmpty(t, masterYggIP)
 
 	time.Sleep(5 * time.Second)
-	res, err := tests.RemoteRun("root", masterYggIP, "kubectl get node")
+	res, err := tests.RemoteRun("root", masterYggIP, "kubectl get node", sk)
 	res = strings.Trim(res, "\n")
 	assert.Empty(t, err)
 

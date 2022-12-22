@@ -1,10 +1,7 @@
-//go:build integration
-// +build integration
-
 package test
 
 import (
-	"os"
+	"log"
 	"os/exec"
 	"testing"
 	"time"
@@ -32,12 +29,14 @@ func TestKubernetesDeployment(t *testing.T) {
 
 	// retryable errors in terraform testing.
 	// generate ssh keys for test
-	tests.SshKeys()
-	publicKey := os.Getenv("PUBLICKEY")
+	pk, sk, err := tests.SshKeys()
+	if err != nil {
+		log.Fatal(err)
+	}
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./",
 		Vars: map[string]interface{}{
-			"public_key": publicKey,
+			"public_key": pk,
 		},
 		Parallelism: 1,
 	})
@@ -52,25 +51,26 @@ func TestKubernetesDeployment(t *testing.T) {
 	// Up wireguard
 	wgConfig := terraform.Output(t, terraformOptions, "wg_config")
 	assert.NotEmpty(t, wgConfig)
-	tests.UpWg(wgConfig)
-	defer tests.DownWG()
+	_, err = tests.UpWg(wgConfig)
+	assert.NoError(t, err)
+	defer func() {
+		_, err := tests.DownWG()
+		assert.NoError(t, err)
+	}()
 
 	// Check that master is reachable
 	masterIP := strings.Split(masterPublicIP, "/")[0]
-	status := false
-	status = tests.Wait(masterIP, "22")
-	if status == false {
-		t.Errorf("public ip not reachable")
-	}
+	err = tests.Wait(masterIP, "22")
+	assert.NoError(t, err)
 
 	out, _ := exec.Command("ping", masterPublicIP, "-c 5", "-i 3", "-w 10").Output()
 	assert.NotContains(t, string(out), "Destination Host Unreachable")
 
 	// ssh to master node
 	time.Sleep(30 * (time.Second))
-	res, errors := tests.RemoteRun("root", masterIP, "kubectl get node")
+	res, err := tests.RemoteRun("root", masterIP, "kubectl get node", sk)
+	assert.NoError(t, err)
 	res = strings.Trim(res, "\n")
-	assert.Empty(t, errors)
 
 	// Check worker deployed number
 	nodes := strings.Split(string(res), "\n")[1:]

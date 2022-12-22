@@ -1,10 +1,7 @@
-//go:build integration
-// +build integration
-
 package test
 
 import (
-	"os"
+	"log"
 	"strings"
 	"testing"
 
@@ -31,12 +28,15 @@ func TestSingleMountDeployment(t *testing.T) {
 
 	// retryable errors in terraform testing.
 	// generate ssh keys for test
-	tests.SshKeys()
-	publicKey := os.Getenv("PUBLICKEY")
+	pk, sk, err := tests.SshKeys()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./",
 		Vars: map[string]interface{}{
-			"public_key": publicKey,
+			"public_key": pk,
 		},
 		Parallelism: 1,
 	})
@@ -59,23 +59,27 @@ func TestSingleMountDeployment(t *testing.T) {
 	assert.NotEmpty(t, wgConfig)
 
 	pIP := strings.Split(publicIP, "/")[0]
-	status := false
-	status = tests.Wait(pIP, "22")
-	if status == false {
-		t.Errorf("public ip not reachable")
-	}
+	err = tests.Wait(pIP, "22")
+	assert.NoError(t, err)
 
 	// Check that containers is reachable
 	verifyIPs := []string{publicIP, node1Container2IP, node1Container1IP}
-	tests.VerifyIPs(wgConfig, verifyIPs)
-	defer tests.DownWG()
+	_, err = tests.UpWg(wgConfig)
+	assert.NoError(t, err)
+	err = tests.VerifyIPs(wgConfig, verifyIPs, sk)
+	assert.NoError(t, err)
+	defer func() {
+		_, err := tests.DownWG()
+		assert.NoError(t, err)
+	}()
 
 	// Check that env variables set successfully
-	res, _ := tests.RemoteRun("root", pIP, "cat /proc/1/environ")
+	res, err := tests.RemoteRun("root", pIP, "cat /proc/1/environ", sk)
+	assert.NoError(t, err)
 	assert.Contains(t, string(res), "TEST_VAR=this value for test")
 
 	// Check that disk has been mounted successfully with 10G
-	res1, errors3 := tests.RemoteRun("root", pIP, "df -h | grep -w /app")
-	assert.Empty(t, errors3)
+	res1, err := tests.RemoteRun("root", pIP, "df -h | grep -w /app", sk)
+	assert.NoError(t, err)
 	assert.Contains(t, string(res1), "10G")
 }

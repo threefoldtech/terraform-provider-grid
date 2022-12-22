@@ -1,12 +1,8 @@
-//go:build integration
-// +build integration
-
 package test
 
 import (
+	"log"
 	"testing"
-
-	"os"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
@@ -25,12 +21,14 @@ func TestMultiNodeDeployment(t *testing.T) {
 
 	// retryable errors in terraform testing.
 	// generate ssh keys for test
-	tests.SshKeys()
-	publicKey := os.Getenv("PUBLICKEY")
+	pk, sk, err := tests.SshKeys()
+	if err != nil {
+		log.Fatal(err)
+	}
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./",
 		Vars: map[string]interface{}{
-			"public_key": publicKey,
+			"public_key": pk,
 		},
 		Parallelism: 1,
 	})
@@ -45,16 +43,14 @@ func TestMultiNodeDeployment(t *testing.T) {
 	ygg_ip := terraform.Output(t, terraformOptions, "ygg_ip")
 	assert.NotEmpty(t, ygg_ip)
 
-	status := false
-	status = tests.Wait(ygg_ip, "22")
-	if status == false {
-		t.Errorf("Yggdrasil IP not reachable")
-	}
+	err = tests.Wait(ygg_ip, "22")
+	assert.NoError(t, err)
 
 	verifyIPs := []string{ygg_ip, metrics}
-	tests.VerifyIPs("", verifyIPs)
+	err = tests.VerifyIPs("", verifyIPs, sk)
+	assert.NoError(t, err)
 
-	res, err := tests.RemoteRun("root", ygg_ip, "cd /qsfs && echo test >> test && cat test")
-	assert.Empty(t, err)
+	res, err := tests.RemoteRun("root", ygg_ip, "cd /qsfs && echo test >> test && cat test", sk)
+	assert.NoError(t, err)
 	assert.Contains(t, string(res), "test")
 }

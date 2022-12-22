@@ -2,65 +2,56 @@ package tests
 
 import (
 	"bytes"
-	"fmt"
-	"io/ioutil"
-	"log"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"net"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
 
-	"github.com/goombaio/namegenerator"
+	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh"
 )
 
-// UpWg used for up wireguard
-func UpWg(wgConfig string) {
+// UpWg used for setting up the wireguard interface
+func UpWg(wgConfig string) (string, error) {
 	f, err := os.Create("/tmp/test.conf")
-
 	if err != nil {
-		log.Fatal(err)
+		return "", errors.Wrapf(err, "error creating file")
 	}
-
 	defer f.Close()
 
-	_, err2 := f.WriteString(wgConfig)
-
-	if err2 != nil {
-		log.Fatal(err2)
+	_, err = f.WriteString(wgConfig)
+	if err != nil {
+		return "", errors.Wrapf(err, "error writing wireguard config string")
 	}
 
 	cmd := exec.Command("sudo", "wg-quick", "up", "/tmp/test.conf")
 	stdout, err := cmd.Output()
-
 	if err != nil {
-		fmt.Println(err)
-		return
+		return "", errors.Wrapf(err, "error excuting wg-quick up")
 	}
-
-	// Print the output
-	fmt.Println(string(stdout))
+	return string(stdout), nil
 }
 
-// DownWG used for down wireguard
-func DownWG() {
+// DownWG used for tearing down the wireguard interface
+func DownWG() (string, error) {
 	cmd := exec.Command("sudo", "wg-quick", "down", "/tmp/test.conf")
 	stdout, err := cmd.Output()
-
 	if err != nil {
-		fmt.Println(err)
-		return
+		return "", errors.Wrapf(err, "error excuting wg-quick down ")
 	}
-	fmt.Println(string(stdout))
+	return string(stdout), nil
 }
 
-// RemoteRun used for ssh host
-func RemoteRun(user string, addr string, cmd string) (string, error) {
-	privateKey := os.Getenv("PRIVATEKEY")
-	key, err := ssh.ParsePrivateKey([]byte(privateKey))
+// RemoteRun used for running cmd remotly using ssh
+func RemoteRun(user string, addr string, cmd string, sk string) (string, error) {
+	key, err := ssh.ParsePrivateKey([]byte(sk))
 	if err != nil {
-		return "", err
+		return "", errors.Wrapf(err, "error parsing ssh private key")
 	}
 	// Authentication
 	config := &ssh.ClientConfig{
@@ -73,78 +64,80 @@ func RemoteRun(user string, addr string, cmd string) (string, error) {
 	// Connect
 	client, err := ssh.Dial("tcp", net.JoinHostPort(addr, "22"), config)
 	if err != nil {
-		return "", err
+		return "", errors.Wrapf(err, "error starting ssh connection ")
 	}
 	// Create a session. It is one session per command.
 	session, err := client.NewSession()
 	if err != nil {
-		return "", err
+		return "", errors.Wrapf(err, "error creating new session")
 	}
 	defer session.Close()
 	var b bytes.Buffer  // import "bytes"
 	session.Stdout = &b // get output
 	err = session.Run(cmd)
-	return b.String(), err
+	if err != nil {
+		return "", errors.Wrapf(err, "error excuting command on remote")
+	}
+	return b.String(), nil
 }
 
-func VerifyIPs(wgConfig string, verifyIPs []string) bool {
-	UpWg(wgConfig)
+// TODO: investigate if this is needed
+func VerifyIPs(wgConfig string, verifyIPs []string, sk string) error {
 
 	for i := 0; i < len(verifyIPs); i++ {
-		out, _ := exec.Command("ping", verifyIPs[i], "-c 5", "-i 3", "-w 10").Output()
+		out, err := exec.Command("ping", verifyIPs[i], "-c 5", "-i 3", "-w 10").Output()
 		if strings.Contains(string(out), "Destination Host Unreachable") {
-			return false
+			return errors.Wrapf(err, "error host unreachable")
 		}
 	}
-
 	for i := 0; i < len(verifyIPs); i++ {
-		res, _ := RemoteRun("root", verifyIPs[i], "ifconfig")
+		res, err := RemoteRun("root", verifyIPs[i], "ifconfig", sk)
+		if err != nil {
+			return errors.Wrapf(err, "error connecting to ip")
+		}
 		if !strings.Contains(string(res), verifyIPs[i]) {
-			return false
+			return errors.Wrapf(err, "error verifying  ips")
 		}
 	}
-	return true
+	return nil
 }
 
-func RandomName() string {
-	seed := time.Now().UTC().UnixNano()
-	nameGenerator := namegenerator.NewNameGenerator(seed)
-
-	name := nameGenerator.Generate()
-
-	return name
-}
-
-func Wait(addr string, port string) bool {
+// TODO: investigate if this is needed
+// tries to connect to the provided address and port with time out
+func Wait(addr string, port string) error {
+	var err error
 	for t := time.Now(); time.Since(t) < 3*time.Minute; {
-		_, err := net.DialTimeout("tcp", net.JoinHostPort(addr, "22"), time.Second*12)
+		_, err := net.DialTimeout("tcp", net.JoinHostPort(addr, port), time.Second*12)
 		if err == nil {
-			return true
+			return nil
 		}
 	}
-	return true
+	return errors.Wrapf(err, "couldn't join port")
 }
 
-func SshKeys() {
-	os.Mkdir("/tmp/.ssh", 0755)
-	cmd := exec.Command("ssh-keygen", "-t", "rsa", "-f", "/tmp/.ssh/id_rsa", "-q")
-	stdout, err := cmd.Output()
-
+// creating the public and private key for the machine
+func SshKeys() (string, string, error) {
+	rsaKey, err := rsa.GenerateKey(rand.Reader, 1024)
 	if err != nil {
-		fmt.Println(err)
+		return "", "", errors.Wrapf(err, "error generating rsa key")
 	}
-	fmt.Println(string(stdout))
 
-	private_key, err := ioutil.ReadFile("/tmp/.ssh/id_rsa")
+	// generate and write private key as PEM
+	var privKeyBuf strings.Builder
+
+	privateKeyPEM := &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(rsaKey)}
+	if err := pem.Encode(&privKeyBuf, privateKeyPEM); err != nil {
+		return "", "", errors.Wrapf(err, "error encoding private key")
+	}
+
+	// generate and write public key
+	pub, err := ssh.NewPublicKey(&rsaKey.PublicKey)
 	if err != nil {
-		log.Fatal(err)
+		return "", "", errors.Wrapf(err, "error extracting public key")
 	}
 
-	public_key, e := ioutil.ReadFile("/tmp/.ssh/id_rsa.pub")
-	if e != nil {
-		log.Fatal(err)
-	}
+	var pubKeyBuf strings.Builder
+	pubKeyBuf.Write(ssh.MarshalAuthorizedKey(pub))
 
-	os.Setenv("PUBLICKEY", string(public_key))
-	os.Setenv("PRIVATEKEY", string(private_key))
+	return pubKeyBuf.String(), privKeyBuf.String(), nil
 }
