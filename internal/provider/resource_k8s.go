@@ -990,7 +990,8 @@ func (k *K8sDeployer) getK8sFreeIP(ipRange gridtypes.IPNet, nodeID uint32) (stri
 		return "", fmt.Errorf("The provided ip range (%s) is not a valid ipv4.", ipRange.String())
 	}
 
-	for hostID := byte(2); hostID <= byte(255); hostID++ {
+	for i := 2; i <= 255; i++ {
+		hostID := byte(i)
 		if !isInByte(k.NodeUsedIPs[nodeID], hostID) {
 			k.NodeUsedIPs[nodeID] = append(k.NodeUsedIPs[nodeID], hostID)
 			ip[3] = hostID
