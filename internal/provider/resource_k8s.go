@@ -987,10 +987,10 @@ func (k *K8sNodeData) GenerateK8sWorkload(deployer *K8sDeployer, masterIP string
 func (k *K8sDeployer) getK8sFreeIP(ipRange gridtypes.IPNet, nodeID uint32) (string, error) {
 	ip := ipRange.IP.To4()
 	if ip == nil {
-		return "", fmt.Errorf("The provided ip range (%s) is not a valid ipv4.", ipRange.String())
+		return "", fmt.Errorf("the provided ip range (%s) is not a valid ipv4.", ipRange.String())
 	}
 
-	for i := 2; i <= 255; i++ {
+	for i := 2; i < 255; i++ {
 		hostID := byte(i)
 		if !isInByte(k.NodeUsedIPs[nodeID], hostID) {
 			k.NodeUsedIPs[nodeID] = append(k.NodeUsedIPs[nodeID], hostID)
