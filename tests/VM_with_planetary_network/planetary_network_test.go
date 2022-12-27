@@ -9,7 +9,7 @@ import (
 	"github.com/threefoldtech/terraform-provider-grid/tests"
 )
 
-func TestSingleNodeDeployment(t *testing.T) {
+func TestSingleVMWithPlanetary(t *testing.T) {
 	/* Test case for deployeng a VM with planetary network.
 
 	   **Test Scenario**
@@ -24,7 +24,7 @@ func TestSingleNodeDeployment(t *testing.T) {
 
 	// retryable errors in terraform testing.
 	// generate ssh keys for test
-	pk, sk, err := tests.SshKeys()
+	pk, sk, err := tests.GenerateSSHKeyPair()
 	if err != nil {
 		log.Fatal(err)
 	}
