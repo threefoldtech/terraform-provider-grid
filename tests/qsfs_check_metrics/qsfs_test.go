@@ -22,7 +22,7 @@ func TestMultiNodeDeployment(t *testing.T) {
 
 	// retryable errors in terraform testing.
 	// generate ssh keys for test
-	pk, sk, err := tests.SshKeys()
+	pk, sk, err := tests.GenerateSSHKeyPair()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -47,8 +47,8 @@ func TestMultiNodeDeployment(t *testing.T) {
 	err = tests.Wait(ygg_ip, "22")
 	assert.NoError(t, err)
 
-	verifyIPs := []string{ygg_ip, metrics}
-	err = tests.VerifyIPs("", verifyIPs, sk)
+	isIPReachable := []string{ygg_ip, metrics}
+	err = tests.isIPReachable("", isIPReachable, sk)
 	assert.NoError(t, err)
 
 	// get metrics

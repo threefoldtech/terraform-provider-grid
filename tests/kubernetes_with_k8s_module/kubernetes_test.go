@@ -15,7 +15,7 @@ import (
 )
 
 func TestKubernetesDeployment(t *testing.T) {
-	pk, sk, err := tests.SshKeys()
+	pk, sk, err := tests.GenerateSSHKeyPair()
 	if err != nil {
 		log.Fatal(err)
 	}

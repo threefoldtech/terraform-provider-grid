@@ -25,7 +25,7 @@ func TestSingleNodeDeployment(t *testing.T) {
 
 	// retryable errors in terraform testing.
 	// generate ssh keys for test
-	pk, _, err := tests.SshKeys()
+	pk, _, err := tests.GenerateSSHKeyPair()
 	if err != nil {
 		log.Fatal(err)
 	}

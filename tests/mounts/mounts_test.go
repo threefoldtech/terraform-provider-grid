@@ -28,7 +28,7 @@ func TestSingleMountDeployment(t *testing.T) {
 
 	// retryable errors in terraform testing.
 	// generate ssh keys for test
-	pk, sk, err := tests.SshKeys()
+	pk, sk, err := tests.GenerateSSHKeyPair()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -63,10 +63,10 @@ func TestSingleMountDeployment(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Check that containers is reachable
-	verifyIPs := []string{publicIP, node1Container2IP, node1Container1IP}
+	isIPReachable := []string{publicIP, node1Container2IP, node1Container1IP}
 	_, err = tests.UpWg(wgConfig)
 	assert.NoError(t, err)
-	err = tests.VerifyIPs(wgConfig, verifyIPs, sk)
+	err = tests.isIPReachable(wgConfig, isIPReachable, sk)
 	assert.NoError(t, err)
 	defer func() {
 		_, err := tests.DownWG()
