@@ -11,13 +11,13 @@ type NodeClientGetter interface {
 }
 type NodeClientPool struct {
 	clients map[uint32]*NodeClient
-	rmb         rmb.Client
+	rmb     rmb.Client
 }
 
 func NewNodeClientPool(rmb rmb.Client) *NodeClientPool {
 	return &NodeClientPool{
 		clients: make(map[uint32]*NodeClient),
-		rmb:         rmb,
+		rmb:     rmb,
 	}
 }
 
