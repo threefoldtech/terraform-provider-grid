@@ -55,7 +55,7 @@ func isNodeUp(ctx context.Context, nc *client.NodeClient) error {
 	return nil
 }
 
-func isNodesUp(ctx context.Context, sub subi.SubstrateExt, nodes []uint32, nc client.NodeClientCollection) error {
+func isNodesUp(ctx context.Context, sub subi.SubstrateExt, nodes []uint32, nc client.NodeClientGetter) error {
 	for _, node := range nodes {
 		cl, err := nc.GetNodeClient(sub, node)
 		if err != nil {

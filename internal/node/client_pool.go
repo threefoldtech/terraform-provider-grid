@@ -6,7 +6,7 @@ import (
 	"github.com/threefoldtech/zos/pkg/rmb"
 )
 
-type NodeClientCollection interface {
+type NodeClientGetter interface {
 	GetNodeClient(sub subi.SubstrateExt, nodeID uint32) (*NodeClient, error)
 }
 type NodeClientPool struct {

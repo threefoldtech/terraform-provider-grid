@@ -30,7 +30,7 @@ type DeploymentDeployer struct {
 	IPRange     string
 	NetworkName string
 	APIClient   *apiClient
-	ncPool      client.NodeClientCollection
+	ncPool      client.NodeClientGetter
 	deployer    deployer.Deployer
 }
 type DeploymentData struct {

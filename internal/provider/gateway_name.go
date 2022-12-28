@@ -29,7 +29,7 @@ type GatewayNameDeployer struct {
 	NameContractID   uint64
 
 	APIClient *apiClient
-	ncPool    client.NodeClientCollection
+	ncPool    client.NodeClientGetter
 	deployer  deployer.Deployer
 }
 
