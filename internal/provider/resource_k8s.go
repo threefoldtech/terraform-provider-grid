@@ -599,7 +599,7 @@ func (k *K8sDeployer) ValidateNames(ctx context.Context) error {
 	names[k.Master.Name] = true
 	for _, w := range k.Workers {
 		if _, ok := names[w.Name]; ok {
-			return fmt.Errorf("k8s workers and master must have unique names: %s occured more than once", w.Name)
+			return fmt.Errorf("k8s workers and master must have unique names: %s occurred more than once", w.Name)
 		}
 		names[w.Name] = true
 	}
@@ -987,7 +987,7 @@ func (k *K8sNodeData) GenerateK8sWorkload(deployer *K8sDeployer, masterIP string
 func (k *K8sDeployer) getK8sFreeIP(ipRange gridtypes.IPNet, nodeID uint32) (string, error) {
 	ip := ipRange.IP.To4()
 	if ip == nil {
-		return "", fmt.Errorf("the provided ip range (%s) is not a valid ipv4.", ipRange.String())
+		return "", fmt.Errorf("the provided ip range (%s) is not a valid ipv4", ipRange.String())
 	}
 
 	for i := 2; i < 255; i++ {

@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -343,6 +343,6 @@ func getFlistChecksum(url string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	hash, err := ioutil.ReadAll(response.Body)
+	hash, err := io.ReadAll(response.Body)
 	return strings.TrimSpace(string(hash)), err
 }

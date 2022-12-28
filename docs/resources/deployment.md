@@ -22,9 +22,11 @@ Deployment resource (zdbs + vms + disks + qsfs).
 ### Optional
 
 - `disks` (Block List) (see [below for nested schema](#nestedblock--disks))
-- `ip_range` (String) IP range of the node (e.g. 10.1.2.0/24)
+- `name` (String)
 - `network_name` (String) Network to use for Zmachines
 - `qsfs` (Block List) (see [below for nested schema](#nestedblock--qsfs))
+- `solution_provider` (Number) Solution provider ID
+- `solution_type` (String)
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 - `vms` (Block List) (see [below for nested schema](#nestedblock--vms))
 - `zdbs` (Block List) (see [below for nested schema](#nestedblock--zdbs))
@@ -32,6 +34,7 @@ Deployment resource (zdbs + vms + disks + qsfs).
 ### Read-Only
 
 - `id` (String) The ID of this resource.
+- `ip_range` (String) IP range of the node (e.g. 10.1.2.0/24)
 
 <a id="nestedblock--disks"></a>
 ### Nested Schema for `disks`

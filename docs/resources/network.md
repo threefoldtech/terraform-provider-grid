@@ -26,6 +26,7 @@ Network resource.
 - `add_wg_access` (Boolean) Whether to add a public node to network and use it to generate a wg config
 - `description` (String)
 - `nodes_ip_range` (Map of String) Computed values of nodes' ip ranges after deployment
+- `solution_type` (String) Project Name
 
 ### Read-Only
 

@@ -1,6 +1,6 @@
 # Grid provider for terraform
 
-A terrform provider for the [threefold grid](https://threefold.io) to manage your infrastructure using terraform.
+A terraform provider for the [threefold grid](https://threefold.io) to manage your infrastructure using terraform.
 
 ## Requirements
 
@@ -52,13 +52,13 @@ export MNEMONICS="<mnemonics words>"
 export NETWORK="<network>" # dev or test
 run the following command
 
-#### running unittests
+### running unit tests
 
 ```bash
 make unittests
 ```
 
-#### running integration tests
+### running integration tests
 
 ```bash
 make integrationtests
@@ -66,6 +66,6 @@ make integrationtests
 
 ## Known Issues
 
-- [parallism=1](https://github.com/threefoldtech/terraform-provider-grid/issues/12)
+- [parallelism=1](https://github.com/threefoldtech/terraform-provider-grid/issues/12)
 - [increasing IPs in active deployment](https://github.com/threefoldtech/terraform-provider-grid/issues/15)
-- [introducing new nodes to kuberentes deployment](https://github.com/threefoldtech/terraform-provider-grid/issues/13)
+- [introducing new nodes to kubernetes deployment](https://github.com/threefoldtech/terraform-provider-grid/issues/13)

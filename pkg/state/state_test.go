@@ -21,6 +21,7 @@ func TestState(t *testing.T) {
 	network.DeleteDeployment(32, "12345")
 	network.DeleteNodeSubnet(32)
 	err = f.Save()
+	assert.NoError(t, err)
 	state := NewState()
 	state.Networks["abc"] = NewNetwork()
 	state.Networks["abc"].Subnets[15] = "10.1.1.0/24"

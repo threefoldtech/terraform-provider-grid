@@ -3,7 +3,6 @@ package tests
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -135,12 +134,12 @@ func SshKeys() {
 	}
 	fmt.Println(string(stdout))
 
-	private_key, err := ioutil.ReadFile("/tmp/.ssh/id_rsa")
+	private_key, err := os.ReadFile("/tmp/.ssh/id_rsa")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	public_key, e := ioutil.ReadFile("/tmp/.ssh/id_rsa.pub")
+	public_key, e := os.ReadFile("/tmp/.ssh/id_rsa.pub")
 	if e != nil {
 		log.Fatal(err)
 	}
