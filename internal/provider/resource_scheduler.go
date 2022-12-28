@@ -131,7 +131,10 @@ func schedule(ctx context.Context, d *schema.ResourceData, meta interface{}) dia
 		}
 		assignment[r.Name] = node
 	}
-	d.Set("nodes", assignment)
+	err := d.Set("nodes", assignment)
+	if err != nil {
+		return diag.FromErr(errors.Wrapf(err, "couldn't set nodes with %v", assignment))
+	}
 	return nil
 
 }

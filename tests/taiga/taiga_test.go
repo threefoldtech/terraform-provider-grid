@@ -27,7 +27,7 @@ func TestTaigaDeployment(t *testing.T) {
 
 	// retryable errors in terraform testing.
 	// generate ssh keys for test
-	tests.SshKeys()
+	tests.SSHKeys()
 	publicKey := os.Getenv("PUBLICKEY")
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./",
@@ -54,7 +54,6 @@ func TestTaigaDeployment(t *testing.T) {
 	if status == false {
 		t.Errorf("public ip not reachable")
 	}
-
 
 	// Check that env variables set successfully
 	res, _ := tests.RemoteRun("root", ip, "cat /proc/1/environ")

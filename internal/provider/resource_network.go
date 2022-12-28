@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
@@ -269,7 +270,7 @@ func (k *NetworkDeployer) ValidateDelete(ctx context.Context) error {
 	return nil
 }
 
-func (k *NetworkDeployer) storeState(d *schema.ResourceData, state state.StateI) {
+func (k *NetworkDeployer) storeState(d *schema.ResourceData, state state.StateI) (errors error) {
 
 	nodeDeploymentID := make(map[string]interface{})
 	for node, id := range k.NodeDeploymentID {
@@ -302,20 +303,55 @@ func (k *NetworkDeployer) storeState(d *schema.ResourceData, state state.StateI)
 	k.Nodes = nodes
 
 	log.Printf("storing nodes: %v\n", nodes)
-	d.Set("nodes", nodes)
-	d.Set("ip_range", k.IPRange.String())
-	d.Set("access_wg_config", k.AccessWGConfig)
-	if k.ExternalIP == nil {
-		d.Set("external_ip", nil)
-	} else {
-
-		d.Set("external_ip", k.ExternalIP.String())
+	err := d.Set("nodes", nodes)
+	if err != nil {
+		errors = multierror.Append(errors, err)
 	}
-	d.Set("external_sk", k.ExternalSK.String())
-	d.Set("public_node_id", k.PublicNodeID)
+
+	err = d.Set("ip_range", k.IPRange.String())
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	err = d.Set("access_wg_config", k.AccessWGConfig)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	if k.ExternalIP == nil {
+		err = d.Set("external_ip", nil)
+		if err != nil {
+			errors = multierror.Append(errors, err)
+		}
+	} else {
+		err = d.Set("external_ip", k.ExternalIP.String())
+		if err != nil {
+			errors = multierror.Append(errors, err)
+		}
+	}
+
+	err = d.Set("external_sk", k.ExternalSK.String())
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	err = d.Set("public_node_id", k.PublicNodeID)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
 	// plural or singular?
-	d.Set("nodes_ip_range", nodesIPRange)
-	d.Set("node_deployment_id", nodeDeploymentID)
+	err = d.Set("nodes_ip_range", nodesIPRange)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	err = d.Set("node_deployment_id", nodeDeploymentID)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	return
 }
 
 func (k *NetworkDeployer) updateNetworkLocalState(state state.StateI) {
@@ -414,7 +450,11 @@ func (k *NetworkDeployer) readNodesConfig(ctx context.Context, sub subi.Substrat
 	if err != nil {
 		return errors.Wrap(err, "failed to get deployment objects")
 	}
-	printDeployments(nodeDeployments)
+	err = printDeployments(nodeDeployments)
+	if err != nil {
+		return errors.Wrap(err, "failed to print deployments")
+	}
+
 	WGAccess := false
 	for node, dl := range nodeDeployments {
 		for _, wl := range dl.Workloads {
@@ -672,7 +712,11 @@ func (k *NetworkDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt) err
 		return errors.Wrap(err, "couldn't generate deployments data")
 	}
 	log.Printf("new deployments")
-	printDeployments(newDeployments)
+	err = printDeployments(newDeployments)
+	if err != nil {
+		return errors.Wrap(err, "couldn't print deployments data")
+	}
+
 	currentDeployments, err := k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)
 	if err := k.updateState(ctx, sub, currentDeployments); err != nil {
 		log.Printf("error updating state: %s\n", err)
@@ -717,7 +761,11 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 			return diag.FromErr(err)
 		}
 	}
-	deployer.storeState(d, apiClient.state)
+	err = deployer.storeState(d, apiClient.state)
+	if err != nil {
+		diags = diag.FromErr(err)
+	}
+
 	d.SetId(uuid.New().String())
 	return diags
 }
@@ -741,7 +789,11 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 	if err != nil {
 		diags = diag.FromErr(err)
 	}
-	deployer.storeState(d, apiClient.state)
+	err = deployer.storeState(d, apiClient.state)
+	if err != nil {
+		diags = diag.FromErr(err)
+	}
+
 	return diags
 }
 
@@ -766,7 +818,11 @@ func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta inter
 		})
 		return diags
 	}
-	deployer.storeState(d, apiClient.state)
+	err = deployer.storeState(d, apiClient.state)
+	if err != nil {
+		diags = diag.FromErr(err)
+	}
+
 	return diags
 }
 
@@ -786,7 +842,10 @@ func resourceNetworkDelete(ctx context.Context, d *schema.ResourceData, meta int
 		ns := apiClient.state.GetNetworkState()
 		ns.DeleteNetwork(deployer.Name)
 	} else {
-		deployer.storeState(d, apiClient.state)
+		err = deployer.storeState(d, apiClient.state)
+		if err != nil {
+			diags = diag.FromErr(err)
+		}
 	}
 	return diags
 }

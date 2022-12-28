@@ -58,7 +58,7 @@ func vmObj() *VM {
 		ComputedIP:    "189.0.0.12/24",
 		ComputedIP6:   "::/64",
 		IP:            "10.0.0.1",
-		Cpu:           1,
+		CPU:           1,
 		Description:   "des",
 		Memory:        1024,
 		RootfsSize:    1024,
@@ -136,7 +136,7 @@ func TestGenerateVMWorkload(t *testing.T) {
 			},
 			Size: gridtypes.Unit(vm.RootfsSize * 1024 * 1024),
 			ComputeCapacity: zos.MachineCapacity{
-				CPU:    uint8(vm.Cpu),
+				CPU:    uint8(vm.CPU),
 				Memory: gridtypes.Unit(vm.Memory * 1024 * 1024),
 			},
 			Mounts: []zos.MachineMount{
@@ -174,17 +174,17 @@ func TestValidate(t *testing.T) {
 }
 
 func TestValidateFailure(t *testing.T) {
-	t.Run("Invalid_flist", func (t *testing.T) {
-        	vm := vmObj()
-        	vm.FlistChecksum += "a"
-        	assert.Error(t, vm.Validate())
-    	})
-
-    	t.Run("Invalid_CPU", func(t *testing.T) {
+	t.Run("Invalid_flist", func(t *testing.T) {
 		vm := vmObj()
-		vm.Cpu = 1000
+		vm.FlistChecksum += "a"
 		assert.Error(t, vm.Validate())
-    	})
+	})
+
+	t.Run("Invalid_CPU", func(t *testing.T) {
+		vm := vmObj()
+		vm.CPU = 1000
+		assert.Error(t, vm.Validate())
+	})
 }
 
 func TestNewVMFromWorkloads(t *testing.T) {

@@ -12,7 +12,7 @@ import (
 )
 
 func TestKubernetesDeployment(t *testing.T) {
-	tests.SshKeys()
+	tests.SSHKeys()
 	sshKey := os.Getenv("PUBLICKEY")
 
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{

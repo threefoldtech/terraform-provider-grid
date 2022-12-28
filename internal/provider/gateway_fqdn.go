@@ -7,6 +7,7 @@ import (
 	"log"
 	"strconv"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
@@ -77,20 +78,43 @@ func (k *GatewayFQDNDeployer) Validate(ctx context.Context, sub subi.SubstrateEx
 	return isNodesUp(ctx, sub, []uint32{k.Node}, k.ncPool)
 }
 
-func (k *GatewayFQDNDeployer) Marshal(d *schema.ResourceData) {
+func (k *GatewayFQDNDeployer) Marshal(d *schema.ResourceData) (errors error) {
 
 	nodeDeploymentID := make(map[string]interface{})
 	for node, id := range k.NodeDeploymentID {
 		nodeDeploymentID[fmt.Sprintf("%d", node)] = int(id)
 	}
 
-	d.Set("node", k.Node)
-	d.Set("tls_passthrough", k.Gw.TLSPassthrough)
-	d.Set("backends", k.Gw.Backends)
-	d.Set("fqdn", k.Gw.FQDN)
-	d.Set("node_deployment_id", nodeDeploymentID)
+	err := d.Set("node", k.Node)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	err = d.Set("tls_passthrough", k.Gw.TLSPassthrough)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	err = d.Set("backends", k.Gw.Backends)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	err = d.Set("fqdn", k.Gw.FQDN)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	err = d.Set("node_deployment_id", nodeDeploymentID)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
 	d.SetId(k.ID)
+
+	return
 }
+
 func (k *GatewayFQDNDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
 	deployments := make(map[uint32]gridtypes.Deployment)
 	dl := workloads.NewDeployment(k.APIClient.twin_id)

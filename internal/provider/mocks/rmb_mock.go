@@ -11,7 +11,6 @@ import (
 	gomock "github.com/golang/mock/gomock"
 )
 
-
 // RMBMockClient is a mock of Client interface.
 type RMBMockClient struct {
 	ctrl     *gomock.Controller

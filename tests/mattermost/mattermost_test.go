@@ -26,7 +26,7 @@ func TestMattermostDeployment(t *testing.T) {
 
 	// retryable errors in terraform testing.
 	// generate ssh keys for test
-	tests.SshKeys()
+	tests.SSHKeys()
 	publicKey := os.Getenv("PUBLICKEY")
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./",
@@ -42,7 +42,6 @@ func TestMattermostDeployment(t *testing.T) {
 	// Check that the outputs not empty
 	ip := terraform.Output(t, terraformOptions, "ygg_ip")
 	assert.NotEmpty(t, ip)
-
 
 	status := false
 	status = tests.Wait(ip, "22")

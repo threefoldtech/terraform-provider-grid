@@ -9,6 +9,7 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
+// QSFS struct
 type QSFS struct {
 	Name                 string
 	Description          string
@@ -26,6 +27,8 @@ type QSFS struct {
 
 	MetricsEndpoint string
 }
+
+// Metadata for QSFS
 type Metadata struct {
 	Type                string
 	Prefix              string
@@ -33,11 +36,19 @@ type Metadata struct {
 	EncryptionKey       string
 	Backends            Backends
 }
+
+// Group is a zos group
 type Group struct {
 	Backends Backends
 }
+
+// Backend is a zos backend
 type Backend zos.ZdbBackend
+
+// Groups is a list of groups
 type Groups []Group
+
+// Backends is a list of backends
 type Backends []Backend
 
 func (g *Group) zosGroup() zos.ZdbGroup {
@@ -49,24 +60,28 @@ func (g *Group) zosGroup() zos.ZdbGroup {
 	}
 	return z
 }
-func (g *Groups) zosGroups() []zos.ZdbGroup {
+
+func (gs *Groups) zosGroups() []zos.ZdbGroup {
 	z := make([]zos.ZdbGroup, 0)
-	for _, e := range *g {
+	for _, e := range *gs {
 		z = append(z, e.zosGroup())
 	}
 	return z
 }
+
 func (b *Backend) zosBackend() zos.ZdbBackend {
 	return zos.ZdbBackend(*b)
 }
-func (b *Backends) zosBackends() []zos.ZdbBackend {
+
+func (bs *Backends) zosBackends() []zos.ZdbBackend {
 	z := make([]zos.ZdbBackend, 0)
-	for _, e := range *b {
+	for _, e := range *bs {
 		z = append(z, e.zosBackend())
 	}
 	return z
 }
 
+// BackendsFromZos gets backends from zos
 func BackendsFromZos(bs []zos.ZdbBackend) Backends {
 	z := make(Backends, 0)
 	for _, e := range bs {
@@ -75,6 +90,7 @@ func BackendsFromZos(bs []zos.ZdbBackend) Backends {
 	return z
 }
 
+// GroupsFromZos gets groups from zos
 func GroupsFromZos(gs []zos.ZdbGroup) Groups {
 	z := make(Groups, 0)
 	for _, e := range gs {
@@ -85,6 +101,7 @@ func GroupsFromZos(gs []zos.ZdbGroup) Groups {
 	return z
 }
 
+// Dictify converts a metadata to a map
 func (m *Metadata) Dictify() map[string]interface{} {
 	res := make(map[string]interface{})
 	res["type"] = m.Type
@@ -94,12 +111,15 @@ func (m *Metadata) Dictify() map[string]interface{} {
 	res["backends"] = m.Backends.Listify()
 	return res
 }
+
+// Dictify converts a group data to a map
 func (g *Group) Dictify() map[string]interface{} {
 	res := make(map[string]interface{})
 	res["backends"] = g.Backends.Listify()
 	return res
 }
 
+// Dictify converts a backend data to a map
 func (b *Backend) Dictify() map[string]interface{} {
 	res := make(map[string]interface{})
 	res["address"] = b.Address
@@ -108,6 +128,7 @@ func (b *Backend) Dictify() map[string]interface{} {
 	return res
 }
 
+// Listify lists the backends
 func (bs *Backends) Listify() []interface{} {
 	res := make([]interface{}, 0)
 	for _, b := range *bs {
@@ -116,6 +137,7 @@ func (bs *Backends) Listify() []interface{} {
 	return res
 }
 
+// Listify lists the groups
 func (gs *Groups) Listify() []interface{} {
 	res := make([]interface{}, 0)
 	for _, g := range *gs {
@@ -124,6 +146,7 @@ func (gs *Groups) Listify() []interface{} {
 	return res
 }
 
+// NewQSFSFromSchema generates a new QSFS from a given map of its data
 func NewQSFSFromSchema(qsfs map[string]interface{}) QSFS {
 	metadataIf := qsfs["metadata"].([]interface{})
 	metadataMap := metadataIf[0].(map[string]interface{})
@@ -160,6 +183,7 @@ func NewQSFSFromSchema(qsfs map[string]interface{}) QSFS {
 	}
 }
 
+// NewQSFSFromWorkload generates a new QSFS from a workload
 func NewQSFSFromWorkload(wl *gridtypes.Workload) (QSFS, error) {
 
 	var data *zos.QuantumSafeFS
@@ -210,6 +234,7 @@ func getBackends(backendsIf []interface{}) []Backend {
 	return backends
 }
 
+// ZosWorkload generates a zos workload
 func (q *QSFS) ZosWorkload() (gridtypes.Workload, error) {
 	k, err := hex.DecodeString(q.EncryptionKey)
 	if err != nil {
@@ -258,10 +283,12 @@ func (q *QSFS) ZosWorkload() (gridtypes.Workload, error) {
 	return workload, nil
 }
 
-func (q *QSFS) GetName() string {
+// QSFS returns the name of QSFS
+func (q *QSFS) QSFS() string {
 	return q.Name
 }
 
+// UpdateFromWorkload updates a QSFS from a workload
 // TODO: no updates, should construct itself from the workload
 func (q *QSFS) UpdateFromWorkload(wl *gridtypes.Workload) error {
 	if wl == nil {
@@ -277,6 +304,7 @@ func (q *QSFS) UpdateFromWorkload(wl *gridtypes.Workload) error {
 	return nil
 }
 
+// Dictify converts a QSFS data to a map
 func (q *QSFS) Dictify() map[string]interface{} {
 	res := make(map[string]interface{})
 	res["name"] = q.Name

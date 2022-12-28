@@ -4,6 +4,7 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
+// NewDeployment generates a new deployment
 func NewDeployment(twin uint32) gridtypes.Deployment {
 	return gridtypes.Deployment{
 		Version: 0,

@@ -6,6 +6,7 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
+// GatewayFQDNProxy for gateway FQDN proxy
 type GatewayFQDNProxy struct {
 	// Name the fully qualified domain name to use (cannot be present with Name)
 	Name string
@@ -20,6 +21,7 @@ type GatewayFQDNProxy struct {
 	FQDN string
 }
 
+// GatewayFQDNProxyFromZosWorkload generates a gateway FQDN proxy from a zos workload
 func GatewayFQDNProxyFromZosWorkload(wl gridtypes.Workload) (GatewayFQDNProxy, error) {
 	dataI, err := wl.WorkloadData()
 	if err != nil {
@@ -35,6 +37,7 @@ func GatewayFQDNProxyFromZosWorkload(wl gridtypes.Workload) (GatewayFQDNProxy, e
 	}, nil
 }
 
+// ZosWorkload generates a zos workload from GatewayFQDNProxy
 func (g *GatewayFQDNProxy) ZosWorkload() gridtypes.Workload {
 	return gridtypes.Workload{
 		Version: 0,
