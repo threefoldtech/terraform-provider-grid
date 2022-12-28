@@ -19,13 +19,13 @@ build-dev:
 docs:
 	go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs	
 
-testacc:
+testacc: submodules
 	TF_ACC=1 go test ./... -v $(TESTARGS) -timeout 120m
 
-unittests:
+unittests: submodules
 	go test ./pkg/... && go test ./internal/...
 
-integrationtests:
+integrationtests: submodules
 	go test ./tests/... -p 1 --tags=integration
 
 getverifiers:
