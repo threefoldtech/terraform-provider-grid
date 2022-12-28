@@ -1,25 +1,16 @@
 # Grid provider for terraform
 
-- A resource, and a data source (`internal/provider/`),
-- Examples (`examples/`)
+A terraform provider for the [threefold grid](https://threefold.io) to manage your infrastructure using terraform.
 
 ## Requirements
 
 - [Terraform](https://www.terraform.io/downloads.html) >= 0.13.x
 - [Go](https://golang.org/doc/install) >= 1.15
-- A registered twin on the grid with a funded account [steps](https://library.threefold.me/info/threefold#/manual_tfgrid3/threefold__grid3_get_started)
-
-- Only if not using the rmb proxy (enabled by default): Redis running on localhost with port 6379 and yggdrasil
-
-## Building The Provider (for development only)
-
-```bash
-make
-```
+- [Gettting started document](https://library.threefold.me/info/manual/#/manual3_iac/grid3_terraform/manual__grid3_terraform_home)
 
 - to use the built plugin in a terraform file, use the following provider config:
 
-```tf
+```terraform
 terraform {
   required_providers {
     grid = {
@@ -45,14 +36,14 @@ terraform init && terraform apply -parallelism=1 # creates resources defined in 
 terraform destroy -parallelism=1 # destroy the created resource
 ```
 
-Docs for resources and their arguments can be found [here](docs). For a thorough walkthrough over the usage and requirements of the plugin. please visit the [wiki](https://library.threefold.me/info/threefold#/manual_tfgrid3/manual3_iac/grid3_terraform/threefold__grid3_terraform_home) page.
+- For a tutorials, please visit the [wiki](https://library.threefold.me/info/manual/#/manual3_iac/grid3_terraform/manual__grid3_terraform_home) page.
+- Detailed docs for resources and their arguments can be found in the [docs](docs).
 
-## Current limitation
+## Building The Provider (for development only)
 
-- [parallelism=1](https://github.com/threefoldtech/terraform-provider-grid/issues/12)
-- [increasing IPs in active deployment](https://github.com/threefoldtech/terraform-provider-grid/issues/15)
-- [introducing new nodes to kubernetes deployment](https://github.com/threefoldtech/terraform-provider-grid/issues/13)
-- [multiple deployments on the same node](https://github.com/threefoldtech/terraform-provider-grid/issues/11)
+```bash
+make
+```
 
 ## Run tests
 
@@ -61,16 +52,20 @@ export MNEMONICS="<mnemonics words>"
 export NETWORK="<network>" # dev or test
 run the following command
 
-```bash
-go test ./tests/... -p 1 --tags=integration
-```
-
-OR by using gotestsum
+### running unit tests
 
 ```bash
-sudo apt -y install gotestsum
-
-go install gotest.tools/gotestsum@latest
-
-gotestsum ./tests/... -p 1 --tags=integration
+make unittests
 ```
+
+### running integration tests
+
+```bash
+make integrationtests
+```
+
+## Known Issues
+
+- [parallelism=1](https://github.com/threefoldtech/terraform-provider-grid/issues/12)
+- [increasing IPs in active deployment](https://github.com/threefoldtech/terraform-provider-grid/issues/15)
+- [introducing new nodes to kubernetes deployment](https://github.com/threefoldtech/terraform-provider-grid/issues/13)

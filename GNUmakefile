@@ -22,6 +22,12 @@ docs:
 testacc:
 	TF_ACC=1 go test ./... -v $(TESTARGS) -timeout 120m
 
+unittests:
+	go test ./pkg/... && go test ./internal/...
+
+integrationtests:
+	go test ./tests/... -p 1 --tags=integration
+
 getverifiers:
 	@echo "Installing staticcheck" && go get -u honnef.co/go/tools/cmd/staticcheck && go install honnef.co/go/tools/cmd/staticcheck
 	@echo "Installing gocyclo" && go get -u github.com/fzipp/gocyclo/cmd/gocyclo && go install github.com/fzipp/gocyclo/cmd/gocyclo
