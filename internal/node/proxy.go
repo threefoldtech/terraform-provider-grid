@@ -37,7 +37,7 @@ type ProxyBus struct {
 
 func NewProxyBus(endpoint string, twinID uint32, sub subi.SubstrateExt, signer substrate.Identity, verifyReply bool) (*ProxyBus, error) {
 	if len(endpoint) != 0 {
-		endpoint = strings.TrimSuffix(endpoint,"/")
+		endpoint = strings.TrimSuffix(endpoint, "/")
 	}
 
 	return &ProxyBus{
@@ -85,7 +85,7 @@ func (r *ProxyBus) Call(ctx context.Context, twin uint32, fn string, data interf
 	}
 	resp, err := http.Post(r.requestEndpoint(twin), "application/json", bytes.NewBuffer(bs))
 	if err != nil {
-		return errors.Wrap(err, "error sending request")
+		return errors.Wrapf(err, "error sending request for twin id (%d)", twin)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return parseError(resp)
@@ -100,7 +100,7 @@ func (r *ProxyBus) Call(ctx context.Context, twin uint32, fn string, data interf
 	}
 	pk, err := r.resolver.PublicKey(int(twin))
 	if err != nil {
-		return errors.Wrap(err, "couldn't get twin public key")
+		return errors.Wrapf(err, "couldn't get twin public key for twin id (%d)", twin)
 	}
 	if r.verifyReply {
 
