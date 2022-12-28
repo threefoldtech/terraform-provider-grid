@@ -1,8 +1,8 @@
 # Development guide (a vision not a reality)
 
-This terraform plugin has a somewhat non-conventional nature from a terraform perspective. Resrouces in terraform in general should be a one-to-one mapping between a rest api object, and the CRUD operations are implemented for each of them. The plugin is different in that a single resource can be a mapping to a multiple resources (e.g. the network/k8s corresponds to a multiple remote deployment on the network's nodes).
+This terraform plugin has a somewhat non-conventional nature from a terraform perspective. Resources in terraform in general should be a one-to-one mapping between a rest api object, and the CRUD operations are implemented for each of them. The plugin is different in that a single resource can be a mapping to a multiple resources (e.g. the network/k8s corresponds to a multiple remote deployment on the network's nodes).
 
-A read operation always preceeds an update or delete, this will be important when discussing the plugin CRUD implementation.
+A read operation always precedes an update or delete, this will be important when discussing the plugin CRUD implementation.
 
 Another thing to consider is the terraform (weird) behavior on errors in the CRUD operations. They are listed below.
 
@@ -65,7 +65,7 @@ Its steps are as the following:
 In case an id is set:
 
 - The computed attributes MUST be updated. This is to ensure the output variables and downstream resources gets the correct values.
-- The input attributes MAY be updated. It is not necessary though since an update/delte is always preceeded by a read.
+- The input attributes MAY be updated. It is not necessary though since an update/delte is always preceded by a read.
 
 ## Update
 
