@@ -18,12 +18,13 @@ Kubernetes resource.
 ### Required
 
 - `master` (Block List, Min: 1, Max: 1) (see [below for nested schema](#nestedblock--master))
-- `nodes_ip_range` (Map of String) Network IP ranges of nodes in the cluster (usually assigned from grid_network.<network-resource-name>.nodes_ip_range)
 - `token` (String) The cluster secret token
 
 ### Optional
 
+- `name` (String) Instance name
 - `network_name` (String) The network name to deploy the cluster on
+- `solution_type` (String) Kubernetes
 - `ssh_key` (String) SSH key to access the cluster nodes
 - `workers` (Block List) (see [below for nested schema](#nestedblock--workers))
 
@@ -31,6 +32,7 @@ Kubernetes resource.
 
 - `id` (String) The ID of this resource.
 - `node_deployment_id` (Map of Number) Mapping from each node to its deployment id
+- `nodes_ip_range` (Map of String) Network IP ranges of nodes in the cluster (usually assigned from grid_network.<network-resource-name>.nodes_ip_range)
 
 <a id="nestedblock--master"></a>
 ### Nested Schema for `master`
