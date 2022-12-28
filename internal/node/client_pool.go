@@ -10,19 +10,19 @@ type NodeClientGetter interface {
 	GetNodeClient(sub subi.SubstrateExt, nodeID uint32) (*NodeClient, error)
 }
 type NodeClientPool struct {
-	nodeClients map[uint32]*NodeClient
+	clients map[uint32]*NodeClient
 	rmb         rmb.Client
 }
 
 func NewNodeClientPool(rmb rmb.Client) *NodeClientPool {
 	return &NodeClientPool{
-		nodeClients: make(map[uint32]*NodeClient),
+		clients: make(map[uint32]*NodeClient),
 		rmb:         rmb,
 	}
 }
 
 func (k *NodeClientPool) GetNodeClient(sub subi.SubstrateExt, nodeID uint32) (*NodeClient, error) {
-	cl, ok := k.nodeClients[nodeID]
+	cl, ok := k.clients[nodeID]
 	if ok {
 		return cl, nil
 	}
@@ -32,6 +32,6 @@ func (k *NodeClientPool) GetNodeClient(sub subi.SubstrateExt, nodeID uint32) (*N
 	}
 
 	cl = NewNodeClient(uint32(twinID), k.rmb)
-	k.nodeClients[nodeID] = cl
+	k.clients[nodeID] = cl
 	return cl, nil
 }
