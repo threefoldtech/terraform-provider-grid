@@ -123,7 +123,7 @@ func (r *ProxyBus) Call(ctx context.Context, twin uint32, fn string, data interf
 	}
 
 	//check if msg.Data is base64 encoded
-	msgDataBytes := getDecodedMsgData(msg.Data)
+	msgDataBytes := TryDecodeBase64OrElse(msg.Data)
 
 	if err := json.Unmarshal(msgDataBytes, result); err != nil {
 		return errors.Wrap(err, "failed to decode response body")
@@ -145,15 +145,6 @@ func (r TwinResolver) PublicKey(twin int) ([]byte, error) {
 
 	r.cache.Set(key, pk, cache.DefaultExpiration)
 	return pk, nil
-}
-
-func getDecodedMsgData(data string) []byte {
-	decoded := []byte(data)
-	b, err := base64.StdEncoding.DecodeString(data)
-	if err == nil {
-		decoded = b
-	}
-	return decoded
 }
 
 func (r *ProxyBus) pollResponse(ctx context.Context, twin uint32, retqueue string) (rmb.Message, error) {
