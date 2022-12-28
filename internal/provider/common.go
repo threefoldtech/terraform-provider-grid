@@ -4,12 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 	"time"
 
-	gormb "github.com/threefoldtech/go-rmb"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
@@ -18,6 +16,7 @@ import (
 
 const RMB_WORKERS = 10
 
+/* TODO: unused
 func startRmbIfNeeded(ctx context.Context, api *apiClient) {
 	if api.use_rmb_proxy {
 		return
@@ -30,6 +29,7 @@ func startRmbIfNeeded(ctx context.Context, api *apiClient) {
 		log.Printf("error serving rmb %s\n", err)
 	}
 }
+*/
 
 func flistChecksumURL(url string) string {
 	return fmt.Sprintf("%s.md5", url)

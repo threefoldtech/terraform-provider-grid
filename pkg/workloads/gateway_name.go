@@ -8,6 +8,7 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
+// GatewayNameProxy struct for gateway name proxy
 type GatewayNameProxy struct {
 	// Name the fully qualified domain name to use (cannot be present with Name)
 	Name string
@@ -22,6 +23,7 @@ type GatewayNameProxy struct {
 	FQDN string
 }
 
+// GatewayNameProxyFromZosWorkload generates a gateway name proxy from a zos workload
 func GatewayNameProxyFromZosWorkload(wl gridtypes.Workload) (GatewayNameProxy, error) {
 	var result zos.GatewayProxyResult
 
@@ -42,6 +44,7 @@ func GatewayNameProxyFromZosWorkload(wl gridtypes.Workload) (GatewayNameProxy, e
 	}, nil
 }
 
+// ZosWorkload generates a zos workload from GatewayNameProxy
 func (g *GatewayNameProxy) ZosWorkload() gridtypes.Workload {
 	return gridtypes.Workload{
 		Version: 0,

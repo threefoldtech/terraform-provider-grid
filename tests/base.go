@@ -86,6 +86,7 @@ func RemoteRun(user string, addr string, cmd string) (string, error) {
 	return b.String(), err
 }
 
+// VerifyIPs verifies some given IPs with a wireguard
 func VerifyIPs(wgConfig string, verifyIPs []string) bool {
 	UpWg(wgConfig)
 
@@ -105,6 +106,7 @@ func VerifyIPs(wgConfig string, verifyIPs []string) bool {
 	return true
 }
 
+// RandomName generates a random name
 func RandomName() string {
 	seed := time.Now().UTC().UnixNano()
 	nameGenerator := namegenerator.NewNameGenerator(seed)
@@ -114,6 +116,7 @@ func RandomName() string {
 	return name
 }
 
+// Wait waits for tcp connection for and address with a given port
 func Wait(addr string, port string) bool {
 	for t := time.Now(); time.Since(t) < 3*time.Minute; {
 		_, err := net.DialTimeout("tcp", net.JoinHostPort(addr, "22"), time.Second*12)
@@ -124,8 +127,13 @@ func Wait(addr string, port string) bool {
 	return true
 }
 
-func SshKeys() {
-	os.Mkdir("/tmp/.ssh", 0755)
+// SSHKeys generates ssh keys in a temp directory and set env PUBLICKEY and PRIVATEKEY with them
+func SSHKeys() {
+	err := os.Mkdir("/tmp/.ssh", 0755)
+	if err != nil {
+		fmt.Println(err)
+	}
+
 	cmd := exec.Command("ssh-keygen", "-t", "rsa", "-f", "/tmp/.ssh/id_rsa", "-q")
 	stdout, err := cmd.Output()
 
@@ -134,16 +142,16 @@ func SshKeys() {
 	}
 	fmt.Println(string(stdout))
 
-	private_key, err := os.ReadFile("/tmp/.ssh/id_rsa")
+	privateKey, err := os.ReadFile("/tmp/.ssh/id_rsa")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	public_key, e := os.ReadFile("/tmp/.ssh/id_rsa.pub")
+	publicKey, e := os.ReadFile("/tmp/.ssh/id_rsa.pub")
 	if e != nil {
 		log.Fatal(err)
 	}
 
-	os.Setenv("PUBLICKEY", string(public_key))
-	os.Setenv("PRIVATEKEY", string(private_key))
+	os.Setenv("PUBLICKEY", string(publicKey))
+	os.Setenv("PRIVATEKEY", string(privateKey))
 }

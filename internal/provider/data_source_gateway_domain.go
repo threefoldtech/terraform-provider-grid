@@ -59,7 +59,11 @@ func dataSourceGatewayRead(ctx context.Context, d *schema.ResourceData, meta int
 		return diag.FromErr(errors.New("node doesn't contain a domain in its public config"))
 	}
 	fqdn := fmt.Sprintf("%s.%s", name, cfg.Domain)
-	d.Set("fqdn", fqdn)
+	err = d.Set("fqdn", fqdn)
+	if err != nil {
+		return diag.FromErr(errors.Wrap(err, "couldn't set fqdn"))
+	}
+
 	d.SetId(strconv.FormatInt(time.Now().Unix(), 10))
 	return nil
 }

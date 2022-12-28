@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
@@ -164,7 +165,7 @@ func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context)
 	return map[uint32]gridtypes.Deployment{d.Node: dl}, nil
 }
 
-func (d *DeploymentDeployer) Marshal(r *schema.ResourceData) {
+func (d *DeploymentDeployer) Marshal(r *schema.ResourceData) (errors error) {
 	vms := make([]interface{}, 0)
 	disks := make([]interface{}, 0)
 	zdbs := make([]interface{}, 0)
@@ -181,14 +182,43 @@ func (d *DeploymentDeployer) Marshal(r *schema.ResourceData) {
 	for _, q := range d.QSFSs {
 		qsfs = append(zdbs, q.Dictify())
 	}
-	r.Set("vms", vms)
-	r.Set("zdbs", zdbs)
-	r.Set("disks", disks)
-	r.Set("qsfs", qsfs)
-	r.Set("node", d.Node)
-	r.Set("network_name", d.NetworkName)
-	r.Set("ip_range", d.IPRange)
+	err := r.Set("vms", vms)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	err = r.Set("zdbs", zdbs)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	err = r.Set("disks", disks)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	err = r.Set("qsfs", qsfs)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	err = r.Set("node", d.Node)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	err = r.Set("network_name", d.NetworkName)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	err = r.Set("ip_range", d.IPRange)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
 	r.SetId(d.Id)
+	return
 }
 
 func (d *DeploymentDeployer) GetOldDeployments(ctx context.Context) (map[uint32]uint64, error) {

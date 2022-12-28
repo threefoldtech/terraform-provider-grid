@@ -9,6 +9,7 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
+// ZDB workload struct
 type ZDB struct {
 	Name        string
 	Password    string
@@ -21,6 +22,7 @@ type ZDB struct {
 	Namespace   string
 }
 
+// GetZdbData converts a map including zdb data to a zdb struct
 func GetZdbData(zdb map[string]interface{}) ZDB {
 	log.Printf("%+v\n", zdb)
 	ipsIf := zdb["ips"].([]interface{})
@@ -42,6 +44,7 @@ func GetZdbData(zdb map[string]interface{}) ZDB {
 	}
 }
 
+// NewZDBFromWorkload generates a new zdb from a workload
 func NewZDBFromWorkload(wl *gridtypes.Workload) (ZDB, error) {
 	dataI, err := wl.WorkloadData()
 	if err != nil {
@@ -67,9 +70,12 @@ func NewZDBFromWorkload(wl *gridtypes.Workload) (ZDB, error) {
 	}, nil
 }
 
+// GetName returns zdb name
 func (z *ZDB) GetName() string {
 	return z.Name
 }
+
+// GenerateZDBWorkload generates a zdb workload
 func (z *ZDB) GenerateZDBWorkload() gridtypes.Workload {
 	workload := gridtypes.Workload{
 		Name:        gridtypes.Name(z.Name),
@@ -85,6 +91,8 @@ func (z *ZDB) GenerateZDBWorkload() gridtypes.Workload {
 	}
 	return workload
 }
+
+// Dictify converts a zdb to a map(dict) object
 func (z *ZDB) Dictify() map[string]interface{} {
 	res := make(map[string]interface{})
 	res["name"] = z.Name

@@ -86,7 +86,7 @@ func constructTestDeployer(ctrl *gomock.Controller) DeploymentDeployer {
 				YggIP:         "::8/64",
 				IP:            "10.10.10.10",
 				Description:   "vm1_description",
-				Cpu:           1,
+				CPU:           1,
 				Memory:        1024,
 				RootfsSize:    1024,
 				Entrypoint:    "/sbin/zinit init",
@@ -127,7 +127,7 @@ func constructTestDeployer(ctrl *gomock.Controller) DeploymentDeployer {
 				YggIP:         "::8/64",
 				IP:            "10.10.10.10",
 				Description:   "vm2_description",
-				Cpu:           1,
+				CPU:           1,
 				Memory:        1024,
 				RootfsSize:    1024,
 				Entrypoint:    "/sbin/zinit init",
@@ -330,7 +330,8 @@ func TestDeploymentSync(t *testing.T) {
 	dls, err := d.GenerateVersionlessDeployments(context.Background())
 	assert.NoError(t, err)
 	dl := dls[d.Node]
-	json.NewEncoder(log.Writer()).Encode(dl.Workloads)
+	err = json.NewEncoder(log.Writer()).Encode(dl.Workloads)
+	assert.NoError(t, err)
 	for _, zlog := range dl.ByType(zos.ZLogsType) {
 		*zlog.Workload = zlog.WithResults(gridtypes.Result{
 			State: gridtypes.StateOk,

@@ -9,7 +9,7 @@ import (
 )
 
 type Marshalable interface {
-	Marshal(d *schema.ResourceData)
+	Marshal(d *schema.ResourceData) (err error)
 	sync(ctx context.Context, sub subi.SubstrateExt, cl *apiClient) (err error)
 }
 
@@ -59,7 +59,10 @@ func resourceFunc(a Action, reportSync bool) func(ctx context.Context, d *schema
 					})
 				}
 			}
-			obj.Marshal(d)
+			err = obj.Marshal(d)
+			if err != nil {
+				diags = append(diags, diag.FromErr(err)...)
+			}
 		}
 		return diags
 	}
