@@ -21,8 +21,8 @@ func NewNodeClientPool(rmb rmb.Client) *NodeClientPool {
 	}
 }
 
-func (k *NodeClientPool) GetNodeClient(sub subi.SubstrateExt, nodeID uint32) (*NodeClient, error) {
-	cl, ok := k.clients[nodeID]
+func (p *NodeClientPool) GetNodeClient(sub subi.SubstrateExt, nodeID uint32) (*NodeClient, error) {
+	cl, ok := p.clients[nodeID]
 	if ok {
 		return cl, nil
 	}
@@ -31,7 +31,7 @@ func (k *NodeClientPool) GetNodeClient(sub subi.SubstrateExt, nodeID uint32) (*N
 		return nil, errors.Wrap(err, "failed to get node")
 	}
 
-	cl = NewNodeClient(uint32(twinID), k.rmb)
-	k.clients[nodeID] = cl
+	cl = NewNodeClient(uint32(twinID), p.rmb)
+	p.clients[nodeID] = cl
 	return cl, nil
 }
