@@ -30,7 +30,7 @@ resource "grid_network" "net1" {
   add_wg_access = true
 }
 resource "grid_deployment" "d1" {
-  name = local.name
+  name         = local.name
   node         = 8
   network_name = grid_network.net1.name
   vms {
@@ -57,7 +57,7 @@ output "fqdn" {
 output "node1_zmachine1_ip" {
   value = grid_deployment.d1.vms[0].ip
 }
-output "public_ip" {
+output "computed_public_ip" {
   value = split("/", grid_deployment.d1.vms[0].computedip)[0]
 }
 

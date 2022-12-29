@@ -50,8 +50,8 @@ resource "grid_deployment" "d1" {
     env_vars = {
       SSH_KEY                     = "${var.public_key}",
       PRESEARCH_REGISTRATION_CODE = "e5083a8d0a6362c6cf7a3078bfac81e3",
-      
-     }
+
+    }
   }
 }
 
@@ -61,7 +61,7 @@ output "node1_zmachine1_ip" {
   value = grid_deployment.d1.vms[0].ip
 }
 
-output "public_ip" {
+output "computed_public_ip" {
   value = grid_deployment.d1.vms[0].computedip
 }
 

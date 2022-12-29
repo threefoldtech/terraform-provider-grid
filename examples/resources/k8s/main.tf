@@ -60,8 +60,7 @@ resource "grid_kubernetes" "k8s1" {
   }
 }
 
-
-output "master_public_ip" {
+output "computed_master_public_ip" {
   value = grid_kubernetes.k8s1.master[0].computedip
 }
 

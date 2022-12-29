@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     grid = {
-      source  = "threefoldtech/grid"
+      source = "threefoldtech/grid"
     }
   }
 }
@@ -55,7 +55,7 @@ output "node1_zmachine1_ip" {
 output "node1_zmachine2_ip" {
   value = grid_deployment.d1.vms[1].ip
 }
-output "public_ip" {
+output "computed_public_ip" {
   value = grid_deployment.d1.vms[0].computedip
 }
 
