@@ -29,9 +29,6 @@ jobs:
         with:
           args: --timeout 3m --verbose
 
-      - name: staticcheck
-        uses: dominikh/staticcheck-action@v1.2.0
-
       - name: gofmt
         uses: Jerome1337/gofmt-action@v1.0.4
         with:
