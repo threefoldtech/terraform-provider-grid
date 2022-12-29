@@ -18,6 +18,7 @@ import (
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
+	"golang.org/x/exp/slices"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
@@ -289,7 +290,7 @@ func (k *NetworkDeployer) storeState(d *schema.ResourceData, state state.StateI)
 		}
 	}
 	for node := range k.NodeDeploymentID {
-		if !isInUint32(nodes, node) {
+		if !slices.Contains(nodes, node) {
 			if k.PublicNodeID == node {
 				continue
 			}
@@ -364,7 +365,7 @@ func (k *NetworkDeployer) updateNetworkLocalState(state state.StateI) {
 }
 
 func nextFreeOctet(used []byte, start *byte) error {
-	for isInByte(used, *start) && *start <= 254 {
+	for slices.Contains(used, *start) && *start <= 254 {
 		*start += 1
 	}
 	if *start == 255 {
@@ -378,7 +379,7 @@ func (k *NetworkDeployer) assignNodesIPs(nodes []uint32) error {
 	l := len(k.IPRange.IP)
 	usedIPs := make([]byte, 0) // the third octet
 	for node, ip := range k.NodesIPRange {
-		if isInUint32(nodes, node) {
+		if slices.Contains(nodes, node) {
 			usedIPs = append(usedIPs, ip.IP[l-2])
 			ips[node] = ip
 		}
@@ -521,7 +522,7 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 	if needsIPv4Access {
 		if k.PublicNodeID != 0 { // it's set
 			// if public node id is already set, it should be added to accessible nodes
-			if !isInUint32(accessibleNodes, k.PublicNodeID) {
+			if !slices.Contains(accessibleNodes, k.PublicNodeID) {
 				accessibleNodes = append(accessibleNodes, k.PublicNodeID)
 			}
 		} else if ipv4Node != 0 { // there's one in the network original nodes

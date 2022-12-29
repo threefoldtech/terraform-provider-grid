@@ -31,6 +31,7 @@ require (
 	github.com/threefoldtech/substrate-client-dev v0.0.1
 	github.com/vedhavyas/go-subkey v1.0.3
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
+	golang.org/x/exp v0.0.0-20221227203929-1b447090c38c
 )
 
 require (
