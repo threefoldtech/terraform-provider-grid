@@ -289,7 +289,7 @@ func (k *NetworkDeployer) storeState(d *schema.ResourceData, state state.StateI)
 		}
 	}
 	for node := range k.NodeDeploymentID {
-		if !isInUint32(nodes, node) {
+		if !Contains(nodes, node) {
 			if k.PublicNodeID == node {
 				continue
 			}
@@ -364,7 +364,7 @@ func (k *NetworkDeployer) updateNetworkLocalState(state state.StateI) {
 }
 
 func nextFreeOctet(used []byte, start *byte) error {
-	for isInByte(used, *start) && *start <= 254 {
+	for Contains(used, *start) && *start <= 254 {
 		*start += 1
 	}
 	if *start == 255 {
@@ -378,7 +378,7 @@ func (k *NetworkDeployer) assignNodesIPs(nodes []uint32) error {
 	l := len(k.IPRange.IP)
 	usedIPs := make([]byte, 0) // the third octet
 	for node, ip := range k.NodesIPRange {
-		if isInUint32(nodes, node) {
+		if Contains(nodes, node) {
 			usedIPs = append(usedIPs, ip.IP[l-2])
 			ips[node] = ip
 		}
@@ -415,7 +415,7 @@ func (k *NetworkDeployer) assignNodesWGPort(ctx context.Context, sub subi.Substr
 		if _, ok := k.WGPort[node]; !ok {
 			cl, err := k.ncPool.GetNodeClient(sub, node)
 			if err != nil {
-				return errors.Wrap(err, "coudln't get node client")
+				return errors.Wrap(err, "could not get node client")
 			}
 			port, err := getNodeFreeWGPort(ctx, cl, node)
 			if err != nil {
@@ -446,7 +446,7 @@ func (k *NetworkDeployer) readNodesConfig(ctx context.Context, sub subi.Substrat
 	WGPort := make(map[uint32]int)
 	nodesIPRange := make(map[uint32]gridtypes.IPNet)
 	log.Printf("reading node config")
-	nodeDeployments, err := k.deployer.GetDeploymentObjects(ctx, sub, k.NodeDeploymentID)
+	nodeDeployments, err := k.deployer.GetDeployments(ctx, sub, k.NodeDeploymentID)
 	if err != nil {
 		return errors.Wrap(err, "failed to get deployment objects")
 	}
@@ -521,7 +521,7 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 	if needsIPv4Access {
 		if k.PublicNodeID != 0 { // it's set
 			// if public node id is already set, it should be added to accessible nodes
-			if !isInUint32(accessibleNodes, k.PublicNodeID) {
+			if !Contains(accessibleNodes, k.PublicNodeID) {
 				accessibleNodes = append(accessibleNodes, k.PublicNodeID)
 			}
 		} else if ipv4Node != 0 { // there's one in the network original nodes

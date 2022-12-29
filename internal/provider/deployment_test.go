@@ -417,7 +417,7 @@ func TestDeploymentSync(t *testing.T) {
 	}
 	sub.EXPECT().IsValidContract(uint64(100)).Return(true, nil)
 	d.deployer.(*mock.MockDeployer).EXPECT().
-		GetDeploymentObjects(gomock.Any(), sub, map[uint32]uint64{10: 100}).
+		GetDeployments(gomock.Any(), sub, map[uint32]uint64{10: 100}).
 		Return(map[uint32]gridtypes.Deployment{
 			10: dl,
 		}, nil)
