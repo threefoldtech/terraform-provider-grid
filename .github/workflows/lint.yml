@@ -30,6 +30,6 @@ jobs:
           args: --timeout 3m --verbose
 
       - name: gofmt
-        uses: Jerome1337/gofmt-action@v1.0.4
+        uses: Jerome1337/gofmt-action@v1.0.5
         with:
           gofmt-flags: "-l -d"
