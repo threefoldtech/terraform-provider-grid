@@ -415,7 +415,7 @@ func (k *NetworkDeployer) assignNodesWGPort(ctx context.Context, sub subi.Substr
 		if _, ok := k.WGPort[node]; !ok {
 			cl, err := k.ncPool.GetNodeClient(sub, node)
 			if err != nil {
-				return errors.Wrap(err, "coudln't get node client")
+				return errors.Wrap(err, "could not get node client")
 			}
 			port, err := getNodeFreeWGPort(ctx, cl, node)
 			if err != nil {

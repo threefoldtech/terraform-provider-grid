@@ -55,7 +55,7 @@ func validateRedis(apiClient *apiClient) error {
 func validateYggdrasil(apiClient *apiClient, sub subi.SubstrateExt) error {
 	yggIP, err := sub.GetTwinIP(apiClient.twin_id)
 	if err != nil {
-		return errors.Wrapf(err, "coudln't get twin %d from substrate", apiClient.twin_id)
+		return errors.Wrapf(err, "could not get twin %d from substrate", apiClient.twin_id)
 	}
 	ip := net.ParseIP(yggIP)
 	listenIP := yggIP
