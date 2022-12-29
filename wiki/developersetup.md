@@ -13,11 +13,17 @@
 
 > make unittests runs the tests in the `provider` and `pkg` directories
 
+## Creating a pull request
+
+- Make sure that branches development, and the story branch you're working against are updated daily. 
+- If you're working solo on the a branch, it's your responsibility to keep that branch updated with the main story branch or development branch, can happen with rebasing `git rebase origin/development` or `git rebase origin/development_$largestorybranch`
+- If you're working with other people on the same branch, you should never use rebase, always use merge e.g `git merge origin/development` or `git merge origin/development_$largestorybranch`
+
 ## Integration tests
 
 Integration tests happen on the repository on the PRs
 
-> TO run all tests `make tests`
+> To run all tests `make tests`
 
 ## Go and Code reviews
 
