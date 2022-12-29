@@ -18,7 +18,6 @@ import (
 	"github.com/threefoldtech/terraform-provider-grid/pkg/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
-	"golang.org/x/exp/slices"
 )
 
 type DeploymentDeployer struct {
@@ -116,7 +115,7 @@ func (d *DeploymentDeployer) assignNodesIPs() error {
 		return errors.Wrapf(err, "invalid ip %s", d.IPRange)
 	}
 	for _, vm := range d.VMs {
-		if vm.IP != "" && cidr.Contains(net.ParseIP(vm.IP)) && !slices.Contains(usedIPs, net.ParseIP(vm.IP)[3]) {
+		if vm.IP != "" && cidr.Contains(net.ParseIP(vm.IP)) && !Contains(usedIPs, net.ParseIP(vm.IP)[3]) {
 			usedIPs = append(usedIPs, net.ParseIP(vm.IP)[3])
 		}
 	}
@@ -127,7 +126,7 @@ func (d *DeploymentDeployer) assignNodesIPs() error {
 		}
 		ip := cidr.IP
 		ip[3] = cur
-		for slices.Contains(usedIPs, ip[3]) {
+		for Contains(usedIPs, ip[3]) {
 			if cur == 254 {
 				return errors.New("all 253 ips of the network are exhausted")
 			}

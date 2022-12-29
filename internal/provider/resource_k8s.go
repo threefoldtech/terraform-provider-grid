@@ -20,7 +20,6 @@ import (
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
-	"golang.org/x/exp/slices"
 )
 
 func resourceKubernetes() *schema.Resource {
@@ -1036,7 +1035,7 @@ func (k *K8sDeployer) getK8sFreeIP(ipRange gridtypes.IPNet, nodeID uint32) (stri
 
 	for i := 2; i < 255; i++ {
 		hostID := byte(i)
-		if !slices.Contains(k.NodeUsedIPs[nodeID], hostID) {
+		if !Contains(k.NodeUsedIPs[nodeID], hostID) {
 			k.NodeUsedIPs[nodeID] = append(k.NodeUsedIPs[nodeID], hostID)
 			ip[3] = hostID
 			return ip.String(), nil

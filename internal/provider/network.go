@@ -13,7 +13,6 @@ import (
 	proxytypes "github.com/threefoldtech/grid_proxy_server/pkg/types"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
-	"golang.org/x/exp/slices"
 )
 
 var (
@@ -122,7 +121,7 @@ func getNodeFreeWGPort(ctx context.Context, nodeClient *client.NodeClient, nodeI
 	log.Printf("reserved ports for node %d: %v\n", nodeId, freeports)
 	p := uint(rand.Intn(6000) + 2000)
 
-	for slices.Contains(freeports, uint16(p)) {
+	for Contains(freeports, uint16(p)) {
 		p = uint(rand.Intn(6000) + 2000)
 	}
 	log.Printf("Selected port for node %d is %d\n", nodeId, p)
