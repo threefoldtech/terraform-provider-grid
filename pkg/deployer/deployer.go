@@ -290,7 +290,7 @@ func getExponentialBackoff(initial_interval time.Duration, multiplier float64, m
 	return b
 }
 
-// Wait waits for a deployment to deployed on node
+// Wait waits for a deployment to be deployed on node
 func (d *DeployerImpl) Wait(
 	ctx context.Context,
 	nodeClient *client.NodeClient,
