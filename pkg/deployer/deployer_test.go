@@ -91,25 +91,23 @@ func TestCreate(t *testing.T) {
 	}
 	dl1.ContractID = 100
 	dl2.ContractID = 200
-	var solutionProvider *uint64
-	*solutionProvider = 0
 	sub.EXPECT().
 		CreateNodeContract(
 			identity,
 			uint32(10),
-			nil,
+			"",
 			hash(&dl1),
 			uint32(0),
-			solutionProvider,
+			nil,
 		).Return(uint64(100), nil)
 	sub.EXPECT().
 		CreateNodeContract(
 			identity,
 			uint32(20),
-			nil,
+			"",
 			hash(&dl2),
 			uint32(0),
-			solutionProvider,
+			nil,
 		).Return(uint64(200), nil)
 	ncPool.EXPECT().
 		GetNodeClient(sub, uint32(10)).
@@ -132,17 +130,17 @@ func TestCreate(t *testing.T) {
 			return nil
 		})
 	cl.EXPECT().
-		Call(gomock.Any(), uint32(13), "zos.deployment.get", gomock.Any(), gomock.Any()).
+		Call(gomock.Any(), uint32(13), "zos.deployment.changes", gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-			var res *gridtypes.Deployment = result.(*gridtypes.Deployment)
-			*res = dl1
+			var res *[]gridtypes.Workload = result.(*[]gridtypes.Workload)
+			*res = dl1.Workloads
 			return nil
 		})
 	cl.EXPECT().
-		Call(gomock.Any(), uint32(23), "zos.deployment.get", gomock.Any(), gomock.Any()).
+		Call(gomock.Any(), uint32(23), "zos.deployment.changes", gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-			var res *gridtypes.Deployment = result.(*gridtypes.Deployment)
-			*res = dl2
+			var res *[]gridtypes.Workload = result.(*[]gridtypes.Workload)
+			*res = dl2.Workloads
 			return nil
 		})
 	deployer.(*DeployerImpl).validator = &EmptyValidator{}
@@ -178,7 +176,7 @@ func TestUpdate(t *testing.T) {
 		UpdateNodeContract(
 			identity,
 			uint64(100),
-			nil,
+			"",
 			hash(&dl2),
 		).Return(uint64(100), nil)
 	ncPool.EXPECT().
@@ -198,6 +196,13 @@ func TestUpdate(t *testing.T) {
 		DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
 			var res *gridtypes.Deployment = result.(*gridtypes.Deployment)
 			*res = dl1
+			return nil
+		}).AnyTimes()
+	cl.EXPECT().
+		Call(gomock.Any(), uint32(13), "zos.deployment.changes", gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
+			var res *[]gridtypes.Workload = result.(*[]gridtypes.Workload)
+			*res = dl1.Workloads
 			return nil
 		}).AnyTimes()
 	deployer.(*DeployerImpl).validator = &EmptyValidator{}
@@ -241,9 +246,6 @@ func TestCancel(t *testing.T) {
 			*res = dl1
 			return nil
 		})
-	cl.EXPECT().
-		Call(gomock.Any(), uint32(13), "zos.deployment.delete", gomock.Any(), gomock.Any()).
-		Return(nil)
 	deployer.(*DeployerImpl).validator = &EmptyValidator{}
 	contracts, err := deployer.Deploy(context.Background(), sub, map[uint32]uint64{10: 100}, nil)
 	assert.NoError(t, err)
@@ -289,23 +291,21 @@ func TestCocktail(t *testing.T) {
 		30: dl4,
 		40: dl6,
 	}
-	var solutionProvider *uint64
-	*solutionProvider = 0
 	sub.EXPECT().
 		CreateNodeContract(
 			identity,
 			uint32(30),
-			nil,
+			"",
 			hash(&dl4),
 			uint32(0),
-			solutionProvider,
+			nil,
 		).Return(uint64(300), nil)
 
 	sub.EXPECT().
 		UpdateNodeContract(
 			identity,
 			uint64(200),
-			nil,
+			"",
 			hash(&dl3),
 		).Return(uint64(200), nil)
 
@@ -326,6 +326,34 @@ func TestCocktail(t *testing.T) {
 	ncPool.EXPECT().
 		GetNodeClient(sub, uint32(40)).
 		Return(client.NewNodeClient(43, cl), nil).AnyTimes()
+	cl.EXPECT().
+		Call(gomock.Any(), uint32(13), "zos.deployment.changes", gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
+			var res *[]gridtypes.Workload = result.(*[]gridtypes.Workload)
+			*res = dl1.Workloads
+			return nil
+		}).AnyTimes()
+	cl.EXPECT().
+		Call(gomock.Any(), uint32(23), "zos.deployment.changes", gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
+			var res *[]gridtypes.Workload = result.(*[]gridtypes.Workload)
+			*res = dl2.Workloads
+			return nil
+		}).AnyTimes()
+	cl.EXPECT().
+		Call(gomock.Any(), uint32(33), "zos.deployment.changes", gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
+			var res *[]gridtypes.Workload = result.(*[]gridtypes.Workload)
+			*res = dl4.Workloads
+			return nil
+		}).AnyTimes()
+	cl.EXPECT().
+		Call(gomock.Any(), uint32(43), "zos.deployment.changes", gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
+			var res *[]gridtypes.Workload = result.(*[]gridtypes.Workload)
+			*res = dl5.Workloads
+			return nil
+		}).AnyTimes()
 	cl.EXPECT().
 		Call(gomock.Any(), uint32(13), "zos.deployment.get", gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
@@ -354,13 +382,6 @@ func TestCocktail(t *testing.T) {
 			*res = dl5
 			return nil
 		}).AnyTimes()
-	cl.EXPECT().
-		Call(gomock.Any(), uint32(13), "zos.deployment.delete", gomock.Any(), gomock.Any()).
-		DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-			dl1.Workloads[0].Result.State = gridtypes.StateDeleted
-			dl1.Workloads[0].Result.Data, _ = json.Marshal(zos.GatewayProxyResult{})
-			return nil
-		})
 	cl.EXPECT().
 		Call(gomock.Any(), uint32(23), "zos.deployment.update", gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
