@@ -271,7 +271,7 @@ func (d *DeploymentDeployer) sync(ctx context.Context, sub subi.SubstrateExt, cl
 		d.Nullify()
 		return nil
 	}
-	currentDeployments, err := d.deployer.GetDeploymentObjects(ctx, sub, map[uint32]uint64{d.Node: d.ID()})
+	currentDeployments, err := d.deployer.GetDeployments(ctx, sub, map[uint32]uint64{d.Node: d.ID()})
 	if err != nil {
 		return errors.Wrap(err, "failed to get deployments to update local state")
 	}

@@ -189,7 +189,7 @@ func (k *GatewayNameDeployer) sync(ctx context.Context, sub subi.SubstrateExt, c
 	if err := k.syncContracts(ctx, sub); err != nil {
 		return errors.Wrap(err, "couldn't sync contracts")
 	}
-	dls, err := k.deployer.GetDeploymentObjects(ctx, sub, k.NodeDeploymentID)
+	dls, err := k.deployer.GetDeployments(ctx, sub, k.NodeDeploymentID)
 	if err != nil {
 		return errors.Wrap(err, "couldn't get deployment objects")
 	}

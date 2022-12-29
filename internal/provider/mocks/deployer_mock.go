@@ -51,17 +51,17 @@ func (mr *MockDeployerMockRecorder) Deploy(ctx, sub, oldDeployments, newDeployme
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Deploy", reflect.TypeOf((*MockDeployer)(nil).Deploy), ctx, sub, oldDeployments, newDeployments)
 }
 
-// GetDeploymentObjects mocks base method.
-func (m *MockDeployer) GetDeploymentObjects(ctx context.Context, sub subi.SubstrateExt, dls map[uint32]uint64) (map[uint32]gridtypes.Deployment, error) {
+// GetDeployments mocks base method.
+func (m *MockDeployer) GetDeployments(ctx context.Context, sub subi.SubstrateExt, dls map[uint32]uint64) (map[uint32]gridtypes.Deployment, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetDeploymentObjects", ctx, sub, dls)
+	ret := m.ctrl.Call(m, "GetDeployments", ctx, sub, dls)
 	ret0, _ := ret[0].(map[uint32]gridtypes.Deployment)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetDeploymentObjects indicates an expected call of GetDeploymentObjects.
-func (mr *MockDeployerMockRecorder) GetDeploymentObjects(ctx, sub, dls interface{}) *gomock.Call {
+// GetDeployments indicates an expected call of GetDeployments.
+func (mr *MockDeployerMockRecorder) GetDeployments(ctx, sub, dls interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDeploymentObjects", reflect.TypeOf((*MockDeployer)(nil).GetDeploymentObjects), ctx, sub, dls)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDeployments", reflect.TypeOf((*MockDeployer)(nil).GetDeployments), ctx, sub, dls)
 }
