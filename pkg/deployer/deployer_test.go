@@ -91,25 +91,23 @@ func TestCreate(t *testing.T) {
 	}
 	dl1.ContractID = 100
 	dl2.ContractID = 200
-	var solutionProvider *uint64
-	*solutionProvider = 0
 	sub.EXPECT().
 		CreateNodeContract(
 			identity,
 			uint32(10),
-			nil,
+			"",
 			hash(&dl1),
 			uint32(0),
-			solutionProvider,
+			nil,
 		).Return(uint64(100), nil)
 	sub.EXPECT().
 		CreateNodeContract(
 			identity,
 			uint32(20),
-			nil,
+			"",
 			hash(&dl2),
 			uint32(0),
-			solutionProvider,
+			nil,
 		).Return(uint64(200), nil)
 	ncPool.EXPECT().
 		GetNodeClient(sub, uint32(10)).
@@ -178,7 +176,7 @@ func TestUpdate(t *testing.T) {
 		UpdateNodeContract(
 			identity,
 			uint64(100),
-			nil,
+			"",
 			hash(&dl2),
 		).Return(uint64(100), nil)
 	ncPool.EXPECT().
@@ -293,23 +291,21 @@ func TestCocktail(t *testing.T) {
 		30: dl4,
 		40: dl6,
 	}
-	var solutionProvider *uint64
-	*solutionProvider = 0
 	sub.EXPECT().
 		CreateNodeContract(
 			identity,
 			uint32(30),
-			nil,
+			"",
 			hash(&dl4),
 			uint32(0),
-			solutionProvider,
+			nil,
 		).Return(uint64(300), nil)
 
 	sub.EXPECT().
 		UpdateNodeContract(
 			identity,
 			uint64(200),
-			nil,
+			"",
 			hash(&dl3),
 		).Return(uint64(200), nil)
 
