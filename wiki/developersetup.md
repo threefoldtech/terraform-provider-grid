@@ -15,8 +15,8 @@
 
 ## Creating a pull request
 
-- Make sure that branches development, and the story branch you're working against are updated daily. 
-- If you're working solo on the a branch, it's your responsibility to keep that branch updated with the main story branch or development branch, can happen with rebasing `git rebase origin/development` or `git rebase origin/development_$largestorybranch`
+- Make sure that branches development, and the story branch you're working against are updated daily.
+- If you're working solo on a branch, it's your responsibility to keep that branch updated with the main story branch or development branch, can happen with rebasing `git rebase origin/development` or `git rebase origin/development_$largestorybranch`
 - If you're working with other people on the same branch, you should never use rebase, always use merge e.g `git merge origin/development` or `git merge origin/development_$largestorybranch`
 
 ## Integration tests
@@ -25,10 +25,13 @@ Integration tests happen on the repository on the PRs
 
 > To run all tests `make tests`
 
-## Go and Code reviews
+## Learning Go
 
 - [Learn Go with Tests](https://quii.gitbook.io/learn-go-with-tests/)
 - [Effective Go](https://go.dev/doc/effective_go)
+
+## Code reviews
+
 - [CodeReview Comments](https://github.com/golang/go/wiki/CodeReviewComments)
 - [Common mistakes](https://github.com/golang/go/wiki/CommonMistakes)
 - Any code review guide works, recommending [uber's go guide](https://github.com/uber-go/guide)
@@ -68,7 +71,7 @@ func TestFunc1(t *testing.T) {
 
 ### Setup/Teardown
 
-for Setup and Teardown use a testing.M function 
+for Setup and Teardown use a testing.M function
 
 ```go
 
@@ -113,4 +116,4 @@ func TestFun2(t *testing.T) {
 
 ### Mocking
 
-For mocking, we use gomock
+For mocking, we use [gomock](https://github.com/golang/mock)
