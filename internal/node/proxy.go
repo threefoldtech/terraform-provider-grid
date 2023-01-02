@@ -54,12 +54,12 @@ func NewProxyBus(endpoint string, twinID uint32, sub subi.SubstrateExt, signer s
 	}, nil
 }
 
-func (r *ProxyBus) requestEndpoint(twinId uint32) string {
-	return fmt.Sprintf("%s/twin/%d", r.endpoint, twinId)
+func (r *ProxyBus) requestEndpoint(twinID uint32) string {
+	return fmt.Sprintf("%s/twin/%d", r.endpoint, twinID)
 }
 
-func (r *ProxyBus) resultEndpoint(twinId uint32, retqueue string) string {
-	return fmt.Sprintf("%s/twin/%d/%s", r.endpoint, twinId, retqueue)
+func (r *ProxyBus) resultEndpoint(twinID uint32, retqueue string) string {
+	return fmt.Sprintf("%s/twin/%d/%s", r.endpoint, twinID, retqueue)
 }
 
 func (r *ProxyBus) Call(ctx context.Context, twin uint32, fn string, data interface{}, result interface{}) error {
