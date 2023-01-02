@@ -17,11 +17,13 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
+// Deployer interface to be used for any deployer
 type Deployer interface {
 	Deploy(ctx context.Context, sub subi.SubstrateExt, oldDeployments map[uint32]uint64, newDeployments map[uint32]gridtypes.Deployment) (map[uint32]uint64, error)
-	GetDeploymentObjects(ctx context.Context, sub subi.SubstrateExt, dls map[uint32]uint64) (map[uint32]gridtypes.Deployment, error)
+	GetDeployments(ctx context.Context, sub subi.SubstrateExt, dls map[uint32]uint64) (map[uint32]gridtypes.Deployment, error)
 }
 
+// DeployerImpl struct
 type DeployerImpl struct {
 	identity         substrate.Identity
 	twinID           uint32
@@ -32,6 +34,7 @@ type DeployerImpl struct {
 	deploymentData   string
 }
 
+// NewDeployer returns a new deployer
 func NewDeployer(
 	identity substrate.Identity,
 	twinID uint32,
@@ -52,8 +55,9 @@ func NewDeployer(
 	}
 }
 
+// Deploy deploys new deployment given the old deployments' IDs
 func (d *DeployerImpl) Deploy(ctx context.Context, sub subi.SubstrateExt, oldDeploymentIDs map[uint32]uint64, newDeployments map[uint32]gridtypes.Deployment) (map[uint32]uint64, error) {
-	oldDeployments, oldErr := d.GetDeploymentObjects(ctx, sub, oldDeploymentIDs)
+	oldDeployments, oldErr := d.GetDeployments(ctx, sub, oldDeploymentIDs)
 	if oldErr == nil {
 		// check resources only when old deployments are readable
 		// being readable means it's a fresh deployment or an update with good nodes
@@ -124,13 +128,18 @@ func (d *DeployerImpl) deploy(
 
 			hashHex := hex.EncodeToString(hash)
 
-			publicIPCount := countDeploymentPublicIPs(dl)
+			publicIPCount, err := CountDeploymentPublicIPs(dl)
+			if err != nil {
+				return currentDeployments, errors.Wrap(err, "failed to count deployment public IPs")
+			}
 			log.Printf("Number of public ips: %d\n", publicIPCount)
+
 			contractID, err := sub.CreateNodeContract(d.identity, node, d.deploymentData, hashHex, publicIPCount, d.solutionProvider)
 			log.Printf("CreateNodeContract returned id: %d\n", contractID)
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "failed to create contract")
 			}
+
 			dl.ContractID = contractID
 			ctx2, cancel := context.WithTimeout(ctx, 4*time.Minute)
 			defer cancel()
@@ -161,7 +170,7 @@ func (d *DeployerImpl) deploy(
 	// updates
 	for node, dl := range newDeployments {
 		if oldDeploymentID, ok := oldDeployments[node]; ok {
-			newDeploymentHash, err := hashDeployment(dl)
+			newDeploymentHash, err := HashDeployment(dl)
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "couldn't get deployment hash")
 			}
@@ -174,22 +183,22 @@ func (d *DeployerImpl) deploy(
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "failed to get old deployment to update it")
 			}
-			oldDeploymentHash, err := hashDeployment(oldDl)
+			oldDeploymentHash, err := HashDeployment(oldDl)
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "couldn't get deployment hash")
 			}
-			if oldDeploymentHash == newDeploymentHash && sameWorkloadsNames(dl, oldDl) {
+			if oldDeploymentHash == newDeploymentHash && SameWorkloadsNames(dl, oldDl) {
 				continue
 			}
-			oldHashes, err := constructWorkloadHashes(oldDl)
+			oldHashes, err := ConstructWorkloadHashes(oldDl)
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "couldn't get old workloads hashes")
 			}
-			newHashes, err := constructWorkloadHashes(dl)
+			newHashes, err := ConstructWorkloadHashes(dl)
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "couldn't get new workloads hashes")
 			}
-			oldWorkloadsVersions := constructWorkloadVersions(oldDl)
+			oldWorkloadsVersions := ConstructWorkloadVersions(oldDl)
 			newWorkloadsVersions := map[string]uint32{}
 			dl.Version = oldDl.Version + 1
 			dl.ContractID = oldDl.ContractID
@@ -221,7 +230,7 @@ func (d *DeployerImpl) deploy(
 			hashHex := hex.EncodeToString(hash)
 			log.Printf("[DEBUG] HASH: %s", hashHex)
 			// TODO: Destroy and create if publicIPCount is changed
-			// publicIPCount := countDeploymentPublicIPs(dl)
+			// publicIPCount, err := countDeploymentPublicIPs(dl)
 			contractID, err := sub.UpdateNodeContract(d.identity, dl.ContractID, "", hashHex)
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "failed to update deployment")
@@ -247,6 +256,26 @@ func (d *DeployerImpl) deploy(
 	return currentDeployments, nil
 }
 
+// GetDeployments returns deployments from a map of nodes IDs and deployments IDs
+func (d *DeployerImpl) GetDeployments(ctx context.Context, sub subi.SubstrateExt, dls map[uint32]uint64) (map[uint32]gridtypes.Deployment, error) {
+	res := make(map[uint32]gridtypes.Deployment)
+	for nodeID, dlID := range dls {
+		nc, err := d.ncPool.GetNodeClient(sub, nodeID)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to get a client for node %d", nodeID)
+		}
+		sub, cancel := context.WithTimeout(ctx, 10*time.Second)
+		defer cancel()
+		dl, err := nc.DeploymentGet(sub, dlID)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to get deployment %d of node %d", dlID, nodeID)
+		}
+		res[nodeID] = dl
+	}
+	return res, nil
+}
+
+// Progress struct for time and OK state
 type Progress struct {
 	time    time.Time
 	stateOk int
@@ -261,6 +290,7 @@ func getExponentialBackoff(initial_interval time.Duration, multiplier float64, m
 	return b
 }
 
+// Wait waits for a deployment to be deployed on node
 func (d *DeployerImpl) Wait(
 	ctx context.Context,
 	nodeClient *client.NodeClient,

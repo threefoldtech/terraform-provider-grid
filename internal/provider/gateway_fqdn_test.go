@@ -498,7 +498,7 @@ func TestSync(t *testing.T) {
 		gw.NodeDeploymentID,
 	).Return(nil)
 	deployer.EXPECT().
-		GetDeploymentObjects(gomock.Any(), sub, map[uint32]uint64{10: 100}).
+		GetDeployments(gomock.Any(), sub, map[uint32]uint64{10: 100}).
 		DoAndReturn(func(ctx context.Context, _ subi.SubstrateExt, _ map[uint32]uint64) (map[uint32]gridtypes.Deployment, error) {
 			return map[uint32]gridtypes.Deployment{10: dl}, nil
 		})
@@ -546,7 +546,7 @@ func TestSyncDeletedWorkload(t *testing.T) {
 		gw.NodeDeploymentID,
 	).Return(nil)
 	deployer.EXPECT().
-		GetDeploymentObjects(gomock.Any(), sub, map[uint32]uint64{10: 100}).
+		GetDeployments(gomock.Any(), sub, map[uint32]uint64{10: 100}).
 		DoAndReturn(func(ctx context.Context, _ subi.SubstrateExt, _ map[uint32]uint64) (map[uint32]gridtypes.Deployment, error) {
 			return map[uint32]gridtypes.Deployment{10: dl}, nil
 		})

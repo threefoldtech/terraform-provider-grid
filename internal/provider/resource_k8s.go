@@ -738,7 +738,7 @@ func (k *K8sDeployer) removeUsedIPsFromLocalState(cl *apiClient) {
 func (k *K8sDeployer) updateState(ctx context.Context, sub subi.SubstrateExt, currentDeploymentIDs map[uint32]uint64, d *schema.ResourceData, cl *apiClient) error {
 	log.Printf("current deployments\n")
 	k.NodeDeploymentID = currentDeploymentIDs
-	currentDeployments, err := k.deployer.GetDeploymentObjects(ctx, sub, currentDeploymentIDs)
+	currentDeployments, err := k.deployer.GetDeployments(ctx, sub, currentDeploymentIDs)
 	if err != nil {
 		return errors.Wrap(err, "failed to get deployments to update local state")
 	}
@@ -815,7 +815,7 @@ func (k *K8sDeployer) updateFromRemote(ctx context.Context, sub subi.SubstrateEx
 	if err := k.removeDeletedContracts(ctx, sub); err != nil {
 		return errors.Wrap(err, "failed to remove deleted contracts")
 	}
-	currentDeployments, err := k.deployer.GetDeploymentObjects(ctx, sub, k.NodeDeploymentID)
+	currentDeployments, err := k.deployer.GetDeployments(ctx, sub, k.NodeDeploymentID)
 	if err != nil {
 		return errors.Wrap(err, "failed to fetch remote deployments")
 	}
@@ -1035,7 +1035,7 @@ func (k *K8sDeployer) getK8sFreeIP(ipRange gridtypes.IPNet, nodeID uint32) (stri
 
 	for i := 2; i < 255; i++ {
 		hostID := byte(i)
-		if !isInByte(k.NodeUsedIPs[nodeID], hostID) {
+		if !Contains(k.NodeUsedIPs[nodeID], hostID) {
 			k.NodeUsedIPs[nodeID] = append(k.NodeUsedIPs[nodeID], hostID)
 			ip[3] = hostID
 			return ip.String(), nil

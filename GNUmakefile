@@ -28,6 +28,8 @@ unittests: submodules
 integrationtests: submodules
 	go test ./tests/... -p 1 --tags=integration
 
+tests: unittests integrationtests
+
 getverifiers:
 	@echo "Installing staticcheck" && go get -u honnef.co/go/tools/cmd/staticcheck && go install honnef.co/go/tools/cmd/staticcheck
 	@echo "Installing gocyclo" && go get -u github.com/fzipp/gocyclo/cmd/gocyclo && go install github.com/fzipp/gocyclo/cmd/gocyclo
@@ -36,6 +38,8 @@ getverifiers:
 	@echo "Installing golangci-lint" && go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.45
 
 verifiers: fmt lint cyclo deadcode spelling staticcheck
+
+checks: verifiers
 
 fmt:
 	@echo "Running $@"

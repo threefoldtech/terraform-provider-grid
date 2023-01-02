@@ -70,7 +70,7 @@ resource "grid_name_proxy" "p1" {
   backends        = [format("https://%s:443", split("/", grid_kubernetes.k8s1.master[0].computedip)[0])]
   tls_passthrough = true
 }
-output "master_public_ip" {
+output "computed_master_public_ip" {
   value = grid_kubernetes.k8s1.master[0].computedip
 }
 output "fqdn" {

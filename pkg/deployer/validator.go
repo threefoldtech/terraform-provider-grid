@@ -12,10 +12,12 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
+// Validator interface for any validator
 type Validator interface {
 	Validate(ctx context.Context, sub subi.SubstrateExt, oldDeployments map[uint32]gridtypes.Deployment, newDeployments map[uint32]gridtypes.Deployment) error
 }
 
+// ValidatorImpl struct
 type ValidatorImpl struct {
 	gridClient proxy.Client
 }
@@ -71,26 +73,36 @@ func (d *ValidatorImpl) Validate(ctx context.Context, sub subi.SubstrateExt, old
 		if !ok {
 			return fmt.Errorf("node %d not returned from the grid proxy", node)
 		}
-		farmIPs[nodeData.FarmID] += int(countDeploymentPublicIPs(dl))
+
+		publicIPCount, err := CountDeploymentPublicIPs(dl)
+		if err != nil {
+			return errors.Wrap(err, "failed to count deployment public IPs")
+		}
+
+		farmIPs[nodeData.FarmID] += int(publicIPCount)
 	}
 	for node, dl := range newDeployments {
 		oldDl, alreadyExists := oldDeployments[node]
 		if err := dl.Valid(); err != nil {
 			return errors.Wrap(err, "invalid deployment")
 		}
-		needed, err := capacity(dl)
+		needed, err := Capacity(dl)
 		if err != nil {
 			return err
 		}
 
-		requiredIPs := int(countDeploymentPublicIPs(dl))
+		publicIPCount, err := CountDeploymentPublicIPs(dl)
+		if err != nil {
+			return errors.Wrap(err, "failed to count deployment public IPs")
+		}
+		requiredIPs := int(publicIPCount)
 		nodeInfo := nodeMap[node]
 		if alreadyExists {
-			oldCap, err := capacity(oldDl)
+			oldCap, err := Capacity(oldDl)
 			if err != nil {
 				return errors.Wrapf(err, "couldn't read old deployment %d of node %d capacity", oldDl.ContractID, node)
 			}
-			addCapacity(&nodeInfo.Capacity.Total, &oldCap)
+			AddCapacity(&nodeInfo.Capacity.Total, &oldCap)
 			contract, err := sub.GetContract(oldDl.ContractID)
 			if err != nil {
 				return errors.Wrapf(err, "couldn't get node contract %d", oldDl.ContractID)
@@ -110,10 +122,10 @@ func (d *ValidatorImpl) Validate(ctx context.Context, sub subi.SubstrateExt, old
 		if farmIPs[nodeInfo.FarmID] < 0 {
 			return fmt.Errorf("farm %d doesn't have enough public ips", nodeInfo.FarmID)
 		}
-		if hasWorkload(&dl, zos.GatewayFQDNProxyType) && nodeInfo.PublicConfig.Ipv4 == "" {
+		if HasWorkload(&dl, zos.GatewayFQDNProxyType) && nodeInfo.PublicConfig.Ipv4 == "" {
 			return fmt.Errorf("node %d can't deploy a fqdn workload as it doesn't have a public ipv4 configured", node)
 		}
-		if hasWorkload(&dl, zos.GatewayNameProxyType) && nodeInfo.PublicConfig.Domain == "" {
+		if HasWorkload(&dl, zos.GatewayNameProxyType) && nodeInfo.PublicConfig.Domain == "" {
 			return fmt.Errorf("node %d can't deploy a gateway name workload as it doesn't have a domain configured", node)
 		}
 		mrus := nodeInfo.Capacity.Total.MRU - nodeInfo.Capacity.Used.MRU
@@ -127,7 +139,7 @@ func (d *ValidatorImpl) Validate(ctx context.Context, sub subi.SubstrateExt, old
 				MRU: mrus,
 				SRU: srus,
 			}
-			return fmt.Errorf("node %d doesn't have enough resources. needed: %v, free: %v", node, capacityPrettyPrint(needed), capacityPrettyPrint(free))
+			return fmt.Errorf("node %d doesn't have enough resources. needed: %v, free: %v", node, CapacityPrettyPrint(needed), CapacityPrettyPrint(free))
 		}
 	}
 	return nil

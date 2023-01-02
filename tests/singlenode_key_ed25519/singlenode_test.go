@@ -44,7 +44,7 @@ func TestSingleNodeDeployment(t *testing.T) {
 	terraform.InitAndApply(t, terraformOptions)
 
 	// Check that the outputs not empty
-	publicIP := terraform.Output(t, terraformOptions, "public_ip")
+	publicIP := terraform.Output(t, terraformOptions, "computed_public_ip")
 	assert.NotEmpty(t, publicIP)
 
 	node1Container1IP := terraform.Output(t, terraformOptions, "node1_container1_ip")

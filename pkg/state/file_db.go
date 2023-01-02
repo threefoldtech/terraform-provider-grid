@@ -12,6 +12,7 @@ type fileDB struct {
 	st StateI
 }
 
+// Load loads state from state.json file
 func (f *fileDB) Load() error {
 	// os.OpenFile(FILE_NAME, os.O_CREATE, 0644)
 	f.st = &state{}
@@ -34,6 +35,7 @@ func (f *fileDB) Load() error {
 	return nil
 }
 
+// GetState returns the current state
 func (f *fileDB) GetState() StateI {
 	if f.st == nil {
 		state := NewState()
@@ -42,6 +44,7 @@ func (f *fileDB) GetState() StateI {
 	return f.st
 }
 
+// Save saves the state to the state,json file
 func (f *fileDB) Save() error {
 	if content, err := f.st.Marshal(); err == nil {
 		err = os.WriteFile(FILE_NAME, content, 0644)
@@ -54,6 +57,7 @@ func (f *fileDB) Save() error {
 	return nil
 }
 
+// Delete deletes state,json file
 func (f *fileDB) Delete() error {
 	return os.Remove(FILE_NAME)
 }

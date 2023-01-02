@@ -115,7 +115,7 @@ func (d *DeploymentDeployer) assignNodesIPs() error {
 		return errors.Wrapf(err, "invalid ip %s", d.IPRange)
 	}
 	for _, vm := range d.VMs {
-		if vm.IP != "" && cidr.Contains(net.ParseIP(vm.IP)) && !isInByte(usedIPs, net.ParseIP(vm.IP)[3]) {
+		if vm.IP != "" && cidr.Contains(net.ParseIP(vm.IP)) && !Contains(usedIPs, net.ParseIP(vm.IP)[3]) {
 			usedIPs = append(usedIPs, net.ParseIP(vm.IP)[3])
 		}
 	}
@@ -126,7 +126,7 @@ func (d *DeploymentDeployer) assignNodesIPs() error {
 		}
 		ip := cidr.IP
 		ip[3] = cur
-		for isInByte(usedIPs, ip[3]) {
+		for Contains(usedIPs, ip[3]) {
 			if cur == 254 {
 				return errors.New("all 253 ips of the network are exhausted")
 			}
@@ -271,7 +271,7 @@ func (d *DeploymentDeployer) sync(ctx context.Context, sub subi.SubstrateExt, cl
 		d.Nullify()
 		return nil
 	}
-	currentDeployments, err := d.deployer.GetDeploymentObjects(ctx, sub, map[uint32]uint64{d.Node: d.ID()})
+	currentDeployments, err := d.deployer.GetDeployments(ctx, sub, map[uint32]uint64{d.Node: d.ID()})
 	if err != nil {
 		return errors.Wrap(err, "failed to get deployments to update local state")
 	}
