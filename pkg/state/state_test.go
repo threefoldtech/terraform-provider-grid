@@ -25,7 +25,7 @@ func TestState(t *testing.T) {
 	state := NewState()
 	state.Networks["abc"] = NewNetwork()
 	state.Networks["abc"].Subnets[15] = "10.1.1.0/24"
-	state.Networks["abc"].NodeIPs[32] = make(deploymentIPs)
+	state.Networks["abc"].NodeIPs[32] = make(DeploymentIPs)
 	bt1, err := st.Marshal()
 	assert.NoError(t, err)
 	bt2, err := json.Marshal(state)

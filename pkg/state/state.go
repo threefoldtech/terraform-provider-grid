@@ -2,29 +2,32 @@ package state
 
 import "encoding/json"
 
-type state struct {
-	Networks networkingState `json:"networks"`
+// State struct
+type State struct {
+	Networks NetworkMap `json:"networks"`
 }
 
-func (s *state) GetNetworkState() NetworkState {
+// GetNetworkState gets network state (names and their networks)
+func (s *State) GetNetworkState() NetworkState {
 	if s.Networks == nil {
-		s.Networks = make(networkingState)
+		s.Networks = make(NetworkMap)
 	}
 	return &s.Networks
 }
 
-func (s *state) Marshal() ([]byte, error) {
+func (s *State) Marshal() ([]byte, error) {
 	return json.Marshal(s)
 }
 
 // Unmarshal
-func (s *state) Unmarshal(data []byte) error {
+func (s *State) Unmarshal(data []byte) error {
 	return json.Unmarshal(data, &s)
 }
 
-func NewState() state {
-	state := state{
-		Networks: make(networkingState),
+// NewState generates a new state
+func NewState() State {
+	state := State{
+		Networks: make(NetworkMap),
 	}
 	return state
 }

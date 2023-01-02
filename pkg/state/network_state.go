@@ -1,48 +1,59 @@
 package state
 
-type networkingState map[string]network
+// NetworkMap is a map of of names and their networks
+type NetworkMap map[string]Network
 
-type network struct {
+// Network struct includes subnets and node IPs
+type Network struct {
 	Subnets map[uint32]string `json:"subnets"`
 	NodeIPs NodeIPs           `json:"node_ips"`
 }
 
-type NodeIPs map[uint32]deploymentIPs
+// NodeIPs is a map for nodes ID and its deployments' IPs
+type NodeIPs map[uint32]DeploymentIPs
 
-type deploymentIPs map[string][]byte
+// DeploymentIPs is a map for deployment and its IPs
+type DeploymentIPs map[string][]byte
 
-func NewNetwork() network {
-	return network{
+// NewNetwork generates a new network
+func NewNetwork() Network {
+	return Network{
 		Subnets: map[uint32]string{},
 		NodeIPs: NodeIPs{},
 	}
 }
 
-func (ns networkingState) GetNetwork(networkName string) Network {
-	if _, ok := ns[networkName]; !ok {
-		ns[networkName] = NewNetwork()
+// GetNetwork get a network using its name
+func (nm NetworkMap) GetNetwork(networkName string) NetworkInterface {
+	if _, ok := nm[networkName]; !ok {
+		nm[networkName] = NewNetwork()
 	}
-	net := ns[networkName]
+	net := nm[networkName]
 	return &net
 }
 
-func (ns networkingState) DeleteNetwork(networkName string) {
-	delete(ns, networkName)
+// DeleteNetwork deletes a network using its name
+func (nm NetworkMap) DeleteNetwork(networkName string) {
+	delete(nm, networkName)
 }
 
-func (n *network) GetNodeSubnet(nodeID uint32) string {
+// GetNodeSubnet gets a node subnet using its ID
+func (n *Network) GetNodeSubnet(nodeID uint32) string {
 	return n.Subnets[nodeID]
 }
 
-func (n *network) SetNodeSubnet(nodeID uint32, subnet string) {
+// SetNodeSubnet sets a node subnet with its ID and subnet
+func (n *Network) SetNodeSubnet(nodeID uint32, subnet string) {
 	n.Subnets[nodeID] = subnet
 }
 
-func (n *network) DeleteNodeSubnet(nodeID uint32) {
+// DeleteNodeSubnet deletes a node subnet using its ID
+func (n *Network) DeleteNodeSubnet(nodeID uint32) {
 	delete(n.Subnets, nodeID)
 }
 
-func (n *network) GetNodeIPsList(nodeID uint32) []byte {
+// GetNodeIPsList returns a list of IPs for a node given its ID
+func (n *Network) GetNodeIPsList(nodeID uint32) []byte {
 	ips := []byte{}
 	for _, v := range n.NodeIPs[nodeID] {
 		ips = append(ips, v...)
@@ -50,23 +61,23 @@ func (n *network) GetNodeIPsList(nodeID uint32) []byte {
 	return ips
 }
 
-func (n *network) GetDeploymentIPs(nodeID uint32, deploymentID string) []byte {
+// GetDeploymentIPs returns a list of IPs for a deployment on a given node
+func (n *Network) GetDeploymentIPs(nodeID uint32, deploymentID string) []byte {
 	if n.NodeIPs[nodeID] == nil {
 		return []byte{}
 	}
 	return n.NodeIPs[nodeID][deploymentID]
 }
 
-func (n *network) SetDeploymentIPs(nodeID uint32, deploymentID string, ips []byte) {
+// SetDeploymentIPs sets a list of IPs for a deployment on a given node
+func (n *Network) SetDeploymentIPs(nodeID uint32, deploymentID string, ips []byte) {
 	if n.NodeIPs[nodeID] == nil {
-		n.NodeIPs[nodeID] = deploymentIPs{}
+		n.NodeIPs[nodeID] = DeploymentIPs{}
 	}
 	n.NodeIPs[nodeID][deploymentID] = ips
 }
 
-func (n *network) DeleteDeployment(nodeID uint32, deploymentID string) {
-	if n.NodeIPs[nodeID] == nil {
-		return
-	}
+// DeleteDeployment deletes a deployment on a node
+func (n *Network) DeleteDeployment(nodeID uint32, deploymentID string) {
 	delete(n.NodeIPs[nodeID], deploymentID)
 }
