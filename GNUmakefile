@@ -23,10 +23,10 @@ testacc: submodules
 	TF_ACC=1 go test ./... -v $(TESTARGS) -timeout 120m
 
 unittests: submodules
-	go test ./pkg/... && go test ./internal/...
+	go test -v ./...
 
 integrationtests: submodules
-	go test ./tests/... -p 1 --tags=integration
+	go test -v ./tests/... -p 1 --tags=integration
 
 tests: unittests integrationtests
 
