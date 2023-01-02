@@ -83,7 +83,7 @@ func (r *ProxyBus) Call(ctx context.Context, twin uint32, fn string, data interf
 	}
 	bs, err = json.Marshal(msg)
 	if err != nil {
-		return errors.Wrapf(err, "failed to serialize message: %s", msg)
+		return errors.Wrapf(err, "failed to serialize RMB message")
 	}
 	resp, err := http.Post(r.requestEndpoint(twin), "application/json", bytes.NewBuffer(bs))
 	if err != nil {
