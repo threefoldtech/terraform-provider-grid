@@ -6,32 +6,37 @@ import (
 	"github.com/threefoldtech/zos/pkg/rmb"
 )
 
-type NodeClientCollection interface {
+// NodeClientGetter is an interface for node client
+type NodeClientGetter interface {
 	GetNodeClient(sub subi.SubstrateExt, nodeID uint32) (*NodeClient, error)
 }
+
+// NodeClientPool is a pool for node clients and rmb
 type NodeClientPool struct {
-	nodeClients map[uint32]*NodeClient
-	rmb         rmb.Client
+	clients map[uint32]*NodeClient
+	rmb     rmb.Client
 }
 
+// NewNodeClientPool generates a new client pool
 func NewNodeClientPool(rmb rmb.Client) *NodeClientPool {
 	return &NodeClientPool{
-		nodeClients: make(map[uint32]*NodeClient),
-		rmb:         rmb,
+		clients: make(map[uint32]*NodeClient),
+		rmb:     rmb,
 	}
 }
 
-func (k *NodeClientPool) GetNodeClient(sub subi.SubstrateExt, nodeID uint32) (*NodeClient, error) {
-	cl, ok := k.nodeClients[nodeID]
+// GetNodeClient gets the node client according to node ID
+func (p *NodeClientPool) GetNodeClient(sub subi.SubstrateExt, nodeID uint32) (*NodeClient, error) {
+	cl, ok := p.clients[nodeID]
 	if ok {
 		return cl, nil
 	}
 	twinID, err := sub.GetNodeTwin(nodeID)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get node")
+		return nil, errors.Wrapf(err, "failed to get node %d", nodeID)
 	}
 
-	cl = NewNodeClient(uint32(twinID), k.rmb)
-	k.nodeClients[nodeID] = cl
+	cl = NewNodeClient(uint32(twinID), p.rmb)
+	p.clients[nodeID] = cl
 	return cl, nil
 }

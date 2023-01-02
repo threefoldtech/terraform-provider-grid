@@ -26,7 +26,7 @@ type GatewayFQDNDeployer struct {
 	NodeDeploymentID map[uint32]uint64
 
 	APIClient *apiClient
-	ncPool    client.NodeClientCollection
+	ncPool    client.NodeClientGetter
 	deployer  deployer.Deployer
 }
 

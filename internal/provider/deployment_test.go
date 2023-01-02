@@ -17,7 +17,7 @@ import (
 )
 
 func constructTestDeployer(ctrl *gomock.Controller) DeploymentDeployer {
-	pool := mock.NewMockNodeClientCollection(ctrl)
+	pool := mock.NewMockNodeClientGetter(ctrl)
 	deployer := mock.NewMockDeployer(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
 	manager := mock.NewMockManager(ctrl)

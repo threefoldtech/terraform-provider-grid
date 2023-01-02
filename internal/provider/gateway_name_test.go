@@ -24,7 +24,7 @@ func TestNameValidateNodeNotReachable(t *testing.T) {
 
 	sub := mock.NewMockSubstrateExt(ctrl)
 	cl := mock.NewRMBMockClient(ctrl)
-	pool := mock.NewMockNodeClientCollection(ctrl)
+	pool := mock.NewMockNodeClientGetter(ctrl)
 	identity, err := substrate.NewIdentityFromEd25519Phrase(Words)
 	assert.NoError(t, err)
 	cl.
@@ -63,7 +63,7 @@ func TestNameValidateNodeReachable(t *testing.T) {
 
 	sub := mock.NewMockSubstrateExt(ctrl)
 	cl := mock.NewRMBMockClient(ctrl)
-	pool := mock.NewMockNodeClientCollection(ctrl)
+	pool := mock.NewMockNodeClientGetter(ctrl)
 	identity, err := substrate.NewIdentityFromEd25519Phrase(Words)
 	assert.NoError(t, err)
 	cl.
@@ -150,7 +150,7 @@ func TestNameDeploy(t *testing.T) {
 	deployer := mock.NewMockDeployer(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
 	cl := mock.NewRMBMockClient(ctrl)
-	pool := mock.NewMockNodeClientCollection(ctrl)
+	pool := mock.NewMockNodeClientGetter(ctrl)
 
 	gw := GatewayNameDeployer{
 		APIClient: &apiClient{
@@ -203,7 +203,7 @@ func TestNameUpdate(t *testing.T) {
 	deployer := mock.NewMockDeployer(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
 	cl := mock.NewRMBMockClient(ctrl)
-	pool := mock.NewMockNodeClientCollection(ctrl)
+	pool := mock.NewMockNodeClientGetter(ctrl)
 	gw := GatewayNameDeployer{
 		APIClient: &apiClient{
 			identity: identity,
@@ -258,7 +258,7 @@ func TestNameUpdateFailed(t *testing.T) {
 	deployer := mock.NewMockDeployer(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
 	cl := mock.NewRMBMockClient(ctrl)
-	pool := mock.NewMockNodeClientCollection(ctrl)
+	pool := mock.NewMockNodeClientGetter(ctrl)
 	gw := GatewayNameDeployer{
 		APIClient: &apiClient{
 			identity: identity,
@@ -541,7 +541,7 @@ func TestNameSync(t *testing.T) {
 	identity, err := substrate.NewIdentityFromEd25519Phrase(Words)
 	assert.NoError(t, err)
 	deployer := mock.NewMockDeployer(ctrl)
-	pool := mock.NewMockNodeClientCollection(ctrl)
+	pool := mock.NewMockNodeClientGetter(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayNameDeployer{
 		ID: "123",
@@ -596,7 +596,7 @@ func TestNameSyncDeletedWorkload(t *testing.T) {
 	identity, err := substrate.NewIdentityFromEd25519Phrase(Words)
 	assert.NoError(t, err)
 	deployer := mock.NewMockDeployer(ctrl)
-	pool := mock.NewMockNodeClientCollection(ctrl)
+	pool := mock.NewMockNodeClientGetter(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayNameDeployer{
 		ID: "123",

@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/patrickmn/go-cache"
@@ -22,10 +23,13 @@ const (
 	errThreshold = 4 // return error after failed 4 polls
 )
 
+// TwinResolver is a resolver for the twin
 type TwinResolver struct {
 	cache  *cache.Cache
 	client subi.SubstrateExt
 }
+
+// ProxyBus struct
 type ProxyBus struct {
 	signer      substrate.Identity
 	endpoint    string
@@ -34,10 +38,9 @@ type ProxyBus struct {
 	resolver    TwinResolver
 }
 
+// NewProxyBus generates a new proxy bus
 func NewProxyBus(endpoint string, twinID uint32, sub subi.SubstrateExt, signer substrate.Identity, verifyReply bool) (*ProxyBus, error) {
-	if len(endpoint) != 0 && endpoint[len(endpoint)-1] == '/' {
-		endpoint = endpoint[:len(endpoint)-1]
-	}
+	endpoint = strings.TrimSuffix(endpoint, "/")
 
 	return &ProxyBus{
 		signer,
@@ -51,12 +54,12 @@ func NewProxyBus(endpoint string, twinID uint32, sub subi.SubstrateExt, signer s
 	}, nil
 }
 
-func (r *ProxyBus) requestEndpoint(twinid uint32) string {
-	return fmt.Sprintf("%s/twin/%d", r.endpoint, twinid)
+func (r *ProxyBus) requestEndpoint(twinID uint32) string {
+	return fmt.Sprintf("%s/twin/%d", r.endpoint, twinID)
 }
 
-func (r *ProxyBus) resultEndpoint(twinid uint32, retqueue string) string {
-	return fmt.Sprintf("%s/twin/%d/%s", r.endpoint, twinid, retqueue)
+func (r *ProxyBus) resultEndpoint(twinID uint32, retqueue string) string {
+	return fmt.Sprintf("%s/twin/%d/%s", r.endpoint, twinID, retqueue)
 }
 
 func (r *ProxyBus) Call(ctx context.Context, twin uint32, fn string, data interface{}, result interface{}) error {
@@ -80,11 +83,11 @@ func (r *ProxyBus) Call(ctx context.Context, twin uint32, fn string, data interf
 	}
 	bs, err = json.Marshal(msg)
 	if err != nil {
-		return errors.Wrap(err, "failed to serialize message")
+		return errors.Wrapf(err, "failed to serialize RMB message")
 	}
 	resp, err := http.Post(r.requestEndpoint(twin), "application/json", bytes.NewBuffer(bs))
 	if err != nil {
-		return errors.Wrap(err, "error sending request")
+		return errors.Wrapf(err, "error sending request for twin id (%d)", twin)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return parseError(resp)
@@ -99,7 +102,7 @@ func (r *ProxyBus) Call(ctx context.Context, twin uint32, fn string, data interf
 	}
 	pk, err := r.resolver.PublicKey(int(twin))
 	if err != nil {
-		return errors.Wrap(err, "couldn't get twin public key")
+		return errors.Wrapf(err, "couldn't get twin public key for twin id (%d)", twin)
 	}
 	if r.verifyReply {
 
@@ -108,7 +111,7 @@ func (r *ProxyBus) Call(ctx context.Context, twin uint32, fn string, data interf
 		}
 	}
 
-	// errorred?
+	// errored?
 	if len(msg.Err) != 0 {
 		return errors.New(msg.Err)
 	}
@@ -132,6 +135,7 @@ func (r *ProxyBus) Call(ctx context.Context, twin uint32, fn string, data interf
 	return nil
 }
 
+// PublicKey returns the public key for the twin
 func (r TwinResolver) PublicKey(twin int) ([]byte, error) {
 	key := fmt.Sprintf("pk:%d", twin)
 	cached, ok := r.cache.Get(key)
@@ -213,12 +217,14 @@ func parseError(resp *http.Response) error {
 	return fmt.Errorf("%s (%d)", http.StatusText(resp.StatusCode), resp.StatusCode)
 }
 
+// ErrorReply struct for error response
 type ErrorReply struct {
 	Status  string `json:",omitempty"`
 	Message string `json:",omitempty"`
 	Error   string `json:"error"`
 }
 
+// ProxyResponse struct for proxy response
 type ProxyResponse struct {
 	Retqueue string
 }

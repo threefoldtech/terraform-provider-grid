@@ -74,7 +74,7 @@ func TestCreate(t *testing.T) {
 	gridClient := mock.NewMockClient(ctrl)
 	cl := mock.NewRMBMockClient(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
-	ncPool := mock.NewMockNodeClientCollection(ctrl)
+	ncPool := mock.NewMockNodeClientGetter(ctrl)
 	deployer := NewDeployer(
 		identity,
 		11,
@@ -155,7 +155,7 @@ func TestUpdate(t *testing.T) {
 	gridClient := mock.NewMockClient(ctrl)
 	cl := mock.NewRMBMockClient(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
-	ncPool := mock.NewMockNodeClientCollection(ctrl)
+	ncPool := mock.NewMockNodeClientGetter(ctrl)
 	deployer := NewDeployer(
 		identity,
 		11,
@@ -219,7 +219,7 @@ func TestCancel(t *testing.T) {
 	gridClient := mock.NewMockClient(ctrl)
 	cl := mock.NewRMBMockClient(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
-	ncPool := mock.NewMockNodeClientCollection(ctrl)
+	ncPool := mock.NewMockNodeClientGetter(ctrl)
 	deployer := NewDeployer(
 		identity,
 		11,
@@ -258,7 +258,7 @@ func TestCocktail(t *testing.T) {
 	gridClient := mock.NewMockClient(ctrl)
 	cl := mock.NewRMBMockClient(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
-	ncPool := mock.NewMockNodeClientCollection(ctrl)
+	ncPool := mock.NewMockNodeClientGetter(ctrl)
 	deployer := NewDeployer(
 		identity,
 		11,
