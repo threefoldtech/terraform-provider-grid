@@ -183,6 +183,7 @@ func (n *NodeClient) NetworkListWGPorts(ctx context.Context) ([]uint16, error) {
 	return result, nil
 }
 
+// NetworkListInterfaces return a map of all interfaces and their ips
 func (n *NodeClient) NetworkListInterfaces(ctx context.Context) (map[string][]net.IP, error) {
 	const cmd = "zos.network.interfaces"
 	var result map[string][]net.IP
@@ -194,7 +195,7 @@ func (n *NodeClient) NetworkListInterfaces(ctx context.Context) (map[string][]ne
 	return result, nil
 }
 
-// DeploymentGet gets a deployment via contract ID
+// DeploymentChanges return changes of a deployment via contract ID
 func (n *NodeClient) DeploymentChanges(ctx context.Context, contractID uint64) (changes []gridtypes.Workload, err error) {
 	const cmd = "zos.deployment.changes"
 	in := args{
@@ -255,6 +256,7 @@ func (n *NodeClient) NetworkSetPublicConfig(ctx context.Context, cfg PublicConfi
 	return nil
 }
 
+// SystemDMI executes dmidecode to get dmidecode output
 func (n *NodeClient) SystemDMI(ctx context.Context) (result dmi.DMI, err error) {
 	const cmd = "zos.system.dmi"
 
@@ -265,6 +267,7 @@ func (n *NodeClient) SystemDMI(ctx context.Context) (result dmi.DMI, err error) 
 	return
 }
 
+// SystemHypervisor executes hypervisor cmd
 func (n *NodeClient) SystemHypervisor(ctx context.Context) (result string, err error) {
 	const cmd = "zos.system.hypervisor"
 

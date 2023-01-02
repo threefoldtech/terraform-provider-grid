@@ -24,20 +24,20 @@ func TestTryDecodeBase64OrElse(t *testing.T) {
 			})
 		}
 	}
-	var enocdedBase64Strings []string
+	var encodedBase64Strings []string
 	for _, s := range testStrings {
-		enocdedBase64Strings = append(enocdedBase64Strings, base64.StdEncoding.EncodeToString([]byte(s)))
+		encodedBase64Strings = append(encodedBase64Strings, base64.StdEncoding.EncodeToString([]byte(s)))
 	}
 
 	t.Log("Given encoded base64 string")
 	{
-		for i, s := range enocdedBase64Strings {
+		for i, s := range encodedBase64Strings {
 			t.Run(fmt.Sprintf("\tTest %d: When string is base64 encoded string `%s`", i, s), func(t *testing.T) {
 				result := TryDecodeBase64OrElse(s)
 				if string(result) == testStrings[i] {
 					t.Logf("\t\tResult `%s` should be equal to the original plaintext string `%s`", result, testStrings[i])
 				} else {
-					t.Errorf("\tTest %d: failed decoding %s resul is  %s not equal to the original plain text input string `%s`", i, s, result, testStrings[i])
+					t.Errorf("\tTest %d: failed decoding %s result is  %s not equal to the original plain text input string `%s`", i, s, result, testStrings[i])
 				}
 			})
 		}

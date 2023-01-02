@@ -26,7 +26,7 @@ func TestValidatNodeReachable(t *testing.T) {
 
 	sub := mock.NewMockSubstrateExt(ctrl)
 	cl := mock.NewRMBMockClient(ctrl)
-	pool := mock.NewMockNodeClientCollection(ctrl)
+	pool := mock.NewMockNodeClientGetter(ctrl)
 	identity, err := substrate.NewIdentityFromEd25519Phrase(Words)
 	assert.NoError(t, err)
 	cl.
@@ -113,7 +113,7 @@ func TestDeploy(t *testing.T) {
 	deployer := mock.NewMockDeployer(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
 	cl := mock.NewRMBMockClient(ctrl)
-	pool := mock.NewMockNodeClientCollection(ctrl)
+	pool := mock.NewMockNodeClientGetter(ctrl)
 	gw := GatewayFQDNDeployer{
 		APIClient: &apiClient{
 			identity: identity,
@@ -163,7 +163,7 @@ func TestUpdate(t *testing.T) {
 	deployer := mock.NewMockDeployer(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
 	cl := mock.NewRMBMockClient(ctrl)
-	pool := mock.NewMockNodeClientCollection(ctrl)
+	pool := mock.NewMockNodeClientGetter(ctrl)
 	gw := GatewayFQDNDeployer{
 		APIClient: &apiClient{
 			identity: identity,
@@ -212,7 +212,7 @@ func TestUpdateFailed(t *testing.T) {
 	deployer := mock.NewMockDeployer(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
 	cl := mock.NewRMBMockClient(ctrl)
-	pool := mock.NewMockNodeClientCollection(ctrl)
+	pool := mock.NewMockNodeClientGetter(ctrl)
 
 	gw := GatewayFQDNDeployer{
 		APIClient: &apiClient{
@@ -468,7 +468,7 @@ func TestSync(t *testing.T) {
 	identity, err := substrate.NewIdentityFromEd25519Phrase(Words)
 	assert.NoError(t, err)
 	deployer := mock.NewMockDeployer(ctrl)
-	pool := mock.NewMockNodeClientCollection(ctrl)
+	pool := mock.NewMockNodeClientGetter(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayFQDNDeployer{
 		ID: "123",
@@ -518,7 +518,7 @@ func TestSyncDeletedWorkload(t *testing.T) {
 	identity, err := substrate.NewIdentityFromEd25519Phrase(Words)
 	assert.NoError(t, err)
 	deployer := mock.NewMockDeployer(ctrl)
-	pool := mock.NewMockNodeClientCollection(ctrl)
+	pool := mock.NewMockNodeClientGetter(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayFQDNDeployer{
 		ID: "123",

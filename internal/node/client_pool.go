@@ -6,14 +6,18 @@ import (
 	"github.com/threefoldtech/zos/pkg/rmb"
 )
 
+// NodeClientGetter is an interface for node client
 type NodeClientGetter interface {
 	GetNodeClient(sub subi.SubstrateExt, nodeID uint32) (*NodeClient, error)
 }
+
+// NodeClientPool is a pool for node clients and rmb
 type NodeClientPool struct {
 	clients map[uint32]*NodeClient
 	rmb     rmb.Client
 }
 
+// NewNodeClientPool generates a new client pool
 func NewNodeClientPool(rmb rmb.Client) *NodeClientPool {
 	return &NodeClientPool{
 		clients: make(map[uint32]*NodeClient),
@@ -21,6 +25,7 @@ func NewNodeClientPool(rmb rmb.Client) *NodeClientPool {
 	}
 }
 
+// GetNodeClient gets the node client according to node ID
 func (p *NodeClientPool) GetNodeClient(sub subi.SubstrateExt, nodeID uint32) (*NodeClient, error) {
 	cl, ok := p.clients[nodeID]
 	if ok {
@@ -28,7 +33,7 @@ func (p *NodeClientPool) GetNodeClient(sub subi.SubstrateExt, nodeID uint32) (*N
 	}
 	twinID, err := sub.GetNodeTwin(nodeID)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get node")
+		return nil, errors.Wrapf(err, "failed to get node %d", nodeID)
 	}
 
 	cl = NewNodeClient(uint32(twinID), p.rmb)
