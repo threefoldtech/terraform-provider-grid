@@ -1,3 +1,4 @@
+// Package scheduler provides a simple scheduler interface to request deployments on nodes.
 package scheduler
 
 import (
