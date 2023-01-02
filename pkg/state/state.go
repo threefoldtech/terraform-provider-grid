@@ -16,12 +16,12 @@ func (s *State) GetNetworkState() NetworkState {
 	return s.Networks
 }
 
-// Marshal
+// Marshal to json marshal a state
 func (s *State) Marshal() ([]byte, error) {
 	return json.Marshal(s)
 }
 
-// Unmarshal
+// Unmarshal to json unmarshal a state
 func (s *State) Unmarshal(data []byte) error {
 	return json.Unmarshal(data, &s)
 }
