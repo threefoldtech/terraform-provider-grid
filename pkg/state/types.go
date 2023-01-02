@@ -1,6 +1,5 @@
 package state
 
-// DB interface for database
 type DB interface {
 	// Load should retrieve local state
 	Load() error
@@ -21,12 +20,11 @@ type StateI interface {
 // NetworkState interface for network state
 type NetworkState interface {
 	// GetNetwork retrieves network `networkName` from network state
-	GetNetwork(networkName string) Network
+	GetNetwork(networkName string) NetworkInterface
 	// DeleteNetwork deletes `networkName` from local state
 	DeleteNetwork(networkName string)
 }
 
-// NetworkInterface is an interface for network
 type NetworkInterface interface {
 	// GetNodeSubnet retrieves node's subnet from network local state
 	GetNodeSubnet(nodeID uint32) string

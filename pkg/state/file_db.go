@@ -1,4 +1,5 @@
 // Package state provides a state to save the user work in a database.
+
 package state
 
 import (
@@ -9,32 +10,30 @@ import (
 	"github.com/pkg/errors"
 )
 
-// DBType number
 type DBType int
 
 const (
-	// FileName is a static file name for state
-	FileName = "state.json"
-	// TypeFile is the type of db
-	TypeFile DBType = iota
+	// FILE_NAME is a static file name for state
+	FILE_NAME        = "state.json"
+	TypeFile  DBType = iota
 )
 
-// FileDB struct is the state file for DB
-type FileDB struct {
-	st State
-}
+// ErrWrongDBType is an error for wrong db type
+var ErrWrongDBType = errors.New("wrong db type")
 
-// NewLocalStateFileDB generates a new local state
-func NewLocalStateFileDB() FileDB {
-	return FileDB{}
-
+// NewLocalStateDB generates a new local state
+func NewLocalStateDB(t DBType) (*fileDB, error) {
+	if t == TypeFile {
+		return &fileDB{}, nil
+	}
+	return nil, ErrWrongDBType
 }
 
 // Load loads state from state.json file
-func (f *FileDB) Load() error {
-	// os.OpenFile(FileName, os.O_CREATE, 0644)
-	f.st = State{}
-	_, err := os.Stat(FileName)
+func (f *fileDB) Load() error {
+	// os.OpenFile(FILE_NAME, os.O_CREATE, 0644)
+	f.st = &State{}
+	_, err := os.Stat(FILE_NAME)
 	if err != nil && os.IsNotExist(err) {
 		_, err = os.OpenFile(FileName, os.O_CREATE, 0644)
 		if err != nil {

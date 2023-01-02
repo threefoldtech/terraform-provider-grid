@@ -25,12 +25,12 @@ func NewNetwork() Network {
 }
 
 // GetNetwork get a network using its name
-func (nm NetworkMap) GetNetwork(networkName string) Network {
+func (nm NetworkMap) GetNetwork(networkName string) NetworkInterface {
 	if _, ok := nm[networkName]; !ok {
 		nm[networkName] = NewNetwork()
 	}
 	net := nm[networkName]
-	return net
+	return &net
 }
 
 // DeleteNetwork deletes a network using its name
