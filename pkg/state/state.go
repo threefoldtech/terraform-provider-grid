@@ -1,3 +1,4 @@
+// Package state provides a state to save the user work in a database.
 package state
 
 import "encoding/json"
@@ -15,6 +16,7 @@ func (s *State) GetNetworkState() NetworkState {
 	return &s.Networks
 }
 
+// Marshal
 func (s *State) Marshal() ([]byte, error) {
 	return json.Marshal(s)
 }

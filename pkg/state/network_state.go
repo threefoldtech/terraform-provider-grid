@@ -1,3 +1,4 @@
+// Package state provides a state to save the user work in a database.
 package state
 
 // NetworkMap is a map of of names and their networks

@@ -27,6 +27,7 @@ type NetworkState interface {
 	DeleteNetwork(networkName string)
 }
 
+// NetworkInterface is an interface for network
 type NetworkInterface interface {
 	// GetNodeSubnet retrieves node's subnet from network local state
 	GetNodeSubnet(nodeID uint32) string
