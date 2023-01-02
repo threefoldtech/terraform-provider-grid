@@ -110,9 +110,9 @@ func parseRequests(d *schema.ResourceData, assignment map[string]uint32) []sched
 			HasDomain: mp["domain"].(bool),
 			Certified: mp["certified"].(bool),
 			Cap: scheduler.Capacity{
-				Memory: uint64(mp["mru"].(int)) * uint64(gridtypes.Megabyte),
-				Hru:    uint64(mp["hru"].(int)) * uint64(gridtypes.Megabyte),
-				Sru:    uint64(mp["sru"].(int)) * uint64(gridtypes.Megabyte),
+				MRU: uint64(mp["mru"].(int)) * uint64(gridtypes.Megabyte),
+				HRU: uint64(mp["hru"].(int)) * uint64(gridtypes.Megabyte),
+				SRU: uint64(mp["sru"].(int)) * uint64(gridtypes.Megabyte),
 			},
 		})
 	}

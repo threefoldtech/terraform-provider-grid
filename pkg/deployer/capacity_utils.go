@@ -3,7 +3,7 @@ package deployer
 import (
 	"fmt"
 
-	proxytypes "github.com/threefoldtech/grid_proxy_server/pkg/types"
+	proxyTypes "github.com/threefoldtech/grid_proxy_server/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
@@ -13,7 +13,7 @@ func CapacityPrettyPrint(cap gridtypes.Capacity) string {
 }
 
 // AddCapacity adds a new data for capacity
-func AddCapacity(cap *proxytypes.Capacity, add *gridtypes.Capacity) {
+func AddCapacity(cap *proxyTypes.Capacity, add *gridtypes.Capacity) {
 	cap.CRU += add.CRU
 	cap.MRU += add.MRU
 	cap.SRU += add.SRU
