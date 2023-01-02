@@ -244,7 +244,7 @@ func (k *NetworkDeployer) invalidateBrokenAttributes(sub subi.SubstrateExt) erro
 			// whatever the error, delete it and it will get reassigned later
 			k.PublicNodeID = 0
 		}
-		if err := isNodeUp(context.Background(), cl); err != nil {
+		if err := cl.IsNodeUp(context.Background()); err != nil {
 			k.PublicNodeID = 0
 		}
 	}
@@ -263,7 +263,7 @@ func (k *NetworkDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) e
 		return fmt.Errorf("subnet in iprange %s should be 16", k.IPRange.String())
 	}
 
-	return isNodesUp(ctx, sub, k.Nodes, k.ncPool)
+	return client.AreNodesUp(ctx, sub, k.Nodes, k.ncPool)
 }
 
 func (k *NetworkDeployer) ValidateDelete(ctx context.Context) error {

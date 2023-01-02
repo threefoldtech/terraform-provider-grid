@@ -74,8 +74,11 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"net"
+	"time"
 
+	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/capacity/dmi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/rmb"
@@ -276,4 +279,30 @@ func (n *NodeClient) SystemHypervisor(ctx context.Context) (result string, err e
 	}
 
 	return
+}
+
+func (n *NodeClient) IsNodeUp(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	_, err := n.NetworkListInterfaces(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func AreNodesUp(ctx context.Context, sub subi.SubstrateExt, nodes []uint32, nc NodeClientGetter) error {
+	for _, node := range nodes {
+		cl, err := nc.GetNodeClient(sub, node)
+		if err != nil {
+			return fmt.Errorf("couldn't get node %d client: %w", node, err)
+		}
+		if err := cl.IsNodeUp(ctx); err != nil {
+			return fmt.Errorf("couldn't reach node %d: %w", node, err)
+		}
+	}
+
+	return nil
 }

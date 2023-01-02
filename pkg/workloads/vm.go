@@ -5,12 +5,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net"
-	"net/http"
 	"sort"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
@@ -192,7 +189,7 @@ func (vm *VM) GenerateVMWorkload() []gridtypes.Workload {
 	publicIPName := ""
 	if vm.PublicIP || vm.PublicIP6 {
 		publicIPName = fmt.Sprintf("%sip", vm.Name)
-		workloads = append(workloads, constructPublicIPWorkload(publicIPName, vm.PublicIP, vm.PublicIP6))
+		workloads = append(workloads, ConstructPublicIPWorkload(publicIPName, vm.PublicIP, vm.PublicIP6))
 	}
 	mounts := make([]zos.MachineMount, 0)
 	for _, mount := range vm.Mounts {
@@ -296,7 +293,7 @@ func (vm *VM) Validate() error {
 	}
 
 	if vm.FlistChecksum != "" {
-		checksum, err := getFlistChecksum(vm.Flist)
+		checksum, err := GetFlistChecksum(vm.Flist)
 		if err != nil {
 			return errors.Wrap(err, "failed to get flist checksum")
 		}
@@ -306,7 +303,7 @@ func (vm *VM) Validate() error {
 				vm.FlistChecksum,
 				vm.Name,
 				checksum,
-				flistChecksumURL(vm.Flist),
+				FlistChecksumURL(vm.Flist),
 			)
 		}
 	}
@@ -336,28 +333,4 @@ func (vm *VM) Match(vm2 *VM) {
 		return names[vm.Mounts[i].DiskName] < names[vm.Mounts[j].DiskName]
 	})
 	vm.FlistChecksum = vm2.FlistChecksum
-}
-
-func constructPublicIPWorkload(workloadName string, ipv4 bool, ipv6 bool) gridtypes.Workload {
-	return gridtypes.Workload{
-		Version: 0,
-		Name:    gridtypes.Name(workloadName),
-		Type:    zos.PublicIPType,
-		Data: gridtypes.MustMarshal(zos.PublicIP{
-			V4: ipv4,
-			V6: ipv6,
-		}),
-	}
-}
-
-func flistChecksumURL(url string) string {
-	return fmt.Sprintf("%s.md5", url)
-}
-func getFlistChecksum(url string) (string, error) {
-	response, err := http.Get(flistChecksumURL(url))
-	if err != nil {
-		return "", err
-	}
-	hash, err := io.ReadAll(response.Body)
-	return strings.TrimSpace(string(hash)), err
 }
