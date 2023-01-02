@@ -16,6 +16,7 @@ func (s *State) GetNetworkState() NetworkState {
 	return s.Networks
 }
 
+// Marshal
 func (s *State) Marshal() ([]byte, error) {
 	return json.Marshal(s)
 }
