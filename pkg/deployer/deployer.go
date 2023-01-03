@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/cenkalti/backoff"
@@ -257,22 +258,39 @@ func (d *DeployerImpl) deploy(
 }
 
 // GetDeployments returns deployments from a map of nodes IDs and deployments IDs
-func (d *DeployerImpl) GetDeployments(ctx context.Context, sub subi.SubstrateExt, dls map[uint32]uint64) (map[uint32]gridtypes.Deployment, error) {
-	res := make(map[uint32]gridtypes.Deployment)
+func (d *DeployerImpl) GetDeployments(ctx context.Context, sub subi.SubstrateExt, dls map[uint32]uint64) (res map[uint32]gridtypes.Deployment, err error) {
+	res = make(map[uint32]gridtypes.Deployment)
+
+	var wg sync.WaitGroup
+	var mux *sync.RWMutex
+
 	for nodeID, dlID := range dls {
-		nc, err := d.ncPool.GetNodeClient(sub, nodeID)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to get a client for node %d", nodeID)
-		}
-		sub, cancel := context.WithTimeout(ctx, 10*time.Second)
-		defer cancel()
-		dl, err := nc.DeploymentGet(sub, dlID)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to get deployment %d of node %d", dlID, nodeID)
-		}
-		res[nodeID] = dl
+
+		wg.Add(1)
+		go func(nodeID uint32, dlID uint64) {
+
+			nc, clientErr := d.ncPool.GetNodeClient(sub, nodeID)
+			if clientErr != nil {
+				err = errors.Wrapf(clientErr, "failed to get a client for node %d", nodeID)
+			}
+
+			sub, cancel := context.WithTimeout(ctx, 10*time.Second)
+			defer cancel()
+
+			dl, clientErr := nc.DeploymentGet(sub, dlID)
+			if clientErr != nil {
+				err = errors.Wrapf(clientErr, "failed to get deployment %d of node %d", dlID, nodeID)
+			}
+
+			mux.Lock()
+			res[nodeID] = dl
+			mux.Unlock()
+
+		}(nodeID, dlID)
 	}
-	return res, nil
+
+	wg.Wait()
+	return
 }
 
 // Progress struct for time and OK state
