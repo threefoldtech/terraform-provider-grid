@@ -210,7 +210,7 @@ func providerConfigure(st state.StateI) (func(ctx context.Context, d *schema.Res
 			verify_reply := d.Get("verify_reply").(bool)
 			cl, err = client.NewProxyBus(rmb_proxy_url, apiClient.twin_id, apiClient.substrateConn, identity, verify_reply)
 		} else {
-			cl, err = rmb.NewClient(apiClient.rmb_redis_url)
+			cl, err = rmb.NewRMBClient(apiClient.rmb_redis_url)
 		}
 		if err != nil {
 			return nil, diag.FromErr(errors.Wrap(err, "couldn't create rmb client"))
