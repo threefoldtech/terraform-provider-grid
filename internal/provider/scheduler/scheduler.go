@@ -1,3 +1,4 @@
+// Package scheduler provides a simple scheduler interface to request deployments on nodes.
 package scheduler
 
 import (
@@ -6,10 +7,10 @@ import (
 
 	"github.com/pkg/errors"
 	proxy "github.com/threefoldtech/grid_proxy_server/pkg/client"
-	proxytypes "github.com/threefoldtech/grid_proxy_server/pkg/types"
+	proxyTypes "github.com/threefoldtech/grid_proxy_server/pkg/types"
 )
 
-// NodeInfo related to scheduling
+// nodeInfo related to scheduling
 type nodeInfo struct {
 	FreeCapacity *Capacity
 	FarmID       int
@@ -17,6 +18,19 @@ type nodeInfo struct {
 	HasDomain    bool
 }
 
+func (node *nodeInfo) fulfils(r *Request) bool {
+	if r.Capacity.MRU > node.FreeCapacity.MRU ||
+		r.Capacity.HRU > node.FreeCapacity.HRU ||
+		r.Capacity.SRU > node.FreeCapacity.SRU ||
+		(r.farmID != 0 && node.FarmID != r.farmID) ||
+		(r.HasDomain && !node.HasDomain) ||
+		(r.HasIPv4 && !node.HasIPv4) {
+		return false
+	}
+	return true
+}
+
+// Scheduler struct for scheduling
 type Scheduler struct {
 	nodes  map[uint32]nodeInfo
 	twinID uint64
@@ -25,6 +39,7 @@ type Scheduler struct {
 	gridProxyClient proxy.Client
 }
 
+// NewScheduler generates a new scheduler
 func NewScheduler(gridProxyClient proxy.Client, twinID uint64) Scheduler {
 	return Scheduler{
 		nodes:           map[uint32]nodeInfo{},
@@ -39,9 +54,9 @@ func (n *Scheduler) getFarmID(farmName string) (int, error) {
 	if id, ok := n.farmIDS[farmName]; ok {
 		return id, nil
 	}
-	farm, _, err := n.gridProxyClient.Farms(proxytypes.FarmFilter{
+	farm, _, err := n.gridProxyClient.Farms(proxyTypes.FarmFilter{
 		Name: &farmName,
-	}, proxytypes.Limit{
+	}, proxyTypes.Limit{
 		Size: 1,
 		Page: 1,
 	})
@@ -62,16 +77,16 @@ func (n *Scheduler) getNode(r *Request) uint32 {
 	}
 	rand.Shuffle(len(nodes), func(i, j int) { nodes[i], nodes[j] = nodes[j], nodes[i] })
 	for _, node := range nodes {
-		cap := n.nodes[node]
+		nodeInfo := n.nodes[node]
 		// TODO: later add free ips check when specifying the number of ips is supported
-		if fullfils(&cap, r) {
+		if nodeInfo.fulfils(r) {
 			return node
 		}
 	}
 	return 0
 }
 
-func (n *Scheduler) addNodes(nodes []proxytypes.Node) {
+func (n *Scheduler) addNodes(nodes []proxyTypes.Node) {
 	for _, node := range nodes {
 		if _, ok := n.nodes[uint32(node.NodeID)]; !ok {
 			cap := freeCapacity(&node)
@@ -87,8 +102,8 @@ func (n *Scheduler) addNodes(nodes []proxytypes.Node) {
 
 // Schedule makes sure there's at least one node that satisfies the given request
 func (n *Scheduler) Schedule(r *Request) (uint32, error) {
-	f := constructFilter(r, n.twinID)
-	l := proxytypes.Limit{
+	f := r.constructFilter(n.twinID)
+	l := proxyTypes.Limit{
 		Size:     10,
 		Page:     1,
 		RetCount: false,
@@ -117,6 +132,6 @@ func (n *Scheduler) Schedule(r *Request) (uint32, error) {
 			l.Size *= 2
 		}
 	}
-	subtract(n.nodes[node].FreeCapacity, r)
+	n.nodes[node].FreeCapacity.consume(r)
 	return node, nil
 }

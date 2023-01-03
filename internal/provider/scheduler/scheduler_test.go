@@ -5,47 +5,47 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	proxytypes "github.com/threefoldtech/grid_proxy_server/pkg/types"
+	proxyTypes "github.com/threefoldtech/grid_proxy_server/pkg/types"
 )
 
 type GridProxyClientMock struct {
-	farms []proxytypes.Farm
-	nodes []proxytypes.Node
+	farms []proxyTypes.Farm
+	nodes []proxyTypes.Node
 }
 
 func (m *GridProxyClientMock) Ping() error {
 	return nil
 }
 
-func (m *GridProxyClientMock) Nodes(filter proxytypes.NodeFilter, pagination proxytypes.Limit) (res []proxytypes.Node, totalCount int, err error) {
+func (m *GridProxyClientMock) Nodes(filter proxyTypes.NodeFilter, pagination proxyTypes.Limit) (res []proxyTypes.Node, totalCount int, err error) {
 	start, end := (pagination.Page-1)*pagination.Size, pagination.Page*pagination.Size
 	if int(end) > len(m.nodes) {
 		end = uint64(len(m.nodes))
 	}
 	if end <= start {
-		return make([]proxytypes.Node, 0), 0, nil
+		return make([]proxyTypes.Node, 0), 0, nil
 	}
 	res = m.nodes[start:end]
 	return
 }
 
-func (m *GridProxyClientMock) Farms(filter proxytypes.FarmFilter, pagination proxytypes.Limit) (res []proxytypes.Farm, totalCount int, err error) {
+func (m *GridProxyClientMock) Farms(filter proxyTypes.FarmFilter, pagination proxyTypes.Limit) (res []proxyTypes.Farm, totalCount int, err error) {
 	start, end := (pagination.Page-1)*pagination.Size, pagination.Page*pagination.Size
 	if int(end) > len(m.nodes) {
 		end = uint64(len(m.nodes))
 	}
 	if end <= start {
-		return make([]proxytypes.Farm, 0), 0, nil
+		return make([]proxyTypes.Farm, 0), 0, nil
 	}
 	res = m.farms[start:end]
 	return
 }
 
-func (m *GridProxyClientMock) Node(nodeID uint32) (res proxytypes.NodeWithNestedCapacity, err error) {
+func (m *GridProxyClientMock) Node(nodeID uint32) (res proxyTypes.NodeWithNestedCapacity, err error) {
 	for _, node := range m.nodes {
 		if uint32(node.NodeID) == nodeID {
-			res = proxytypes.NodeWithNestedCapacity{
-				Capacity: proxytypes.CapacityResult{
+			res = proxyTypes.NodeWithNestedCapacity{
+				Capacity: proxyTypes.CapacityResult{
 					Total: node.TotalResources,
 					Used:  node.UsedResources,
 				},
@@ -57,34 +57,34 @@ func (m *GridProxyClientMock) Node(nodeID uint32) (res proxytypes.NodeWithNested
 	return
 }
 
-func (m *GridProxyClientMock) NodeStatus(nodeID uint32) (res proxytypes.NodeStatus, err error) {
+func (m *GridProxyClientMock) NodeStatus(nodeID uint32) (res proxyTypes.NodeStatus, err error) {
 	return
 }
 
-func (m *GridProxyClientMock) AddFarm(farm proxytypes.Farm) {
+func (m *GridProxyClientMock) AddFarm(farm proxyTypes.Farm) {
 	m.farms = append(m.farms, farm)
 }
 
-func (m *GridProxyClientMock) AddNode(id uint32, node proxytypes.Node) {
+func (m *GridProxyClientMock) AddNode(id uint32, node proxyTypes.Node) {
 	m.nodes = append(m.nodes, node)
 }
-func (m *GridProxyClientMock) Contracts(filter proxytypes.ContractFilter, pagination proxytypes.Limit) (res []proxytypes.Contract, totalCount int, err error) {
+func (m *GridProxyClientMock) Contracts(filter proxyTypes.ContractFilter, pagination proxyTypes.Limit) (res []proxyTypes.Contract, totalCount int, err error) {
 	return
 }
-func (m *GridProxyClientMock) Twins(filter proxytypes.TwinFilter, pagination proxytypes.Limit) (res []proxytypes.Twin, totalCount int, err error) {
+func (m *GridProxyClientMock) Twins(filter proxyTypes.TwinFilter, pagination proxyTypes.Limit) (res []proxyTypes.Twin, totalCount int, err error) {
 	return
 }
-func (m *GridProxyClientMock) Counters(filter proxytypes.StatsFilter) (res proxytypes.Counters, err error) {
+func (m *GridProxyClientMock) Counters(filter proxyTypes.StatsFilter) (res proxyTypes.Counters, err error) {
 	return
 }
 func TestSchedulerEmpty(t *testing.T) {
 	proxy := &GridProxyClientMock{}
 	scheduler := NewScheduler(proxy, 1)
 	_, err := scheduler.Schedule(&Request{
-		Cap: Capacity{
-			Memory: 1,
-			Sru:    2,
-			Hru:    3,
+		Capacity: Capacity{
+			MRU: 1,
+			SRU: 2,
+			HRU: 3,
 		},
 		HasIPv4:   true,
 		Name:      "req",
@@ -97,35 +97,35 @@ func TestSchedulerEmpty(t *testing.T) {
 
 func TestSchedulerSuccess(t *testing.T) {
 	proxy := &GridProxyClientMock{}
-	proxy.AddNode(1, proxytypes.Node{
+	proxy.AddNode(1, proxyTypes.Node{
 		NodeID: 1,
-		TotalResources: proxytypes.Capacity{
+		TotalResources: proxyTypes.Capacity{
 			HRU: 5,
 			SRU: 10,
 			MRU: 15,
 		},
-		UsedResources: proxytypes.Capacity{
+		UsedResources: proxyTypes.Capacity{
 			HRU: 2,
 			SRU: 3,
 			MRU: 4,
 		},
 		FarmID: 1,
-		PublicConfig: proxytypes.PublicConfig{
+		PublicConfig: proxyTypes.PublicConfig{
 			Domain: "a",
 			Ipv4:   "a",
 			Ipv6:   "d",
 		},
 	})
-	proxy.AddFarm(proxytypes.Farm{
+	proxy.AddFarm(proxyTypes.Farm{
 		Name:   "freefarm",
 		FarmID: 1,
 	})
 	scheduler := NewScheduler(proxy, 1)
 	nodeID, err := scheduler.Schedule(&Request{
-		Cap: Capacity{
-			Hru:    3,
-			Sru:    7,
-			Memory: 11,
+		Capacity: Capacity{
+			HRU: 3,
+			SRU: 7,
+			MRU: 11,
 		},
 		HasIPv4:   true,
 		Name:      "req",
@@ -140,37 +140,37 @@ func TestSchedulerSuccess(t *testing.T) {
 func TestSchedulerSuccessOn4thPage(t *testing.T) {
 	proxy := &GridProxyClientMock{}
 	for i := uint32(2); i <= 30; i++ {
-		proxy.AddNode(i, proxytypes.Node{})
+		proxy.AddNode(i, proxyTypes.Node{})
 	}
-	proxy.AddNode(1, proxytypes.Node{
+	proxy.AddNode(1, proxyTypes.Node{
 		NodeID: 1,
-		TotalResources: proxytypes.Capacity{
+		TotalResources: proxyTypes.Capacity{
 			HRU: 5,
 			SRU: 10,
 			MRU: 15,
 		},
-		UsedResources: proxytypes.Capacity{
+		UsedResources: proxyTypes.Capacity{
 			HRU: 2,
 			SRU: 3,
 			MRU: 4,
 		},
 		FarmID: 1,
-		PublicConfig: proxytypes.PublicConfig{
+		PublicConfig: proxyTypes.PublicConfig{
 			Domain: "a",
 			Ipv4:   "a",
 			Ipv6:   "d",
 		},
 	})
-	proxy.AddFarm(proxytypes.Farm{
+	proxy.AddFarm(proxyTypes.Farm{
 		Name:   "freefarm",
 		FarmID: 1,
 	})
 	scheduler := NewScheduler(proxy, 1)
 	nodeID, err := scheduler.Schedule(&Request{
-		Cap: Capacity{
-			Hru:    3,
-			Sru:    7,
-			Memory: 11,
+		Capacity: Capacity{
+			HRU: 3,
+			SRU: 7,
+			MRU: 11,
 		},
 		HasIPv4:   true,
 		Name:      "req",
@@ -184,35 +184,35 @@ func TestSchedulerSuccessOn4thPage(t *testing.T) {
 
 func TestSchedulerFailure(t *testing.T) {
 	proxy := &GridProxyClientMock{}
-	proxy.AddNode(1, proxytypes.Node{
+	proxy.AddNode(1, proxyTypes.Node{
 		NodeID: 1,
-		TotalResources: proxytypes.Capacity{
+		TotalResources: proxyTypes.Capacity{
 			HRU: 5,
 			SRU: 10,
 			MRU: 15,
 		},
-		UsedResources: proxytypes.Capacity{
+		UsedResources: proxyTypes.Capacity{
 			HRU: 2,
 			SRU: 3,
 			MRU: 4,
 		},
 		FarmID: 1,
-		PublicConfig: proxytypes.PublicConfig{
+		PublicConfig: proxyTypes.PublicConfig{
 			Domain: "",
 			Ipv4:   "",
 			Ipv6:   "",
 		},
 	})
-	proxy.AddFarm(proxytypes.Farm{
+	proxy.AddFarm(proxyTypes.Farm{
 		Name:   "freefarm",
 		FarmID: 1,
 	})
 
 	req := Request{
-		Cap: Capacity{
-			Hru:    3,
-			Sru:    7,
-			Memory: 11,
+		Capacity: Capacity{
+			HRU: 3,
+			SRU: 7,
+			MRU: 11,
 		},
 		HasIPv4:   false,
 		Name:      "req",
@@ -221,9 +221,9 @@ func TestSchedulerFailure(t *testing.T) {
 		Certified: false,
 	}
 	violations := map[string]func(r *Request){
-		"mru":    func(r *Request) { r.Cap.Memory = 12 },
-		"sru":    func(r *Request) { r.Cap.Sru = 18 },
-		"hru":    func(r *Request) { r.Cap.Hru = 4 },
+		"mru":    func(r *Request) { r.Capacity.MRU = 12 },
+		"sru":    func(r *Request) { r.Capacity.SRU = 18 },
+		"hru":    func(r *Request) { r.Capacity.HRU = 4 },
 		"ipv4":   func(r *Request) { r.HasIPv4 = true },
 		"domain": func(r *Request) { r.HasDomain = true },
 	}
@@ -237,35 +237,35 @@ func TestSchedulerFailure(t *testing.T) {
 }
 func TestSchedulerFailureAfterSuccess(t *testing.T) {
 	proxy := &GridProxyClientMock{}
-	proxy.AddNode(1, proxytypes.Node{
+	proxy.AddNode(1, proxyTypes.Node{
 		NodeID: 1,
-		TotalResources: proxytypes.Capacity{
+		TotalResources: proxyTypes.Capacity{
 			HRU: 5,
 			SRU: 10,
 			MRU: 15,
 		},
-		UsedResources: proxytypes.Capacity{
+		UsedResources: proxyTypes.Capacity{
 			HRU: 2,
 			SRU: 3,
 			MRU: 4,
 		},
 		FarmID: 1,
-		PublicConfig: proxytypes.PublicConfig{
+		PublicConfig: proxyTypes.PublicConfig{
 			Domain: "a",
 			Ipv4:   "a",
 			Ipv6:   "d",
 		},
 	})
-	proxy.AddFarm(proxytypes.Farm{
+	proxy.AddFarm(proxyTypes.Farm{
 		Name:   "freefarm",
 		FarmID: 1,
 	})
 	scheduler := NewScheduler(proxy, 1)
 	nodeID, err := scheduler.Schedule(&Request{
-		Cap: Capacity{
-			Hru:    2,
-			Sru:    6,
-			Memory: 10,
+		Capacity: Capacity{
+			HRU: 2,
+			SRU: 6,
+			MRU: 10,
 		},
 		HasIPv4:   true,
 		Name:      "req",
@@ -277,10 +277,10 @@ func TestSchedulerFailureAfterSuccess(t *testing.T) {
 	assert.Equal(t, nodeID, uint32(1), "the node id should be 1")
 
 	_, err = scheduler.Schedule(&Request{
-		Cap: Capacity{
-			Hru:    1,
-			Sru:    1,
-			Memory: 2, // this violates
+		Capacity: Capacity{
+			HRU: 1,
+			SRU: 1,
+			MRU: 2, // this violates
 		},
 		HasIPv4:   true,
 		Name:      "req",
@@ -293,35 +293,35 @@ func TestSchedulerFailureAfterSuccess(t *testing.T) {
 
 func TestSchedulerSuccessAfterSuccess(t *testing.T) {
 	proxy := &GridProxyClientMock{}
-	proxy.AddNode(1, proxytypes.Node{
+	proxy.AddNode(1, proxyTypes.Node{
 		NodeID: 1,
-		TotalResources: proxytypes.Capacity{
+		TotalResources: proxyTypes.Capacity{
 			HRU: 5,
 			SRU: 10,
 			MRU: 15,
 		},
-		UsedResources: proxytypes.Capacity{
+		UsedResources: proxyTypes.Capacity{
 			HRU: 2,
 			SRU: 3,
 			MRU: 4,
 		},
 		FarmID: 1,
-		PublicConfig: proxytypes.PublicConfig{
+		PublicConfig: proxyTypes.PublicConfig{
 			Domain: "a",
 			Ipv4:   "a",
 			Ipv6:   "d",
 		},
 	})
-	proxy.AddFarm(proxytypes.Farm{
+	proxy.AddFarm(proxyTypes.Farm{
 		Name:   "freefarm",
 		FarmID: 1,
 	})
 	scheduler := NewScheduler(proxy, 1)
 	nodeID, err := scheduler.Schedule(&Request{
-		Cap: Capacity{
-			Hru:    2,
-			Sru:    6,
-			Memory: 10,
+		Capacity: Capacity{
+			HRU: 2,
+			SRU: 6,
+			MRU: 10,
 		},
 		HasIPv4:   true,
 		Name:      "req",
@@ -333,10 +333,10 @@ func TestSchedulerSuccessAfterSuccess(t *testing.T) {
 	assert.Equal(t, nodeID, uint32(1), "the node id should be 1")
 
 	_, err = scheduler.Schedule(&Request{
-		Cap: Capacity{
-			Hru:    1,
-			Sru:    1,
-			Memory: 1,
+		Capacity: Capacity{
+			HRU: 1,
+			SRU: 1,
+			MRU: 1,
 		},
 		HasIPv4:   true,
 		Name:      "req",
