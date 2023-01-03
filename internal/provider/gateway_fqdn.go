@@ -1,3 +1,4 @@
+// Package provider is the terraform provider
 package provider
 
 import (
@@ -75,7 +76,7 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 }
 
 func (k *GatewayFQDNDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error {
-	return isNodesUp(ctx, sub, []uint32{k.Node}, k.ncPool)
+	return client.AreNodesUp(ctx, sub, []uint32{k.Node}, k.ncPool)
 }
 
 func (k *GatewayFQDNDeployer) Marshal(d *schema.ResourceData) (errors error) {
