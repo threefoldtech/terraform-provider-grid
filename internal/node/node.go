@@ -79,6 +79,7 @@ import (
 	"time"
 
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
+	"github.com/threefoldtech/zos/client"
 	"github.com/threefoldtech/zos/pkg/capacity/dmi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/rmb"
@@ -281,11 +282,23 @@ func (n *NodeClient) SystemHypervisor(ctx context.Context) (result string, err e
 	return
 }
 
+// SystemVersion executes system version cmd
+func (n *NodeClient) SystemVersion(ctx context.Context) (ver client.Version, err error) {
+	const cmd = "zos.system.version"
+
+	if err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &ver); err != nil {
+		return
+	}
+
+	return
+}
+
+// IsNodeUp checks if the node is up
 func (n *NodeClient) IsNodeUp(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	_, err := n.NetworkListInterfaces(ctx)
+	_, err := n.SystemVersion(ctx)
 	if err != nil {
 		return err
 	}
@@ -293,6 +306,7 @@ func (n *NodeClient) IsNodeUp(ctx context.Context) error {
 	return nil
 }
 
+// AreNodesUp checks if nodes are up
 func AreNodesUp(ctx context.Context, sub subi.SubstrateExt, nodes []uint32, nc NodeClientGetter) error {
 	for _, node := range nodes {
 		cl, err := nc.GetNodeClient(sub, node)
