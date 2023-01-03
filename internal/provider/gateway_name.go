@@ -1,3 +1,4 @@
+// Package provider is the terraform provider
 package provider
 
 import (
@@ -80,7 +81,7 @@ func NewGatewayNameDeployer(d *schema.ResourceData, apiClient *apiClient) (Gatew
 }
 
 func (k *GatewayNameDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error {
-	return isNodesUp(ctx, sub, []uint32{k.Node}, k.ncPool)
+	return client.AreNodesUp(ctx, sub, []uint32{k.Node}, k.ncPool)
 }
 
 func (k *GatewayNameDeployer) Marshal(d *schema.ResourceData) (errors error) {

@@ -1,3 +1,4 @@
+// Package provider is the terraform provider
 package provider
 
 import (
@@ -32,7 +33,7 @@ func TestNameValidateNodeNotReachable(t *testing.T) {
 		Call(
 			gomock.Any(),
 			uint32(10),
-			"zos.network.interfaces",
+			"zos.system.version",
 			nil,
 			gomock.Any(),
 		).
@@ -71,7 +72,7 @@ func TestNameValidateNodeReachable(t *testing.T) {
 		Call(
 			gomock.Any(),
 			uint32(10),
-			"zos.network.interfaces",
+			"zos.system.version",
 			nil,
 			gomock.Any(),
 		).
@@ -184,7 +185,7 @@ func TestNameDeploy(t *testing.T) {
 	cl.EXPECT().Call(
 		gomock.Any(),
 		uint32(12),
-		"zos.network.interfaces",
+		"zos.system.version",
 		gomock.Any(),
 		gomock.Any(),
 	).Return(nil)
@@ -239,7 +240,7 @@ func TestNameUpdate(t *testing.T) {
 	cl.EXPECT().Call(
 		gomock.Any(),
 		uint32(12),
-		"zos.network.interfaces",
+		"zos.system.version",
 		gomock.Any(),
 		gomock.Any(),
 	).Return(nil)
@@ -293,7 +294,7 @@ func TestNameUpdateFailed(t *testing.T) {
 	cl.EXPECT().Call(
 		gomock.Any(),
 		uint32(12),
-		"zos.network.interfaces",
+		"zos.system.version",
 		gomock.Any(),
 		gomock.Any(),
 	).Return(nil)
