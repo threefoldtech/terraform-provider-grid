@@ -42,7 +42,11 @@ func dataSourceGatewayDomain() *schema.Resource {
 
 // TODO: make this non failing
 func dataSourceGatewayRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	apiClient := meta.(*apiClient)
+	apiClient, ok := meta.(*apiClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into api client"))
+	}
+
 	nodeID := uint32(d.Get("node").(int))
 	name := d.Get("name").(string)
 	ncPool := client.NewNodeClientPool(apiClient.rmb)

@@ -1048,7 +1048,11 @@ func (k *K8sDeployer) getK8sFreeIP(ipRange gridtypes.IPNet, nodeID uint32) (stri
 
 func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	apiClient := meta.(*apiClient)
+	apiClient, ok := meta.(*apiClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into api client"))
+	}
+
 	deployer, err := NewK8sDeployer(d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
@@ -1078,7 +1082,11 @@ func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 
 func resourceK8sUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	apiClient := meta.(*apiClient)
+	apiClient, ok := meta.(*apiClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into api client"))
+	}
+
 	deployer, err := NewK8sDeployer(d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
@@ -1106,7 +1114,11 @@ func resourceK8sUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 
 func resourceK8sRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	apiClient := meta.(*apiClient)
+	apiClient, ok := meta.(*apiClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into api client"))
+	}
+
 	deployer, err := NewK8sDeployer(d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
@@ -1140,7 +1152,11 @@ func resourceK8sRead(ctx context.Context, d *schema.ResourceData, meta interface
 
 func resourceK8sDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	apiClient := meta.(*apiClient)
+	apiClient, ok := meta.(*apiClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into api client"))
+	}
+
 	deployer, err := NewK8sDeployer(d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
