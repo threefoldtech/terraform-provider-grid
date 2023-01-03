@@ -4,7 +4,6 @@ package state
 import (
 	"encoding/json"
 	"os"
-	"reflect"
 
 	"github.com/pkg/errors"
 )
@@ -22,16 +21,21 @@ const (
 // ErrWrongDBType is an error for wrong db type
 var ErrWrongDBType = errors.New("wrong db type")
 
+// FileDB struct is the state file for DB
+type FileDB struct {
+	st StateI
+}
+
 // NewLocalStateDB generates a new local state
 func NewLocalStateDB(t DBType) (DB, error) {
 	if t == TypeFile {
-		return &fileDB{}, nil
+		return &FileDB{}, nil
 	}
 	return nil, ErrWrongDBType
 }
 
 // Load loads state from state.json file
-func (f *fileDB) Load() error {
+func (f *FileDB) Load() error {
 	// os.OpenFile(FileName, os.O_CREATE, 0644)
 	f.st = &State{}
 	_, err := os.Stat(FileName)
@@ -55,8 +59,8 @@ func (f *fileDB) Load() error {
 }
 
 // GetState returns the current state
-func (f *FileDB) GetState() State {
-	if reflect.DeepEqual(f.st, State{}) {
+func (f *FileDB) GetState() StateI {
+	if f.st == nil {
 		state := NewState()
 		f.st = state
 	}
@@ -64,8 +68,8 @@ func (f *FileDB) GetState() State {
 }
 
 // Save saves the state to the state,json file
-func (f *fileDB) Save() error {
-	if content, err := f.st.Marshal(); err == nil {
+func (f *FileDB) Save() error {
+	if content, err := json.Marshal(f.st); err == nil {
 		err = os.WriteFile(FileName, content, 0644)
 		if err != nil {
 			return errors.Wrapf(err, "failed to write file: %s", FileName)
@@ -77,6 +81,6 @@ func (f *fileDB) Save() error {
 }
 
 // Delete deletes state,json file
-func (f *fileDB) Delete() error {
+func (f *FileDB) Delete() error {
 	return os.Remove(FileName)
 }

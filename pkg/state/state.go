@@ -1,8 +1,6 @@
 // Package state provides a state to save the user work in a database.
 package state
 
-import "encoding/json"
-
 // State struct
 type State struct {
 	Networks NetworkMap `json:"networks"`
@@ -14,16 +12,6 @@ func (s *State) GetNetworkState() NetworkState {
 		s.Networks = make(NetworkMap)
 	}
 	return s.Networks
-}
-
-// Marshal to json marshal a state
-func (s *State) Marshal() ([]byte, error) {
-	return json.Marshal(s)
-}
-
-// Unmarshal to json unmarshal a state
-func (s *State) Unmarshal(data []byte) error {
-	return json.Unmarshal(data, &s)
 }
 
 // NewState generates a new state

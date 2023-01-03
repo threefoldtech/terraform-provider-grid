@@ -14,7 +14,7 @@ type DB interface {
 // StateI interface for state
 type StateI interface {
 	// GetNetworks retrieves network state from local state
-	GetNetworkState() NetworkMap
+	GetNetworkState() NetworkState
 }
 
 // NetworkState interface for network state
