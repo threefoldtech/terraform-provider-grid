@@ -271,9 +271,11 @@ func (d *DeployerImpl) GetDeployments(ctx context.Context, sub subi.SubstrateExt
 		wg.Add(1)
 		go func(nodeID uint32, dlID uint64) {
 
+			defer wg.Done()
 			nc, err := d.ncPool.GetNodeClient(sub, nodeID)
 			if err != nil {
 				resErrors = multierror.Append(resErrors, errors.Wrapf(err, "failed to get a client for node %d", nodeID))
+				return
 			}
 
 			sub, cancel := context.WithTimeout(ctx, 10*time.Second)
@@ -282,6 +284,7 @@ func (d *DeployerImpl) GetDeployments(ctx context.Context, sub subi.SubstrateExt
 			dl, err := nc.DeploymentGet(sub, dlID)
 			if err != nil {
 				resErrors = multierror.Append(resErrors, errors.Wrapf(err, "failed to get deployment %d of node %d", dlID, nodeID))
+				return
 			}
 
 			mux.Lock()

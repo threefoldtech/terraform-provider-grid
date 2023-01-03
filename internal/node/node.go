@@ -321,6 +321,7 @@ func AreNodesUp(ctx context.Context, sub subi.SubstrateExt, nodes []uint32, nc N
 			cl, clientErr := nc.GetNodeClient(sub, node)
 			if clientErr != nil {
 				err = multierror.Append(err, fmt.Errorf("couldn't get node %d client: %w", node, clientErr))
+				return
 			}
 			if clientErr := cl.IsNodeUp(ctx); clientErr != nil {
 				err = multierror.Append(err, fmt.Errorf("couldn't reach node %d: %w", node, clientErr))
