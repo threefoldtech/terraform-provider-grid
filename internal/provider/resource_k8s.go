@@ -1,3 +1,4 @@
+// Package provider is the terraform provider
 package provider
 
 import (
@@ -18,6 +19,7 @@ import (
 	"github.com/threefoldtech/terraform-provider-grid/pkg/deployer"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/state"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
@@ -603,7 +605,7 @@ func (d *K8sDeployer) validateChecksums() error {
 		if vm.FlistChecksum == "" {
 			continue
 		}
-		checksum, err := getFlistChecksum(vm.Flist)
+		checksum, err := workloads.GetFlistChecksum(vm.Flist)
 		if err != nil {
 			return errors.Wrapf(err, "couldn't get flist %s hash", vm.Flist)
 		}
@@ -612,7 +614,7 @@ func (d *K8sDeployer) validateChecksums() error {
 				vm.FlistChecksum,
 				vm.Name,
 				checksum,
-				flistChecksumURL(vm.Flist),
+				workloads.FlistChecksumURL(vm.Flist),
 			)
 		}
 	}
@@ -677,7 +679,7 @@ func (k *K8sDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error
 		nodes = append(nodes, w.Node)
 
 	}
-	return isNodesUp(ctx, sub, nodes, k.ncPool)
+	return client.AreNodesUp(ctx, sub, nodes, k.ncPool)
 }
 
 func (k *K8sDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, cl *apiClient) error {
@@ -968,7 +970,7 @@ func (k *K8sDeployer) updateFromRemote(ctx context.Context, sub subi.SubstrateEx
 
 func (k *K8sNodeData) GenerateK8sWorkload(deployer *K8sDeployer, masterIP string) []gridtypes.Workload {
 	diskName := fmt.Sprintf("%sdisk", k.Name)
-	workloads := make([]gridtypes.Workload, 0)
+	K8sWorkloads := make([]gridtypes.Workload, 0)
 	diskWorkload := gridtypes.Workload{
 		Name:        gridtypes.Name(diskName),
 		Version:     0,
@@ -978,11 +980,11 @@ func (k *K8sNodeData) GenerateK8sWorkload(deployer *K8sDeployer, masterIP string
 			Size: gridtypes.Unit(k.DiskSize) * gridtypes.Gigabyte,
 		}),
 	}
-	workloads = append(workloads, diskWorkload)
+	K8sWorkloads = append(K8sWorkloads, diskWorkload)
 	publicIPName := ""
 	if k.PublicIP || k.PublicIP6 {
 		publicIPName = fmt.Sprintf("%sip", k.Name)
-		workloads = append(workloads, constructPublicIPWorkload(publicIPName, k.PublicIP, k.PublicIP6))
+		K8sWorkloads = append(K8sWorkloads, workloads.ConstructPublicIPWorkload(publicIPName, k.PublicIP, k.PublicIP6))
 	}
 	envVars := map[string]string{
 		"SSH_KEY":           deployer.SSHKey,
@@ -1022,9 +1024,9 @@ func (k *K8sNodeData) GenerateK8sWorkload(deployer *K8sDeployer, masterIP string
 			Env: envVars,
 		}),
 	}
-	workloads = append(workloads, workload)
+	K8sWorkloads = append(K8sWorkloads, workload)
 
-	return workloads
+	return K8sWorkloads
 }
 
 func (k *K8sDeployer) getK8sFreeIP(ipRange gridtypes.IPNet, nodeID uint32) (string, error) {

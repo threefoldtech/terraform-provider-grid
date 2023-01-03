@@ -74,8 +74,13 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"net"
+	"sync"
+	"time"
 
+	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
+	"github.com/threefoldtech/zos/client"
 	"github.com/threefoldtech/zos/pkg/capacity/dmi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/rmb"
@@ -275,5 +280,54 @@ func (n *NodeClient) SystemHypervisor(ctx context.Context) (result string, err e
 		return
 	}
 
+	return
+}
+
+// SystemVersion executes system version cmd
+func (n *NodeClient) SystemVersion(ctx context.Context) (ver client.Version, err error) {
+	const cmd = "zos.system.version"
+
+	if err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &ver); err != nil {
+		return
+	}
+
+	return
+}
+
+// IsNodeUp checks if the node is up
+func (n *NodeClient) IsNodeUp(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	_, err := n.SystemVersion(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// AreNodesUp checks if nodes are up
+func AreNodesUp(ctx context.Context, sub subi.SubstrateExt, nodes []uint32, nc NodeClientGetter) (err error) {
+	var wg sync.WaitGroup
+
+	for _, node := range nodes {
+
+		wg.Add(1)
+		go func(node uint32) {
+
+			defer wg.Done()
+			cl, clientErr := nc.GetNodeClient(sub, node)
+			if clientErr != nil {
+				err = fmt.Errorf("couldn't get node %d client: %w", node, clientErr)
+			}
+			if clientErr := cl.IsNodeUp(ctx); clientErr != nil {
+				err = fmt.Errorf("couldn't reach node %d: %w", node, clientErr)
+			}
+
+		}(node)
+	}
+
+	wg.Wait()
 	return
 }

@@ -1,3 +1,4 @@
+// Package provider is the terraform provider
 package provider
 
 // Contains check if a slice contains an element
