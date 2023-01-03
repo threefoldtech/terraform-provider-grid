@@ -19,7 +19,7 @@ type Request struct {
 	HasDomain bool
 	Certified bool
 
-	// It is used if the Farm name is unknown
+	// It is used if the Farm name is unknown ahead of time in tests and used in validation
 	farmID int
 }
 
