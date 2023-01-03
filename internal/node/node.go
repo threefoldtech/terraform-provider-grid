@@ -76,6 +76,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
@@ -307,16 +308,26 @@ func (n *NodeClient) IsNodeUp(ctx context.Context) error {
 }
 
 // AreNodesUp checks if nodes are up
-func AreNodesUp(ctx context.Context, sub subi.SubstrateExt, nodes []uint32, nc NodeClientGetter) error {
+func AreNodesUp(ctx context.Context, sub subi.SubstrateExt, nodes []uint32, nc NodeClientGetter) (err error) {
+	var wg sync.WaitGroup
+
 	for _, node := range nodes {
-		cl, err := nc.GetNodeClient(sub, node)
-		if err != nil {
-			return fmt.Errorf("couldn't get node %d client: %w", node, err)
-		}
-		if err := cl.IsNodeUp(ctx); err != nil {
-			return fmt.Errorf("couldn't reach node %d: %w", node, err)
-		}
+
+		wg.Add(1)
+		go func(node uint32) {
+
+			defer wg.Done()
+			cl, clientErr := nc.GetNodeClient(sub, node)
+			if clientErr != nil {
+				err = fmt.Errorf("couldn't get node %d client: %w", node, clientErr)
+			}
+			if clientErr := cl.IsNodeUp(ctx); clientErr != nil {
+				err = fmt.Errorf("couldn't reach node %d: %w", node, clientErr)
+			}
+
+		}(node)
 	}
 
-	return nil
+	wg.Wait()
+	return
 }
