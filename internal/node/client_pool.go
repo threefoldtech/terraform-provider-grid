@@ -8,8 +8,6 @@ import (
 	"github.com/threefoldtech/zos/pkg/rmb"
 )
 
-var mux sync.RWMutex
-
 // NodeClientGetter is an interface for node client
 type NodeClientGetter interface {
 	GetNodeClient(sub subi.SubstrateExt, nodeID uint32) (*NodeClient, error)
@@ -19,6 +17,7 @@ type NodeClientGetter interface {
 type NodeClientPool struct {
 	clients map[uint32]*NodeClient
 	rmb     rmb.Client
+	mux     *sync.RWMutex
 }
 
 // NewNodeClientPool generates a new client pool
@@ -31,9 +30,9 @@ func NewNodeClientPool(rmb rmb.Client) *NodeClientPool {
 
 // GetNodeClient gets the node client according to node ID
 func (p *NodeClientPool) GetNodeClient(sub subi.SubstrateExt, nodeID uint32) (*NodeClient, error) {
-	mux.RLock()
+	p.mux.RLock()
 	cl, ok := p.clients[nodeID]
-	mux.RUnlock()
+	p.mux.RUnlock()
 
 	if ok {
 		return cl, nil
@@ -46,9 +45,9 @@ func (p *NodeClientPool) GetNodeClient(sub subi.SubstrateExt, nodeID uint32) (*N
 
 	cl = NewNodeClient(uint32(twinID), p.rmb)
 
-	mux.Lock()
+	p.mux.Lock()
 	p.clients[nodeID] = cl
-	mux.Unlock()
+	p.mux.Unlock()
 
 	return cl, nil
 }
