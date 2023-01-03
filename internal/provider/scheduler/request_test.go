@@ -16,7 +16,7 @@ func TestFulfilsSuccess(t *testing.T) {
 		HasDomain:    true,
 	}
 	assert.Equal(t, nodeInfo.fulfils(&Request{
-		Cap: Capacity{
+		Capacity: Capacity{
 			MRU: 3,
 			SRU: 3,
 			HRU: 3,
@@ -37,7 +37,7 @@ func TestFulfilsFail(t *testing.T) {
 	}
 
 	req := Request{
-		Cap: Capacity{
+		Capacity: Capacity{
 			MRU: 3,
 			SRU: 8,
 			HRU: 3,
@@ -47,9 +47,9 @@ func TestFulfilsFail(t *testing.T) {
 		HasDomain: false,
 	}
 	violations := map[string]func(r *Request){
-		"mru":     func(r *Request) { r.Cap.MRU = 4 },
-		"sru":     func(r *Request) { r.Cap.SRU = 9 },
-		"hru":     func(r *Request) { r.Cap.HRU = 4 },
+		"mru":     func(r *Request) { r.Capacity.MRU = 4 },
+		"sru":     func(r *Request) { r.Capacity.SRU = 9 },
+		"hru":     func(r *Request) { r.Capacity.HRU = 4 },
 		"farm_id": func(r *Request) { r.farmID = 2 },
 		"ipv4":    func(r *Request) { r.HasIPv4 = true },
 		"domain":  func(r *Request) { r.HasDomain = true },
@@ -64,7 +64,7 @@ func TestFulfilsFail(t *testing.T) {
 func TestConstructFilter(t *testing.T) {
 	var farm string = "freefarm"
 	r := Request{
-		Cap: Capacity{
+		Capacity: Capacity{
 			MRU: 1,
 			SRU: 2,
 			HRU: 3,

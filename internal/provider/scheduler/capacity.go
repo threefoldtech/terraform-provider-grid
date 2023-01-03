@@ -13,9 +13,9 @@ type Capacity struct {
 }
 
 func (c *Capacity) consume(r *Request) {
-	c.MRU -= r.Cap.MRU
-	c.HRU -= r.Cap.HRU
-	c.SRU -= r.Cap.SRU
+	c.MRU -= r.Capacity.MRU
+	c.HRU -= r.Capacity.HRU
+	c.SRU -= r.Capacity.SRU
 }
 
 func freeCapacity(node *proxyTypes.Node) Capacity {

@@ -110,7 +110,7 @@ func parseRequests(d *schema.ResourceData, assignment map[string]uint32) []sched
 			HasIPv4:   mp["ipv4"].(bool),
 			HasDomain: mp["domain"].(bool),
 			Certified: mp["certified"].(bool),
-			Cap: scheduler.Capacity{
+			Capacity: scheduler.Capacity{
 				MRU: uint64(mp["mru"].(int)) * uint64(gridtypes.Megabyte),
 				HRU: uint64(mp["hru"].(int)) * uint64(gridtypes.Megabyte),
 				SRU: uint64(mp["sru"].(int)) * uint64(gridtypes.Megabyte),

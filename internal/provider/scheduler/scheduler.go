@@ -19,9 +19,9 @@ type nodeInfo struct {
 }
 
 func (node *nodeInfo) fulfils(r *Request) bool {
-	if r.Cap.MRU > node.FreeCapacity.MRU ||
-		r.Cap.HRU > node.FreeCapacity.HRU ||
-		r.Cap.SRU > node.FreeCapacity.SRU ||
+	if r.Capacity.MRU > node.FreeCapacity.MRU ||
+		r.Capacity.HRU > node.FreeCapacity.HRU ||
+		r.Capacity.SRU > node.FreeCapacity.SRU ||
 		(r.farmID != 0 && node.FarmID != r.farmID) ||
 		(r.HasDomain && !node.HasDomain) ||
 		(r.HasIPv4 && !node.HasIPv4) {

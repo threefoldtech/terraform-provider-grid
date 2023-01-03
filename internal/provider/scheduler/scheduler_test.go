@@ -81,7 +81,7 @@ func TestSchedulerEmpty(t *testing.T) {
 	proxy := &GridProxyClientMock{}
 	scheduler := NewScheduler(proxy, 1)
 	_, err := scheduler.Schedule(&Request{
-		Cap: Capacity{
+		Capacity: Capacity{
 			MRU: 1,
 			SRU: 2,
 			HRU: 3,
@@ -122,7 +122,7 @@ func TestSchedulerSuccess(t *testing.T) {
 	})
 	scheduler := NewScheduler(proxy, 1)
 	nodeID, err := scheduler.Schedule(&Request{
-		Cap: Capacity{
+		Capacity: Capacity{
 			HRU: 3,
 			SRU: 7,
 			MRU: 11,
@@ -167,7 +167,7 @@ func TestSchedulerSuccessOn4thPage(t *testing.T) {
 	})
 	scheduler := NewScheduler(proxy, 1)
 	nodeID, err := scheduler.Schedule(&Request{
-		Cap: Capacity{
+		Capacity: Capacity{
 			HRU: 3,
 			SRU: 7,
 			MRU: 11,
@@ -209,7 +209,7 @@ func TestSchedulerFailure(t *testing.T) {
 	})
 
 	req := Request{
-		Cap: Capacity{
+		Capacity: Capacity{
 			HRU: 3,
 			SRU: 7,
 			MRU: 11,
@@ -221,9 +221,9 @@ func TestSchedulerFailure(t *testing.T) {
 		Certified: false,
 	}
 	violations := map[string]func(r *Request){
-		"mru":    func(r *Request) { r.Cap.MRU = 12 },
-		"sru":    func(r *Request) { r.Cap.SRU = 18 },
-		"hru":    func(r *Request) { r.Cap.HRU = 4 },
+		"mru":    func(r *Request) { r.Capacity.MRU = 12 },
+		"sru":    func(r *Request) { r.Capacity.SRU = 18 },
+		"hru":    func(r *Request) { r.Capacity.HRU = 4 },
 		"ipv4":   func(r *Request) { r.HasIPv4 = true },
 		"domain": func(r *Request) { r.HasDomain = true },
 	}
@@ -262,7 +262,7 @@ func TestSchedulerFailureAfterSuccess(t *testing.T) {
 	})
 	scheduler := NewScheduler(proxy, 1)
 	nodeID, err := scheduler.Schedule(&Request{
-		Cap: Capacity{
+		Capacity: Capacity{
 			HRU: 2,
 			SRU: 6,
 			MRU: 10,
@@ -277,7 +277,7 @@ func TestSchedulerFailureAfterSuccess(t *testing.T) {
 	assert.Equal(t, nodeID, uint32(1), "the node id should be 1")
 
 	_, err = scheduler.Schedule(&Request{
-		Cap: Capacity{
+		Capacity: Capacity{
 			HRU: 1,
 			SRU: 1,
 			MRU: 2, // this violates
@@ -318,7 +318,7 @@ func TestSchedulerSuccessAfterSuccess(t *testing.T) {
 	})
 	scheduler := NewScheduler(proxy, 1)
 	nodeID, err := scheduler.Schedule(&Request{
-		Cap: Capacity{
+		Capacity: Capacity{
 			HRU: 2,
 			SRU: 6,
 			MRU: 10,
@@ -333,7 +333,7 @@ func TestSchedulerSuccessAfterSuccess(t *testing.T) {
 	assert.Equal(t, nodeID, uint32(1), "the node id should be 1")
 
 	_, err = scheduler.Schedule(&Request{
-		Cap: Capacity{
+		Capacity: Capacity{
 			HRU: 1,
 			SRU: 1,
 			MRU: 1,
