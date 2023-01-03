@@ -1,7 +1,7 @@
 package state
 
 type DB interface {
-	// LoadState should retrieve local state
+	// Load should retrieve local state
 	Load() error
 	// GetState
 	GetState() StateI
@@ -14,10 +14,6 @@ type DB interface {
 type StateI interface {
 	// GetNetworks retrieves network state from local state
 	GetNetworkState() NetworkState
-	// Marshal
-	Marshal() ([]byte, error)
-	// Unmarshal
-	Unmarshal(data []byte) error
 }
 
 type NetworkState interface {

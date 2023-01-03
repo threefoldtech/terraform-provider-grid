@@ -150,9 +150,9 @@ func (d *DeployerImpl) deploy(
 				log.Printf("failed to send deployment deploy request to node %s", err)
 				if rerr != nil {
 					return currentDeployments, fmt.Errorf("error sending deployment to the node: %w, error cancelling contract: %s; you must cancel it manually (id: %d)", err, rerr, contractID)
-				} else {
-					return currentDeployments, errors.Wrap(err, "error sending deployment to the node")
 				}
+				return currentDeployments, errors.Wrap(err, "error sending deployment to the node")
+
 			}
 			currentDeployments[node] = dl.ContractID
 			newWorkloadVersions := map[string]uint32{}
@@ -281,12 +281,12 @@ type Progress struct {
 	stateOk int
 }
 
-func getExponentialBackoff(initial_interval time.Duration, multiplier float64, max_interval time.Duration, max_elapsed_time time.Duration) *backoff.ExponentialBackOff {
+func getExponentialBackoff(initialInterval time.Duration, multiplier float64, maxInterval time.Duration, maxElapsedTime time.Duration) *backoff.ExponentialBackOff {
 	b := backoff.NewExponentialBackOff()
-	b.InitialInterval = initial_interval
+	b.InitialInterval = initialInterval
 	b.Multiplier = multiplier
-	b.MaxInterval = max_interval
-	b.MaxElapsedTime = max_elapsed_time
+	b.MaxInterval = maxInterval
+	b.MaxElapsedTime = maxElapsedTime
 	return b
 }
 

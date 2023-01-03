@@ -62,6 +62,7 @@ func (r *ProxyBus) resultEndpoint(twinID uint32, retqueue string) string {
 	return fmt.Sprintf("%s/twin/%d/%s", r.endpoint, twinID, retqueue)
 }
 
+// Call calls a function via rmb
 func (r *ProxyBus) Call(ctx context.Context, twin uint32, fn string, data interface{}, result interface{}) error {
 	bs, err := json.Marshal(data)
 	if err != nil {
@@ -164,7 +165,7 @@ func (r *ProxyBus) pollResponse(ctx context.Context, twin uint32, retqueue strin
 			resp, lerr := http.Get(r.resultEndpoint(twin, retqueue))
 			if lerr != nil {
 				log.Printf("failed to send result-fetching request: %s", err.Error())
-				errCount += 1
+				errCount++
 				err = lerr
 				continue
 			}
@@ -174,13 +175,13 @@ func (r *ProxyBus) pollResponse(ctx context.Context, twin uint32, retqueue strin
 			}
 			if resp.StatusCode != http.StatusOK {
 				err = parseError(resp)
-				errCount += 1
+				errCount++
 				continue
 			}
 			var msgs []rmb.Message
 			if lerr := json.NewDecoder(resp.Body).Decode(&msgs); lerr != nil {
 				err = lerr
-				errCount += 1
+				errCount++
 				continue
 			}
 			if len(msgs) == 0 {
