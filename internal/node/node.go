@@ -79,6 +79,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/client"
 	"github.com/threefoldtech/zos/pkg/capacity/dmi"
@@ -319,10 +320,11 @@ func AreNodesUp(ctx context.Context, sub subi.SubstrateExt, nodes []uint32, nc N
 			defer wg.Done()
 			cl, clientErr := nc.GetNodeClient(sub, node)
 			if clientErr != nil {
-				err = fmt.Errorf("couldn't get node %d client: %w", node, clientErr)
+				err = multierror.Append(err, fmt.Errorf("couldn't get node %d client: %w", node, clientErr))
+				return
 			}
 			if clientErr := cl.IsNodeUp(ctx); clientErr != nil {
-				err = fmt.Errorf("couldn't reach node %d: %w", node, clientErr)
+				err = multierror.Append(err, fmt.Errorf("couldn't reach node %d: %w", node, clientErr))
 			}
 
 		}(node)
