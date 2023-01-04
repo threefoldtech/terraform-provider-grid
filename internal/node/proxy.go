@@ -195,6 +195,7 @@ func (r *ProxyBus) pollResponse(ctx context.Context, twin uint32, retqueue strin
 }
 
 func parseError(resp *http.Response) error {
+	defer resp.Body.Close()
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return errors.Wrapf(err, "failed to read error response (%d)", resp.StatusCode)
