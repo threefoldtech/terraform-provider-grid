@@ -745,7 +745,11 @@ func (k *NetworkDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt) err
 
 func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	apiClient := meta.(*apiClient)
+	apiClient, ok := meta.(*apiClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into api client"))
+	}
+
 	deployer, err := NewNetworkDeployer(ctx, d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
@@ -773,7 +777,11 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 
 func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	apiClient := meta.(*apiClient)
+	apiClient, ok := meta.(*apiClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into api client"))
+	}
+
 	deployer, err := NewNetworkDeployer(ctx, d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
@@ -800,7 +808,11 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 
 func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	apiClient := meta.(*apiClient)
+	apiClient, ok := meta.(*apiClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into api client"))
+	}
+
 	deployer, err := NewNetworkDeployer(ctx, d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
@@ -829,7 +841,11 @@ func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta inter
 
 func resourceNetworkDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	apiClient := meta.(*apiClient)
+	apiClient, ok := meta.(*apiClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into api client"))
+	}
+
 	deployer, err := NewNetworkDeployer(ctx, d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
