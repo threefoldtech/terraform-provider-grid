@@ -1,0 +1,81 @@
+//go:build integration
+// +build integration
+
+package integrationtests
+
+import (
+	"log"
+	"strings"
+	"testing"
+
+	"github.com/gruntwork-io/terratest/modules/terraform"
+	"github.com/stretchr/testify/assert"
+	"github.com/threefoldtech/terraform-provider-grid/integrationtests"
+)
+
+func TestSingleVMDeployment(t *testing.T) {
+	/* Test case for deployeng a singlenode.
+
+	   **Test Scenario**
+
+	   - Deploy a singlenode.
+	   - Check that the outputs not empty.
+	   - Up wireguard.
+	   - Check that vm is reachable
+	   - Verify the VMs ips
+	   - Check that env variables set successfully.
+	   - Destroy the deployment
+
+	*/
+	t.TempDir()
+	// retryable errors in terraform testing.
+	// generate ssh keys for test
+	pk, sk, err := tests.GenerateSSHKeyPair()
+	if err != nil {
+		log.Fatal(err)
+	}
+	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
+		TerraformDir: "./",
+		Vars: map[string]interface{}{
+			"public_key": pk,
+		},
+		Parallelism: 1,
+	})
+	defer terraform.Destroy(t, terraformOptions)
+
+	terraform.InitAndApply(t, terraformOptions)
+
+	// Check that the outputs not empty
+	publicIP := terraform.Output(t, terraformOptions, "public_ip")
+	assert.NotEmpty(t, publicIP)
+
+	node1Container1IP := terraform.Output(t, terraformOptions, "node1_container1_ip")
+	assert.NotEmpty(t, node1Container1IP)
+
+	node1Container2IP := terraform.Output(t, terraformOptions, "node1_container2_ip")
+	assert.NotEmpty(t, node1Container2IP)
+
+	// Up wireguard
+	wgConfig := terraform.Output(t, terraformOptions, "wg_config")
+	assert.NotEmpty(t, wgConfig)
+
+	pIP := strings.Split(publicIP, "/")[0]
+	err = tests.Wait(pIP, "22")
+	assert.NoError(t, err)
+
+	_, err = tests.UpWg(wgConfig)
+	defer func() {
+		_, err := tests.DownWG()
+		assert.NoError(t, err)
+	}()
+
+	isIPReachable := []string{publicIP, node1Container1IP, node1Container2IP} //IPsToCheck
+	assert.NoError(t, err)
+	err = tests.isIPReachable(wgConfig, isIPReachable, sk)
+	assert.NoError(t, err)
+
+	// Check that env variables set successfully
+	res, err := tests.RemoteRun("root", pIP, "cat /proc/1/environ", sk)
+	assert.NoError(t, err)
+	assert.Contains(t, string(res), "TEST_VAR=this value for test")
+}
