@@ -48,7 +48,7 @@ func TestKubernetesDeployment(t *testing.T) {
 	terraform.InitAndApply(t, terraformOptions)
 
 	// Check that the outputs not empty
-	masterPublicIP := terraform.Output(t, terraformOptions, "master_public_ip")
+	masterPublicIP := terraform.Output(t, terraformOptions, "computed_master_public_ip")
 	assert.NotEmpty(t, masterPublicIP)
 
 	// Up wireguard

@@ -1,9 +1,11 @@
+// Package workloads includes workloads types (vm, zdb, qsfs, public IP, gateway name, gateway fqdn, disk)
 package workloads
 
 import (
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
+// NewDeployment generates a new deployment
 func NewDeployment(twin uint32) gridtypes.Deployment {
 	return gridtypes.Deployment{
 		Version: 0,

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"log"
 
@@ -51,11 +50,10 @@ func main() {
 	opts := &plugin.ServeOpts{ProviderFunc: providerFunc}
 
 	if debugMode {
+		opts.Debug = true
 		// TODO: update this string with the full name of your provider as used in your configs
-		err := plugin.Debug(context.Background(), "registry.terraform.io/hashicorp/scaffolding", opts)
-		if err != nil {
-			log.Fatal(err.Error())
-		}
+		opts.ProviderAddr = "registry.terraform.io/hashicorp/scaffolding"
+		plugin.Serve(opts)
 		return
 	}
 

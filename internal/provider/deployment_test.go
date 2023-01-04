@@ -1,3 +1,4 @@
+// Package provider is the terraform provider
 package provider
 
 import (
@@ -17,7 +18,7 @@ import (
 )
 
 func constructTestDeployer(ctrl *gomock.Controller) DeploymentDeployer {
-	pool := mock.NewMockNodeClientCollection(ctrl)
+	pool := mock.NewMockNodeClientGetter(ctrl)
 	deployer := mock.NewMockDeployer(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
 	manager := mock.NewMockManager(ctrl)
@@ -86,7 +87,7 @@ func constructTestDeployer(ctrl *gomock.Controller) DeploymentDeployer {
 				YggIP:         "::8/64",
 				IP:            "10.10.10.10",
 				Description:   "vm1_description",
-				Cpu:           1,
+				CPU:           1,
 				Memory:        1024,
 				RootfsSize:    1024,
 				Entrypoint:    "/sbin/zinit init",
@@ -127,7 +128,7 @@ func constructTestDeployer(ctrl *gomock.Controller) DeploymentDeployer {
 				YggIP:         "::8/64",
 				IP:            "10.10.10.10",
 				Description:   "vm2_description",
-				Cpu:           1,
+				CPU:           1,
 				Memory:        1024,
 				RootfsSize:    1024,
 				Entrypoint:    "/sbin/zinit init",
@@ -330,7 +331,8 @@ func TestDeploymentSync(t *testing.T) {
 	dls, err := d.GenerateVersionlessDeployments(context.Background())
 	assert.NoError(t, err)
 	dl := dls[d.Node]
-	json.NewEncoder(log.Writer()).Encode(dl.Workloads)
+	err = json.NewEncoder(log.Writer()).Encode(dl.Workloads)
+	assert.NoError(t, err)
 	for _, zlog := range dl.ByType(zos.ZLogsType) {
 		*zlog.Workload = zlog.WithResults(gridtypes.Result{
 			State: gridtypes.StateOk,
@@ -416,7 +418,7 @@ func TestDeploymentSync(t *testing.T) {
 	}
 	sub.EXPECT().IsValidContract(uint64(100)).Return(true, nil)
 	d.deployer.(*mock.MockDeployer).EXPECT().
-		GetDeploymentObjects(gomock.Any(), sub, map[uint32]uint64{10: 100}).
+		GetDeployments(gomock.Any(), sub, map[uint32]uint64{10: 100}).
 		Return(map[uint32]gridtypes.Deployment{
 			10: dl,
 		}, nil)

@@ -1,22 +1,21 @@
 name: Run Tests
 
-
 on:
   schedule:
-    - cron:  '0 0 * * *'
+    - cron: "0 0 * * *"
 
 jobs:
   go-tests:
     name: Run Go Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v3.2.0
         with:
-          submodules: 'true'
+          submodules: "true"
       - uses: actions/setup-go@v1
         with:
           go-version: 1.18
-      - uses: autero1/action-terraform@v0.1.0
+      - uses: autero1/action-terraform@v1.1.0
         env:
           ACTIONS_ALLOW_UNSECURE_COMMANDS: true
         with:
@@ -35,17 +34,9 @@ jobs:
           PEERS=$(curl https://raw.githubusercontent.com/threefoldtech/zos-config/main/development.json | jq '.yggdrasil.peers[]' -r | sed 's/\//\\\//g' | sed -z 's/\n/\\n/g')
           sudo  sed -i -- 's/Peers\: \[\]/Peers: [\n'"$PEERS"']/g' /etc/yggdrasil.conf
           sudo systemctl start yggdrasil
-      - name: Download gotestsum
-        working-directory: tests
-        run: |
-          sudo apt -y install gotestsum
-          go mod download
-          go install gotest.tools/gotestsum@latest
-          go mod tidy
       - name: Run Go Tests
         env:
           MNEMONICS: ${{ secrets.MNEMONICS }}
           NETWORK: "test"
         working-directory: tests
-        run: gotestsum ./... -p 1 --tags=integration
-
+        run: go test ./tests/... -p 1 --tags=integration

@@ -43,7 +43,7 @@ func TestMountWithBiggerFileDeployment(t *testing.T) {
 
 	terraform.InitAndApplyE(t, terraformOptions)
 
-	publicIP := terraform.Output(t, terraformOptions, "public_ip")
+	publicIP := terraform.Output(t, terraformOptions, "computed_public_ip")
 	assert.NotEmpty(t, publicIP)
 
 	// Up wireguard

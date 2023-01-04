@@ -1,20 +1,22 @@
 // Package client provides a simple RMB interface to work with the node.
 //
-// Requirements
+// # Requirements
 //
 // 1. A msgbusd instance must be running on the node. this client uses RMB (message bus)
 // to send messages to nodes, and get the repspons.
 // 2. A valid ed25519 key pair. this key is used to sign deployments and MUST be the same
 // key used to configure the local twin on substrate.
 //
-// Simple deployment
+// # Simple deployment
 //
 // create an instance from the default rmb client.
 // ```
 // cl, err := rmb.Default()
-// if err != nil {
-// 	panic(err)
-// }
+//
+//	if err != nil {
+//		panic(err)
+//	}
+//
 // ```
 // then create an instance of the node client
 // ```
@@ -22,52 +24,64 @@
 // ```
 // define your deployment object
 // ```
-// dl := gridtypes.Deployment{
-// 	Version: Version,
-// 	TwinID:  Twin, //LocalTwin,
-// 	// this contract id must match the one on substrate
-// 	Workloads: []gridtypes.Workload{
-// 		network(), // network workload definition
-// 		zmount(), // zmount workload definition
-// 		publicip(), // public ip definition
-// 		zmachine(), // zmachine definition
-// 	},
-// 	SignatureRequirement: gridtypes.SignatureRequirement{
-// 		WeightRequired: 1,
-// 		Requests: []gridtypes.SignatureRequest{
-// 			{
-// 				TwinID: Twin,
-// 				Weight: 1,
-// 			},
-// 		},
-// 	},
-// }
+//
+//	dl := gridtypes.Deployment{
+//		Version: Version,
+//		TwinID:  Twin, //LocalTwin,
+//		// this contract id must match the one on substrate
+//		Workloads: []gridtypes.Workload{
+//			network(), // network workload definition
+//			zmount(), // zmount workload definition
+//			publicip(), // public ip definition
+//			zmachine(), // zmachine definition
+//		},
+//		SignatureRequirement: gridtypes.SignatureRequirement{
+//			WeightRequired: 1,
+//			Requests: []gridtypes.SignatureRequest{
+//				{
+//					TwinID: Twin,
+//					Weight: 1,
+//				},
+//			},
+//		},
+//	}
+//
 // ```
 // compute hash
 // ```
 // hash, err := dl.ChallengeHash()
-// if err != nil {
-// 	panic("failed to create hash")
-// }
+//
+//	if err != nil {
+//		panic("failed to create hash")
+//	}
+//
 // fmt.Printf("Hash: %x\n", hash)
 // ```
 // create the contract and ge the contract id
 // then
-// ``
+// “
 // dl.ContractID = 11 // from substrate
 // ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 // defer cancel()
 // err = node.DeploymentDeploy(ctx, dl)
-// if err != nil {
-// 	panic(err)
-// }
+//
+//	if err != nil {
+//		panic(err)
+//	}
+//
 // ```
 package client
 
 import (
 	"context"
+	"fmt"
 	"net"
+	"sync"
+	"time"
 
+	"github.com/hashicorp/go-multierror"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
+	"github.com/threefoldtech/zos/client"
 	"github.com/threefoldtech/zos/pkg/capacity/dmi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/rmb"
@@ -175,6 +189,7 @@ func (n *NodeClient) NetworkListWGPorts(ctx context.Context) ([]uint16, error) {
 	return result, nil
 }
 
+// NetworkListInterfaces return a map of all interfaces and their ips
 func (n *NodeClient) NetworkListInterfaces(ctx context.Context) (map[string][]net.IP, error) {
 	const cmd = "zos.network.interfaces"
 	var result map[string][]net.IP
@@ -186,7 +201,7 @@ func (n *NodeClient) NetworkListInterfaces(ctx context.Context) (map[string][]ne
 	return result, nil
 }
 
-// DeploymentGet gets a deployment via contract ID
+// DeploymentChanges return changes of a deployment via contract ID
 func (n *NodeClient) DeploymentChanges(ctx context.Context, contractID uint64) (changes []gridtypes.Workload, err error) {
 	const cmd = "zos.deployment.changes"
 	in := args{
@@ -247,6 +262,7 @@ func (n *NodeClient) NetworkSetPublicConfig(ctx context.Context, cfg PublicConfi
 	return nil
 }
 
+// SystemDMI executes dmidecode to get dmidecode output
 func (n *NodeClient) SystemDMI(ctx context.Context) (result dmi.DMI, err error) {
 	const cmd = "zos.system.dmi"
 
@@ -257,6 +273,7 @@ func (n *NodeClient) SystemDMI(ctx context.Context) (result dmi.DMI, err error) 
 	return
 }
 
+// SystemHypervisor executes hypervisor cmd
 func (n *NodeClient) SystemHypervisor(ctx context.Context) (result string, err error) {
 	const cmd = "zos.system.hypervisor"
 
@@ -264,5 +281,55 @@ func (n *NodeClient) SystemHypervisor(ctx context.Context) (result string, err e
 		return
 	}
 
+	return
+}
+
+// SystemVersion executes system version cmd
+func (n *NodeClient) SystemVersion(ctx context.Context) (ver client.Version, err error) {
+	const cmd = "zos.system.version"
+
+	if err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &ver); err != nil {
+		return
+	}
+
+	return
+}
+
+// IsNodeUp checks if the node is up
+func (n *NodeClient) IsNodeUp(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	_, err := n.SystemVersion(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// AreNodesUp checks if nodes are up
+func AreNodesUp(ctx context.Context, sub subi.SubstrateExt, nodes []uint32, nc NodeClientGetter) (err error) {
+	var wg sync.WaitGroup
+
+	for _, node := range nodes {
+
+		wg.Add(1)
+		go func(node uint32) {
+
+			defer wg.Done()
+			cl, clientErr := nc.GetNodeClient(sub, node)
+			if clientErr != nil {
+				err = multierror.Append(err, fmt.Errorf("couldn't get node %d client: %w", node, clientErr))
+				return
+			}
+			if clientErr := cl.IsNodeUp(ctx); clientErr != nil {
+				err = multierror.Append(err, fmt.Errorf("couldn't reach node %d: %w", node, clientErr))
+			}
+
+		}(node)
+	}
+
+	wg.Wait()
 	return
 }

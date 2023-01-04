@@ -1,3 +1,4 @@
+// Package provider is the terraform provider
 package provider
 
 import (
@@ -10,6 +11,7 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
@@ -17,6 +19,7 @@ import (
 	"github.com/threefoldtech/terraform-provider-grid/pkg/deployer"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/state"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
@@ -246,7 +249,7 @@ type K8sNodeData struct {
 	ComputedIP6   string
 	YggIP         string
 	IP            string
-	Cpu           int
+	CPU           int
 	Memory        int
 }
 
@@ -281,7 +284,7 @@ func NewK8sNodeData(m map[string]interface{}) K8sNodeData {
 		ComputedIP6:   m["computedip6"].(string),
 		YggIP:         m["ygg_ip"].(string),
 		IP:            m["ip"].(string),
-		Cpu:           m["cpu"].(int),
+		CPU:           m["cpu"].(int),
 		Memory:        m["memory"].(int),
 	}
 }
@@ -310,7 +313,7 @@ func NewK8sNodeDataFromWorkload(w gridtypes.Workload, nodeID uint32, diskSize in
 		ComputedIP6: computedIP6,
 		YggIP:       result.YggIP,
 		IP:          d.Network.Interfaces[0].IP.String(),
-		Cpu:         int(d.ComputeCapacity.CPU),
+		CPU:         int(d.ComputeCapacity.CPU),
 		Memory:      int(d.ComputeCapacity.Memory / gridtypes.Megabyte),
 	}
 	return k, nil
@@ -400,7 +403,7 @@ func (k *K8sNodeData) Dictify() map[string]interface{} {
 	res["computedip6"] = k.ComputedIP6
 	res["ygg_ip"] = k.YggIP
 	res["ip"] = k.IP
-	res["cpu"] = k.Cpu
+	res["cpu"] = k.CPU
 	res["memory"] = k.Memory
 	return res
 }
@@ -447,7 +450,7 @@ func (d *K8sDeployer) retainChecksums(workers []interface{}, master interface{})
 	}
 }
 
-func (k *K8sDeployer) storeState(d *schema.ResourceData, cl *apiClient) {
+func (k *K8sDeployer) storeState(d *schema.ResourceData, cl *apiClient) (errors error) {
 	workers := make([]interface{}, 0)
 	for _, w := range k.Workers {
 		workers = append(workers, w.Dictify())
@@ -465,12 +468,37 @@ func (k *K8sDeployer) storeState(d *schema.ResourceData, cl *apiClient) {
 
 	l := []interface{}{master}
 	k.updateNetworkState(d, cl.state)
-	d.Set("master", l)
-	d.Set("workers", workers)
-	d.Set("token", k.Token)
-	d.Set("ssh_key", k.SSHKey)
-	d.Set("network_name", k.NetworkName)
-	d.Set("node_deployment_id", nodeDeploymentID)
+	err := d.Set("master", l)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	err = d.Set("workers", workers)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	err = d.Set("token", k.Token)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	err = d.Set("ssh_key", k.SSHKey)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	err = d.Set("network_name", k.NetworkName)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	err = d.Set("node_deployment_id", nodeDeploymentID)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	return
 }
 
 func (k *K8sDeployer) updateNetworkState(d *schema.ResourceData, state state.StateI) {
@@ -577,7 +605,7 @@ func (d *K8sDeployer) validateChecksums() error {
 		if vm.FlistChecksum == "" {
 			continue
 		}
-		checksum, err := getFlistChecksum(vm.Flist)
+		checksum, err := workloads.GetFlistChecksum(vm.Flist)
 		if err != nil {
 			return errors.Wrapf(err, "couldn't get flist %s hash", vm.Flist)
 		}
@@ -586,7 +614,7 @@ func (d *K8sDeployer) validateChecksums() error {
 				vm.FlistChecksum,
 				vm.Name,
 				checksum,
-				flistChecksumURL(vm.Flist),
+				workloads.FlistChecksumURL(vm.Flist),
 			)
 		}
 	}
@@ -599,7 +627,7 @@ func (k *K8sDeployer) ValidateNames(ctx context.Context) error {
 	names[k.Master.Name] = true
 	for _, w := range k.Workers {
 		if _, ok := names[w.Name]; ok {
-			return fmt.Errorf("k8s workers and master must have unique names: %s occured more than once", w.Name)
+			return fmt.Errorf("k8s workers and master must have unique names: %s occurred more than once", w.Name)
 		}
 		names[w.Name] = true
 	}
@@ -651,7 +679,7 @@ func (k *K8sDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error
 		nodes = append(nodes, w.Node)
 
 	}
-	return isNodesUp(ctx, sub, nodes, k.ncPool)
+	return client.AreNodesUp(ctx, sub, nodes, k.ncPool)
 }
 
 func (k *K8sDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, cl *apiClient) error {
@@ -685,13 +713,18 @@ func (k *K8sDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt, d *sche
 	return err
 }
 
-func printDeployments(dls map[uint32]gridtypes.Deployment) {
+func printDeployments(dls map[uint32]gridtypes.Deployment) (err error) {
 	for node, dl := range dls {
 		log.Printf("node id: %d\n", node)
 		enc := json.NewEncoder(log.Writer())
 		enc.SetIndent("", "  ")
-		enc.Encode(dl)
+		err := enc.Encode(dl)
+		if err != nil {
+			return err
+		}
 	}
+
+	return
 }
 
 func (k *K8sDeployer) removeUsedIPsFromLocalState(cl *apiClient) {
@@ -707,11 +740,16 @@ func (k *K8sDeployer) removeUsedIPsFromLocalState(cl *apiClient) {
 func (k *K8sDeployer) updateState(ctx context.Context, sub subi.SubstrateExt, currentDeploymentIDs map[uint32]uint64, d *schema.ResourceData, cl *apiClient) error {
 	log.Printf("current deployments\n")
 	k.NodeDeploymentID = currentDeploymentIDs
-	currentDeployments, err := k.deployer.GetDeploymentObjects(ctx, sub, currentDeploymentIDs)
+	currentDeployments, err := k.deployer.GetDeployments(ctx, sub, currentDeploymentIDs)
 	if err != nil {
 		return errors.Wrap(err, "failed to get deployments to update local state")
 	}
-	printDeployments(currentDeployments)
+
+	err = printDeployments(currentDeployments)
+	if err != nil {
+		return errors.Wrap(err, "couldn't print deployments data")
+	}
+
 	publicIPs := make(map[string]string)
 	publicIP6s := make(map[string]string)
 	yggIPs := make(map[string]string)
@@ -779,12 +817,16 @@ func (k *K8sDeployer) updateFromRemote(ctx context.Context, sub subi.SubstrateEx
 	if err := k.removeDeletedContracts(ctx, sub); err != nil {
 		return errors.Wrap(err, "failed to remove deleted contracts")
 	}
-	currentDeployments, err := k.deployer.GetDeploymentObjects(ctx, sub, k.NodeDeploymentID)
+	currentDeployments, err := k.deployer.GetDeployments(ctx, sub, k.NodeDeploymentID)
 	if err != nil {
 		return errors.Wrap(err, "failed to fetch remote deployments")
 	}
 	log.Printf("calling updateFromRemote")
-	printDeployments(currentDeployments)
+	err = printDeployments(currentDeployments)
+	if err != nil {
+		return errors.Wrap(err, "couldn't print deployments data")
+	}
+
 	keyUpdated, tokenUpdated, networkUpdated := false, false, false
 	// calculate k's properties from the currently deployed deployments
 	for _, dl := range currentDeployments {
@@ -918,14 +960,17 @@ func (k *K8sDeployer) updateFromRemote(ctx context.Context, sub subi.SubstrateEx
 	log.Printf("after updateFromRemote\n")
 	enc := json.NewEncoder(log.Writer())
 	enc.SetIndent("", "  ")
-	enc.Encode(k)
+	err = enc.Encode(k)
+	if err != nil {
+		return errors.Wrap(err, "failed to encode k8s deployer")
+	}
 
 	return nil
 }
 
 func (k *K8sNodeData) GenerateK8sWorkload(deployer *K8sDeployer, masterIP string) []gridtypes.Workload {
 	diskName := fmt.Sprintf("%sdisk", k.Name)
-	workloads := make([]gridtypes.Workload, 0)
+	K8sWorkloads := make([]gridtypes.Workload, 0)
 	diskWorkload := gridtypes.Workload{
 		Name:        gridtypes.Name(diskName),
 		Version:     0,
@@ -935,11 +980,11 @@ func (k *K8sNodeData) GenerateK8sWorkload(deployer *K8sDeployer, masterIP string
 			Size: gridtypes.Unit(k.DiskSize) * gridtypes.Gigabyte,
 		}),
 	}
-	workloads = append(workloads, diskWorkload)
+	K8sWorkloads = append(K8sWorkloads, diskWorkload)
 	publicIPName := ""
 	if k.PublicIP || k.PublicIP6 {
 		publicIPName = fmt.Sprintf("%sip", k.Name)
-		workloads = append(workloads, constructPublicIPWorkload(publicIPName, k.PublicIP, k.PublicIP6))
+		K8sWorkloads = append(K8sWorkloads, workloads.ConstructPublicIPWorkload(publicIPName, k.PublicIP, k.PublicIP6))
 	}
 	envVars := map[string]string{
 		"SSH_KEY":           deployer.SSHKey,
@@ -969,7 +1014,7 @@ func (k *K8sNodeData) GenerateK8sWorkload(deployer *K8sDeployer, masterIP string
 				Planetary: k.Planetary,
 			},
 			ComputeCapacity: zos.MachineCapacity{
-				CPU:    uint8(k.Cpu),
+				CPU:    uint8(k.CPU),
 				Memory: gridtypes.Unit(uint(k.Memory)) * gridtypes.Megabyte,
 			},
 			Entrypoint: "/sbin/zinit init",
@@ -979,17 +1024,22 @@ func (k *K8sNodeData) GenerateK8sWorkload(deployer *K8sDeployer, masterIP string
 			Env: envVars,
 		}),
 	}
-	workloads = append(workloads, workload)
+	K8sWorkloads = append(K8sWorkloads, workload)
 
-	return workloads
+	return K8sWorkloads
 }
 
 func (k *K8sDeployer) getK8sFreeIP(ipRange gridtypes.IPNet, nodeID uint32) (string, error) {
-	for i := byte(2); i <= byte(255); i++ {
-		if !isInByte(k.NodeUsedIPs[nodeID], i) {
-			k.NodeUsedIPs[nodeID] = append(k.NodeUsedIPs[nodeID], i)
-			ip := ipRange.IP.To4()
-			ip[3] = i
+	ip := ipRange.IP.To4()
+	if ip == nil {
+		return "", fmt.Errorf("the provided ip range (%s) is not a valid ipv4", ipRange.String())
+	}
+
+	for i := 2; i < 255; i++ {
+		hostID := byte(i)
+		if !Contains(k.NodeUsedIPs[nodeID], hostID) {
+			k.NodeUsedIPs[nodeID] = append(k.NodeUsedIPs[nodeID], hostID)
+			ip[3] = hostID
 			return ip.String(), nil
 		}
 	}
@@ -998,7 +1048,11 @@ func (k *K8sDeployer) getK8sFreeIP(ipRange gridtypes.IPNet, nodeID uint32) (stri
 
 func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	apiClient := meta.(*apiClient)
+	apiClient, ok := meta.(*apiClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into api client"))
+	}
+
 	deployer, err := NewK8sDeployer(d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
@@ -1017,14 +1071,22 @@ func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 			return diag.FromErr(err)
 		}
 	}
-	deployer.storeState(d, apiClient)
+	err = deployer.storeState(d, apiClient)
+	if err != nil {
+		diags = diag.FromErr(err)
+	}
+
 	d.SetId(uuid.New().String())
 	return diags
 }
 
 func resourceK8sUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	apiClient := meta.(*apiClient)
+	apiClient, ok := meta.(*apiClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into api client"))
+	}
+
 	deployer, err := NewK8sDeployer(d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
@@ -1042,13 +1104,21 @@ func resourceK8sUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 	if err != nil {
 		diags = diag.FromErr(err)
 	}
-	deployer.storeState(d, apiClient)
+	err = deployer.storeState(d, apiClient)
+	if err != nil {
+		diags = diag.FromErr(err)
+	}
+
 	return diags
 }
 
 func resourceK8sRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	apiClient := meta.(*apiClient)
+	apiClient, ok := meta.(*apiClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into api client"))
+	}
+
 	deployer, err := NewK8sDeployer(d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
@@ -1072,13 +1142,21 @@ func resourceK8sRead(ctx context.Context, d *schema.ResourceData, meta interface
 		})
 		return diags
 	}
-	deployer.storeState(d, apiClient)
+	err = deployer.storeState(d, apiClient)
+	if err != nil {
+		diags = diag.FromErr(err)
+	}
+
 	return diags
 }
 
 func resourceK8sDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	apiClient := meta.(*apiClient)
+	apiClient, ok := meta.(*apiClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into api client"))
+	}
+
 	deployer, err := NewK8sDeployer(d, apiClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
@@ -1091,7 +1169,10 @@ func resourceK8sDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 	if err == nil {
 		d.SetId("")
 	} else {
-		deployer.storeState(d, apiClient)
+		err = deployer.storeState(d, apiClient)
+		if err != nil {
+			diags = diag.FromErr(err)
+		}
 	}
 	return diags
 }

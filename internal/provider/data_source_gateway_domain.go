@@ -1,3 +1,4 @@
+// Package provider is the terraform provider
 package provider
 
 import (
@@ -41,7 +42,11 @@ func dataSourceGatewayDomain() *schema.Resource {
 
 // TODO: make this non failing
 func dataSourceGatewayRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	apiClient := meta.(*apiClient)
+	apiClient, ok := meta.(*apiClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into api client"))
+	}
+
 	nodeID := uint32(d.Get("node").(int))
 	name := d.Get("name").(string)
 	ncPool := client.NewNodeClientPool(apiClient.rmb)
@@ -59,7 +64,11 @@ func dataSourceGatewayRead(ctx context.Context, d *schema.ResourceData, meta int
 		return diag.FromErr(errors.New("node doesn't contain a domain in its public config"))
 	}
 	fqdn := fmt.Sprintf("%s.%s", name, cfg.Domain)
-	d.Set("fqdn", fqdn)
+	err = d.Set("fqdn", fqdn)
+	if err != nil {
+		return diag.FromErr(errors.Wrap(err, "couldn't set fqdn"))
+	}
+
 	d.SetId(strconv.FormatInt(time.Now().Unix(), 10))
 	return nil
 }

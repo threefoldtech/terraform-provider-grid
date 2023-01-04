@@ -12,31 +12,31 @@ import (
 	subi "github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 )
 
-// MockNodeClientCollection is a mock of NodeClientCollection interface.
-type MockNodeClientCollection struct {
+// MockNodeClientGetter is a mock of NodeClientGetter interface.
+type MockNodeClientGetter struct {
 	ctrl     *gomock.Controller
-	recorder *MockNodeClientCollectionMockRecorder
+	recorder *MockNodeClientGetterMockRecorder
 }
 
-// MockNodeClientCollectionMockRecorder is the mock recorder for MockNodeClientCollection.
-type MockNodeClientCollectionMockRecorder struct {
-	mock *MockNodeClientCollection
+// MockNodeClientGetterMockRecorder is the mock recorder for MockNodeClientGetter.
+type MockNodeClientGetterMockRecorder struct {
+	mock *MockNodeClientGetter
 }
 
-// NewMockNodeClientCollection creates a new mock instance.
-func NewMockNodeClientCollection(ctrl *gomock.Controller) *MockNodeClientCollection {
-	mock := &MockNodeClientCollection{ctrl: ctrl}
-	mock.recorder = &MockNodeClientCollectionMockRecorder{mock}
+// NewMockNodeClientGetter creates a new mock instance.
+func NewMockNodeClientGetter(ctrl *gomock.Controller) *MockNodeClientGetter {
+	mock := &MockNodeClientGetter{ctrl: ctrl}
+	mock.recorder = &MockNodeClientGetterMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockNodeClientCollection) EXPECT() *MockNodeClientCollectionMockRecorder {
+func (m *MockNodeClientGetter) EXPECT() *MockNodeClientGetterMockRecorder {
 	return m.recorder
 }
 
 // GetNodeClient mocks base method.
-func (m *MockNodeClientCollection) GetNodeClient(sub subi.SubstrateExt, nodeID uint32) (*client.NodeClient, error) {
+func (m *MockNodeClientGetter) GetNodeClient(sub subi.SubstrateExt, nodeID uint32) (*client.NodeClient, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetNodeClient", sub, nodeID)
 	ret0, _ := ret[0].(*client.NodeClient)
@@ -45,7 +45,7 @@ func (m *MockNodeClientCollection) GetNodeClient(sub subi.SubstrateExt, nodeID u
 }
 
 // GetNodeClient indicates an expected call of GetNodeClient.
-func (mr *MockNodeClientCollectionMockRecorder) GetNodeClient(sub, nodeID interface{}) *gomock.Call {
+func (mr *MockNodeClientGetterMockRecorder) GetNodeClient(sub, nodeID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNodeClient", reflect.TypeOf((*MockNodeClientCollection)(nil).GetNodeClient), sub, nodeID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNodeClient", reflect.TypeOf((*MockNodeClientGetter)(nil).GetNodeClient), sub, nodeID)
 }

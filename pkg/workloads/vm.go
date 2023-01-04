@@ -1,3 +1,4 @@
+// Package workloads includes workloads types (vm, zdb, qsfs, public IP, gateway name, gateway fqdn, disk)
 package workloads
 
 import (
@@ -5,18 +6,16 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
-	"net/http"
 	"sort"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
+// VM is a virtual machine struct
 type VM struct {
 	Name          string
 	Flist         string
@@ -30,7 +29,7 @@ type VM struct {
 	YggIP         string
 	IP            string
 	Description   string
-	Cpu           int
+	CPU           int
 	Memory        int
 	RootfsSize    int
 	Entrypoint    string
@@ -41,20 +40,23 @@ type VM struct {
 	NetworkName string
 }
 
+// Mount disks struct
 type Mount struct {
 	DiskName   string
 	MountPoint string
 }
 
+// Zlog logger struct
 type Zlog struct {
 	Output string
 }
 
+// NewVMFromSchema generates a new vm from a map of its data
 func NewVMFromSchema(vm map[string]interface{}) *VM {
 	mounts := make([]Mount, 0)
-	mount_points := vm["mounts"].([]interface{})
-	for _, mount_point := range mount_points {
-		point := mount_point.(map[string]interface{})
+	mountPoints := vm["mounts"].([]interface{})
+	for _, mountPoint := range mountPoints {
+		point := mountPoint.(map[string]interface{})
 		mount := Mount{DiskName: point["disk_name"].(string), MountPoint: point["mount_point"].(string)}
 		mounts = append(mounts, mount)
 	}
@@ -80,7 +82,7 @@ func NewVMFromSchema(vm map[string]interface{}) *VM {
 		YggIP:         vm["ygg_ip"].(string),
 		Planetary:     vm["planetary"].(bool),
 		IP:            vm["ip"].(string),
-		Cpu:           vm["cpu"].(int),
+		CPU:           vm["cpu"].(int),
 		Memory:        vm["memory"].(int),
 		RootfsSize:    vm["rootfs_size"].(int),
 		Entrypoint:    vm["entrypoint"].(string),
@@ -91,6 +93,8 @@ func NewVMFromSchema(vm map[string]interface{}) *VM {
 		Zlogs:         zlogs,
 	}
 }
+
+// NewVMFromWorkloads generates a new vm from given workloads and deployment
 func NewVMFromWorkloads(wl *gridtypes.Workload, dl *gridtypes.Deployment) (VM, error) {
 	dataI, err := wl.WorkloadData()
 	if err != nil {
@@ -125,7 +129,7 @@ func NewVMFromWorkloads(wl *gridtypes.Workload, dl *gridtypes.Deployment) (VM, e
 		Corex:         data.Corex,
 		YggIP:         result.YggIP,
 		IP:            data.Network.Interfaces[0].IP.String(),
-		Cpu:           int(data.ComputeCapacity.CPU),
+		CPU:           int(data.ComputeCapacity.CPU),
 		Memory:        int(data.ComputeCapacity.Memory / gridtypes.Megabyte),
 		RootfsSize:    int(data.Size / gridtypes.Megabyte),
 		Entrypoint:    data.Entrypoint,
@@ -180,53 +184,55 @@ func pubIP(dl *gridtypes.Deployment, name gridtypes.Name) zos.PublicIPResult {
 	return pubIPResult
 }
 
-func (v *VM) GenerateVMWorkload() []gridtypes.Workload {
+// GenerateVMWorkload generates a vm workloads
+func (vm *VM) GenerateVMWorkload() []gridtypes.Workload {
 	workloads := make([]gridtypes.Workload, 0)
 	publicIPName := ""
-	if v.PublicIP || v.PublicIP6 {
-		publicIPName = fmt.Sprintf("%sip", v.Name)
-		workloads = append(workloads, constructPublicIPWorkload(publicIPName, v.PublicIP, v.PublicIP6))
+	if vm.PublicIP || vm.PublicIP6 {
+		publicIPName = fmt.Sprintf("%sip", vm.Name)
+		workloads = append(workloads, ConstructPublicIPWorkload(publicIPName, vm.PublicIP, vm.PublicIP6))
 	}
 	mounts := make([]zos.MachineMount, 0)
-	for _, mount := range v.Mounts {
+	for _, mount := range vm.Mounts {
 		mounts = append(mounts, zos.MachineMount{Name: gridtypes.Name(mount.DiskName), Mountpoint: mount.MountPoint})
 	}
-	for _, zlog := range v.Zlogs {
-		workloads = append(workloads, zlog.GenerateWorkload(v.Name))
+	for _, zlog := range vm.Zlogs {
+		workloads = append(workloads, zlog.GenerateWorkload(vm.Name))
 	}
 	workload := gridtypes.Workload{
 		Version: 0,
-		Name:    gridtypes.Name(v.Name),
+		Name:    gridtypes.Name(vm.Name),
 		Type:    zos.ZMachineType,
 		Data: gridtypes.MustMarshal(zos.ZMachine{
-			FList: v.Flist,
+			FList: vm.Flist,
 			Network: zos.MachineNetwork{
 				Interfaces: []zos.MachineInterface{
 					{
-						Network: gridtypes.Name(v.NetworkName),
-						IP:      net.ParseIP(v.IP),
+						Network: gridtypes.Name(vm.NetworkName),
+						IP:      net.ParseIP(vm.IP),
 					},
 				},
 				PublicIP:  gridtypes.Name(publicIPName),
-				Planetary: v.Planetary,
+				Planetary: vm.Planetary,
 			},
 			ComputeCapacity: zos.MachineCapacity{
-				CPU:    uint8(v.Cpu),
-				Memory: gridtypes.Unit(uint(v.Memory)) * gridtypes.Megabyte,
+				CPU:    uint8(vm.CPU),
+				Memory: gridtypes.Unit(uint(vm.Memory)) * gridtypes.Megabyte,
 			},
-			Size:       gridtypes.Unit(v.RootfsSize) * gridtypes.Megabyte,
-			Entrypoint: v.Entrypoint,
-			Corex:      v.Corex,
+			Size:       gridtypes.Unit(vm.RootfsSize) * gridtypes.Megabyte,
+			Entrypoint: vm.Entrypoint,
+			Corex:      vm.Corex,
 			Mounts:     mounts,
-			Env:        v.EnvVars,
+			Env:        vm.EnvVars,
 		}),
-		Description: v.Description,
+		Description: vm.Description,
 	}
 	workloads = append(workloads, workload)
 
 	return workloads
 }
 
+// GenerateWorkload generates a zmachine workload
 func (zlog *Zlog) GenerateWorkload(zmachine string) gridtypes.Workload {
 	url := []byte(zlog.Output)
 	urlHash := md5.Sum([]byte(url))
@@ -241,6 +247,7 @@ func (zlog *Zlog) GenerateWorkload(zmachine string) gridtypes.Workload {
 	}
 }
 
+// Dictify converts vm data to a map (dict)
 func (vm *VM) Dictify() map[string]interface{} {
 	envVars := make(map[string]interface{})
 	for key, value := range vm.EnvVars {
@@ -271,7 +278,7 @@ func (vm *VM) Dictify() map[string]interface{} {
 	res["ygg_ip"] = vm.YggIP
 	res["ip"] = vm.IP
 	res["mounts"] = mounts
-	res["cpu"] = vm.Cpu
+	res["cpu"] = vm.CPU
 	res["memory"] = vm.Memory
 	res["rootfs_size"] = vm.RootfsSize
 	res["env_vars"] = envVars
@@ -279,70 +286,52 @@ func (vm *VM) Dictify() map[string]interface{} {
 	res["zlogs"] = zlogs
 	return res
 }
-func (v *VM) Validate() error {
-	if v.Cpu < 1 || v.Cpu > 32 {
+
+// Validate validates a virtual machine data
+func (vm *VM) Validate() error {
+	if vm.CPU < 1 || vm.CPU > 32 {
 		return errors.Wrap(errors.New("Invalid CPU input"), "CPUs must be more than or equal to 1 and less than or equal to 32")
 	}
 
-	if v.FlistChecksum != "" {
-		checksum, err := getFlistChecksum(v.Flist)
+	if vm.FlistChecksum != "" {
+		checksum, err := GetFlistChecksum(vm.Flist)
 		if err != nil {
 			return errors.Wrap(err, "failed to get flist checksum")
 		}
-		if v.FlistChecksum != checksum {
+		if vm.FlistChecksum != checksum {
 			return fmt.Errorf(
 				"passed checksum %s of %s doesn't match %s returned from %s",
-				v.FlistChecksum,
-				v.Name,
+				vm.FlistChecksum,
+				vm.Name,
 				checksum,
-				flistChecksumURL(v.Flist),
+				FlistChecksumURL(vm.Flist),
 			)
 		}
 	}
 	return nil
 }
-func (v *VM) WithNetworkName(name string) *VM {
-	v.NetworkName = name
-	return v
+
+// WithNetworkName sets network name for vm
+func (vm *VM) WithNetworkName(name string) *VM {
+	vm.NetworkName = name
+	return vm
 }
 
-func (v *VM) Match(vm *VM) {
-	l := len(vm.Zlogs) + len(vm.Mounts)
+// Match compares the vm with another given vm
+func (vm *VM) Match(vm2 *VM) {
+	l := len(vm2.Zlogs) + len(vm2.Mounts)
 	names := make(map[string]int)
-	for idx, zlog := range vm.Zlogs {
+	for idx, zlog := range vm2.Zlogs {
 		names[zlog.Output] = idx - l
 	}
-	for idx, mount := range vm.Mounts {
+	for idx, mount := range vm2.Mounts {
 		names[mount.DiskName] = idx - l
 	}
-	sort.Slice(v.Zlogs, func(i, j int) bool {
-		return names[v.Zlogs[i].Output] < names[v.Zlogs[j].Output]
+	sort.Slice(vm.Zlogs, func(i, j int) bool {
+		return names[vm.Zlogs[i].Output] < names[vm.Zlogs[j].Output]
 	})
-	sort.Slice(v.Mounts, func(i, j int) bool {
-		return names[v.Mounts[i].DiskName] < names[v.Mounts[j].DiskName]
+	sort.Slice(vm.Mounts, func(i, j int) bool {
+		return names[vm.Mounts[i].DiskName] < names[vm.Mounts[j].DiskName]
 	})
-	v.FlistChecksum = vm.FlistChecksum
-}
-func constructPublicIPWorkload(workloadName string, ipv4 bool, ipv6 bool) gridtypes.Workload {
-	return gridtypes.Workload{
-		Version: 0,
-		Name:    gridtypes.Name(workloadName),
-		Type:    zos.PublicIPType,
-		Data: gridtypes.MustMarshal(zos.PublicIP{
-			V4: ipv4,
-			V6: ipv6,
-		}),
-	}
-}
-
-func flistChecksumURL(url string) string {
-	return fmt.Sprintf("%s.md5", url)
-}
-func getFlistChecksum(url string) (string, error) {
-	response, err := http.Get(flistChecksumURL(url))
-	if err != nil {
-		return "", err
-	}
-	hash, err := ioutil.ReadAll(response.Body)
-	return strings.TrimSpace(string(hash)), err
+	vm.FlistChecksum = vm2.FlistChecksum
 }

@@ -1,3 +1,4 @@
+// Package workloads includes workloads types (vm, zdb, qsfs, public IP, gateway name, gateway fqdn, disk)
 package workloads
 
 import (
@@ -6,12 +7,14 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
+// Disk struct
 type Disk struct {
 	Name        string
 	Size        int
 	Description string
 }
 
+// GetDiskData converts a disk data to a map
 func GetDiskData(disk map[string]interface{}) Disk {
 	return Disk{
 		Name:        disk["name"].(string),
@@ -19,6 +22,8 @@ func GetDiskData(disk map[string]interface{}) Disk {
 		Description: disk["description"].(string),
 	}
 }
+
+// NewDiskFromWorkload generates a new disk from a workload
 func NewDiskFromWorkload(wl *gridtypes.Workload) (Disk, error) {
 	dataI, err := wl.WorkloadData()
 	if err != nil {
@@ -33,6 +38,7 @@ func NewDiskFromWorkload(wl *gridtypes.Workload) (Disk, error) {
 	}, nil
 }
 
+// Dictify converts a disk data to a map
 func (d *Disk) Dictify() map[string]interface{} {
 	res := make(map[string]interface{})
 	res["name"] = d.Name
@@ -40,6 +46,8 @@ func (d *Disk) Dictify() map[string]interface{} {
 	res["size"] = d.Size
 	return res
 }
+
+// GenerateDiskWorkload generates a disk workload
 func (d *Disk) GenerateDiskWorkload() gridtypes.Workload {
 	workload := gridtypes.Workload{
 		Name:        gridtypes.Name(d.Name),
@@ -54,6 +62,7 @@ func (d *Disk) GenerateDiskWorkload() gridtypes.Workload {
 	return workload
 }
 
+// GetName returns disk name
 func (d *Disk) GetName() string {
 	return d.Name
 }

@@ -83,7 +83,7 @@ output "node1_zmachine1_ip" {
   value = grid_deployment.d1.vms[0].ip
 }
 
-output "public_ip" {
+output "computed_public_ip" {
   value = grid_deployment.d1.vms[0].computedip
 }
 

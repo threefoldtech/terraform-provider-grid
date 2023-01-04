@@ -1,3 +1,4 @@
+// Package provider is the terraform provider
 package provider
 
 import (
@@ -8,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
@@ -28,7 +30,7 @@ type GatewayNameDeployer struct {
 	NameContractID   uint64
 
 	APIClient *apiClient
-	ncPool    client.NodeClientCollection
+	ncPool    client.NodeClientGetter
 	deployer  deployer.Deployer
 }
 
@@ -79,10 +81,10 @@ func NewGatewayNameDeployer(d *schema.ResourceData, apiClient *apiClient) (Gatew
 }
 
 func (k *GatewayNameDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error {
-	return isNodesUp(ctx, sub, []uint32{k.Node}, k.ncPool)
+	return client.AreNodesUp(ctx, sub, []uint32{k.Node}, k.ncPool)
 }
 
-func (k *GatewayNameDeployer) Marshal(d *schema.ResourceData) {
+func (k *GatewayNameDeployer) Marshal(d *schema.ResourceData) (errors error) {
 
 	nodeDeploymentID := make(map[string]interface{})
 	for node, id := range k.NodeDeploymentID {
@@ -90,12 +92,37 @@ func (k *GatewayNameDeployer) Marshal(d *schema.ResourceData) {
 	}
 
 	d.SetId(k.ID)
-	d.Set("node", k.Node)
-	d.Set("tls_passthrough", k.Gw.TLSPassthrough)
-	d.Set("backends", k.Gw.Backends)
-	d.Set("fqdn", k.Gw.FQDN)
-	d.Set("node_deployment_id", nodeDeploymentID)
-	d.Set("name_contract_id", k.NameContractID)
+	err := d.Set("node", k.Node)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	err = d.Set("tls_passthrough", k.Gw.TLSPassthrough)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	err = d.Set("backends", k.Gw.Backends)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	err = d.Set("fqdn", k.Gw.FQDN)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	err = d.Set("node_deployment_id", nodeDeploymentID)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	err = d.Set("name_contract_id", k.NameContractID)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	return
 }
 
 func (k *GatewayNameDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
@@ -163,7 +190,7 @@ func (k *GatewayNameDeployer) sync(ctx context.Context, sub subi.SubstrateExt, c
 	if err := k.syncContracts(ctx, sub); err != nil {
 		return errors.Wrap(err, "couldn't sync contracts")
 	}
-	dls, err := k.deployer.GetDeploymentObjects(ctx, sub, k.NodeDeploymentID)
+	dls, err := k.deployer.GetDeployments(ctx, sub, k.NodeDeploymentID)
 	if err != nil {
 		return errors.Wrap(err, "couldn't get deployment objects")
 	}

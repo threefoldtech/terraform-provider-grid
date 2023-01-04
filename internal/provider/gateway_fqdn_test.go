@@ -1,3 +1,4 @@
+// Package provider is the terraform provider
 package provider
 
 import (
@@ -26,7 +27,7 @@ func TestValidatNodeReachable(t *testing.T) {
 
 	sub := mock.NewMockSubstrateExt(ctrl)
 	cl := mock.NewRMBMockClient(ctrl)
-	pool := mock.NewMockNodeClientCollection(ctrl)
+	pool := mock.NewMockNodeClientGetter(ctrl)
 	identity, err := substrate.NewIdentityFromEd25519Phrase(Words)
 	assert.NoError(t, err)
 	cl.
@@ -34,7 +35,7 @@ func TestValidatNodeReachable(t *testing.T) {
 		Call(
 			gomock.Any(),
 			uint32(10),
-			"zos.network.interfaces",
+			"zos.system.version",
 			nil,
 			gomock.Any(),
 		).
@@ -113,7 +114,7 @@ func TestDeploy(t *testing.T) {
 	deployer := mock.NewMockDeployer(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
 	cl := mock.NewRMBMockClient(ctrl)
-	pool := mock.NewMockNodeClientCollection(ctrl)
+	pool := mock.NewMockNodeClientGetter(ctrl)
 	gw := GatewayFQDNDeployer{
 		APIClient: &apiClient{
 			identity: identity,
@@ -137,7 +138,7 @@ func TestDeploy(t *testing.T) {
 	cl.EXPECT().Call(
 		gomock.Any(),
 		uint32(12),
-		"zos.network.interfaces",
+		"zos.system.version",
 		gomock.Any(),
 		gomock.Any(),
 	).Return(nil)
@@ -163,7 +164,7 @@ func TestUpdate(t *testing.T) {
 	deployer := mock.NewMockDeployer(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
 	cl := mock.NewRMBMockClient(ctrl)
-	pool := mock.NewMockNodeClientCollection(ctrl)
+	pool := mock.NewMockNodeClientGetter(ctrl)
 	gw := GatewayFQDNDeployer{
 		APIClient: &apiClient{
 			identity: identity,
@@ -194,7 +195,7 @@ func TestUpdate(t *testing.T) {
 	cl.EXPECT().Call(
 		gomock.Any(),
 		uint32(12),
-		"zos.network.interfaces",
+		"zos.system.version",
 		gomock.Any(),
 		gomock.Any(),
 	).Return(nil)
@@ -212,7 +213,7 @@ func TestUpdateFailed(t *testing.T) {
 	deployer := mock.NewMockDeployer(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
 	cl := mock.NewRMBMockClient(ctrl)
-	pool := mock.NewMockNodeClientCollection(ctrl)
+	pool := mock.NewMockNodeClientGetter(ctrl)
 
 	gw := GatewayFQDNDeployer{
 		APIClient: &apiClient{
@@ -244,7 +245,7 @@ func TestUpdateFailed(t *testing.T) {
 	cl.EXPECT().Call(
 		gomock.Any(),
 		uint32(12),
-		"zos.network.interfaces",
+		"zos.system.version",
 		gomock.Any(),
 		gomock.Any(),
 	).Return(nil)
@@ -468,7 +469,7 @@ func TestSync(t *testing.T) {
 	identity, err := substrate.NewIdentityFromEd25519Phrase(Words)
 	assert.NoError(t, err)
 	deployer := mock.NewMockDeployer(ctrl)
-	pool := mock.NewMockNodeClientCollection(ctrl)
+	pool := mock.NewMockNodeClientGetter(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayFQDNDeployer{
 		ID: "123",
@@ -498,7 +499,7 @@ func TestSync(t *testing.T) {
 		gw.NodeDeploymentID,
 	).Return(nil)
 	deployer.EXPECT().
-		GetDeploymentObjects(gomock.Any(), sub, map[uint32]uint64{10: 100}).
+		GetDeployments(gomock.Any(), sub, map[uint32]uint64{10: 100}).
 		DoAndReturn(func(ctx context.Context, _ subi.SubstrateExt, _ map[uint32]uint64) (map[uint32]gridtypes.Deployment, error) {
 			return map[uint32]gridtypes.Deployment{10: dl}, nil
 		})
@@ -518,7 +519,7 @@ func TestSyncDeletedWorkload(t *testing.T) {
 	identity, err := substrate.NewIdentityFromEd25519Phrase(Words)
 	assert.NoError(t, err)
 	deployer := mock.NewMockDeployer(ctrl)
-	pool := mock.NewMockNodeClientCollection(ctrl)
+	pool := mock.NewMockNodeClientGetter(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayFQDNDeployer{
 		ID: "123",
@@ -546,7 +547,7 @@ func TestSyncDeletedWorkload(t *testing.T) {
 		gw.NodeDeploymentID,
 	).Return(nil)
 	deployer.EXPECT().
-		GetDeploymentObjects(gomock.Any(), sub, map[uint32]uint64{10: 100}).
+		GetDeployments(gomock.Any(), sub, map[uint32]uint64{10: 100}).
 		DoAndReturn(func(ctx context.Context, _ subi.SubstrateExt, _ map[uint32]uint64) (map[uint32]gridtypes.Deployment, error) {
 			return map[uint32]gridtypes.Deployment{10: dl}, nil
 		})

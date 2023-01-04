@@ -46,7 +46,7 @@ func TestPreSearchDeployment(t *testing.T) {
 	terraform.InitAndApply(t, terraformOptions)
 
 	// Check that the outputs not empty
-	publicIp := terraform.Output(t, terraformOptions, "public_ip")
+	publicIp := terraform.Output(t, terraformOptions, "computed_public_ip")
 	assert.NotEmpty(t, publicIp)
 
 	// Check that vm is reachable

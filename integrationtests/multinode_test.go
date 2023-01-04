@@ -50,7 +50,7 @@ func TestMultiNodeDeployment(t *testing.T) {
 	node2Container1IP := terraform.Output(t, terraformOptions, "node2_container1_ip")
 	assert.NotEmpty(t, node2Container1IP)
 
-	publicIP := terraform.Output(t, terraformOptions, "public_ip")
+	publicIP := terraform.Output(t, terraformOptions, "computed_public_ip")
 	assert.NotEmpty(t, publicIP)
 
 	// Up wireguard

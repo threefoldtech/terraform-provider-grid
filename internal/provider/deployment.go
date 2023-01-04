@@ -1,3 +1,4 @@
+// Package provider is the terraform provider
 package provider
 
 import (
@@ -9,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
@@ -29,7 +31,7 @@ type DeploymentDeployer struct {
 	IPRange     string
 	NetworkName string
 	APIClient   *apiClient
-	ncPool      client.NodeClientCollection
+	ncPool      client.NodeClientGetter
 	deployer    deployer.Deployer
 }
 type DeploymentData struct {
@@ -114,7 +116,7 @@ func (d *DeploymentDeployer) assignNodesIPs() error {
 		return errors.Wrapf(err, "invalid ip %s", d.IPRange)
 	}
 	for _, vm := range d.VMs {
-		if vm.IP != "" && cidr.Contains(net.ParseIP(vm.IP)) && !isInByte(usedIPs, net.ParseIP(vm.IP)[3]) {
+		if vm.IP != "" && cidr.Contains(net.ParseIP(vm.IP)) && !Contains(usedIPs, net.ParseIP(vm.IP)[3]) {
 			usedIPs = append(usedIPs, net.ParseIP(vm.IP)[3])
 		}
 	}
@@ -125,7 +127,7 @@ func (d *DeploymentDeployer) assignNodesIPs() error {
 		}
 		ip := cidr.IP
 		ip[3] = cur
-		for isInByte(usedIPs, ip[3]) {
+		for Contains(usedIPs, ip[3]) {
 			if cur == 254 {
 				return errors.New("all 253 ips of the network are exhausted")
 			}
@@ -164,7 +166,7 @@ func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context)
 	return map[uint32]gridtypes.Deployment{d.Node: dl}, nil
 }
 
-func (d *DeploymentDeployer) Marshal(r *schema.ResourceData) {
+func (d *DeploymentDeployer) Marshal(r *schema.ResourceData) (errors error) {
 	vms := make([]interface{}, 0)
 	disks := make([]interface{}, 0)
 	zdbs := make([]interface{}, 0)
@@ -181,14 +183,43 @@ func (d *DeploymentDeployer) Marshal(r *schema.ResourceData) {
 	for _, q := range d.QSFSs {
 		qsfs = append(zdbs, q.Dictify())
 	}
-	r.Set("vms", vms)
-	r.Set("zdbs", zdbs)
-	r.Set("disks", disks)
-	r.Set("qsfs", qsfs)
-	r.Set("node", d.Node)
-	r.Set("network_name", d.NetworkName)
-	r.Set("ip_range", d.IPRange)
+	err := r.Set("vms", vms)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	err = r.Set("zdbs", zdbs)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	err = r.Set("disks", disks)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	err = r.Set("qsfs", qsfs)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	err = r.Set("node", d.Node)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	err = r.Set("network_name", d.NetworkName)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	err = r.Set("ip_range", d.IPRange)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
 	r.SetId(d.Id)
+	return
 }
 
 func (d *DeploymentDeployer) GetOldDeployments(ctx context.Context) (map[uint32]uint64, error) {
@@ -241,7 +272,7 @@ func (d *DeploymentDeployer) sync(ctx context.Context, sub subi.SubstrateExt, cl
 		d.Nullify()
 		return nil
 	}
-	currentDeployments, err := d.deployer.GetDeploymentObjects(ctx, sub, map[uint32]uint64{d.Node: d.ID()})
+	currentDeployments, err := d.deployer.GetDeployments(ctx, sub, map[uint32]uint64{d.Node: d.ID()})
 	if err != nil {
 		return errors.Wrap(err, "failed to get deployments to update local state")
 	}

@@ -1,3 +1,4 @@
+// Package provider is the terraform provider
 package provider
 
 import (
@@ -24,7 +25,7 @@ func TestNameValidateNodeNotReachable(t *testing.T) {
 
 	sub := mock.NewMockSubstrateExt(ctrl)
 	cl := mock.NewRMBMockClient(ctrl)
-	pool := mock.NewMockNodeClientCollection(ctrl)
+	pool := mock.NewMockNodeClientGetter(ctrl)
 	identity, err := substrate.NewIdentityFromEd25519Phrase(Words)
 	assert.NoError(t, err)
 	cl.
@@ -32,7 +33,7 @@ func TestNameValidateNodeNotReachable(t *testing.T) {
 		Call(
 			gomock.Any(),
 			uint32(10),
-			"zos.network.interfaces",
+			"zos.system.version",
 			nil,
 			gomock.Any(),
 		).
@@ -63,7 +64,7 @@ func TestNameValidateNodeReachable(t *testing.T) {
 
 	sub := mock.NewMockSubstrateExt(ctrl)
 	cl := mock.NewRMBMockClient(ctrl)
-	pool := mock.NewMockNodeClientCollection(ctrl)
+	pool := mock.NewMockNodeClientGetter(ctrl)
 	identity, err := substrate.NewIdentityFromEd25519Phrase(Words)
 	assert.NoError(t, err)
 	cl.
@@ -71,7 +72,7 @@ func TestNameValidateNodeReachable(t *testing.T) {
 		Call(
 			gomock.Any(),
 			uint32(10),
-			"zos.network.interfaces",
+			"zos.system.version",
 			nil,
 			gomock.Any(),
 		).
@@ -150,7 +151,7 @@ func TestNameDeploy(t *testing.T) {
 	deployer := mock.NewMockDeployer(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
 	cl := mock.NewRMBMockClient(ctrl)
-	pool := mock.NewMockNodeClientCollection(ctrl)
+	pool := mock.NewMockNodeClientGetter(ctrl)
 
 	gw := GatewayNameDeployer{
 		APIClient: &apiClient{
@@ -184,7 +185,7 @@ func TestNameDeploy(t *testing.T) {
 	cl.EXPECT().Call(
 		gomock.Any(),
 		uint32(12),
-		"zos.network.interfaces",
+		"zos.system.version",
 		gomock.Any(),
 		gomock.Any(),
 	).Return(nil)
@@ -203,7 +204,7 @@ func TestNameUpdate(t *testing.T) {
 	deployer := mock.NewMockDeployer(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
 	cl := mock.NewRMBMockClient(ctrl)
-	pool := mock.NewMockNodeClientCollection(ctrl)
+	pool := mock.NewMockNodeClientGetter(ctrl)
 	gw := GatewayNameDeployer{
 		APIClient: &apiClient{
 			identity: identity,
@@ -239,7 +240,7 @@ func TestNameUpdate(t *testing.T) {
 	cl.EXPECT().Call(
 		gomock.Any(),
 		uint32(12),
-		"zos.network.interfaces",
+		"zos.system.version",
 		gomock.Any(),
 		gomock.Any(),
 	).Return(nil)
@@ -258,7 +259,7 @@ func TestNameUpdateFailed(t *testing.T) {
 	deployer := mock.NewMockDeployer(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
 	cl := mock.NewRMBMockClient(ctrl)
-	pool := mock.NewMockNodeClientCollection(ctrl)
+	pool := mock.NewMockNodeClientGetter(ctrl)
 	gw := GatewayNameDeployer{
 		APIClient: &apiClient{
 			identity: identity,
@@ -293,7 +294,7 @@ func TestNameUpdateFailed(t *testing.T) {
 	cl.EXPECT().Call(
 		gomock.Any(),
 		uint32(12),
-		"zos.network.interfaces",
+		"zos.system.version",
 		gomock.Any(),
 		gomock.Any(),
 	).Return(nil)
@@ -541,7 +542,7 @@ func TestNameSync(t *testing.T) {
 	identity, err := substrate.NewIdentityFromEd25519Phrase(Words)
 	assert.NoError(t, err)
 	deployer := mock.NewMockDeployer(ctrl)
-	pool := mock.NewMockNodeClientCollection(ctrl)
+	pool := mock.NewMockNodeClientGetter(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayNameDeployer{
 		ID: "123",
@@ -575,7 +576,7 @@ func TestNameSync(t *testing.T) {
 	).Return(true, nil)
 
 	deployer.EXPECT().
-		GetDeploymentObjects(gomock.Any(), sub, map[uint32]uint64{10: 100}).
+		GetDeployments(gomock.Any(), sub, map[uint32]uint64{10: 100}).
 		DoAndReturn(func(ctx context.Context, _ subi.SubstrateExt, _ map[uint32]uint64) (map[uint32]gridtypes.Deployment, error) {
 			return map[uint32]gridtypes.Deployment{10: dl}, nil
 		})
@@ -596,7 +597,7 @@ func TestNameSyncDeletedWorkload(t *testing.T) {
 	identity, err := substrate.NewIdentityFromEd25519Phrase(Words)
 	assert.NoError(t, err)
 	deployer := mock.NewMockDeployer(ctrl)
-	pool := mock.NewMockNodeClientCollection(ctrl)
+	pool := mock.NewMockNodeClientGetter(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayNameDeployer{
 		ID: "123",
@@ -628,7 +629,7 @@ func TestNameSyncDeletedWorkload(t *testing.T) {
 	).Return(true, nil)
 
 	deployer.EXPECT().
-		GetDeploymentObjects(gomock.Any(), sub, map[uint32]uint64{10: 100}).
+		GetDeployments(gomock.Any(), sub, map[uint32]uint64{10: 100}).
 		DoAndReturn(func(ctx context.Context, _ subi.SubstrateExt, _ map[uint32]uint64) (map[uint32]gridtypes.Deployment, error) {
 			return map[uint32]gridtypes.Deployment{10: dl}, nil
 		})

@@ -1,3 +1,4 @@
+// Package provider is the terraform provider
 package provider
 
 import (
@@ -10,7 +11,7 @@ import (
 
 	"github.com/pkg/errors"
 	proxy "github.com/threefoldtech/grid_proxy_server/pkg/client"
-	proxytypes "github.com/threefoldtech/grid_proxy_server/pkg/types"
+	proxyTypes "github.com/threefoldtech/grid_proxy_server/pkg/types"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
@@ -59,10 +60,10 @@ func getPublicNode(ctx context.Context, gridClient proxy.Client, preferedNodes [
 	for _, node := range preferedNodes {
 		preferedNodesSet[int(node)] = struct{}{}
 	}
-	nodes, _, err := gridClient.Nodes(proxytypes.NodeFilter{
+	nodes, _, err := gridClient.Nodes(proxyTypes.NodeFilter{
 		IPv4:   &trueVal,
 		Status: &statusUp,
-	}, proxytypes.Limit{})
+	}, proxyTypes.Limit{})
 	if err != nil {
 		return 0, errors.Wrap(err, "couldn't fetch nodes from the rmb proxy")
 	}
@@ -86,7 +87,7 @@ func getPublicNode(ctx context.Context, gridClient proxy.Client, preferedNodes [
 		if nodeInfo.Status != "up" {
 			continue
 		}
-		nodes = append(nodes, proxytypes.Node{
+		nodes = append(nodes, proxyTypes.Node{
 			PublicConfig: nodeInfo.PublicConfig,
 		})
 	}
@@ -121,7 +122,7 @@ func getNodeFreeWGPort(ctx context.Context, nodeClient *client.NodeClient, nodeI
 	log.Printf("reserved ports for node %d: %v\n", nodeId, freeports)
 	p := uint(rand.Intn(6000) + 2000)
 
-	for isIn(freeports, uint16(p)) {
+	for Contains(freeports, uint16(p)) {
 		p = uint(rand.Intn(6000) + 2000)
 	}
 	log.Printf("Selected port for node %d is %d\n", nodeId, p)

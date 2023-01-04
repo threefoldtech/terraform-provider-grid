@@ -24,6 +24,7 @@ Resource for deploying gateway domains.
 ### Optional
 
 - `description` (String)
+- `solution_type` (String) Gateway name (the fqdn will be <name>.<gateway-domain>)
 - `tls_passthrough` (Boolean) True to pass the tls as is to the backends.
 
 ### Read-Only
