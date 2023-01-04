@@ -6,8 +6,6 @@ terraform {
   }
 }
 provider "grid" {
-  mnemonics = "winner giant reward damage expose pulse recipe manual brand volcano dry avoid"
-  network   = "dev"
 }
 
 locals {
@@ -19,7 +17,7 @@ locals {
 
 resource "grid_network" "net1" {
   name        = local.name
-  nodes       = [local.node]
+  nodes       = [local.node, local.node2]
   ip_range    = "10.1.0.0/16"
   description = "newer network"
   # add_wg_access = true
@@ -40,10 +38,6 @@ resource "grid_deployment" "d1" {
     }
     planetary = true
   }
-}
-
-output "vm1_private_ip" {
-  value = grid_deployment.d1.vms[0].ip
 }
 
 resource "grid_deployment" "d2" {
