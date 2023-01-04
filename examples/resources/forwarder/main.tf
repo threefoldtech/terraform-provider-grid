@@ -20,7 +20,6 @@ resource "grid_network" "net1" {
   nodes       = [local.node, local.node2]
   ip_range    = "10.1.0.0/16"
   description = "newer network"
-  # add_wg_access = true
 }
 resource "grid_deployment" "d1" {
   name         = local.name
@@ -36,7 +35,6 @@ resource "grid_deployment" "d1" {
     env_vars = {
       SSH_KEY = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDNFMdYHGcGqWsE7H1eqsWaXwOQQQrh6bYWsKKGa7KswNa8BhyEK9bjxEs13LvIVPUckn/wVVqlH0qFAc8JjBRmSjGdDjyZIvawOIyDX/Jr0fPAyS3e8eL+FvuJVW1OCKZ4DmGYgNiEYFDZ0uxf6lyfJyYsiTxzeukHOjtDe3xIg660aYdWKV4bbog9AmkdXL7x0lTkUb+ERVhMCvtIFE7YKGZqeEovL6tgXl9U/ApdXK/xT0283CWoKBQVcvZUEqimtWTaEFekFD4PTDkwfUg6WZY6Gy6yTU4HESziSh5e0raH7mP4YJ8tZsdtnfIL+NRvReUqFz8goG6Dm0nvsvwcI8jJhH8lGbPxd6hqbvk+PnttZRr5uxiIJwIx/98fW+mAL0N7AScRklFSjQgr4dRTqZ+/TXyUj9E0x/nyaEpRuj83SzLSwFsc2izoxNCSJDz3m5t7RW2Inm3X3oZmkFOdWL4Y1yGIHcFY0i9LSgHYaQpfLpDz4WnlkkU8cyf73Ic= rawda@rawda-Inspiron-3576"
     }
-    planetary = true
   }
 }
 
@@ -55,7 +53,6 @@ resource "grid_deployment" "d2" {
       SSH_KEY = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDNFMdYHGcGqWsE7H1eqsWaXwOQQQrh6bYWsKKGa7KswNa8BhyEK9bjxEs13LvIVPUckn/wVVqlH0qFAc8JjBRmSjGdDjyZIvawOIyDX/Jr0fPAyS3e8eL+FvuJVW1OCKZ4DmGYgNiEYFDZ0uxf6lyfJyYsiTxzeukHOjtDe3xIg660aYdWKV4bbog9AmkdXL7x0lTkUb+ERVhMCvtIFE7YKGZqeEovL6tgXl9U/ApdXK/xT0283CWoKBQVcvZUEqimtWTaEFekFD4PTDkwfUg6WZY6Gy6yTU4HESziSh5e0raH7mP4YJ8tZsdtnfIL+NRvReUqFz8goG6Dm0nvsvwcI8jJhH8lGbPxd6hqbvk+PnttZRr5uxiIJwIx/98fW+mAL0N7AScRklFSjQgr4dRTqZ+/TXyUj9E0x/nyaEpRuj83SzLSwFsc2izoxNCSJDz3m5t7RW2Inm3X3oZmkFOdWL4Y1yGIHcFY0i9LSgHYaQpfLpDz4WnlkkU8cyf73Ic= rawda@rawda-Inspiron-3576"
       TARGET  = grid_deployment.d1.vms[0].ip
     }
-    planetary = true
   }
 }
 
