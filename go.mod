@@ -25,7 +25,6 @@ require (
 )
 
 require (
-	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/threefoldtech/grid_proxy_server v1.6.6
 	github.com/threefoldtech/substrate-client-dev v0.0.1

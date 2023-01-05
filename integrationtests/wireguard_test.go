@@ -5,12 +5,11 @@ package integrationtests
 
 import (
 	"log"
-	"os/exec"
-	"strings"
 	"testing"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
+	tests "github.com/threefoldtech/terraform-provider-grid/integrationtests"
 )
 
 func TestWireguard(t *testing.T) {
@@ -19,7 +18,7 @@ func TestWireguard(t *testing.T) {
 	   **Test Scenario**
 
 	   - Deploy a singlenode.
-	   - Check that the outputs not empty.
+	   - Check that the output is not empty.
 	   - Up wireguard.
 	   - Check that containers is reachable
 	   - down wireguard
@@ -29,7 +28,7 @@ func TestWireguard(t *testing.T) {
 
 	// retryable errors in terraform testing.
 	// generate ssh keys for test
-	pk, _, err := GenerateSSHKeyPair()
+	pk, _, err := tests.GenerateSSHKeyPair()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -45,24 +44,23 @@ func TestWireguard(t *testing.T) {
 	terraform.InitAndApply(t, terraformOptions)
 
 	// Check that the outputs not empty
-	node1Container1IP := terraform.Output(t, terraformOptions, "node1_container1_ip")
+	node1Container1IP := terraform.Output(t, terraformOptions, "vm1_wg_ip")
 	assert.NotEmpty(t, node1Container1IP)
 
-	node1Container2IP := terraform.Output(t, terraformOptions, "node1_container2_ip")
+	node1Container2IP := terraform.Output(t, terraformOptions, "vm2_wg_ip")
 	assert.NotEmpty(t, node1Container2IP)
 
 	// Up wireguard
 	wgConfig := terraform.Output(t, terraformOptions, "wg_config")
 	assert.NotEmpty(t, wgConfig)
 
-	_, err = UpWg(wgConfig, "", t)
+	conf, err := tests.UpWg(wgConfig, "", t)
 	assert.NoError(t, err)
-	defer DownWG()
+	defer tests.DownWG(conf)
 	ips := []string{node1Container1IP, node1Container2IP}
 	for i := range ips {
-		out, err := exec.Command("ping", ips[i], "-c 5", "-i 3", "-w 10").Output()
+		err = tests.TestConnection(ips[i], "22")
 
-		assert.True(t, !strings.Contains(string(out), "Destination Host Unreachable"))
 		assert.NoError(t, err)
 	}
 }
