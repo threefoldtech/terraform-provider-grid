@@ -263,7 +263,7 @@ func (d *DeployerImpl) GetDeployments(ctx context.Context, sub subi.SubstrateExt
 	res := make(map[uint32]gridtypes.Deployment)
 
 	var wg sync.WaitGroup
-	var mux *sync.RWMutex
+	var mux = &sync.RWMutex{}
 	var resErrors error
 
 	for nodeID, dlID := range dls {

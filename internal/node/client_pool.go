@@ -17,7 +17,7 @@ type NodeClientGetter interface {
 type NodeClientPool struct {
 	clients map[uint32]*NodeClient
 	rmb     rmb.Client
-	mux     *sync.RWMutex
+	mux     sync.RWMutex
 }
 
 // NewNodeClientPool generates a new client pool
