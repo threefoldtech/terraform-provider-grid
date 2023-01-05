@@ -29,8 +29,8 @@ func constructTestDeployer(ctrl *gomock.Controller) DeploymentDeployer {
 	return DeploymentDeployer{
 		ncPool:   pool,
 		deployer: deployer,
-		Id:       "100",
-		NodeID:   10,
+		ID:       "100",
+		Node:     10,
 		Disks: []workloads.Disk{
 			{
 				Name:        "disk1",
@@ -268,15 +268,15 @@ func TestDeploymentSyncDeletedContract(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	d := constructTestDeployer(ctrl)
-	id := d.Id
+	id := d.ID
 	subI, _ := d.APIClient.manager.SubstrateExt()
 	sub := subI.(*mock.MockSubstrateExt)
-	sub.EXPECT().IsValidContract(uint64(d.ID())).Return(false, nil).AnyTimes()
+	sub.EXPECT().IsValidContract(uint64(d.ParseID())).Return(false, nil).AnyTimes()
 	assert.NoError(t, d.syncContract(sub))
-	assert.Empty(t, d.Id)
-	d.Id = id
+	assert.Empty(t, d.ID)
+	d.ID = id
 	assert.NoError(t, d.sync(context.Background(), sub, d.APIClient))
-	assert.Empty(t, d.Id)
+	assert.Empty(t, d.ID)
 	assert.Empty(t, d.VMs)
 	assert.Empty(t, d.Disks)
 	assert.Empty(t, d.QSFSs)
@@ -424,16 +424,16 @@ func TestDeploymentSync(t *testing.T) {
 		}, nil)
 	var cp DeploymentDeployer
 	musUnmarshal(mustMarshal(d), &cp)
-	network.EXPECT().DeleteDeployment(d.NodeID, d.Id)
+	network.EXPECT().DeleteDeployment(d.Node, d.ID)
 	usedIPs := getUsedIPs(dl)
-	network.EXPECT().SetDeploymentIPs(d.NodeID, d.Id, usedIPs)
+	network.EXPECT().SetDeploymentIPs(d.Node, d.ID, usedIPs)
 	assert.NoError(t, d.sync(context.Background(), sub, d.APIClient))
 	assert.Equal(t, d.VMs, cp.VMs)
 	assert.Equal(t, d.Disks, cp.Disks)
 	assert.Equal(t, d.QSFSs, cp.QSFSs)
 	assert.Equal(t, d.ZDBs, cp.ZDBs)
-	assert.Equal(t, d.Id, cp.Id)
-	assert.Equal(t, d.NodeID, cp.NodeID)
+	assert.Equal(t, d.ID, cp.ID)
+	assert.Equal(t, d.Node, cp.Node)
 }
 
 func getUsedIPs(dl gridtypes.Deployment) []byte {
