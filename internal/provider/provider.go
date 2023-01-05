@@ -34,7 +34,7 @@ var (
 		"dev":  subi.NewDevManager,
 		"qa":   subi.NewQAManager,
 		"test": subi.NewTestManager,
-		"main": subi.NewMMainanager,
+		"main": subi.NewMainManager,
 	}
 )
 

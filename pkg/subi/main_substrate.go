@@ -8,79 +8,102 @@ import (
 	submain "github.com/threefoldtech/substrate-client-main"
 )
 
+// SubstrateMainImpl struct to use main substrate
 type SubstrateMainImpl struct {
 	*submain.Substrate
 }
 
+// GetContractIDByNameRegistration returns contract ID using its name
 func (s *SubstrateMainImpl) GetContractIDByNameRegistration(name string) (uint64, error) {
 	res, err := s.Substrate.GetContractIDByNameRegistration(name)
-	return res, terr(err)
+	return res, isNotFoundErrors(err)
 }
+
+// GetTwinIP returns twin IP given its ID
 func (s *SubstrateMainImpl) GetTwinIP(id uint32) (string, error) {
 	twin, err := s.Substrate.GetTwin(id)
 	if err != nil {
-		return "", terr(err)
+		return "", isNotFoundErrors(err)
 	}
 	return twin.IP, nil
 }
+
+// GetTwinPK returns twin's public key
 func (s *SubstrateMainImpl) GetTwinPK(id uint32) ([]byte, error) {
 	twin, err := s.Substrate.GetTwin(id)
 	if err != nil {
-		return nil, terr(err)
+		return nil, isNotFoundErrors(err)
 	}
 	return twin.Account.PublicKey(), nil
 }
+
+// GetAccount returns the user's account
 func (s *SubstrateMainImpl) GetAccount(identity Identity) (types.AccountInfo, error) {
 	res, err := s.Substrate.GetAccount(identity)
-	return res, terr(err)
+	return res, isNotFoundErrors(err)
 }
+
+// CreateNameContract creates a new name contract
 func (s *SubstrateMainImpl) CreateNameContract(identity Identity, name string) (uint64, error) {
 	return s.Substrate.CreateNameContract(identity, name)
 }
+
+// GetNodeTwin returns the twin ID for a node ID
 func (s *SubstrateMainImpl) GetNodeTwin(id uint32) (uint32, error) {
 	node, err := s.Substrate.GetNode(id)
 	if err != nil {
-		return 0, terr(err)
+		return 0, isNotFoundErrors(err)
 	}
 	return uint32(node.TwinID), nil
 }
+
+// UpdateNodeContract updates a node contract
 func (s *SubstrateMainImpl) UpdateNodeContract(identity Identity, contract uint64, body string, hash string) (uint64, error) {
 	res, err := s.Substrate.UpdateNodeContract(identity, contract, body, hash)
-	return res, terr(err)
+	return res, isNotFoundErrors(err)
 }
+
+// CreateNodeContract creates a node contract
 func (s *SubstrateMainImpl) CreateNodeContract(identity Identity, node uint32, body string, hash string, publicIPs uint32, solutionProviderID *uint64) (uint64, error) {
 	res, err := s.Substrate.CreateNodeContract(identity, node, body, hash, publicIPs, solutionProviderID)
-	return res, terr(err)
+	return res, isNotFoundErrors(err)
 }
+
+// GetContract returns a contract given its ID
 func (s *SubstrateMainImpl) GetContract(contractID uint64) (Contract, error) {
 	contract, err := s.Substrate.GetContract(contractID)
-	return &MainContract{contract}, terr(err)
+	return &MainContract{contract}, isNotFoundErrors(err)
 }
+
+// CancelContract cancels a contract
 func (s *SubstrateMainImpl) CancelContract(identity Identity, contractID uint64) error {
 	if contractID == 0 {
 		return nil
 	}
 	if err := s.Substrate.CancelContract(identity, contractID); err != nil && err.Error() != "ContractNotExists" {
-		return terr(err)
+		return isNotFoundErrors(err)
 	}
 	return nil
 }
+
+// EnsureContractCanceled ensures a canceled contract
 func (s *SubstrateMainImpl) EnsureContractCanceled(identity Identity, contractID uint64) error {
 	if contractID == 0 {
 		return nil
 	}
 	if err := s.Substrate.CancelContract(identity, contractID); err != nil && err.Error() != "ContractNotExists" {
-		return terr(err)
+		return isNotFoundErrors(err)
 	}
 	return nil
 }
 
+// DeleteInvalidContracts deletes invalid contracts
 func (s *SubstrateMainImpl) DeleteInvalidContracts(contracts map[uint32]uint64) error {
 	for node, contractID := range contracts {
 		valid, err := s.IsValidContract(contractID)
 		// TODO: handle pause
 		if err != nil {
-			return terr(err)
+			return isNotFoundErrors(err)
 		}
 		if !valid {
 			delete(contracts, node)
@@ -89,12 +112,13 @@ func (s *SubstrateMainImpl) DeleteInvalidContracts(contracts map[uint32]uint64) 
 	return nil
 }
 
+// IsValidContract checks if a contract is invalid
 func (s *SubstrateMainImpl) IsValidContract(contractID uint64) (bool, error) {
 	if contractID == 0 {
 		return false, nil
 	}
 	contract, err := s.Substrate.GetContract(contractID)
-	err = terr(err)
+	err = isNotFoundErrors(err)
 	// TODO: handle pause
 	if errors.Is(err, ErrNotFound) || (contract != nil && !contract.State.IsCreated) {
 		return false, nil
@@ -104,6 +128,7 @@ func (s *SubstrateMainImpl) IsValidContract(contractID uint64) (bool, error) {
 	return true, nil
 }
 
+// InvalidateNameContract invalidate a name contract
 func (s *SubstrateMainImpl) InvalidateNameContract(
 	ctx context.Context,
 	identity Identity,
@@ -114,7 +139,7 @@ func (s *SubstrateMainImpl) InvalidateNameContract(
 		return 0, nil
 	}
 	contract, err := s.Substrate.GetContract(contractID)
-	err = terr(err)
+	err = isNotFoundErrors(err)
 	if errors.Is(err, ErrNotFound) {
 		return 0, nil
 	}
@@ -128,7 +153,7 @@ func (s *SubstrateMainImpl) InvalidateNameContract(
 	if contract.ContractType.NameContract.Name != name {
 		err := s.Substrate.CancelContract(identity, contractID)
 		if err != nil {
-			return 0, errors.Wrap(terr(err), "failed to cleanup unmatching name contract")
+			return 0, errors.Wrap(isNotFoundErrors(err), "failed to cleanup unmatched name contract")
 		}
 		return 0, nil
 	}
