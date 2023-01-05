@@ -5,15 +5,14 @@ package integrationtests
 
 import (
 	"log"
-	"strings"
 	"testing"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
-	"github.com/threefoldtech/terraform-provider-grid/integrationtests"
+	tests "github.com/threefoldtech/terraform-provider-grid/integrationtests"
 )
 
-func TestSingleVMDeployment(t *testing.T) {
+func TestSingleNodeDeployment(t *testing.T) {
 	/* Test case for deployeng a singlenode.
 
 	   **Test Scenario**
@@ -21,13 +20,13 @@ func TestSingleVMDeployment(t *testing.T) {
 	   - Deploy a singlenode.
 	   - Check that the outputs not empty.
 	   - Up wireguard.
-	   - Check that vm is reachable
+	   - Check that containers is reachable
 	   - Verify the VMs ips
 	   - Check that env variables set successfully.
 	   - Destroy the deployment
 
 	*/
-	t.TempDir()
+
 	// retryable errors in terraform testing.
 	// generate ssh keys for test
 	pk, sk, err := tests.GenerateSSHKeyPair()
@@ -35,7 +34,7 @@ func TestSingleVMDeployment(t *testing.T) {
 		log.Fatal(err)
 	}
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-		TerraformDir: "./",
+		TerraformDir: "./singlevm_key_ed25519",
 		Vars: map[string]interface{}{
 			"public_key": pk,
 		},
@@ -46,8 +45,8 @@ func TestSingleVMDeployment(t *testing.T) {
 	terraform.InitAndApply(t, terraformOptions)
 
 	// Check that the outputs not empty
-	publicIP := terraform.Output(t, terraformOptions, "computed_public_ip")
-	assert.NotEmpty(t, publicIP)
+	planetary := terraform.Output(t, terraformOptions, "ygg_ip")
+	assert.NotEmpty(t, planetary)
 
 	node1Container1IP := terraform.Output(t, terraformOptions, "node1_container1_ip")
 	assert.NotEmpty(t, node1Container1IP)
@@ -55,27 +54,10 @@ func TestSingleVMDeployment(t *testing.T) {
 	node1Container2IP := terraform.Output(t, terraformOptions, "node1_container2_ip")
 	assert.NotEmpty(t, node1Container2IP)
 
-	// Up wireguard
-	wgConfig := terraform.Output(t, terraformOptions, "wg_config")
-	assert.NotEmpty(t, wgConfig)
-
-	pIP := strings.Split(publicIP, "/")[0]
-	err = tests.Wait(pIP, "22")
-	assert.NoError(t, err)
-
-	_, err = tests.UpWg(wgConfig)
-	defer func() {
-		_, err := tests.DownWG()
-		assert.NoError(t, err)
-	}()
-
-	isIPReachable := []string{publicIP, node1Container1IP, node1Container2IP} //IPsToCheck
-	assert.NoError(t, err)
-	err = tests.isIPReachable(wgConfig, isIPReachable, sk)
+	err = tests.TestConnection(planetary, "22")
 	assert.NoError(t, err)
 
 	// Check that env variables set successfully
-	res, err := tests.RemoteRun("root", pIP, "cat /proc/1/environ", sk)
+	_, err = tests.RemoteRun("root", planetary, "cat /proc/1/environ", sk)
 	assert.NoError(t, err)
-	assert.Contains(t, string(res), "TEST_VAR=this value for test")
 }

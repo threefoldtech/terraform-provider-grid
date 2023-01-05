@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
-	"github.com/threefoldtech/terraform-provider-grid/integrationtests"
+	tests "github.com/threefoldtech/terraform-provider-grid/integrationtests"
 )
 
 func TestSingleNodeWithSmallMemDeployment(t *testing.T) {
@@ -19,7 +19,7 @@ func TestSingleNodeWithSmallMemDeployment(t *testing.T) {
 		log.Fatal(err)
 	}
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-		TerraformDir: "./singlenode_with_memory_less_than_250M",
+		TerraformDir: "./singlevm_with_memory_less_than_250M",
 		Vars: map[string]interface{}{
 			"public_key": pk,
 		},

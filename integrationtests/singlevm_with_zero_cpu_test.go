@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
-	"github.com/threefoldtech/terraform-provider-grid/integrationtests"
+	tests "github.com/threefoldtech/terraform-provider-grid/integrationtests"
 )
 
 func TestSingleNodeWithZeroCPUDeployment(t *testing.T) {
@@ -19,7 +19,7 @@ func TestSingleNodeWithZeroCPUDeployment(t *testing.T) {
 		log.Fatal(err)
 	}
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-		TerraformDir: "./",
+		TerraformDir: "./singlevm_with_zero_cpu",
 		Vars: map[string]interface{}{
 			"public_key": pk,
 		},
