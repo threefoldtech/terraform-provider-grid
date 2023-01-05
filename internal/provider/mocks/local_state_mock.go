@@ -228,16 +228,16 @@ func (m *MockNetwork) EXPECT() *MockNetworkMockRecorder {
 	return m.recorder
 }
 
-// DeleteDeployment mocks base method.
-func (m *MockNetwork) DeleteDeployment(nodeID uint32, deploymentID string) {
+// DeleteDeploymentHostIDs mocks base method.
+func (m *MockNetwork) DeleteDeploymentHostIDs(nodeID uint32, deploymentID string) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "DeleteDeployment", nodeID, deploymentID)
+	m.ctrl.Call(m, "DeleteDeploymentHostIDs", nodeID, deploymentID)
 }
 
-// DeleteDeployment indicates an expected call of DeleteDeployment.
-func (mr *MockNetworkMockRecorder) DeleteDeployment(nodeID, deploymentID interface{}) *gomock.Call {
+// DeleteDeploymentHostIDs indicates an expected call of DeleteDeploymentHostIDs.
+func (mr *MockNetworkMockRecorder) DeleteDeploymentHostIDs(nodeID, deploymentID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteDeployment", reflect.TypeOf((*MockNetwork)(nil).DeleteDeployment), nodeID, deploymentID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteDeploymentHostIDs", reflect.TypeOf((*MockNetwork)(nil).DeleteDeploymentHostIDs), nodeID, deploymentID)
 }
 
 // DeleteNodeSubnet mocks base method.

@@ -2,19 +2,23 @@
 package state
 
 // NetworkMap is a map of of names and their networks
-type NetworkMap map[string]network
+type NetworkMap map[string]Network
 
-type network struct {
+// Network struct includes subnets and node IPs
+type Network struct {
 	Subnets               map[uint32]string     `json:"subnets"`
 	NodeDeploymentHostIDs NodeDeploymentHostIDs `json:"node_ips"`
 }
 
-type NodeDeploymentHostIDs map[uint32]deploymentHostIDs
+// NodeDeploymentHostIDs is a map for nodes ID and its deployments' IPs
+type NodeDeploymentHostIDs map[uint32]DeploymentHostIDs
 
-type deploymentHostIDs map[string][]byte
+// DeploymentHostIDs is a map for deployment and its IPs
+type DeploymentHostIDs map[string][]byte
 
-func NewNetwork() network {
-	return network{
+// NewNetwork creates a new Network
+func NewNetwork() Network {
+	return Network{
 		Subnets:               map[uint32]string{},
 		NodeDeploymentHostIDs: NodeDeploymentHostIDs{},
 	}
@@ -35,21 +39,22 @@ func (nm NetworkMap) DeleteNetwork(networkName string) {
 }
 
 // GetNodeSubnet gets a node subnet using its ID
-func (n *network) GetNodeSubnet(nodeID uint32) string {
+func (n *Network) GetNodeSubnet(nodeID uint32) string {
 	return n.Subnets[nodeID]
 }
 
 // SetNodeSubnet sets a node subnet with its ID and subnet
-func (n *network) SetNodeSubnet(nodeID uint32, subnet string) {
+func (n *Network) SetNodeSubnet(nodeID uint32, subnet string) {
 	n.Subnets[nodeID] = subnet
 }
 
 // DeleteNodeSubnet deletes a node subnet using its ID
-func (n *network) DeleteNodeSubnet(nodeID uint32) {
+func (n *Network) DeleteNodeSubnet(nodeID uint32) {
 	delete(n.Subnets, nodeID)
 }
 
-func (n *network) GetUsedNetworkHostIDs(nodeID uint32) []byte {
+// GetUsedNetworkHostIDs gets the used host IDs on the overlay network
+func (n *Network) GetUsedNetworkHostIDs(nodeID uint32) []byte {
 	ips := []byte{}
 	for _, v := range n.NodeDeploymentHostIDs[nodeID] {
 		ips = append(ips, v...)
@@ -57,23 +62,23 @@ func (n *network) GetUsedNetworkHostIDs(nodeID uint32) []byte {
 	return ips
 }
 
-func (n *network) GetDeploymentHostIDs(nodeID uint32, deploymentID string) []byte {
+// GetDeploymentHostIDs gets the private network host IDs relevant to the deployment
+func (n *Network) GetDeploymentHostIDs(nodeID uint32, deploymentID string) []byte {
 	if n.NodeDeploymentHostIDs[nodeID] == nil {
 		return []byte{}
 	}
 	return n.NodeDeploymentHostIDs[nodeID][deploymentID]
 }
 
-func (n *network) SetDeploymentHostIDs(nodeID uint32, deploymentID string, ips []byte) {
+// SetDeploymentHostIDs sets the relevant deployment host IDs
+func (n *Network) SetDeploymentHostIDs(nodeID uint32, deploymentID string, ips []byte) {
 	if n.NodeDeploymentHostIDs[nodeID] == nil {
-		n.NodeDeploymentHostIDs[nodeID] = deploymentHostIDs{}
+		n.NodeDeploymentHostIDs[nodeID] = DeploymentHostIDs{}
 	}
 	n.NodeDeploymentHostIDs[nodeID][deploymentID] = ips
 }
 
-func (n *network) DeleteDeployment(nodeID uint32, deploymentID string) {
-	if n.NodeDeploymentHostIDs[nodeID] == nil {
-		return
-	}
+// DeleteDeploymentHostIDs deletes a deployment host IDs
+func (n *Network) DeleteDeploymentHostIDs(nodeID uint32, deploymentID string) {
 	delete(n.NodeDeploymentHostIDs[nodeID], deploymentID)
 }

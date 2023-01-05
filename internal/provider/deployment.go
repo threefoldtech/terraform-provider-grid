@@ -63,8 +63,8 @@ func newDeploymentDeployer(d *schema.ResourceData, threefoldPluginClient *threef
 	}
 
 	qsfs := make([]workloads.QSFS, 0)
-	for _, q := range d.Get("qsfs").([]interface{}) {
-		q := workloads.NewQSFSFromSchema(q.(map[string]interface{}))
+	for _, qsfsdata := range d.Get("qsfs").([]interface{}) {
+		q := workloads.NewQSFSFromSchema(qsfsdata.(map[string]interface{}))
 		qsfs = append(qsfs, q)
 	}
 	pool := client.NewNodeClientPool(threefoldPluginClient.rmb)
@@ -105,7 +105,7 @@ func newDeploymentDeployer(d *schema.ResourceData, threefoldPluginClient *threef
 	return deploymentDeployer, nil
 }
 
-func (d *DeploymentDeployer) assignNodesIPs() error {
+func (d *DeploymentDeployer) assignNodesHostIDs() error {
 	networkingState := d.ThreefoldPluginClient.state.GetNetworkState()
 	network := networkingState.GetNetwork(d.NetworkName)
 	usedHosts := network.GetUsedNetworkHostIDs(d.Node)
@@ -117,9 +117,9 @@ func (d *DeploymentDeployer) assignNodesIPs() error {
 		return errors.Wrapf(err, "invalid ip %s", d.IPRange)
 	}
 	for _, vm := range d.VMs {
-		vmIp := net.ParseIP(vm.IP)
-		vmHostID := vmIp[3]
-		if vm.IP != "" && ipRangeCIDR.Contains(vmIp) && !Contains(usedHosts, vmHostID) {
+		vmIP := net.ParseIP(vm.IP)
+		vmHostID := vmIP[3]
+		if vm.IP != "" && ipRangeCIDR.Contains(vmIP) && !Contains(usedHosts, vmHostID) {
 			usedHosts = append(usedHosts, vmHostID)
 		}
 	}
@@ -138,15 +138,15 @@ func (d *DeploymentDeployer) assignNodesIPs() error {
 			curHostID++
 		}
 		usedHosts = append(usedHosts, curHostID)
-		vmIp := ip
-		vmIp[3] = curHostID
-		d.VMs[idx].IP = vmIp.String()
+		vmIP := ip
+		vmIP[3] = curHostID
+		d.VMs[idx].IP = vmIP.String()
 	}
 	return nil
 }
 func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
 	dl := workloads.NewDeployment(d.ThreefoldPluginClient.twinID)
-	err := d.assignNodesIPs()
+	err := d.assignNodesHostIDs()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to assign node ips")
 	}
@@ -291,7 +291,7 @@ func (d *DeploymentDeployer) Sync(ctx context.Context, sub subi.SubstrateExt, cl
 
 	ns := cl.state.GetNetworkState()
 	network := ns.GetNetwork(d.NetworkName)
-	network.DeleteDeployment(d.Node, d.ID)
+	network.DeleteDeploymentHostIDs(d.Node, d.ID)
 
 	usedIPs := []byte{}
 	for _, w := range dl.Workloads {

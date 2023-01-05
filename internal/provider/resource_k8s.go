@@ -518,12 +518,12 @@ func (k *K8sDeployer) updateNetworkState(d *schema.ResourceData, state state.Sta
 			continue
 		}
 		deploymentIDStr := fmt.Sprint(deploymentID.(int))
-		network.DeleteDeployment(uint32(nodeID), deploymentIDStr)
+		network.DeleteDeploymentHostIDs(uint32(nodeID), deploymentIDStr)
 	}
 	// remove old ips
-	network.DeleteDeployment(k.Master.NodeID, fmt.Sprint(k.NodeDeploymentID[k.Master.NodeID]))
+	network.DeleteDeploymentHostIDs(k.Master.Node, fmt.Sprint(k.NodeDeploymentID[k.Master.Node]))
 	for _, worker := range k.Workers {
-		network.DeleteDeployment(worker.NodeID, fmt.Sprint(k.NodeDeploymentID[worker.NodeID]))
+		network.DeleteDeploymentHostIDs(worker.Node, fmt.Sprint(k.NodeDeploymentID[worker.Node]))
 	}
 
 	// append new ips
@@ -547,7 +547,7 @@ func (k *K8sDeployer) updateNetworkState(d *schema.ResourceData, state state.Sta
 	}
 }
 
-func (k *K8sDeployer) assignNodesIPs() error {
+func (k *K8sDeployer) assignNodesHostIDs() error {
 	// TODO: when a k8s node changes its zos node, remove its ip from the used ones. better at the beginning
 	masterNodeRange := k.NodesIPRange[k.Master.NodeID]
 	if k.Master.IP == "" || !masterNodeRange.Contains(net.ParseIP(k.Master.IP)) {
@@ -571,7 +571,7 @@ func (k *K8sDeployer) assignNodesIPs() error {
 	return nil
 }
 func (k *K8sDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
-	err := k.assignNodesIPs()
+	err := k.assignNodesHostIDs()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to assign node ips")
 	}
@@ -737,9 +737,9 @@ func (k *K8sDeployer) removeUsedIPsFromLocalState(cl *threefoldPluginClient) {
 	ns := cl.state.GetNetworkState()
 	network := ns.GetNetwork(k.NetworkName)
 
-	network.DeleteDeployment(k.Master.NodeID, fmt.Sprint(k.NodeDeploymentID[k.Master.NodeID]))
+	network.DeleteDeploymentHostIDs(k.Master.Node, fmt.Sprint(k.NodeDeploymentID[k.Master.Node]))
 	for _, worker := range k.Workers {
-		network.DeleteDeployment(worker.NodeID, fmt.Sprint(k.NodeDeploymentID[worker.NodeID]))
+		network.DeleteDeploymentHostIDs(worker.Node, fmt.Sprint(k.NodeDeploymentID[worker.Node]))
 	}
 }
 

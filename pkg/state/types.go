@@ -40,5 +40,5 @@ type NetworkInterface interface {
 	// SetDeploymentHostIDs sets deployment's used ips
 	SetDeploymentHostIDs(nodeID uint32, deploymentID string, ips []byte)
 	// RemoveDeployment deletes deployment entry
-	DeleteDeployment(nodeID uint32, deploymentID string)
+	DeleteDeploymentHostIDs(nodeID uint32, deploymentID string)
 }

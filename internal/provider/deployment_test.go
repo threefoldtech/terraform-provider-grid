@@ -467,7 +467,7 @@ func TestDeploymentSync(t *testing.T) {
 
 	var cp DeploymentDeployer
 	musUnmarshal(mustMarshal(d), &cp)
-	network.EXPECT().DeleteDeployment(d.Node, d.ID)
+	network.EXPECT().DeleteDeploymentHostIDs(d.Node, d.ID)
 
 	usedIPs := getUsedIPs(dl)
 	network.EXPECT().SetDeploymentHostIDs(d.Node, d.ID, usedIPs)
