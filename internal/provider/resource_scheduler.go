@@ -18,10 +18,10 @@ func ReourceScheduler() *schema.Resource {
 	return &schema.Resource{
 		// TODO: update descriptions
 		Description:   "Resource to dynamically assign resource requests to nodes.",
-		CreateContext: ReourceSchedCreate,
-		UpdateContext: ReourceSchedUpdate,
-		ReadContext:   ReourceSchedRead,
-		DeleteContext: ReourceSchedDelete,
+		CreateContext: ResourceSchedCreate,
+		UpdateContext: ResourceSchedUpdate,
+		ReadContext:   ResourceSchedRead,
+		DeleteContext: ResourceSchedDelete,
 		Schema: map[string]*schema.Schema{
 			"requests": {
 				Type:        schema.TypeList,
@@ -145,11 +145,11 @@ func schedule(ctx context.Context, d *schema.ResourceData, meta interface{}) dia
 
 }
 
-func ReourceSchedRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func ResourceSchedRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	return diag.Diagnostics{}
 }
 
-func ReourceSchedCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func ResourceSchedCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	diags := schedule(ctx, d, meta)
 	if diags.HasError() {
 		return diags
@@ -158,11 +158,11 @@ func ReourceSchedCreate(ctx context.Context, d *schema.ResourceData, meta interf
 	return diags
 }
 
-func ReourceSchedUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func ResourceSchedUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	return schedule(ctx, d, meta)
 }
 
-func ReourceSchedDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func ResourceSchedDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	d.SetId("")
 	return diag.Diagnostics{}
 }
