@@ -64,7 +64,7 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 			FQDN:           d.Get("fqdn").(string),
 			TLSPassthrough: d.Get("tls_passthrough").(bool),
 		},
-		ID:               d.ID(),
+		ID:               d.Id(),
 		Description:      d.Get("description").(string),
 		Node:             uint32(d.Get("node").(int)),
 		NodeDeploymentID: nodeDeploymentID,
