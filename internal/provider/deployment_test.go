@@ -303,8 +303,7 @@ func TestDeploymentGenerateDeployment(t *testing.T) {
 
 	network := mock.NewMockNetwork(ctrl)
 	netState.EXPECT().GetNetwork(d.NetworkName).Return(network)
-	network.EXPECT().GetNodeIPsList(d.Node).Return([]byte{})
-
+	network.EXPECT().GetUsedNetworkHostIDs(d.Node).Return([]byte{})
 	dl, err := d.GenerateVersionlessDeployments(context.Background())
 	assert.NoError(t, err)
 
@@ -348,8 +347,7 @@ func TestDeploymentSync(t *testing.T) {
 
 	network := mock.NewMockNetwork(ctrl)
 	netState.EXPECT().GetNetwork(d.NetworkName).AnyTimes().Return(network)
-	network.EXPECT().GetNodeIPsList(d.Node).Return([]byte{})
-
+	network.EXPECT().GetUsedNetworkHostIDs(d.Node).Return([]byte{})
 	dls, err := d.GenerateVersionlessDeployments(context.Background())
 	assert.NoError(t, err)
 
@@ -472,8 +470,7 @@ func TestDeploymentSync(t *testing.T) {
 	network.EXPECT().DeleteDeployment(d.Node, d.ID)
 
 	usedIPs := getUsedIPs(dl)
-	network.EXPECT().SetDeploymentIPs(d.Node, d.ID, usedIPs)
-
+	network.EXPECT().SetDeploymentHostIDs(d.Node, d.ID, usedIPs)
 	assert.NoError(t, d.Sync(context.Background(), sub, d.ThreefoldPluginClient))
 	assert.Equal(t, d.VMs, cp.VMs)
 	assert.Equal(t, d.Disks, cp.Disks)

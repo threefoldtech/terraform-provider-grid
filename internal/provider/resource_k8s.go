@@ -331,13 +331,13 @@ func NewK8sDeployer(d *schema.ResourceData, threefoldPluginClient *threefoldPlug
 	if master.IP != "" {
 		usedIPs[master.Node] = append(usedIPs[master.Node], net.ParseIP(master.IP)[3])
 	}
-	usedIPs[master.Node] = append(usedIPs[master.Node], network.GetNodeIPsList(master.Node)...)
+	usedIPs[master.Node] = append(usedIPs[master.Node], network.GetUsedNetworkHostIDs(master.Node)...)
 	for _, w := range d.Get("workers").([]interface{}) {
 		data := NewK8sNodeData(w.(map[string]interface{}))
 		workers = append(workers, data)
 		if data.IP != "" {
 			usedIPs[data.Node] = append(usedIPs[data.Node], net.ParseIP(data.IP)[3])
-			usedIPs[data.Node] = append(usedIPs[data.Node], network.GetNodeIPsList(data.Node)...)
+			usedIPs[data.Node] = append(usedIPs[data.Node], network.GetUsedNetworkHostIDs(data.Node)...)
 		}
 	}
 	nodesIPRange := make(map[uint32]gridtypes.IPNet)
@@ -521,23 +521,23 @@ func (k *K8sDeployer) updateNetworkState(d *schema.ResourceData, state state.Sta
 	}
 
 	// append new ips
-	masterNodeIPs := network.GetDeploymentIPs(k.Master.Node, fmt.Sprint(k.NodeDeploymentID[k.Master.Node]))
+	masterNodeDeploymentHostIDs := network.GetDeploymentHostIDs(k.Master.Node, fmt.Sprint(k.NodeDeploymentID[k.Master.Node]))
 	masterIP := net.ParseIP(k.Master.IP)
 	if masterIP == nil {
 		log.Printf("couldn't parse master ip")
 	} else {
-		masterNodeIPs = append(masterNodeIPs, masterIP.To4()[3])
+		masterNodeDeploymentHostIDs = append(masterNodeDeploymentHostIDs, masterIP.To4()[3])
 	}
-	network.SetDeploymentIPs(k.Master.Node, fmt.Sprint(k.NodeDeploymentID[k.Master.Node]), masterNodeIPs)
+	network.SetDeploymentHostIDs(k.Master.Node, fmt.Sprint(k.NodeDeploymentID[k.Master.Node]), masterNodeDeploymentHostIDs)
 	for _, worker := range k.Workers {
-		workerNodeIPs := network.GetDeploymentIPs(worker.Node, fmt.Sprint(k.NodeDeploymentID[worker.Node]))
+		workerNodeDeploymentHostIDs := network.GetDeploymentHostIDs(worker.Node, fmt.Sprint(k.NodeDeploymentID[worker.Node]))
 		workerIP := net.ParseIP(worker.IP)
 		if workerIP == nil {
 			log.Printf("couldn't parse worker ip at node (%d)", worker.Node)
 		} else {
-			workerNodeIPs = append(workerNodeIPs, workerIP.To4()[3])
+			workerNodeDeploymentHostIDs = append(workerNodeDeploymentHostIDs, workerIP.To4()[3])
 		}
-		network.SetDeploymentIPs(worker.Node, fmt.Sprint(k.NodeDeploymentID[worker.Node]), workerNodeIPs)
+		network.SetDeploymentHostIDs(worker.Node, fmt.Sprint(k.NodeDeploymentID[worker.Node]), workerNodeDeploymentHostIDs)
 	}
 }
 
