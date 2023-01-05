@@ -9,6 +9,7 @@ import (
 	"net"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -40,31 +41,31 @@ type DeploymentData struct {
 	ProjectName string `json:"projectName"`
 }
 
-func getDeploymentDeployer(d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (DeploymentDeployer, error) {
+func newDeploymentDeployer(d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (DeploymentDeployer, error) {
 	networkName := d.Get("network_name").(string)
 	nodeID := uint32(d.Get("node").(int))
 	disks := make([]workloads.Disk, 0)
 	for _, disk := range d.Get("disks").([]interface{}) {
-		data := workloads.GetDiskData(disk.(map[string]interface{}))
-		disks = append(disks, data)
+		d := workloads.GetDiskData(disk.(map[string]interface{}))
+		disks = append(disks, d)
 	}
 
 	zdbs := make([]workloads.ZDB, 0)
 	for _, zdb := range d.Get("zdbs").([]interface{}) {
-		data := workloads.GetZdbData(zdb.(map[string]interface{}))
-		zdbs = append(zdbs, data)
+		z := workloads.GetZdbData(zdb.(map[string]interface{}))
+		zdbs = append(zdbs, z)
 	}
 
 	vms := make([]workloads.VM, 0)
 	for _, vm := range d.Get("vms").([]interface{}) {
-		data := workloads.NewVMFromSchema(vm.(map[string]interface{})).WithNetworkName(networkName)
-		vms = append(vms, *data)
+		v := workloads.NewVMFromSchema(vm.(map[string]interface{})).WithNetworkName(networkName)
+		vms = append(vms, *v)
 	}
 
 	qsfs := make([]workloads.QSFS, 0)
 	for _, q := range d.Get("qsfs").([]interface{}) {
-		data := workloads.NewQSFSFromSchema(q.(map[string]interface{}))
-		qsfs = append(qsfs, data)
+		q := workloads.NewQSFSFromSchema(q.(map[string]interface{}))
+		qsfs = append(qsfs, q)
 	}
 	pool := client.NewNodeClientPool(threefoldPluginClient.rmb)
 	solutionProviderVal := uint64(d.Get("solution_provider").(int))
@@ -79,7 +80,7 @@ func getDeploymentDeployer(d *schema.ResourceData, threefoldPluginClient *threef
 		Type:        "vm",
 		ProjectName: d.Get("solution_type").(string),
 	}
-	deploymentDataStr, err := json.Marshal(deploymentData)
+	deploymentDataBytes, err := json.Marshal(deploymentData)
 	if err != nil {
 		log.Printf("error parsing deploymentdata: %s", err.Error())
 	}
@@ -99,7 +100,7 @@ func getDeploymentDeployer(d *schema.ResourceData, threefoldPluginClient *threef
 		NetworkName:           networkName,
 		ThreefoldPluginClient: threefoldPluginClient,
 		ncPool:                pool,
-		deployer:              deployer.NewDeployer(threefoldPluginClient.identity, threefoldPluginClient.twinID, threefoldPluginClient.gridProxyClient, pool, true, solutionProvider, string(deploymentDataStr)),
+		deployer:              deployer.NewDeployer(threefoldPluginClient.identity, threefoldPluginClient.twinID, threefoldPluginClient.gridProxyClient, pool, true, solutionProvider, string(deploymentDataBytes)),
 	}
 	return deploymentDeployer, nil
 }
@@ -107,35 +108,39 @@ func getDeploymentDeployer(d *schema.ResourceData, threefoldPluginClient *threef
 func (d *DeploymentDeployer) assignNodesIPs() error {
 	networkingState := d.ThreefoldPluginClient.state.GetNetworkState()
 	network := networkingState.GetNetwork(d.NetworkName)
-	usedIPs := network.GetNodeIPsList(d.NodeID)
+	usedHosts := network.GetUsedNetworkHostIDs(d.Node)
 	if len(d.VMs) == 0 {
 		return nil
 	}
-	_, cidr, err := net.ParseCIDR(d.IPRange)
+	ip, ipRangeCIDR, err := net.ParseCIDR(d.IPRange)
 	if err != nil {
 		return errors.Wrapf(err, "invalid ip %s", d.IPRange)
 	}
 	for _, vm := range d.VMs {
-		if vm.IP != "" && cidr.Contains(net.ParseIP(vm.IP)) && !Contains(usedIPs, net.ParseIP(vm.IP)[3]) {
-			usedIPs = append(usedIPs, net.ParseIP(vm.IP)[3])
+		vmIp := net.ParseIP(vm.IP)
+		vmHostID := vmIp[3]
+		if vm.IP != "" && ipRangeCIDR.Contains(vmIp) && !Contains(usedHosts, vmHostID) {
+			usedHosts = append(usedHosts, vmHostID)
 		}
 	}
-	cur := byte(2)
+	curHostID := byte(2)
+
 	for idx, vm := range d.VMs {
-		if vm.IP != "" && cidr.Contains(net.ParseIP(vm.IP)) {
+
+		if vm.IP != "" && ipRangeCIDR.Contains(net.ParseIP(vm.IP)) {
 			continue
 		}
-		ip := cidr.IP
-		ip[3] = cur
-		for Contains(usedIPs, ip[3]) {
-			if cur == 254 {
+
+		for Contains(usedHosts, curHostID) {
+			if curHostID == 254 {
 				return errors.New("all 253 ips of the network are exhausted")
 			}
-			cur++
-			ip[3] = cur
+			curHostID++
 		}
-		d.VMs[idx].IP = ip.String()
-		usedIPs = append(usedIPs, ip[3])
+		usedHosts = append(usedHosts, curHostID)
+		vmIp := ip
+		vmIp[3] = curHostID
+		d.VMs[idx].IP = vmIp.String()
 	}
 	return nil
 }
@@ -328,7 +333,7 @@ func (d *DeploymentDeployer) Sync(ctx context.Context, sub subi.SubstrateExt, cl
 
 		}
 	}
-	network.SetDeploymentIPs(d.Node, d.ID, usedIPs)
+	network.SetDeploymentHostIDs(d.Node, d.ID, usedIPs)
 	d.Match(disks, qsfs, zdbs, vms)
 	log.Printf("vms: %+v\n", len(vms))
 	d.Disks = disks
@@ -385,9 +390,11 @@ func (d *DeploymentDeployer) Match(
 		}
 	}
 }
+
+// TODO: are there any more validations on workloads needed other than vm and networkname relation?
 func (d *DeploymentDeployer) validate() error {
-	if len(d.VMs) != 0 && d.NetworkName == "" {
-		return errors.New("If you pass a vm, network_name must be non-empty")
+	if len(d.VMs) != 0 && len(strings.TrimSpace(d.NetworkName)) == 0 {
+		return errors.New("if you pass a vm, network_name must be non-empty")
 	}
 
 	for _, vm := range d.VMs {
