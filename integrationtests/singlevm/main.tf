@@ -29,7 +29,7 @@ resource "grid_deployment" "d1" {
     name       = "vm1"
     flist      = "https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-20.04.flist"
     cpu        = 2
-    publicip   = true
+    publicip   = false
     memory     = 1024
     entrypoint = "/init.sh"
     env_vars = {

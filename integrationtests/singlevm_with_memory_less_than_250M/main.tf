@@ -18,7 +18,7 @@ resource "grid_network" "net1" {
     ip_range = "10.1.0.0/16"
     name = "network"
     description = "newer network"
-    add_wg_access = true
+    add_wg_access = false
 }
 resource "grid_deployment" "d1" {
   node = 2
@@ -27,7 +27,7 @@ resource "grid_deployment" "d1" {
     name = "vm1"
     flist = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
     cpu = 2
-    publicip = true
+    publicip = false
     memory = 128
     entrypoint = "/sbin/zinit init"
     env_vars = {
@@ -35,6 +35,4 @@ resource "grid_deployment" "d1" {
     }
   }
 }
-output "wg_config" {
-    value = grid_network.net1.access_wg_config
-}
+
