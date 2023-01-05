@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh"
@@ -27,18 +28,19 @@ func UpWg(wgConfig, wgConfDir string, t *testing.T) (string, error) {
 	if err != nil {
 		return "", errors.Wrapf(err, "error writing file")
 	}
-	cmd := exec.Command("wg-quick", "up", "test.conf")
-	out, err := cmd.CombinedOutput()
+	cmd := exec.Command("wg-quick", "up", f.Name())
+	_, err = cmd.Output()
 	if err != nil {
 		return "", errors.Wrapf(err, "error executing wg-quick up")
 	}
 
-	return string(out), nil
+	return f.Name(), nil
+
 }
 
 // DownWG used for tearing down the wireguard interface
-func DownWG() (string, error) { //tempdir
-	cmd := exec.Command("wg-quick", "down", "/tmp/test.conf")
+func DownWG(conf string) (string, error) { //tempdir
+	cmd := exec.Command("wg-quick", "down", conf)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", errors.Wrapf(err, "error executing wg-quick down")
@@ -60,6 +62,7 @@ func RemoteRun(user string, addr string, cmd string, privateKey string) (string,
 			ssh.PublicKeys(key),
 		},
 	}
+
 	// Connect
 	port := "22"
 	client, err := ssh.Dial("tcp", net.JoinHostPort(addr, port), config)
@@ -122,4 +125,15 @@ func GenerateSSHKeyPair() (string, string, error) {
 	}
 	authorizedKey := ssh.MarshalAuthorizedKey(pub)
 	return string(authorizedKey), string(privateKey), nil
+}
+func TestConnection(addr string, port string) error {
+	var err error
+	for t := time.Now(); time.Since(t) < 3*time.Minute; {
+		con, err := net.DialTimeout("tcp", net.JoinHostPort(addr, port), time.Second*12)
+		con.Close()
+		if err == nil {
+			return nil
+		}
+	}
+	return err
 }
