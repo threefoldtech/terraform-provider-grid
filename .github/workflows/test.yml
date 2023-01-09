@@ -43,7 +43,7 @@ jobs:
           install-only: true
 
       - name: Build provider for all supported platforms
-        run: goreleaser build --skip-validate
+        run: goreleaser build --snapshot
 
       - name: Build
         run: |
