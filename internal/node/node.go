@@ -81,7 +81,6 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
-	"github.com/threefoldtech/zos/client"
 	"github.com/threefoldtech/zos/pkg/capacity/dmi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/rmb"
@@ -284,8 +283,14 @@ func (n *NodeClient) SystemHypervisor(ctx context.Context) (result string, err e
 	return
 }
 
+// Version is ZOS version
+type Version struct {
+	ZOS   string `json:"zos"`
+	ZInit string `json:"zinit"`
+}
+
 // SystemVersion executes system version cmd
-func (n *NodeClient) SystemVersion(ctx context.Context) (ver client.Version, err error) {
+func (n *NodeClient) SystemVersion(ctx context.Context) (ver Version, err error) {
 	const cmd = "zos.system.version"
 
 	if err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &ver); err != nil {
