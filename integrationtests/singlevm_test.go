@@ -59,11 +59,8 @@ func TestSingleVMDeployment(t *testing.T) {
 	wgConfig := terraform.Output(t, terraformOptions, "wg_config")
 	assert.NotEmpty(t, wgConfig)
 
+	// testing connection
 	ok := tests.TestConnection(planetary, "22")
 	assert.True(t, ok)
-	// Check that env variables set successfully
-	// output, err := tests.RemoteRun("root", planetary, "cat /proc/1/environ", sk)
-	// assert.NoError(t, err)
-	// assert.Contains(t, string(output), "SSH_KEY")
 
 }
