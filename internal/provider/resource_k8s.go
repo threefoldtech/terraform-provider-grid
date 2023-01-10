@@ -262,7 +262,7 @@ type K8sDeployer struct {
 	NetworkName      string
 	NodeDeploymentID map[uint32]uint64
 
-	APIClient *threefoldPluginClient
+	ThreefoldPluginClient *threefoldPluginClient
 
 	NodeUsedIPs map[uint32][]byte
 	ncPool      *client.NodeClientPool
@@ -374,18 +374,18 @@ func NewK8sDeployer(d *schema.ResourceData, threefoldPluginClient *threefoldPlug
 		log.Printf("error parsing deploymentdata: %s", err.Error())
 	}
 	deployer := K8sDeployer{
-		Master:           &master,
-		Workers:          workers,
-		Token:            d.Get("token").(string),
-		SSHKey:           d.Get("ssh_key").(string),
-		NetworkName:      d.Get("network_name").(string),
-		NodeDeploymentID: nodeDeploymentID,
-		NodeUsedIPs:      usedIPs,
-		NodesIPRange:     nodesIPRange,
-		APIClient:        threefoldPluginClient,
-		ncPool:           pool,
-		d:                d,
-		deployer:         deployer.NewDeployer(threefoldPluginClient.identity, threefoldPluginClient.twinID, threefoldPluginClient.gridProxyClient, pool, true, nil, string(deploymentDataStr)),
+		Master:                &master,
+		Workers:               workers,
+		Token:                 d.Get("token").(string),
+		SSHKey:                d.Get("ssh_key").(string),
+		NetworkName:           d.Get("network_name").(string),
+		NodeDeploymentID:      nodeDeploymentID,
+		NodeUsedIPs:           usedIPs,
+		NodesIPRange:          nodesIPRange,
+		ThreefoldPluginClient: threefoldPluginClient,
+		ncPool:                pool,
+		d:                     d,
+		deployer:              deployer.NewDeployer(threefoldPluginClient.identity, threefoldPluginClient.twinID, threefoldPluginClient.gridProxyClient, pool, true, nil, string(deploymentDataStr)),
 	}
 	return deployer, nil
 }
@@ -581,14 +581,14 @@ func (k *K8sDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[u
 	for node, ws := range nodeWorkloads {
 		dl := gridtypes.Deployment{
 			Version: 0,
-			TwinID:  uint32(k.APIClient.twinID), //LocalTwin,
+			TwinID:  uint32(k.ThreefoldPluginClient.twinID), //LocalTwin,
 			// this contract id must match the one on substrate
 			Workloads: ws,
 			SignatureRequirement: gridtypes.SignatureRequirement{
 				WeightRequired: 1,
 				Requests: []gridtypes.SignatureRequest{
 					{
-						TwinID: k.APIClient.twinID,
+						TwinID: k.ThreefoldPluginClient.twinID,
 						Weight: 1,
 					},
 				},
@@ -664,7 +664,7 @@ func (k *K8sDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error
 	if err := k.validateToken(ctx); err != nil {
 		return err
 	}
-	if err := validateAccountMoneyForExtrinsics(sub, k.APIClient.identity); err != nil {
+	if err := validateAccountMoneyForExtrinsics(sub, k.ThreefoldPluginClient.identity); err != nil {
 		return err
 	}
 	if err := k.ValidateNames(ctx); err != nil {
