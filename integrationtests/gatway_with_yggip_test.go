@@ -1,15 +1,18 @@
+//go:build integration
+// +build integration
+
 package integrationtests
 
 import (
-	"log"
 	"os/exec"
 	"testing"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
+	tests "github.com/threefoldtech/terraform-provider-grid/integrationtests"
 )
 
-func TestSingleNodeDeployment(t *testing.T) {
+func TestGateWay_yggipDeployment(t *testing.T) {
 	/* Test case for deployeng a gateway with ygg ip.
 
 	   **Test Scenario**
@@ -24,9 +27,9 @@ func TestSingleNodeDeployment(t *testing.T) {
 
 	// retryable errors in terraform testing.
 	// generate ssh keys for test
-	pk, _, err := GenerateSSHKeyPair()
+	pk, _, err := tests.GenerateSSHKeyPair()
 	if err != nil {
-		log.Fatal(err)
+		t.Log(err)
 	}
 
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{

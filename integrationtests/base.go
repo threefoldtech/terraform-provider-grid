@@ -126,14 +126,14 @@ func GenerateSSHKeyPair() (string, string, error) {
 	authorizedKey := ssh.MarshalAuthorizedKey(pub)
 	return string(authorizedKey), string(privateKey), nil
 }
-func TestConnection(addr string, port string) error {
-	var err error
+func TestConnection(addr string, port string) bool {
+	connected := false
 	for t := time.Now(); time.Since(t) < 3*time.Minute; {
 		con, err := net.DialTimeout("tcp", net.JoinHostPort(addr, port), time.Second*12)
-		con.Close()
 		if err == nil {
-			return nil
+			connected = true
 		}
+		con.Close()
 	}
-	return err
+	return connected
 }
