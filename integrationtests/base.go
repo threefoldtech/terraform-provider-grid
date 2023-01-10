@@ -52,7 +52,7 @@ func DownWG(conf string) (string, error) { //tempdir
 func RemoteRun(user string, addr string, cmd string, privateKey string) (string, error) {
 	key, err := ssh.ParsePrivateKey([]byte(privateKey))
 	if err != nil {
-		return "", errors.Wrapf(err, "error parsing ssh private key %w", key)
+		return "", errors.Wrapf(err, "error parsing ssh private key %v", key)
 	}
 	// Authentication
 	config := &ssh.ClientConfig{
