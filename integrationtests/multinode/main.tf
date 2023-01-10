@@ -16,7 +16,7 @@ provider "grid" {
 
 
 resource "grid_network" "net1" {
-  nodes         = [2,3]
+  nodes         = [2, 3]
   ip_range      = "172.20.0.0/16"
   name          = "net1"
   description   = "new network"
@@ -34,8 +34,8 @@ resource "grid_deployment" "d1" {
     memory     = 1024
     entrypoint = "/init.sh"
     env_vars = {
-      SSH_KEY  = "${var.public_key}"
-      machine="machine1"
+      SSH_KEY = "${var.public_key}"
+      machine = "machine1"
     }
     planetary = true
   }
@@ -54,7 +54,7 @@ resource "grid_deployment" "d2" {
     entrypoint = "/sbin/zinit init"
     env_vars = {
       SSH_KEY = "${var.public_key}"
-      machine="machine2"
+      machine = "machine2"
     }
     planetary = true
 
