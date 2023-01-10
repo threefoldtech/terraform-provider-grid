@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestSingleNodeDeployment(t *testing.T) {
+func Testgateway_fqdnDeployment(t *testing.T) {
 	/* Test case for deployeng a gateway with fdqn.
 
 	   **Test Scenario**
@@ -44,6 +44,6 @@ func TestSingleNodeDeployment(t *testing.T) {
 	fqdn_ := terraform.Output(t, terraformOptions, "fqdn")
 	assert.NotEmpty(t, fqdn_)
 
-	out, _ := exec.Command("ping", fqdn_, "-c 5", "-i 3", "-w 10").Output()
-	assert.NotContains(t, string(out), "Destination Host Unreachable")
+	output, _ := exec.Command("ping", fqdn_, "-c 5", "-i 3", "-w 10").Output()
+	assert.NotContains(t, string(output), "Destination Host Unreachable")
 }

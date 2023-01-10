@@ -11,7 +11,7 @@ import (
 	tests "github.com/threefoldtech/terraform-provider-grid/integrationtests"
 )
 
-func TestKubernetesWithNonExistNetworkDeployment(t *testing.T) {
+func TestKubernetesWith2WorkersSameNameDeployment(t *testing.T) {
 	/* Test case for deployeng a k8s.
 
 	   **Test Scenario**
