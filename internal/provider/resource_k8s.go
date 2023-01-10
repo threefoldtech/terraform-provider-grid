@@ -1143,7 +1143,7 @@ func resourceK8sRead(ctx context.Context, d *schema.ResourceData, meta interface
 	if err != nil {
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Warning,
-			Summary:  "Error reading data from remote, terraform state might be out of sync with the remote state",
+			Summary:  ErrTerraformOutSync,
 			Detail:   err.Error(),
 		})
 		return diags

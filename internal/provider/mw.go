@@ -9,8 +9,10 @@ import (
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 )
 
+const ErrTerraformOutSync = "Error reading data from remote, terraform state might be out of sync with the remote state"
+
 type Marshalable interface {
-	Marshal(d *schema.ResourceData) (err error)
+	ContractDeploymentSync(d *schema.ResourceData) (err error)
 	sync(ctx context.Context, sub subi.SubstrateExt, cl *threefoldPluginClient) (err error)
 }
 
@@ -28,7 +30,7 @@ func ResourceReadFunc(a Action) func(ctx context.Context, d *schema.ResourceData
 			for idx := range diags {
 				diags[idx] = diag.Diagnostic{
 					Severity: diag.Warning,
-					Summary:  "Error reading data from remote, terraform state might be out of sync with the remote state",
+					Summary:  ErrTerraformOutSync,
 					Detail:   diags[idx].Summary,
 				}
 			}
@@ -60,7 +62,7 @@ func resourceFunc(a Action, reportSync bool) func(ctx context.Context, d *schema
 					})
 				}
 			}
-			err = obj.Marshal(d)
+			err = obj.ContractDeploymentSync(d)
 			if err != nil {
 				diags = append(diags, diag.FromErr(err)...)
 			}

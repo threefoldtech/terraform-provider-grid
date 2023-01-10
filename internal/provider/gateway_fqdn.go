@@ -79,7 +79,7 @@ func (k *GatewayFQDNDeployer) Validate(ctx context.Context, sub subi.SubstrateEx
 	return client.AreNodesUp(ctx, sub, []uint32{k.Node}, k.ncPool)
 }
 
-func (k *GatewayFQDNDeployer) Marshal(d *schema.ResourceData) (errors error) {
+func (k *GatewayFQDNDeployer) ContractDeploymentSync(d *schema.ResourceData) (errors error) {
 
 	nodeDeploymentID := make(map[string]interface{})
 	for node, id := range k.NodeDeploymentID {
