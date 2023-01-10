@@ -41,7 +41,6 @@ resource "grid_deployment" "d1" {
     entrypoint = "/sbin/zinit init"
     memory     = 4096
     env_vars = {
-      TEST_VAR                    = "this value for test"
       SSH_KEY                     = "${var.public_key}"
       PEERTUBE_DB_SUFFIX          = "_prod"
       PEERTUBE_DB_USERNAME        = "peertube"
@@ -69,10 +68,6 @@ output "fqdn" {
 output "node1_zmachine1_ip" {
   value = grid_deployment.d1.vms[0].ip
 }
-output "computed_public_ip" {
-  value = split("/", grid_deployment.d1.vms[0].computedip)[0]
-}
-
 output "ygg_ip" {
   value = grid_deployment.d1.vms[0].ygg_ip
 }

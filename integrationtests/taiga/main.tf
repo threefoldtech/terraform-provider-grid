@@ -44,7 +44,6 @@ resource "grid_deployment" "node1" {
       mount_point = "/var/lib/docker"
     }
     env_vars = {
-      TEST_VAR = "this value for test"
       SSH_KEY = "${var.public_key}",
       DOMAIN_NAME = data.grid_gateway_domain.domain.fqdn,
       ADMIN_USERNAME = "khaled",

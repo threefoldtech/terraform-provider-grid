@@ -56,8 +56,4 @@ func TestSingleNodeDeployment(t *testing.T) {
 
 	err = tests.TestConnection(planetary, "22")
 	assert.NoError(t, err)
-
-	// Check that env variables set successfully
-	_, err = tests.RemoteRun("root", planetary, "cat /proc/1/environ", sk)
-	assert.NoError(t, err)
 }

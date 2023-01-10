@@ -8,10 +8,19 @@ import (
 	"testing"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
-	"github.com/threefoldtech/terraform-provider-grid/integrationtests"
+	tests "github.com/threefoldtech/terraform-provider-grid/integrationtests"
 )
 
 func TestKubernetesWithNonExistNetworkDeployment(t *testing.T) {
+	/* Test case for deployeng a k8s.
+
+	   **Test Scenario**
+
+	   - Deploy a k8s with 2 workers having the same name.
+	   - Check that the deployment failed.
+
+	*/
+
 	// retryable errors in terraform testing.
 	// generate ssh keys for test
 	pk, _, err := tests.GenerateSSHKeyPair()

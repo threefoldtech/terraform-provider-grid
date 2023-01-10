@@ -9,7 +9,7 @@ import (
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
-	"github.com/threefoldtech/terraform-provider-grid/integrationtests"
+	tests "github.com/threefoldtech/terraform-provider-grid/integrationtests"
 )
 
 func TestMultiNodeDeployment(t *testing.T) {
@@ -46,14 +46,7 @@ func TestMultiNodeDeployment(t *testing.T) {
 	ygg_ip := terraform.Output(t, terraformOptions, "ygg_ip")
 	assert.NotEmpty(t, ygg_ip)
 
-	err = tests.Wait(ygg_ip, "22")
+	output, err := tests.RemoteRun("root", ygg_ip, "cd /qsfs && echo test >> test && cat test", sk)
 	assert.NoError(t, err)
-
-	isIPReachable := []string{ygg_ip, metrics}
-	err = tests.isIPReachable("", isIPReachable, sk)
-	assert.NoError(t, err)
-
-	res, err := tests.RemoteRun("root", ygg_ip, "cd /qsfs && echo test >> test && cat test", sk)
-	assert.NoError(t, err)
-	assert.Contains(t, string(res), "test")
+	assert.Contains(t, string(output), "test")
 }

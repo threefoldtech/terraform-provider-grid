@@ -15,14 +15,14 @@ provider "grid" {
 }
 
 resource "grid_network" "net1" {
-  nodes         = [219]
+  nodes         = [2]
   ip_range      = "10.1.0.0/16"
   name          = "network"
   description   = "newer network"
   add_wg_access = true
 }
 resource "grid_deployment" "d1" {
-  node         = 219
+  node         = 2
   network_name = grid_network.net1.name
   disks {
     name        = "data"
@@ -43,6 +43,8 @@ resource "grid_deployment" "d1" {
     env_vars = {
       SSH_KEY = "${var.public_key}"
     }
+    planetary = true
+
   }
 }
 output "wg_config" {
@@ -51,6 +53,6 @@ output "wg_config" {
 output "node1_container1_ip" {
   value = grid_deployment.d1.vms[0].ip
 }
-output "computed_public_ip" {
-  value = grid_deployment.d1.vms[0].computedip
+output "ygg_ip" {
+  value = grid_deployment.d1.vms[0].ygg_ip
 }

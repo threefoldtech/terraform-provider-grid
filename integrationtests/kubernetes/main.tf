@@ -32,8 +32,9 @@ resource "grid_kubernetes" "k8s1" {
     node      = 5
     name      = "mr"
     cpu       = 2
-    publicip  = true
+    publicip  = false
     memory    = 2048
+    planetary = true
   }
   workers {
     disk_size = 15
@@ -45,8 +46,8 @@ resource "grid_kubernetes" "k8s1" {
 }
 
 
-output "computed_master_public_ip" {
-  value = grid_kubernetes.k8s1.master[0].computedip
+output "ygg_ip" {
+  value = grid_kubernetes.k8s1.master[0].ygg_ip
 }
 
 output "wg_config" {

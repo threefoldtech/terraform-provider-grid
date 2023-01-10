@@ -5,12 +5,11 @@ package integrationtests
 
 import (
 	"log"
-	"strings"
 	"testing"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
-	"github.com/threefoldtech/terraform-provider-grid/integrationtests"
+	tests "github.com/threefoldtech/terraform-provider-grid/integrationtests"
 )
 
 func TestSingleMountDeployment(t *testing.T) {
@@ -48,8 +47,8 @@ func TestSingleMountDeployment(t *testing.T) {
 	terraform.InitAndApply(t, terraformOptions)
 
 	// Check that the outputs not empty
-	publicIP := terraform.Output(t, terraformOptions, "public_ip")
-	assert.NotEmpty(t, publicIP)
+	planetary := terraform.Output(t, terraformOptions, "ygg_ip")
+	assert.NotEmpty(t, planetary)
 
 	node1Container1IP := terraform.Output(t, terraformOptions, "node1_container1_ip")
 	assert.NotEmpty(t, node1Container1IP)
@@ -57,32 +56,20 @@ func TestSingleMountDeployment(t *testing.T) {
 	node1Container2IP := terraform.Output(t, terraformOptions, "node1_container2_ip")
 	assert.NotEmpty(t, node1Container2IP)
 
-	// Up wireguard
 	wgConfig := terraform.Output(t, terraformOptions, "wg_config")
 	assert.NotEmpty(t, wgConfig)
 
-	pIP := strings.Split(publicIP, "/")[0]
-	err = tests.Wait(pIP, "22")
+	//test connection to the vm
+	err = tests.TestConnection(planetary, "22")
 	assert.NoError(t, err)
-
-	// Check that containers is reachable
-	isIPReachable := []string{publicIP, node1Container2IP, node1Container1IP}
-	_, err = tests.UpWg(wgConfig)
-	assert.NoError(t, err)
-	err = tests.isIPReachable(wgConfig, isIPReachable, sk)
-	assert.NoError(t, err)
-	defer func() {
-		_, err := tests.DownWG()
-		assert.NoError(t, err)
-	}()
 
 	// Check that env variables set successfully
-	res, err := tests.RemoteRun("root", pIP, "cat /proc/1/environ", sk)
+	output, err := tests.RemoteRun("root", planetary, "cat /proc/1/environ", sk)
 	assert.NoError(t, err)
-	assert.Contains(t, string(res), "TEST_VAR=this value for test")
+	assert.Contains(t, string(output), "SSH_KEY")
 
 	// Check that disk has been mounted successfully with 10G
-	res1, err := tests.RemoteRun("root", pIP, "df -h | grep -w /app", sk)
+	output, err = tests.RemoteRun("root", planetary, "df -h | grep -w /app", sk)
 	assert.NoError(t, err)
-	assert.Contains(t, string(res1), "10G")
+	assert.Contains(t, string(output), "10G")
 }

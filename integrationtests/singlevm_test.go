@@ -62,10 +62,9 @@ func TestSingleVMDeployment(t *testing.T) {
 	err = tests.TestConnection(planetary, "22")
 	assert.NoError(t, err)
 
-	conf, err := tests.UpWg(wgConfig, "", t)
-	defer tests.DownWG(conf)
-
 	// Check that env variables set successfully
 	output, err := tests.RemoteRun("root", planetary, "cat /proc/1/environ", sk)
 	assert.NoError(t, err)
+	assert.Contains(t, string(output), "SSH_KEY")
+
 }

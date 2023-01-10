@@ -86,9 +86,9 @@ func RemoteRun(user string, addr string, cmd string, privateKey string) (string,
 }
 
 // TODO: investigate if this is needed
-func IsIPReachable(wgConfig string, isIPReachable []string, privateKey string) error {
-	for i := range isIPReachable {
-		out, err := exec.Command("ping", isIPReachable[i], "-c 5", "-i 3", "-w 10").Output()
+func IsIPReachable(wgConfig string, IPCheckList []string, privateKey string) error {
+	for i := range IPCheckList {
+		out, err := exec.Command("ping", IPCheckList[i], "-c 5", "-i 3", "-w 10").Output()
 		if err != nil {
 			return errors.Wrapf(err, "error executing command on remote")
 		}
@@ -96,12 +96,12 @@ func IsIPReachable(wgConfig string, isIPReachable []string, privateKey string) e
 			return errors.Wrapf(err, "error host unreachable")
 		}
 	}
-	for i := 0; i < len(isIPReachable); i++ {
-		res, err := RemoteRun("root", isIPReachable[i], "ifconfig", privateKey)
+	for i := 0; i < len(IPCheckList); i++ {
+		res, err := RemoteRun("root", IPCheckList[i], "ifconfig", privateKey)
 		if err != nil {
 			return errors.Wrapf(err, "couldn't connect as a root user to the machine")
 		}
-		if !strings.Contains(string(res), isIPReachable[i]) {
+		if !strings.Contains(string(res), IPCheckList[i]) {
 			return errors.Wrapf(err, "the ip is not reachable and couldnt be verified ")
 		}
 	}
