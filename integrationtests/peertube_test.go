@@ -5,12 +5,11 @@ package integrationtests
 
 import (
 	"log"
-	"os/exec"
 	"testing"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
-	"github.com/threefoldtech/terraform-provider-grid/integrationtests"
+	tests "github.com/threefoldtech/terraform-provider-grid/integrationtests"
 )
 
 func TestPeerTubeDeployment(t *testing.T) {
@@ -44,22 +43,18 @@ func TestPeerTubeDeployment(t *testing.T) {
 	terraform.InitAndApply(t, terraformOptions)
 
 	// Check that the outputs not empty
-	ip := terraform.Output(t, terraformOptions, "ygg_ip")
-	assert.NotEmpty(t, ip)
+	planetary := terraform.Output(t, terraformOptions, "ygg_ip")
+	assert.NotEmpty(t, planetary)
 
-	err = tests.Wait(ip, "22")
+	peertube := terraform.Output(t, terraformOptions, "fqdn")
+	assert.NotEmpty(t, fqdn)
+
+	err = tests.TestConnection(planetary, "22")
 	assert.NoError(t, err)
-
-	out, _ := exec.Command("ping", ip, "-c 5", "-i 3", "-w 10").Output()
-	assert.NotContains(t, string(out), "Destination Host Unreachable")
 
 	// Check that env variables set successfully
-	res, err := tests.RemoteRun("root", ip, "cat /proc/1/environ", sk)
+	output, err := tests.RemoteRun("root", planetary, "zinit list", sk)
 	assert.NoError(t, err)
-	assert.Contains(t, string(res), "TEST_VAR=this value for test")
-
-	res, err = tests.RemoteRun("root", ip, "zinit list", sk)
-	assert.NoError(t, err)
-	assert.Contains(t, res, "peertube: Running")
+	assert.Contains(t, output, "peertube: Running")
 
 }

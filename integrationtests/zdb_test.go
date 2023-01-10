@@ -41,4 +41,7 @@ func TestZdbsDeployment(t *testing.T) {
 
 	zdb1Namespace := terraform.Output(t, terraformOptions, "zdb1_namespace")
 	assert.NotEmpty(t, zdb1Namespace)
+
+	// Check that zdb reachable from VM.
+
 }

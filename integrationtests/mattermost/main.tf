@@ -43,7 +43,6 @@ variable "public_key" {
       entrypoint = "/sbin/zinit init"
       memory = 4096
       env_vars = {
-        TEST_VAR = "this value for test"
         SSH_KEY = "${var.public_key}",
         DB_PASSWORD = "khaled"
         SITE_URL = format("https://%s", data.grid_gateway_domain.domain.fqdn)

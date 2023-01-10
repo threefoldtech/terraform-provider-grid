@@ -33,7 +33,7 @@ resource "grid_deployment" "d1" {
     name       = "vm1"
     flist      = "https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-20.04.flist"
     cpu        = 1
-    publicip   = true
+    publicip   = false
     memory     = 1024
     entrypoint = "/init.sh"
     mounts {
@@ -42,8 +42,9 @@ resource "grid_deployment" "d1" {
     }
     env_vars = {
       SSH_KEY  = "${var.public_key}"
-      TEST_VAR = "this value for test"
     }
+      planetary = true
+
   }
   vms {
     name       = "anothervm"
@@ -53,7 +54,6 @@ resource "grid_deployment" "d1" {
     entrypoint = "/init.sh"
     env_vars = {
       SSH_KEY  = "${var.public_key}"
-      TEST_VAR = "this value for test"
     }
   }
 }
@@ -66,6 +66,6 @@ output "node1_container1_ip" {
 output "node1_container2_ip" {
   value = grid_deployment.d1.vms[1].ip
 }
-output "computed_public_ip" {
-  value = grid_deployment.d1.vms[0].computedip
+output "ygg_ip" {
+  value = grid_deployment.d1.vms[0].ygg_ip
 }

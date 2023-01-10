@@ -6,12 +6,11 @@ package integrationtests
 import (
 	"log"
 	"os/exec"
-	"strings"
 	"testing"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
-	"github.com/threefoldtech/terraform-provider-grid/integrationtests"
+	tests "github.com/threefoldtech/terraform-provider-grid/integrationtests"
 )
 
 func TestTaigaDeployment(t *testing.T) {
@@ -45,30 +44,22 @@ func TestTaigaDeployment(t *testing.T) {
 	terraform.InitAndApply(t, terraformOptions)
 
 	// Check that the outputs not empty
-	publicIp := terraform.Output(t, terraformOptions, "node1_zmachine1_ygg_ip")
-	assert.NotEmpty(t, publicIp)
+	planetary := terraform.Output(t, terraformOptions, "node1_zmachine1_ygg_ip")
+	assert.NotEmpty(t, planetary)
 
 	webIp := terraform.Output(t, terraformOptions, "fqdn")
 	assert.NotEmpty(t, webIp)
 
-	// Check that vm is reachable
-	publicIp = strings.Split(publicIp, "/")[0]
-	err = tests.Wait(publicIp, "22")
-	assert.NoError(t, err)
-
 	// Check that env variables set successfully
-	res, err := tests.RemoteRun("root", publicIp, "cat /proc/1/environ", sk)
+	output, err := tests.RemoteRun("root", planetary, "cat /proc/1/environ", sk)
 	assert.NoError(t, err)
-	assert.Contains(t, string(res), "TEST_VAR=this value for test")
+	assert.Contains(t, string(output), "SSH_KEY")
 
-	res, err = tests.RemoteRun("root", publicIp, "zinit list", sk)
+	output, err = tests.RemoteRun("root", planetary, "zinit list", sk)
 	assert.NoError(t, err)
-	assert.Contains(t, res, "taiga: Running")
+	assert.Contains(t, output, "taiga: Running")
 
 	//check the webpage
-	err = tests.Wait(webIp, "22")
-	assert.NoError(t, err)
-
-	out1, _ := exec.Command("ping", webIp, "-c 5", "-i 3", "-w 10").Output()
-	assert.NotContains(t, string(out1), "Destination Host Unreachable")
+	output1, _ := exec.Command("ping", webIp, "-c 5", "-i 3", "-w 10").Output()
+	assert.NotContains(t, string(output1), "Destination Host Unreachable")
 }

@@ -5,12 +5,11 @@ package integrationtests
 
 import (
 	"log"
-	"strings"
 	"testing"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
-	"github.com/threefoldtech/terraform-provider-grid/integrationtests"
+	tests "github.com/threefoldtech/terraform-provider-grid/integrationtests"
 )
 
 func TestMountWithBiggerFileDeployment(t *testing.T) {
@@ -43,28 +42,20 @@ func TestMountWithBiggerFileDeployment(t *testing.T) {
 
 	terraform.InitAndApplyE(t, terraformOptions)
 
-	publicIP := terraform.Output(t, terraformOptions, "computed_public_ip")
-	assert.NotEmpty(t, publicIP)
+	planetary := terraform.Output(t, terraformOptions, "ygg_ip")
+	assert.NotEmpty(t, planetary)
 
-	// Up wireguard
-	wgConfig := terraform.Output(t, terraformOptions, "wg_config")
-	assert.NotEmpty(t, wgConfig)
-	_, err = tests.UpWg(wgConfig)
+	//test connection to the vm
+	err = tests.TestConnection(planetary, "22")
 	assert.NoError(t, err)
-	defer func() {
-		_, err := tests.DownWG()
-		assert.NoError(t, err)
-	}()
+
+	// Check that env variables set successfully
+	output, err := tests.RemoteRun("root", planetary, "cat /proc/1/environ", sk)
+	assert.NoError(t, err)
+	assert.Contains(t, string(output), "SSH_KEY")
 
 	// ssh to VM and try to create a file with size 1G.
-	pIP := strings.Split(publicIP, "/")[0]
-	err = tests.Wait(pIP, "22")
-	assert.NoError(t, err)
-	res, err := tests.RemoteRun("root", pIP, "cd /app/ && dd if=/dev/vda bs=1G count=1 of=test.txt", sk)
-	assert.NoError(t, err)
-	assert.Contains(t, string(res), "TEST_VAR=this value for test")
-
-	_, err = tests.RemoteRun("root", pIP, "cd /app/ && dd if=/dev/vda bs=1G count=1 of=test.txt", sk)
+	output, err = tests.RemoteRun("root", planetary, "cd /app/ && dd if=/dev/vda bs=1G count=1 of=test.txt", sk)
 	if err == nil {
 		t.Errorf("should fail with out of memory")
 	}
