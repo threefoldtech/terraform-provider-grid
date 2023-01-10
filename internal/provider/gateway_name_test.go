@@ -47,7 +47,7 @@ func TestNameValidateNodeNotReachable(t *testing.T) {
 		Return(client.NewNodeClient(10, cl), nil)
 
 	gw := GatewayNameDeployer{
-		APIClient: &apiClient{
+		ThreefoldPluginClient: &threefoldPluginClient{
 			identity: identity,
 		},
 		ncPool: pool,
@@ -86,7 +86,7 @@ func TestNameValidateNodeReachable(t *testing.T) {
 		Return(client.NewNodeClient(10, cl), nil)
 
 	gw := GatewayNameDeployer{
-		APIClient: &apiClient{
+		ThreefoldPluginClient: &threefoldPluginClient{
 			identity: identity,
 		},
 		ncPool: pool,
@@ -104,7 +104,7 @@ func TestNameGenerateDeployment(t *testing.T) {
 		FQDN:           "name.com",
 	}
 	gw := GatewayNameDeployer{
-		APIClient: &apiClient{
+		ThreefoldPluginClient: &threefoldPluginClient{
 			twinID: 11,
 		},
 		Node: 10,
@@ -154,7 +154,7 @@ func TestNameDeploy(t *testing.T) {
 	pool := mock.NewMockNodeClientGetter(ctrl)
 
 	gw := GatewayNameDeployer{
-		APIClient: &apiClient{
+		ThreefoldPluginClient: &threefoldPluginClient{
 			identity: identity,
 			twinID:   11,
 		},
@@ -206,7 +206,7 @@ func TestNameUpdate(t *testing.T) {
 	cl := mock.NewRMBMockClient(ctrl)
 	pool := mock.NewMockNodeClientGetter(ctrl)
 	gw := GatewayNameDeployer{
-		APIClient: &apiClient{
+		ThreefoldPluginClient: &threefoldPluginClient{
 			identity: identity,
 			twinID:   11,
 		},
@@ -261,7 +261,7 @@ func TestNameUpdateFailed(t *testing.T) {
 	cl := mock.NewRMBMockClient(ctrl)
 	pool := mock.NewMockNodeClientGetter(ctrl)
 	gw := GatewayNameDeployer{
-		APIClient: &apiClient{
+		ThreefoldPluginClient: &threefoldPluginClient{
 			identity: identity,
 			twinID:   11,
 		},
@@ -315,7 +315,7 @@ func TestNameCancel(t *testing.T) {
 	deployer := mock.NewMockDeployer(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayNameDeployer{
-		APIClient: &apiClient{
+		ThreefoldPluginClient: &threefoldPluginClient{
 			identity: identity,
 			twinID:   11,
 		},
@@ -356,7 +356,7 @@ func TestNameCancelDeploymentsFailed(t *testing.T) {
 	deployer := mock.NewMockDeployer(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayNameDeployer{
-		APIClient: &apiClient{
+		ThreefoldPluginClient: &threefoldPluginClient{
 			identity: identity,
 			twinID:   11,
 		},
@@ -391,7 +391,7 @@ func TestNameCancelContractsFailed(t *testing.T) {
 	deployer := mock.NewMockDeployer(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayNameDeployer{
-		APIClient: &apiClient{
+		ThreefoldPluginClient: &threefoldPluginClient{
 			identity: identity,
 			twinID:   11,
 		},
@@ -432,7 +432,7 @@ func TestNameSyncContracts(t *testing.T) {
 	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayNameDeployer{
 		ID: "123",
-		APIClient: &apiClient{
+		ThreefoldPluginClient: &threefoldPluginClient{
 			identity: identity,
 			twinID:   11,
 		},
@@ -469,7 +469,7 @@ func TestNameSyncDeletedContracts(t *testing.T) {
 	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayNameDeployer{
 		ID: "123",
-		APIClient: &apiClient{
+		ThreefoldPluginClient: &threefoldPluginClient{
 			identity: identity,
 			twinID:   11,
 		},
@@ -509,7 +509,7 @@ func TestNameSyncContractsFailure(t *testing.T) {
 	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayNameDeployer{
 		ID: "123",
-		APIClient: &apiClient{
+		ThreefoldPluginClient: &threefoldPluginClient{
 			identity: identity,
 			twinID:   11,
 		},
@@ -546,7 +546,7 @@ func TestNameSync(t *testing.T) {
 	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayNameDeployer{
 		ID: "123",
-		APIClient: &apiClient{
+		ThreefoldPluginClient: &threefoldPluginClient{
 			identity: identity,
 			twinID:   11,
 		},
@@ -581,7 +581,7 @@ func TestNameSync(t *testing.T) {
 			return map[uint32]gridtypes.Deployment{10: dl}, nil
 		})
 	gw.Gw.FQDN = "123"
-	err = gw.sync(context.Background(), sub, gw.APIClient)
+	err = gw.sync(context.Background(), sub, gw.ThreefoldPluginClient)
 	assert.NoError(t, err)
 	assert.Equal(t, gw.NodeDeploymentID, map[uint32]uint64{10: 100})
 	assert.Equal(t, gw.NameContractID, uint64(200))
@@ -601,7 +601,7 @@ func TestNameSyncDeletedWorkload(t *testing.T) {
 	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayNameDeployer{
 		ID: "123",
-		APIClient: &apiClient{
+		ThreefoldPluginClient: &threefoldPluginClient{
 			identity: identity,
 			twinID:   11,
 		},
@@ -634,7 +634,7 @@ func TestNameSyncDeletedWorkload(t *testing.T) {
 			return map[uint32]gridtypes.Deployment{10: dl}, nil
 		})
 	gw.Gw.FQDN = "123"
-	err = gw.sync(context.Background(), sub, gw.APIClient)
+	err = gw.sync(context.Background(), sub, gw.ThreefoldPluginClient)
 	assert.NoError(t, err)
 	assert.Equal(t, gw.NodeDeploymentID, map[uint32]uint64{10: 100})
 	assert.Equal(t, gw.ID, "123")
