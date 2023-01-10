@@ -105,7 +105,7 @@ func TestNameGenerateDeployment(t *testing.T) {
 	}
 	gw := GatewayNameDeployer{
 		APIClient: &apiClient{
-			twin_id: 11,
+			twinID: 11,
 		},
 		Node: 10,
 		Gw:   g,
@@ -156,7 +156,7 @@ func TestNameDeploy(t *testing.T) {
 	gw := GatewayNameDeployer{
 		APIClient: &apiClient{
 			identity: identity,
-			twin_id:  11,
+			twinID:   11,
 		},
 		Node: 10,
 		Gw: workloads.GatewayNameProxy{
@@ -208,7 +208,7 @@ func TestNameUpdate(t *testing.T) {
 	gw := GatewayNameDeployer{
 		APIClient: &apiClient{
 			identity: identity,
-			twin_id:  11,
+			twinID:   11,
 		},
 		Node: 10,
 		Gw: workloads.GatewayNameProxy{
@@ -263,7 +263,7 @@ func TestNameUpdateFailed(t *testing.T) {
 	gw := GatewayNameDeployer{
 		APIClient: &apiClient{
 			identity: identity,
-			twin_id:  11,
+			twinID:   11,
 		},
 		Node: 10,
 		Gw: workloads.GatewayNameProxy{
@@ -317,7 +317,7 @@ func TestNameCancel(t *testing.T) {
 	gw := GatewayNameDeployer{
 		APIClient: &apiClient{
 			identity: identity,
-			twin_id:  11,
+			twinID:   11,
 		},
 		Node: 10,
 		Gw: workloads.GatewayNameProxy{
@@ -358,7 +358,7 @@ func TestNameCancelDeploymentsFailed(t *testing.T) {
 	gw := GatewayNameDeployer{
 		APIClient: &apiClient{
 			identity: identity,
-			twin_id:  11,
+			twinID:   11,
 		},
 		Node: 10,
 		Gw: workloads.GatewayNameProxy{
@@ -393,7 +393,7 @@ func TestNameCancelContractsFailed(t *testing.T) {
 	gw := GatewayNameDeployer{
 		APIClient: &apiClient{
 			identity: identity,
-			twin_id:  11,
+			twinID:   11,
 		},
 		Node: 10,
 		Gw: workloads.GatewayNameProxy{
@@ -434,7 +434,7 @@ func TestNameSyncContracts(t *testing.T) {
 		ID: "123",
 		APIClient: &apiClient{
 			identity: identity,
-			twin_id:  11,
+			twinID:   11,
 		},
 		Node: 10,
 		Gw: workloads.GatewayNameProxy{
@@ -471,7 +471,7 @@ func TestNameSyncDeletedContracts(t *testing.T) {
 		ID: "123",
 		APIClient: &apiClient{
 			identity: identity,
-			twin_id:  11,
+			twinID:   11,
 		},
 		Node: 10,
 		Gw: workloads.GatewayNameProxy{
@@ -511,7 +511,7 @@ func TestNameSyncContractsFailure(t *testing.T) {
 		ID: "123",
 		APIClient: &apiClient{
 			identity: identity,
-			twin_id:  11,
+			twinID:   11,
 		},
 		Node: 10,
 		Gw: workloads.GatewayNameProxy{
@@ -548,7 +548,7 @@ func TestNameSync(t *testing.T) {
 		ID: "123",
 		APIClient: &apiClient{
 			identity: identity,
-			twin_id:  11,
+			twinID:   11,
 		},
 		Node: 10,
 		Gw: workloads.GatewayNameProxy{
@@ -603,7 +603,7 @@ func TestNameSyncDeletedWorkload(t *testing.T) {
 		ID: "123",
 		APIClient: &apiClient{
 			identity: identity,
-			twin_id:  11,
+			twinID:   11,
 		},
 		Node: 10,
 		Gw: workloads.GatewayNameProxy{

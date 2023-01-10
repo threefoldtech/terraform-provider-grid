@@ -121,14 +121,14 @@ func parseRequests(d *schema.ResourceData, assignment map[string]uint32) []sched
 }
 
 func schedule(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	apiClient, ok := meta.(*apiClient)
+	threefoldPluginClient, ok := meta.(*threefoldPluginClient)
 	if !ok {
 		return diag.FromErr(fmt.Errorf("failed to cast meta into api client"))
 	}
 
 	assignment := parseAssignment(d)
 	reqs := parseRequests(d, assignment)
-	scheduler := scheduler.NewScheduler(apiClient.grid_client, uint64(apiClient.twin_id))
+	scheduler := scheduler.NewScheduler(threefoldPluginClient.gridProxyClient, uint64(threefoldPluginClient.twinID))
 	for _, r := range reqs {
 		node, err := scheduler.Schedule(&r)
 		if err != nil {

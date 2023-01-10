@@ -268,7 +268,7 @@ type K8sDeployer struct {
 	NetworkName      string
 	NodeDeploymentID map[uint32]uint64
 
-	APIClient *apiClient
+	APIClient *threefoldPluginClient
 
 	NodeUsedIPs map[uint32][]byte
 	ncPool      *client.NodeClientPool
@@ -325,9 +325,9 @@ func NewK8sNodeDataFromWorkload(w gridtypes.Workload, nodeID uint32, diskSize in
 	return k, nil
 }
 
-func NewK8sDeployer(d *schema.ResourceData, apiClient *apiClient) (K8sDeployer, error) {
+func NewK8sDeployer(d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (K8sDeployer, error) {
 	networkName := d.Get("network_name").(string)
-	ns := apiClient.state.GetNetworkState()
+	ns := threefoldPluginClient.state.GetNetworkState()
 	network := ns.GetNetwork(networkName)
 
 	master := NewK8sNodeData(d.Get("master").([]interface{})[0].(map[string]interface{}))
@@ -369,7 +369,7 @@ func NewK8sDeployer(d *schema.ResourceData, apiClient *apiClient) (K8sDeployer, 
 		nodeDeploymentID[uint32(nodeInt)] = deploymentID
 	}
 
-	pool := client.NewNodeClientPool(apiClient.rmb)
+	pool := client.NewNodeClientPool(threefoldPluginClient.rmb)
 	deploymentData := DeploymentData{
 		Name:        d.Get("name").(string),
 		Type:        "kubernetes",
@@ -388,10 +388,10 @@ func NewK8sDeployer(d *schema.ResourceData, apiClient *apiClient) (K8sDeployer, 
 		NodeDeploymentID: nodeDeploymentID,
 		NodeUsedIPs:      usedIPs,
 		NodesIPRange:     nodesIPRange,
-		APIClient:        apiClient,
+		APIClient:        threefoldPluginClient,
 		ncPool:           pool,
 		d:                d,
-		deployer:         deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, nil, string(deploymentDataStr)),
+		deployer:         deployer.NewDeployer(threefoldPluginClient.identity, threefoldPluginClient.twinID, threefoldPluginClient.gridProxyClient, pool, true, nil, string(deploymentDataStr)),
 	}
 	return deployer, nil
 }
@@ -456,7 +456,7 @@ func (d *K8sDeployer) retainChecksums(workers []interface{}, master interface{})
 	}
 }
 
-func (k *K8sDeployer) storeState(d *schema.ResourceData, cl *apiClient) (errors error) {
+func (k *K8sDeployer) storeState(d *schema.ResourceData, cl *threefoldPluginClient) (errors error) {
 	workers := make([]interface{}, 0)
 	for _, w := range k.Workers {
 		workers = append(workers, w.Dictify())
@@ -587,14 +587,14 @@ func (k *K8sDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[u
 	for node, ws := range nodeWorkloads {
 		dl := gridtypes.Deployment{
 			Version: 0,
-			TwinID:  uint32(k.APIClient.twin_id), //LocalTwin,
+			TwinID:  uint32(k.APIClient.twinID), //LocalTwin,
 			// this contract id must match the one on substrate
 			Workloads: ws,
 			SignatureRequirement: gridtypes.SignatureRequirement{
 				WeightRequired: 1,
 				Requests: []gridtypes.SignatureRequest{
 					{
-						TwinID: k.APIClient.twin_id,
+						TwinID: k.APIClient.twinID,
 						Weight: 1,
 					},
 				},
@@ -688,7 +688,7 @@ func (k *K8sDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error
 	return client.AreNodesUp(ctx, sub, nodes, k.ncPool)
 }
 
-func (k *K8sDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, cl *apiClient) error {
+func (k *K8sDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, cl *threefoldPluginClient) error {
 	if err := k.validateChecksums(); err != nil {
 		return err
 	}
@@ -703,7 +703,7 @@ func (k *K8sDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt, d *sche
 	return err
 }
 
-func (k *K8sDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, cl *apiClient) error {
+func (k *K8sDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, cl *threefoldPluginClient) error {
 	newDeployments := make(map[uint32]gridtypes.Deployment)
 
 	currentDeployments, err := k.deployer.Deploy(ctx, sub, k.NodeDeploymentID, newDeployments)
@@ -733,7 +733,7 @@ func printDeployments(dls map[uint32]gridtypes.Deployment) (err error) {
 	return
 }
 
-func (k *K8sDeployer) removeUsedIPsFromLocalState(cl *apiClient) {
+func (k *K8sDeployer) removeUsedIPsFromLocalState(cl *threefoldPluginClient) {
 	ns := cl.state.GetNetworkState()
 	network := ns.GetNetwork(k.NetworkName)
 
@@ -743,7 +743,7 @@ func (k *K8sDeployer) removeUsedIPsFromLocalState(cl *apiClient) {
 	}
 }
 
-func (k *K8sDeployer) updateState(ctx context.Context, sub subi.SubstrateExt, currentDeploymentIDs map[uint32]uint64, d *schema.ResourceData, cl *apiClient) error {
+func (k *K8sDeployer) updateState(ctx context.Context, sub subi.SubstrateExt, currentDeploymentIDs map[uint32]uint64, d *schema.ResourceData, cl *threefoldPluginClient) error {
 	log.Printf("current deployments\n")
 	k.NodeDeploymentID = currentDeploymentIDs
 	currentDeployments, err := k.deployer.GetDeployments(ctx, sub, currentDeploymentIDs)
@@ -1054,21 +1054,21 @@ func (k *K8sDeployer) getK8sFreeIP(ipRange gridtypes.IPNet, nodeID uint32) (stri
 
 func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	apiClient, ok := meta.(*apiClient)
+	threefoldPluginClient, ok := meta.(*threefoldPluginClient)
 	if !ok {
 		return diag.FromErr(fmt.Errorf("failed to cast meta into api client"))
 	}
 
-	deployer, err := NewK8sDeployer(d, apiClient)
+	deployer, err := NewK8sDeployer(d, threefoldPluginClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	if err := deployer.Validate(ctx, apiClient.substrateConn); err != nil {
+	if err := deployer.Validate(ctx, threefoldPluginClient.substrateConn); err != nil {
 		return diag.FromErr(err)
 	}
 
-	err = deployer.Deploy(ctx, apiClient.substrateConn, d, apiClient)
+	err = deployer.Deploy(ctx, threefoldPluginClient.substrateConn, d, threefoldPluginClient)
 	if err != nil {
 		if len(deployer.NodeDeploymentID) != 0 {
 			// failed to deploy and failed to revert, store the current state locally
@@ -1077,7 +1077,7 @@ func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 			return diag.FromErr(err)
 		}
 	}
-	err = deployer.storeState(d, apiClient)
+	err = deployer.storeState(d, threefoldPluginClient)
 	if err != nil {
 		diags = diag.FromErr(err)
 	}
@@ -1088,29 +1088,29 @@ func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 
 func resourceK8sUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	apiClient, ok := meta.(*apiClient)
+	threefoldPluginClient, ok := meta.(*threefoldPluginClient)
 	if !ok {
 		return diag.FromErr(fmt.Errorf("failed to cast meta into api client"))
 	}
 
-	deployer, err := NewK8sDeployer(d, apiClient)
+	deployer, err := NewK8sDeployer(d, threefoldPluginClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	if err := deployer.Validate(ctx, apiClient.substrateConn); err != nil {
+	if err := deployer.Validate(ctx, threefoldPluginClient.substrateConn); err != nil {
 		return diag.FromErr(err)
 	}
 
-	if err := deployer.invalidateBrokenAttributes(apiClient.substrateConn); err != nil {
+	if err := deployer.invalidateBrokenAttributes(threefoldPluginClient.substrateConn); err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't invalidate broken attributes"))
 	}
 
-	err = deployer.Deploy(ctx, apiClient.substrateConn, d, apiClient)
+	err = deployer.Deploy(ctx, threefoldPluginClient.substrateConn, d, threefoldPluginClient)
 	if err != nil {
 		diags = diag.FromErr(err)
 	}
-	err = deployer.storeState(d, apiClient)
+	err = deployer.storeState(d, threefoldPluginClient)
 	if err != nil {
 		diags = diag.FromErr(err)
 	}
@@ -1120,25 +1120,25 @@ func resourceK8sUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 
 func resourceK8sRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	apiClient, ok := meta.(*apiClient)
+	threefoldPluginClient, ok := meta.(*threefoldPluginClient)
 	if !ok {
 		return diag.FromErr(fmt.Errorf("failed to cast meta into api client"))
 	}
 
-	deployer, err := NewK8sDeployer(d, apiClient)
+	deployer, err := NewK8sDeployer(d, threefoldPluginClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	if err := deployer.Validate(ctx, apiClient.substrateConn); err != nil {
+	if err := deployer.Validate(ctx, threefoldPluginClient.substrateConn); err != nil {
 		return diag.FromErr(err)
 	}
 
-	if err := deployer.invalidateBrokenAttributes(apiClient.substrateConn); err != nil {
+	if err := deployer.invalidateBrokenAttributes(threefoldPluginClient.substrateConn); err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't invalidate broken attributes"))
 	}
 
-	err = deployer.updateFromRemote(ctx, apiClient.substrateConn)
+	err = deployer.updateFromRemote(ctx, threefoldPluginClient.substrateConn)
 	log.Printf("read updateFromRemote err: %s\n", err)
 	if err != nil {
 		diags = append(diags, diag.Diagnostic{
@@ -1148,7 +1148,7 @@ func resourceK8sRead(ctx context.Context, d *schema.ResourceData, meta interface
 		})
 		return diags
 	}
-	err = deployer.storeState(d, apiClient)
+	err = deployer.storeState(d, threefoldPluginClient)
 	if err != nil {
 		diags = diag.FromErr(err)
 	}
@@ -1158,24 +1158,24 @@ func resourceK8sRead(ctx context.Context, d *schema.ResourceData, meta interface
 
 func resourceK8sDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	apiClient, ok := meta.(*apiClient)
+	threefoldPluginClient, ok := meta.(*threefoldPluginClient)
 	if !ok {
 		return diag.FromErr(fmt.Errorf("failed to cast meta into api client"))
 	}
 
-	deployer, err := NewK8sDeployer(d, apiClient)
+	deployer, err := NewK8sDeployer(d, threefoldPluginClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	err = deployer.Cancel(ctx, apiClient.substrateConn, d, apiClient)
+	err = deployer.Cancel(ctx, threefoldPluginClient.substrateConn, d, threefoldPluginClient)
 	if err != nil {
 		diags = diag.FromErr(err)
 	}
 	if err == nil {
 		d.SetId("")
 	} else {
-		err = deployer.storeState(d, apiClient)
+		err = deployer.storeState(d, threefoldPluginClient)
 		if err != nil {
 			diags = diag.FromErr(err)
 		}

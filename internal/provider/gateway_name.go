@@ -29,12 +29,12 @@ type GatewayNameDeployer struct {
 	NodeDeploymentID map[uint32]uint64
 	NameContractID   uint64
 
-	APIClient *apiClient
-	ncPool    client.NodeClientGetter
-	deployer  deployer.Deployer
+	ThreefoldPluginClient *threefoldPluginClient
+	ncPool                client.NodeClientGetter
+	deployer              deployer.Deployer
 }
 
-func NewGatewayNameDeployer(d *schema.ResourceData, apiClient *apiClient) (GatewayNameDeployer, error) {
+func NewGatewayNameDeployer(d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (GatewayNameDeployer, error) {
 	backendsIf := d.Get("backends").([]interface{})
 	backends := make([]zos.Backend, len(backendsIf))
 	for idx, n := range backendsIf {
@@ -50,7 +50,7 @@ func NewGatewayNameDeployer(d *schema.ResourceData, apiClient *apiClient) (Gatew
 		deploymentID := uint64(id.(int))
 		nodeDeploymentID[uint32(nodeInt)] = deploymentID
 	}
-	pool := client.NewNodeClientPool(apiClient.rmb)
+	pool := client.NewNodeClientPool(threefoldPluginClient.rmb)
 	deploymentData := DeploymentData{
 		Name:        d.Get("name").(string),
 		Type:        "gateway",
@@ -73,9 +73,9 @@ func NewGatewayNameDeployer(d *schema.ResourceData, apiClient *apiClient) (Gatew
 		NodeDeploymentID: nodeDeploymentID,
 		NameContractID:   uint64(d.Get("name_contract_id").(int)),
 
-		APIClient: apiClient,
-		ncPool:    pool,
-		deployer:  deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, nil, string(deploymentDataStr)),
+		ThreefoldPluginClient: threefoldPluginClient,
+		ncPool:                pool,
+		deployer:              deployer.NewDeployer(threefoldPluginClient.identity, threefoldPluginClient.twinID, threefoldPluginClient.gridProxyClient, pool, true, nil, string(deploymentDataStr)),
 	}
 	return deployer, nil
 }
@@ -127,7 +127,7 @@ func (k *GatewayNameDeployer) Marshal(d *schema.ResourceData) (errors error) {
 
 func (k *GatewayNameDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
 	deployments := make(map[uint32]gridtypes.Deployment)
-	deployment := workloads.NewDeployment(k.APIClient.twin_id)
+	deployment := workloads.NewDeployment(k.ThreefoldPluginClient.twinID)
 	deployment.Workloads = append(deployment.Workloads, k.Gw.ZosWorkload())
 	deployments[k.Node] = deployment
 	return deployments, nil
@@ -139,7 +139,7 @@ func (k *GatewayNameDeployer) InvalidateNameContract(ctx context.Context, sub su
 
 	k.NameContractID, err = sub.InvalidateNameContract(
 		ctx,
-		k.APIClient.identity,
+		k.ThreefoldPluginClient.identity,
 		k.NameContractID,
 		k.Gw.Name,
 	)
@@ -157,7 +157,7 @@ func (k *GatewayNameDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt)
 		return err
 	}
 	if k.NameContractID == 0 {
-		k.NameContractID, err = sub.CreateNameContract(k.APIClient.identity, k.Gw.Name)
+		k.NameContractID, err = sub.CreateNameContract(k.ThreefoldPluginClient.identity, k.Gw.Name)
 		if err != nil {
 			return err
 		}
@@ -186,7 +186,7 @@ func (k *GatewayNameDeployer) syncContracts(ctx context.Context, sub subi.Substr
 	}
 	return nil
 }
-func (k *GatewayNameDeployer) sync(ctx context.Context, sub subi.SubstrateExt, cl *apiClient) (err error) {
+func (k *GatewayNameDeployer) sync(ctx context.Context, sub subi.SubstrateExt, cl *threefoldPluginClient) (err error) {
 	if err := k.syncContracts(ctx, sub); err != nil {
 		return errors.Wrap(err, "couldn't sync contracts")
 	}
@@ -214,7 +214,7 @@ func (k *GatewayNameDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt)
 		return err
 	}
 	if k.NameContractID != 0 {
-		if err := sub.EnsureContractCanceled(k.APIClient.identity, k.NameContractID); err != nil {
+		if err := sub.EnsureContractCanceled(k.ThreefoldPluginClient.identity, k.NameContractID); err != nil {
 			return err
 		}
 		k.NameContractID = 0

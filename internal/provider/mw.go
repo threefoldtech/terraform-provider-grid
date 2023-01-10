@@ -11,10 +11,10 @@ import (
 
 type Marshalable interface {
 	Marshal(d *schema.ResourceData) (err error)
-	sync(ctx context.Context, sub subi.SubstrateExt, cl *apiClient) (err error)
+	sync(ctx context.Context, sub subi.SubstrateExt, cl *threefoldPluginClient) (err error)
 }
 
-type Action func(context.Context, subi.SubstrateExt, *schema.ResourceData, *apiClient) (Marshalable, error)
+type Action func(context.Context, subi.SubstrateExt, *schema.ResourceData, *threefoldPluginClient) (Marshalable, error)
 
 func ResourceFunc(a Action) func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
 	return func(ctx context.Context, d *schema.ResourceData, i interface{}) (diags diag.Diagnostics) {
@@ -39,7 +39,7 @@ func ResourceReadFunc(a Action) func(ctx context.Context, d *schema.ResourceData
 
 func resourceFunc(a Action, reportSync bool) func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
 	return func(ctx context.Context, d *schema.ResourceData, i interface{}) (diags diag.Diagnostics) {
-		cl := i.(*apiClient)
+		cl := i.(*threefoldPluginClient)
 		if err := validateAccountMoneyForExtrinsics(cl.substrateConn, cl.identity); err != nil {
 			return diag.FromErr(err)
 		}
