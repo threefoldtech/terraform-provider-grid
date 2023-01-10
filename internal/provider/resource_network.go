@@ -826,7 +826,7 @@ func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta inter
 	if err != nil {
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Warning,
-			Summary:  "Error reading data from remote, terraform state might be out of sync with the remote state",
+			Summary:  ErrTerraformOutSync,
 			Detail:   err.Error(),
 		})
 		return diags

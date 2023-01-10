@@ -84,7 +84,7 @@ func (k *GatewayNameDeployer) Validate(ctx context.Context, sub subi.SubstrateEx
 	return client.AreNodesUp(ctx, sub, []uint32{k.Node}, k.ncPool)
 }
 
-func (k *GatewayNameDeployer) Marshal(d *schema.ResourceData) (errors error) {
+func (k *GatewayNameDeployer) ContractDeploymentSync(d *schema.ResourceData) (errors error) {
 
 	nodeDeploymentID := make(map[string]interface{})
 	for node, id := range k.NodeDeploymentID {

@@ -166,7 +166,7 @@ func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context)
 	return map[uint32]gridtypes.Deployment{d.Node: dl}, nil
 }
 
-func (d *DeploymentDeployer) Marshal(r *schema.ResourceData) (errors error) {
+func (d *DeploymentDeployer) ContractDeploymentSync(r *schema.ResourceData) (errors error) {
 	vms := make([]interface{}, 0)
 	disks := make([]interface{}, 0)
 	zdbs := make([]interface{}, 0)
