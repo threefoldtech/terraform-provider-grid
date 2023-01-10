@@ -128,20 +128,6 @@ func validateMnemonics(mnemonics string) error {
 	return nil
 }
 
-func validateURL(url string) error {
-	if len(url) == 0 {
-		return errors.New("url required")
-	}
-
-	urlRegex := regexp.MustCompile(`^((?:(?:http?|ftp)[s]?:\/\/)?[a-z0-9-%\/\&=?\.]+\.[a-z]{2,4}\/?([^\s<>\#%"\,\{\}\\|\\\^\[\]]+)?)$`)
-	if !urlRegex.MatchString(url) {
-		return errors.New("url is invalid")
-	}
-
-	return nil
-
-}
-
 func validateClientRMB(threefoldPluginClient *threefoldPluginClient, sub subi.SubstrateExt) error {
 	if threefoldPluginClient.useRmbProxy {
 		return validateRMBProxy(threefoldPluginClient)
