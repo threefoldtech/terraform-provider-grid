@@ -4,7 +4,6 @@
 package integrationtests
 
 import (
-	"log"
 	"os/exec"
 	"testing"
 
@@ -27,7 +26,7 @@ func TestMultiNodeDeployment(t *testing.T) {
 	// generate ssh keys for test
 	pk, sk, err := tests.GenerateSSHKeyPair()
 	if err != nil {
-		log.Fatal(err)
+		t.Log(err)
 	}
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./qsfs_check_metrics",

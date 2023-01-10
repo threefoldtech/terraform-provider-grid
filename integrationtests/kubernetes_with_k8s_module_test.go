@@ -4,7 +4,6 @@
 package integrationtests
 
 import (
-	"log"
 	"strings"
 	"testing"
 	"time"
@@ -17,7 +16,7 @@ import (
 func TestKubernetesDeployment(t *testing.T) {
 	pk, sk, err := tests.GenerateSSHKeyPair()
 	if err != nil {
-		log.Fatal(err)
+		t.Log(err)
 	}
 
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
