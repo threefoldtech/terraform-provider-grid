@@ -419,8 +419,8 @@ func resourceDeployment() *schema.Resource {
 	}
 }
 
-func resourceDeploymentCreate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
-	deployer, err := getDeploymentDeployer(d, apiClient)
+func resourceDeploymentCreate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Marshalable, error) {
+	deployer, err := getDeploymentDeployer(d, threefoldPluginClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
 	}
@@ -428,27 +428,27 @@ func resourceDeploymentCreate(ctx context.Context, sub subi.SubstrateExt, d *sch
 	return &deployer, deployer.Deploy(ctx, sub)
 }
 
-func resourceDeploymentRead(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
-	deployer, err := getDeploymentDeployer(d, apiClient)
+func resourceDeploymentRead(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Marshalable, error) {
+	deployer, err := getDeploymentDeployer(d, threefoldPluginClient)
 	if err != nil {
 		return nil, err
 	}
 	return &deployer, nil
 }
 
-func resourceDeploymentUpdate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
+func resourceDeploymentUpdate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Marshalable, error) {
 	if d.HasChange("node") {
 		oldContractID, err := strconv.ParseUint(d.Id(), 10, 64)
 		if err != nil {
 			return nil, errors.Wrapf(err, "couldn't parse deployment id %s", d.Id())
 		}
-		err = sub.CancelContract(apiClient.identity, oldContractID)
+		err = sub.CancelContract(threefoldPluginClient.identity, oldContractID)
 		if err != nil {
 			return nil, errors.Wrapf(err, "couldn't cancel old node contract")
 		}
 		d.SetId("")
 	}
-	deployer, err := getDeploymentDeployer(d, apiClient)
+	deployer, err := getDeploymentDeployer(d, threefoldPluginClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
 	}
@@ -456,8 +456,8 @@ func resourceDeploymentUpdate(ctx context.Context, sub subi.SubstrateExt, d *sch
 	return &deployer, deployer.Deploy(ctx, sub)
 }
 
-func resourceDeploymentDelete(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
-	deployer, err := getDeploymentDeployer(d, apiClient)
+func resourceDeploymentDelete(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Marshalable, error) {
+	deployer, err := getDeploymentDeployer(d, threefoldPluginClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
 	}

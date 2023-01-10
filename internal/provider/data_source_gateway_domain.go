@@ -42,7 +42,7 @@ func dataSourceGatewayDomain() *schema.Resource {
 
 // TODO: make this non failing
 func dataSourceGatewayRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	apiClient, ok := meta.(*apiClient)
+	threefoldPluginClient, ok := meta.(*threefoldPluginClient)
 	if !ok {
 		return diag.FromErr(fmt.Errorf("failed to cast meta into api client"))
 	}
@@ -50,8 +50,8 @@ func dataSourceGatewayRead(ctx context.Context, d *schema.ResourceData, meta int
 	nodeID := uint32(d.Get("node").(int))
 	name := d.Get("name").(string)
 
-	ncPool := client.NewNodeClientPool(apiClient.rmb)
-	nodeClient, err := ncPool.GetNodeClient(apiClient.substrateConn, nodeID)
+	ncPool := client.NewNodeClientPool(threefoldPluginClient.rmb)
+	nodeClient, err := ncPool.GetNodeClient(threefoldPluginClient.substrateConn, nodeID)
 	if err != nil {
 		return diag.FromErr(errors.Wrapf(err, "failed to get node client with ID %d", nodeID))
 	}

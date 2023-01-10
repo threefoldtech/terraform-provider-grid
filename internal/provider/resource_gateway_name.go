@@ -75,16 +75,16 @@ func resourceGatewayNameProxy() *schema.Resource {
 	}
 }
 
-func resourceGatewayNameCreate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
-	deployer, err := NewGatewayNameDeployer(d, apiClient)
+func resourceGatewayNameCreate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Marshalable, error) {
+	deployer, err := NewGatewayNameDeployer(d, threefoldPluginClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
 	}
 	return &deployer, deployer.Deploy(ctx, sub)
 }
 
-func resourceGatewayNameUpdate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
-	deployer, err := NewGatewayNameDeployer(d, apiClient)
+func resourceGatewayNameUpdate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Marshalable, error) {
+	deployer, err := NewGatewayNameDeployer(d, threefoldPluginClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
 	}
@@ -92,8 +92,8 @@ func resourceGatewayNameUpdate(ctx context.Context, sub subi.SubstrateExt, d *sc
 	return &deployer, deployer.Deploy(ctx, sub)
 }
 
-func resourceGatewayNameRead(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
-	deployer, err := NewGatewayNameDeployer(d, apiClient)
+func resourceGatewayNameRead(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Marshalable, error) {
+	deployer, err := NewGatewayNameDeployer(d, threefoldPluginClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
 	}
@@ -101,8 +101,8 @@ func resourceGatewayNameRead(ctx context.Context, sub subi.SubstrateExt, d *sche
 	return &deployer, nil
 }
 
-func resourceGatewayNameDelete(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
-	deployer, err := NewGatewayNameDeployer(d, apiClient)
+func resourceGatewayNameDelete(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Marshalable, error) {
+	deployer, err := NewGatewayNameDeployer(d, threefoldPluginClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
 	}

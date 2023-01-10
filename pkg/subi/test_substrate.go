@@ -57,6 +57,12 @@ func (s *SubstrateTestImpl) GetNodeTwin(id uint32) (uint32, error) {
 	return uint32(node.TwinID), nil
 }
 
+// GetTwinByPubKey returns the twin's ID using user's public key
+func (s *SubstrateTestImpl) GetTwinByPubKey(pk []byte) (uint32, error) {
+	res, err := s.Substrate.GetTwinByPubKey(pk)
+	return res, isNotFoundErrors(err)
+}
+
 // UpdateNodeContract updates a node contract
 func (s *SubstrateTestImpl) UpdateNodeContract(identity Identity, contract uint64, body string, hash string) (uint64, error) {
 	res, err := s.Substrate.UpdateNodeContract(identity, contract, body, hash)
@@ -159,4 +165,9 @@ func (s *SubstrateTestImpl) InvalidateNameContract(
 	}
 
 	return contractID, nil
+}
+
+// Close closes substrate
+func (s *SubstrateTestImpl) Close() {
+	s.Substrate.Close()
 }

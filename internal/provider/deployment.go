@@ -22,17 +22,17 @@ import (
 )
 
 type DeploymentDeployer struct {
-	Id          string
-	Node        uint32
-	Disks       []workloads.Disk
-	ZDBs        []workloads.ZDB
-	VMs         []workloads.VM
-	QSFSs       []workloads.QSFS
-	IPRange     string
-	NetworkName string
-	APIClient   *apiClient
-	ncPool      client.NodeClientGetter
-	deployer    deployer.Deployer
+	Id                    string
+	Node                  uint32
+	Disks                 []workloads.Disk
+	ZDBs                  []workloads.ZDB
+	VMs                   []workloads.VM
+	QSFSs                 []workloads.QSFS
+	IPRange               string
+	NetworkName           string
+	ThreefoldPluginClient *threefoldPluginClient
+	ncPool                client.NodeClientGetter
+	deployer              deployer.Deployer
 }
 type DeploymentData struct {
 	Type        string `json:"type"`
@@ -40,7 +40,7 @@ type DeploymentData struct {
 	ProjectName string `json:"projectName"`
 }
 
-func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (DeploymentDeployer, error) {
+func getDeploymentDeployer(d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (DeploymentDeployer, error) {
 	networkName := d.Get("network_name").(string)
 	nodeID := uint32(d.Get("node").(int))
 	disks := make([]workloads.Disk, 0)
@@ -66,7 +66,7 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 		data := workloads.NewQSFSFromSchema(q.(map[string]interface{}))
 		qsfs = append(qsfs, data)
 	}
-	pool := client.NewNodeClientPool(apiClient.rmb)
+	pool := client.NewNodeClientPool(threefoldPluginClient.rmb)
 	solutionProviderVal := uint64(d.Get("solution_provider").(int))
 	var solutionProvider *uint64
 	if solutionProviderVal == 0 {
@@ -84,28 +84,28 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 		log.Printf("error parsing deploymentdata: %s", err.Error())
 	}
 
-	networkingState := apiClient.state.GetNetworkState()
+	networkingState := threefoldPluginClient.state.GetNetworkState()
 	net := networkingState.GetNetwork(networkName)
 	ipRange := net.GetNodeSubnet(nodeID)
 
 	deploymentDeployer := DeploymentDeployer{
-		Id:          d.Id(),
-		Node:        nodeID,
-		Disks:       disks,
-		VMs:         vms,
-		QSFSs:       qsfs,
-		ZDBs:        zdbs,
-		IPRange:     ipRange,
-		NetworkName: networkName,
-		APIClient:   apiClient,
-		ncPool:      pool,
-		deployer:    deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, solutionProvider, string(deploymentDataStr)),
+		Id:                    d.Id(),
+		Node:                  nodeID,
+		Disks:                 disks,
+		VMs:                   vms,
+		QSFSs:                 qsfs,
+		ZDBs:                  zdbs,
+		IPRange:               ipRange,
+		NetworkName:           networkName,
+		ThreefoldPluginClient: threefoldPluginClient,
+		ncPool:                pool,
+		deployer:              deployer.NewDeployer(threefoldPluginClient.identity, threefoldPluginClient.twinID, threefoldPluginClient.gridProxyClient, pool, true, solutionProvider, string(deploymentDataStr)),
 	}
 	return deploymentDeployer, nil
 }
 
 func (d *DeploymentDeployer) assignNodesIPs() error {
-	networkingState := d.APIClient.state.GetNetworkState()
+	networkingState := d.ThreefoldPluginClient.state.GetNetworkState()
 	network := networkingState.GetNetwork(d.NetworkName)
 	usedIPs := network.GetNodeIPsList(d.Node)
 	if len(d.VMs) == 0 {
@@ -140,7 +140,7 @@ func (d *DeploymentDeployer) assignNodesIPs() error {
 	return nil
 }
 func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
-	dl := workloads.NewDeployment(d.APIClient.twin_id)
+	dl := workloads.NewDeployment(d.ThreefoldPluginClient.twinID)
 	err := d.assignNodesIPs()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to assign node ips")
@@ -264,7 +264,7 @@ func (d *DeploymentDeployer) syncContract(sub subi.SubstrateExt) error {
 	}
 	return nil
 }
-func (d *DeploymentDeployer) sync(ctx context.Context, sub subi.SubstrateExt, cl *apiClient) error {
+func (d *DeploymentDeployer) sync(ctx context.Context, sub subi.SubstrateExt, cl *threefoldPluginClient) error {
 	if err := d.syncContract(sub); err != nil {
 		return err
 	}

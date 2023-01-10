@@ -37,6 +37,12 @@ func (s *SubstrateMainImpl) GetTwinPK(id uint32) ([]byte, error) {
 	return twin.Account.PublicKey(), nil
 }
 
+// GetTwinByPubKey returns the twin's ID using user's public key
+func (s *SubstrateMainImpl) GetTwinByPubKey(pk []byte) (uint32, error) {
+	res, err := s.Substrate.GetTwinByPubKey(pk)
+	return res, isNotFoundErrors(err)
+}
+
 // GetAccount returns the user's account
 func (s *SubstrateMainImpl) GetAccount(identity Identity) (types.AccountInfo, error) {
 	res, err := s.Substrate.GetAccount(identity)
@@ -159,4 +165,9 @@ func (s *SubstrateMainImpl) InvalidateNameContract(
 	}
 
 	return contractID, nil
+}
+
+// Close closes substrate
+func (s *SubstrateMainImpl) Close() {
+	s.Substrate.Close()
 }
