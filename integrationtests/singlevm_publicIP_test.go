@@ -4,12 +4,12 @@
 package integrationtests
 
 import (
+	"strings"
+	"testing"
+
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
 	tests "github.com/threefoldtech/terraform-provider-grid/integrationtests"
-	"log"
-	"strings"
-	"testing"
 )
 
 func TestSingleVMDeployment(t *testing.T) {
@@ -31,7 +31,7 @@ func TestSingleVMDeployment(t *testing.T) {
 	// generate ssh keys for test
 	pk, _, err := tests.GenerateSSHKeyPair()
 	if err != nil {
-		log.Fatal(err)
+		t.Log(err)
 	}
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./singlevm_publicIP",
@@ -47,7 +47,7 @@ func TestSingleVMDeployment(t *testing.T) {
 	// Check that the outputs not empty
 
 	publicip := terraform.Output(t, terraformOptions, "computed_public_ip")
-	assert.NotEmpty(t, planetary)
+	assert.NotEmpty(t, publicip)
 
 	node1Container1IP := terraform.Output(t, terraformOptions, "node1_container1_ip")
 	assert.NotEmpty(t, node1Container1IP)

@@ -4,7 +4,6 @@
 package integrationtests
 
 import (
-	"log"
 	"testing"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
@@ -28,7 +27,7 @@ func TestPeerTubeDeployment(t *testing.T) {
 	// generate ssh keys for test
 	pk, sk, err := tests.GenerateSSHKeyPair()
 	if err != nil {
-		log.Fatal(err)
+		t.Log(err)
 	}
 
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{

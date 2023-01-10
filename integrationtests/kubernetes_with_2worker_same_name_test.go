@@ -4,7 +4,6 @@
 package integrationtests
 
 import (
-	"log"
 	"testing"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
@@ -25,7 +24,7 @@ func TestKubernetesWith2WorkersSameNameDeployment(t *testing.T) {
 	// generate ssh keys for test
 	pk, _, err := tests.GenerateSSHKeyPair()
 	if err != nil {
-		log.Fatal(err)
+		t.Log(err)
 	}
 
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{

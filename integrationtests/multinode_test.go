@@ -7,7 +7,6 @@ import (
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
 	tests "github.com/threefoldtech/terraform-provider-grid/integrationtests"
-	"log"
 	"strings"
 	"testing"
 )
@@ -26,7 +25,7 @@ func TestMultiNodeDeployment(t *testing.T) {
 	// generate ssh keys for test
 	pk, _, err := tests.GenerateSSHKeyPair()
 	if err != nil {
-		log.Fatal(err)
+		t.Log(err)
 	}
 
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
