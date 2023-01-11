@@ -84,7 +84,7 @@ func (k *GatewayNameDeployer) Validate(ctx context.Context, sub subi.SubstrateEx
 	return client.AreNodesUp(ctx, sub, []uint32{k.Node}, k.ncPool)
 }
 
-func (k *GatewayNameDeployer) ContractDeploymentSync(d *schema.ResourceData) (errors error) {
+func (k *GatewayNameDeployer) SyncContractsDeployments(d *schema.ResourceData) (errors error) {
 
 	nodeDeploymentID := make(map[string]interface{})
 	for node, id := range k.NodeDeploymentID {
@@ -186,7 +186,9 @@ func (k *GatewayNameDeployer) syncContracts(ctx context.Context, sub subi.Substr
 	}
 	return nil
 }
-func (k *GatewayNameDeployer) sync(ctx context.Context, sub subi.SubstrateExt, cl *threefoldPluginClient) (err error) {
+
+// Sync syncs the deployments
+func (k *GatewayNameDeployer) Sync(ctx context.Context, sub subi.SubstrateExt, cl *threefoldPluginClient) (err error) {
 	if err := k.syncContracts(ctx, sub); err != nil {
 		return errors.Wrap(err, "couldn't sync contracts")
 	}

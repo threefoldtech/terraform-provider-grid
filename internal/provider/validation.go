@@ -97,32 +97,48 @@ func validateRMB(threefoldPluginClient *threefoldPluginClient, sub subi.Substrat
 	if err := validateRedis(threefoldPluginClient); err != nil {
 		return err
 	}
-	if err := validateYggdrasil(threefoldPluginClient, sub); err != nil {
-		return err
-	}
 
-	return nil
+	return validateYggdrasil(threefoldPluginClient, sub)
 }
 
 func validateRMBProxyServer(threefoldPluginClient *threefoldPluginClient) error {
 	return threefoldPluginClient.gridProxyClient.Ping()
 }
 
-func validateRMBProxy(threefoldPluginClient *threefoldPluginClient) error {
-	if err := validateRMBProxyServer(threefoldPluginClient); err != nil {
-		return err
-	}
-	return nil
-}
-
 func validateMnemonics(mnemonics string) error {
 	if len(mnemonics) == 0 {
-		return errors.New("Mnemonics required")
+		return errors.New("mnemonics required")
 	}
 
 	alphaOnly := regexp.MustCompile(`^[A-Za-z]+$`)
 	if !alphaOnly.MatchString(mnemonics) {
-		return errors.New("Mnemonics are can only be composed of a non-alphanumeric character or a whitespace.")
+		return errors.New("mnemonics are can only be composed of a non-alphanumeric character or a whitespace")
+	}
+
+	return nil
+}
+
+func validateSubstrateURL(url string) error {
+	if len(url) == 0 {
+		return errors.New("substrate url is required")
+	}
+
+	alphaOnly := regexp.MustCompile(`^wss:\/\/[a-z0-9]+\.[a-z0-9]\/?([^\s<>\#%"\,\{\}\\|\\\^\[\]]+)?$`)
+	if !alphaOnly.MatchString(url) {
+		return errors.New("substrate url is not valid")
+	}
+
+	return nil
+}
+
+func validateProxyURL(url string) error {
+	if len(url) == 0 {
+		return errors.New("proxy url is required")
+	}
+
+	alphaOnly := regexp.MustCompile(`^https:\/\/[a-z0-9]+\.[a-z0-9]\/?([^\s<>\#%"\,\{\}\\|\\\^\[\]]+)?$`)
+	if !alphaOnly.MatchString(url) {
+		return errors.New("proxy url is not valid")
 	}
 
 	return nil
@@ -130,13 +146,13 @@ func validateMnemonics(mnemonics string) error {
 
 func validateClientRMB(threefoldPluginClient *threefoldPluginClient, sub subi.SubstrateExt) error {
 	if threefoldPluginClient.useRmbProxy {
-		return validateRMBProxy(threefoldPluginClient)
+		return validateRMBProxyServer(threefoldPluginClient)
 	} else {
 		return validateRMB(threefoldPluginClient, sub)
 	}
 }
 
-func validateAccountMoneyForExtrinsics(sub subi.SubstrateExt, identity substrate.Identity) error {
+func validateAccountBalanceForExtrinsics(sub subi.SubstrateExt, identity subi.Identity) error {
 	acc, err := sub.GetAccount(identity)
 	if err != nil && !errors.Is(err, substrate.ErrAccountNotFound) {
 		return errors.Wrap(err, "failed to get account with the given mnemonics")

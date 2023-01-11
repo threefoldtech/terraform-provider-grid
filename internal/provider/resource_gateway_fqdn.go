@@ -72,7 +72,7 @@ func resourceGatewayFQDNProxy() *schema.Resource {
 	}
 }
 
-func resourceGatewayFQDNCreate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Marshalable, error) {
+func resourceGatewayFQDNCreate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Syncer, error) {
 	deployer, err := NewGatewayFQDNDeployer(ctx, d, threefoldPluginClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
@@ -80,7 +80,7 @@ func resourceGatewayFQDNCreate(ctx context.Context, sub subi.SubstrateExt, d *sc
 	return &deployer, deployer.Deploy(ctx, sub)
 }
 
-func resourceGatewayFQDNUpdate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Marshalable, error) {
+func resourceGatewayFQDNUpdate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Syncer, error) {
 	deployer, err := NewGatewayFQDNDeployer(ctx, d, threefoldPluginClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
@@ -89,7 +89,7 @@ func resourceGatewayFQDNUpdate(ctx context.Context, sub subi.SubstrateExt, d *sc
 	return &deployer, deployer.Deploy(ctx, sub)
 }
 
-func resourceGatewayFQDNRead(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Marshalable, error) {
+func resourceGatewayFQDNRead(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Syncer, error) {
 	deployer, err := NewGatewayFQDNDeployer(ctx, d, threefoldPluginClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
@@ -97,7 +97,7 @@ func resourceGatewayFQDNRead(ctx context.Context, sub subi.SubstrateExt, d *sche
 	return &deployer, nil
 }
 
-func resourceGatewayFQDNDelete(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Marshalable, error) {
+func resourceGatewayFQDNDelete(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Syncer, error) {
 	deployer, err := NewGatewayFQDNDeployer(ctx, d, threefoldPluginClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")

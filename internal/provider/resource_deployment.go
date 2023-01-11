@@ -434,7 +434,7 @@ func resourceDeployment() *schema.Resource {
 	}
 }
 
-func resourceDeploymentCreate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Marshalable, error) {
+func resourceDeploymentCreate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Syncer, error) {
 	deployer, err := getDeploymentDeployer(d, threefoldPluginClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
@@ -443,7 +443,7 @@ func resourceDeploymentCreate(ctx context.Context, sub subi.SubstrateExt, d *sch
 	return &deployer, deployer.Deploy(ctx, sub)
 }
 
-func resourceDeploymentRead(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Marshalable, error) {
+func resourceDeploymentRead(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Syncer, error) {
 	deployer, err := getDeploymentDeployer(d, threefoldPluginClient)
 	if err != nil {
 		return nil, err
@@ -451,7 +451,7 @@ func resourceDeploymentRead(ctx context.Context, sub subi.SubstrateExt, d *schem
 	return &deployer, nil
 }
 
-func resourceDeploymentUpdate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Marshalable, error) {
+func resourceDeploymentUpdate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Syncer, error) {
 	if d.HasChange("node") {
 		oldContractID, err := strconv.ParseUint(d.Id(), 10, 64)
 		if err != nil {
@@ -471,7 +471,7 @@ func resourceDeploymentUpdate(ctx context.Context, sub subi.SubstrateExt, d *sch
 	return &deployer, deployer.Deploy(ctx, sub)
 }
 
-func resourceDeploymentDelete(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Marshalable, error) {
+func resourceDeploymentDelete(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Syncer, error) {
 	deployer, err := getDeploymentDeployer(d, threefoldPluginClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")

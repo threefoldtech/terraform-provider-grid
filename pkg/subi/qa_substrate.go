@@ -16,14 +16,14 @@ type SubstrateQAImpl struct {
 // GetContractIDByNameRegistration returns contract ID using its name
 func (s *SubstrateQAImpl) GetContractIDByNameRegistration(name string) (uint64, error) {
 	res, err := s.Substrate.GetContractIDByNameRegistration(name)
-	return res, isNotFoundErrors(err)
+	return res, normalizeNotFoundErrors(err)
 }
 
 // GetTwinIP returns twin IP given its ID
 func (s *SubstrateQAImpl) GetTwinIP(id uint32) (string, error) {
 	twin, err := s.Substrate.GetTwin(id)
 	if err != nil {
-		return "", isNotFoundErrors(err)
+		return "", normalizeNotFoundErrors(err)
 	}
 	return twin.IP, nil
 }
@@ -32,7 +32,7 @@ func (s *SubstrateQAImpl) GetTwinIP(id uint32) (string, error) {
 func (s *SubstrateQAImpl) GetTwinPK(id uint32) ([]byte, error) {
 	twin, err := s.Substrate.GetTwin(id)
 	if err != nil {
-		return nil, isNotFoundErrors(err)
+		return nil, normalizeNotFoundErrors(err)
 	}
 	return twin.Account.PublicKey(), nil
 }
@@ -40,13 +40,13 @@ func (s *SubstrateQAImpl) GetTwinPK(id uint32) ([]byte, error) {
 // GetTwinByPubKey returns the twin's ID using user's public key
 func (s *SubstrateQAImpl) GetTwinByPubKey(pk []byte) (uint32, error) {
 	res, err := s.Substrate.GetTwinByPubKey(pk)
-	return res, isNotFoundErrors(err)
+	return res, normalizeNotFoundErrors(err)
 }
 
 // GetAccount returns the user's account
 func (s *SubstrateQAImpl) GetAccount(identity Identity) (types.AccountInfo, error) {
 	res, err := s.Substrate.GetAccount(identity)
-	return res, isNotFoundErrors(err)
+	return res, normalizeNotFoundErrors(err)
 }
 
 // CreateNameContract creates a new name contract
@@ -58,7 +58,7 @@ func (s *SubstrateQAImpl) CreateNameContract(identity Identity, name string) (ui
 func (s *SubstrateQAImpl) GetNodeTwin(id uint32) (uint32, error) {
 	node, err := s.Substrate.GetNode(id)
 	if err != nil {
-		return 0, isNotFoundErrors(err)
+		return 0, normalizeNotFoundErrors(err)
 	}
 	return uint32(node.TwinID), nil
 }
@@ -66,19 +66,19 @@ func (s *SubstrateQAImpl) GetNodeTwin(id uint32) (uint32, error) {
 // UpdateNodeContract updates a node contract
 func (s *SubstrateQAImpl) UpdateNodeContract(identity Identity, contract uint64, body string, hash string) (uint64, error) {
 	res, err := s.Substrate.UpdateNodeContract(identity, contract, body, hash)
-	return res, isNotFoundErrors(err)
+	return res, normalizeNotFoundErrors(err)
 }
 
 // CreateNodeContract creates a node contract
 func (s *SubstrateQAImpl) CreateNodeContract(identity Identity, node uint32, body string, hash string, publicIPs uint32, solutionProviderID *uint64) (uint64, error) {
 	res, err := s.Substrate.CreateNodeContract(identity, node, body, hash, publicIPs, solutionProviderID)
-	return res, isNotFoundErrors(err)
+	return res, normalizeNotFoundErrors(err)
 }
 
 // GetContract returns a contract given its ID
 func (s *SubstrateQAImpl) GetContract(contractID uint64) (Contract, error) {
 	contract, err := s.Substrate.GetContract(contractID)
-	return &QAContract{contract}, isNotFoundErrors(err)
+	return &QAContract{contract}, normalizeNotFoundErrors(err)
 }
 
 // CancelContract cancels a contract
@@ -87,7 +87,7 @@ func (s *SubstrateQAImpl) CancelContract(identity Identity, contractID uint64) e
 		return nil
 	}
 	if err := s.Substrate.CancelContract(identity, contractID); err != nil && err.Error() != "ContractNotExists" {
-		return isNotFoundErrors(err)
+		return normalizeNotFoundErrors(err)
 	}
 	return nil
 }
@@ -98,7 +98,7 @@ func (s *SubstrateQAImpl) EnsureContractCanceled(identity Identity, contractID u
 		return nil
 	}
 	if err := s.Substrate.CancelContract(identity, contractID); err != nil && err.Error() != "ContractNotExists" {
-		return isNotFoundErrors(err)
+		return normalizeNotFoundErrors(err)
 	}
 	return nil
 }
@@ -109,7 +109,7 @@ func (s *SubstrateQAImpl) DeleteInvalidContracts(contracts map[uint32]uint64) er
 		valid, err := s.IsValidContract(contractID)
 		// TODO: handle pause
 		if err != nil {
-			return isNotFoundErrors(err)
+			return normalizeNotFoundErrors(err)
 		}
 		if !valid {
 			delete(contracts, node)
@@ -124,7 +124,7 @@ func (s *SubstrateQAImpl) IsValidContract(contractID uint64) (bool, error) {
 		return false, nil
 	}
 	contract, err := s.Substrate.GetContract(contractID)
-	err = isNotFoundErrors(err)
+	err = normalizeNotFoundErrors(err)
 	// TODO: handle pause
 	if errors.Is(err, ErrNotFound) || (contract != nil && !contract.State.IsCreated) {
 		return false, nil
@@ -145,7 +145,7 @@ func (s *SubstrateQAImpl) InvalidateNameContract(
 		return 0, nil
 	}
 	contract, err := s.Substrate.GetContract(contractID)
-	err = isNotFoundErrors(err)
+	err = normalizeNotFoundErrors(err)
 	if errors.Is(err, ErrNotFound) {
 		return 0, nil
 	}
@@ -159,7 +159,7 @@ func (s *SubstrateQAImpl) InvalidateNameContract(
 	if contract.ContractType.NameContract.Name != name {
 		err := s.Substrate.CancelContract(identity, contractID)
 		if err != nil {
-			return 0, errors.Wrap(isNotFoundErrors(err), "failed to cleanup unmatched name contract")
+			return 0, errors.Wrap(normalizeNotFoundErrors(err), "failed to cleanup unmatched name contract")
 		}
 		return 0, nil
 	}

@@ -187,11 +187,17 @@ func providerConfigure(st state.StateI) (func(ctx context.Context, d *schema.Res
 		substrateURL := d.Get("substrate_url").(string)
 		passedRmbProxyURL := d.Get("rmb_proxy_url").(string)
 		if len(strings.TrimSpace(substrateURL)) != 0 {
-			log.Printf("substrate url is not null %s", substrateURL)
+			log.Printf("using a custom substrate url %s", substrateURL)
 			threefoldPluginClient.substrateURL = substrateURL
+			if err := validateSubstrateURL(threefoldPluginClient.substrateURL); err != nil {
+				return nil, diag.FromErr(err)
+			}
 		}
 		if len(strings.TrimSpace(passedRmbProxyURL)) != 0 {
 			rmbProxyURL = passedRmbProxyURL
+			if err := validateProxyURL(rmbProxyURL); err != nil {
+				return nil, diag.FromErr(err)
+			}
 		}
 
 		log.Printf("substrate url: %s %s\n", threefoldPluginClient.substrateURL, substrateURL)
@@ -210,8 +216,8 @@ func providerConfigure(st state.StateI) (func(ctx context.Context, d *schema.Res
 		if err := validateAccount(&threefoldPluginClient, threefoldPluginClient.substrateConn); err != nil {
 			return nil, diag.FromErr(err)
 		}
-		pub := keyPair.Public()
-		twin, err := subx.GetTwinByPubKey(pub)
+		pk := keyPair.Public()
+		twin, err := subx.GetTwinByPubKey(pk)
 		if err != nil && errors.Is(err, substrate.ErrNotFound) {
 			return nil, diag.Errorf("no twin associated with the account with the given mnemonics")
 		}

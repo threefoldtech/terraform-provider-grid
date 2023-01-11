@@ -670,7 +670,7 @@ func (k *K8sDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error
 	if err := k.validateToken(ctx); err != nil {
 		return err
 	}
-	if err := validateAccountMoneyForExtrinsics(sub, k.ThreefoldPluginClient.identity); err != nil {
+	if err := validateAccountBalanceForExtrinsics(sub, k.ThreefoldPluginClient.identity); err != nil {
 		return err
 	}
 	if err := k.ValidateNames(ctx); err != nil {
@@ -1143,7 +1143,7 @@ func resourceK8sRead(ctx context.Context, d *schema.ResourceData, meta interface
 	if err != nil {
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Warning,
-			Summary:  ErrTerraformOutSync,
+			Summary:  errTerraformOutSync,
 			Detail:   err.Error(),
 		})
 		return diags
