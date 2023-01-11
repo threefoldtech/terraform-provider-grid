@@ -24,19 +24,18 @@ func TestSingleVMDeployment(t *testing.T) {
 	   - Verify the VMs ips
 	   - Check that env variables set successfully.
 	   - Destroy the deployment
-
 	*/
 	t.TempDir()
 	// retryable errors in terraform testing.
 	// generate ssh keys for test
-	pk, _, err := tests.GenerateSSHKeyPair()
+	publicKey, _, err := tests.GenerateSSHKeyPair()
 	if err != nil {
-		t.Log(err)
+		t.Fatal()
 	}
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./singlevm_publicIP",
 		Vars: map[string]interface{}{
-			"public_key": pk,
+			"public_key": publicKey,
 		},
 		Parallelism: 1,
 	})

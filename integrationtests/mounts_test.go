@@ -29,15 +29,15 @@ func TestSingleMountDeployment(t *testing.T) {
 
 	// retryable errors in terraform testing.
 	// generate ssh keys for test
-	pk, sk, err := tests.GenerateSSHKeyPair()
+	publicKey, privateKey, err := tests.GenerateSSHKeyPair()
 	if err != nil {
-		t.Log(err)
+		t.Fatal()
 	}
 
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./mounts",
 		Vars: map[string]interface{}{
-			"public_key": pk,
+			"public_key": publicKey,
 		},
 		Parallelism: 1,
 	})
@@ -63,12 +63,12 @@ func TestSingleMountDeployment(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Check that env variables set successfully
-	output, err := tests.RemoteRun("root", planetary, "cat /proc/1/environ", sk)
+	output, err := tests.RemoteRun("root", planetary, "cat /proc/1/environ", privateKey)
 	assert.NoError(t, err)
 	assert.Contains(t, string(output), "SSH_KEY")
 
 	// Check that disk has been mounted successfully with 10G
-	output, err = tests.RemoteRun("root", planetary, "df -h | grep -w /app", sk)
+	output, err = tests.RemoteRun("root", planetary, "df -h | grep -w /app", privateKey)
 	assert.NoError(t, err)
 	assert.Contains(t, string(output), "10G")
 }

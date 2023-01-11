@@ -27,14 +27,14 @@ func TestSingleVMWithPlanetary(t *testing.T) {
 
 	// retryable errors in terraform testing.
 	// generate ssh keys for test
-	pk, sk, err := tests.GenerateSSHKeyPair()
+	publicKey, privateKey, err := tests.GenerateSSHKeyPair()
 	if err != nil {
-		t.Log(err)
+		t.Fatal()
 	}
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./planetary_network_test",
 		Vars: map[string]interface{}{
-			"public_key": pk,
+			"public_key": publicKey,
 		},
 		Parallelism: 1,
 	})
@@ -47,7 +47,7 @@ func TestSingleVMWithPlanetary(t *testing.T) {
 	assert.NotEmpty(t, yggIP)
 
 	// ssh to VM by ygg_ip
-	output, err := tests.RemoteRun("root", yggIP, "cat /proc/1/environ", sk)
+	output, err := tests.RemoteRun("root", yggIP, "cat /proc/1/environ", privateKey)
 	assert.NoError(t, err)
 	assert.Contains(t, string(output), "TEST_VAR=this value for test")
 }

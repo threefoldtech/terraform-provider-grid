@@ -27,14 +27,14 @@ func TestWireguard(t *testing.T) {
 
 	// retryable errors in terraform testing.
 	// generate ssh keys for test
-	pk, _, err := tests.GenerateSSHKeyPair()
+	publicKey, _, err := tests.GenerateSSHKeyPair()
 	if err != nil {
-		t.Log(err)
+		t.Fatal()
 	}
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./wireguard",
 		Vars: map[string]interface{}{
-			"public_key": pk,
+			"public_key": publicKey,
 		},
 		Parallelism: 1,
 	})
@@ -43,20 +43,22 @@ func TestWireguard(t *testing.T) {
 	terraform.InitAndApply(t, terraformOptions)
 
 	// Check that the outputs not empty
-	node1Container1IP := terraform.Output(t, terraformOptions, "vm1_wg_ip")
-	assert.NotEmpty(t, node1Container1IP)
+	wgVM1IP := terraform.Output(t, terraformOptions, "vm1_wg_ip")
+	assert.NotEmpty(t, wgVM1IP)
 
-	node1Container2IP := terraform.Output(t, terraformOptions, "vm2_wg_ip")
-	assert.NotEmpty(t, node1Container2IP)
+	wgVM2IP := terraform.Output(t, terraformOptions, "vm2_wg_ip")
+	assert.NotEmpty(t, wgVM2IP)
 
 	// Up wireguard
 	wgConfig := terraform.Output(t, terraformOptions, "wg_config")
 	assert.NotEmpty(t, wgConfig)
 
-	conf, err := tests.UpWg(wgConfig, "", t)
+	tempDir := t.TempDir()
+	conf, err := tests.UpWg(wgConfig, tempDir)
 	assert.NoError(t, err)
-	defer tests.DownWG(conf)
-	ips := []string{node1Container1IP, node1Container2IP}
+
+	defer tests.DownWG(conf, tempDir)
+	ips := []string{wgVM1IP, wgVM2IP}
 	for i := range ips {
 		err = tests.TestConnection(ips[i], "22")
 

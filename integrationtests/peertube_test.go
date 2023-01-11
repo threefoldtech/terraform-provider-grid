@@ -25,15 +25,15 @@ func TestPeerTubeDeployment(t *testing.T) {
 
 	// retryable errors in terraform testing.
 	// generate ssh keys for test
-	pk, sk, err := tests.GenerateSSHKeyPair()
+	publicKey, privateKey, err := tests.GenerateSSHKeyPair()
 	if err != nil {
-		t.Log(err)
+		t.Fatal()
 	}
 
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./peertube",
 		Vars: map[string]interface{}{
-			"public_key": pk,
+			"public_key": publicKey,
 		},
 		Parallelism: 1,
 	})
@@ -52,7 +52,7 @@ func TestPeerTubeDeployment(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Check that env variables set successfully
-	output, err := tests.RemoteRun("root", planetary, "zinit list", sk)
+	output, err := tests.RemoteRun("root", planetary, "zinit list", privateKey)
 	assert.NoError(t, err)
 	assert.Contains(t, output, "peertube: Running")
 

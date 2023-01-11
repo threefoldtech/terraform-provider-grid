@@ -23,14 +23,14 @@ func TestMultiNodeDeployment(t *testing.T) {
 
 	// retryable errors in terraform testing.
 	// generate ssh keys for test
-	pk, sk, err := tests.GenerateSSHKeyPair()
+	publicKey, privateKey, err := tests.GenerateSSHKeyPair()
 	if err != nil {
-		t.Log(err)
+		t.Fatal()
 	}
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./qsfs_read_write",
 		Vars: map[string]interface{}{
-			"public_key": pk,
+			"public_key": publicKey,
 		},
 		Parallelism: 1,
 	})
@@ -45,7 +45,7 @@ func TestMultiNodeDeployment(t *testing.T) {
 	ygg_ip := terraform.Output(t, terraformOptions, "ygg_ip")
 	assert.NotEmpty(t, ygg_ip)
 
-	output, err := tests.RemoteRun("root", ygg_ip, "cd /qsfs && echo test >> test && cat test", sk)
+	output, err := tests.RemoteRun("root", ygg_ip, "cd /qsfs && echo test >> test && cat test", privateKey)
 	assert.NoError(t, err)
 	assert.Contains(t, string(output), "test")
 }
