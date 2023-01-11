@@ -9,14 +9,16 @@ import (
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 )
 
-const ErrTerraformOutSync = "Error reading data from remote, terraform state might be out of sync with the remote state"
+const errTerraformOutSync = "Error reading data from remote, terraform state might be out of sync with the remote state"
 
-type Marshalable interface {
-	ContractDeploymentSync(d *schema.ResourceData) (err error)
-	sync(ctx context.Context, sub subi.SubstrateExt, cl *threefoldPluginClient) (err error)
+// Syncer struct
+type Syncer interface {
+	SyncContractsDeployments(d *schema.ResourceData) (err error)
+	Sync(ctx context.Context, sub subi.SubstrateExt, cl *threefoldPluginClient) (err error)
 }
 
-type Action func(context.Context, subi.SubstrateExt, *schema.ResourceData, *threefoldPluginClient) (Marshalable, error)
+// Action is a type for a function
+type Action func(context.Context, subi.SubstrateExt, *schema.ResourceData, *threefoldPluginClient) (Syncer, error)
 
 func ResourceFunc(a Action) func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
 	return func(ctx context.Context, d *schema.ResourceData, i interface{}) (diags diag.Diagnostics) {
@@ -30,7 +32,7 @@ func ResourceReadFunc(a Action) func(ctx context.Context, d *schema.ResourceData
 			for idx := range diags {
 				diags[idx] = diag.Diagnostic{
 					Severity: diag.Warning,
-					Summary:  ErrTerraformOutSync,
+					Summary:  errTerraformOutSync,
 					Detail:   diags[idx].Summary,
 				}
 			}
@@ -42,7 +44,7 @@ func ResourceReadFunc(a Action) func(ctx context.Context, d *schema.ResourceData
 func resourceFunc(a Action, reportSync bool) func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
 	return func(ctx context.Context, d *schema.ResourceData, i interface{}) (diags diag.Diagnostics) {
 		cl := i.(*threefoldPluginClient)
-		if err := validateAccountMoneyForExtrinsics(cl.substrateConn, cl.identity); err != nil {
+		if err := validateAccountBalanceForExtrinsics(cl.substrateConn, cl.identity); err != nil {
 			return diag.FromErr(err)
 		}
 
@@ -51,7 +53,7 @@ func resourceFunc(a Action, reportSync bool) func(ctx context.Context, d *schema
 			diags = diag.FromErr(err)
 		}
 		if obj != nil {
-			if err := obj.sync(ctx, cl.substrateConn, cl); err != nil {
+			if err := obj.Sync(ctx, cl.substrateConn, cl); err != nil {
 				if reportSync {
 					diags = append(diags, diag.FromErr(err)...)
 				} else {
@@ -62,7 +64,7 @@ func resourceFunc(a Action, reportSync bool) func(ctx context.Context, d *schema
 					})
 				}
 			}
-			err = obj.ContractDeploymentSync(d)
+			err = obj.SyncContractsDeployments(d)
 			if err != nil {
 				diags = append(diags, diag.FromErr(err)...)
 			}

@@ -256,7 +256,7 @@ func (k *NetworkDeployer) invalidateBrokenAttributes(sub subi.SubstrateExt) erro
 	return nil
 }
 func (k *NetworkDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error {
-	if err := validateAccountMoneyForExtrinsics(sub, k.ThreefoldPluginClient.identity); err != nil {
+	if err := validateAccountBalanceForExtrinsics(sub, k.ThreefoldPluginClient.identity); err != nil {
 		return err
 	}
 	mask := k.IPRange.Mask
@@ -826,7 +826,7 @@ func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta inter
 	if err != nil {
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Warning,
-			Summary:  ErrTerraformOutSync,
+			Summary:  errTerraformOutSync,
 			Detail:   err.Error(),
 		})
 		return diags

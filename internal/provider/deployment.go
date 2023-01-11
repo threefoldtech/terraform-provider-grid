@@ -166,7 +166,7 @@ func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context)
 	return map[uint32]gridtypes.Deployment{d.Node: dl}, nil
 }
 
-func (d *DeploymentDeployer) ContractDeploymentSync(r *schema.ResourceData) (errors error) {
+func (d *DeploymentDeployer) SyncContractsDeployments(r *schema.ResourceData) (errors error) {
 	vms := make([]interface{}, 0)
 	disks := make([]interface{}, 0)
 	zdbs := make([]interface{}, 0)
@@ -242,7 +242,7 @@ func (d *DeploymentDeployer) Nullify() {
 	d.ZDBs = nil
 	d.Id = ""
 }
-func (d *DeploymentDeployer) ParseID() uint64 {
+func (d *DeploymentDeployer) parseID() uint64 {
 	id, err := strconv.ParseUint(d.Id, 10, 64)
 	if err != nil {
 		panic(err)
@@ -254,7 +254,7 @@ func (d *DeploymentDeployer) syncContract(sub subi.SubstrateExt) error {
 	if d.Id == "" {
 		return nil
 	}
-	valid, err := sub.IsValidContract(d.ParseID())
+	valid, err := sub.IsValidContract(d.parseID())
 	if err != nil {
 		return errors.Wrap(err, "error checking contract validity")
 	}
@@ -264,7 +264,9 @@ func (d *DeploymentDeployer) syncContract(sub subi.SubstrateExt) error {
 	}
 	return nil
 }
-func (d *DeploymentDeployer) sync(ctx context.Context, sub subi.SubstrateExt, cl *threefoldPluginClient) error {
+
+// Sync syncs the deployments
+func (d *DeploymentDeployer) Sync(ctx context.Context, sub subi.SubstrateExt, cl *threefoldPluginClient) error {
 	if err := d.syncContract(sub); err != nil {
 		return err
 	}
@@ -272,7 +274,7 @@ func (d *DeploymentDeployer) sync(ctx context.Context, sub subi.SubstrateExt, cl
 		d.Nullify()
 		return nil
 	}
-	currentDeployments, err := d.deployer.GetDeployments(ctx, sub, map[uint32]uint64{d.Node: d.ParseID()})
+	currentDeployments, err := d.deployer.GetDeployments(ctx, sub, map[uint32]uint64{d.Node: d.parseID()})
 	if err != nil {
 		return errors.Wrap(err, "failed to get deployments to update local state")
 	}

@@ -280,12 +280,12 @@ func TestDeploymentSyncDeletedContract(t *testing.T) {
 	subI, _ := d.ThreefoldPluginClient.manager.SubstrateExt()
 	sub := subI.(*mock.MockSubstrateExt)
 
-	sub.EXPECT().IsValidContract(uint64(d.ParseID())).Return(false, nil).AnyTimes()
+	sub.EXPECT().IsValidContract(uint64(d.parseID())).Return(false, nil).AnyTimes()
 	assert.NoError(t, d.syncContract(sub))
 	assert.Empty(t, d.Id)
 
 	d.Id = id
-	assert.NoError(t, d.sync(context.Background(), sub, d.ThreefoldPluginClient))
+	assert.NoError(t, d.Sync(context.Background(), sub, d.ThreefoldPluginClient))
 	assert.Empty(t, d.Id)
 	assert.Empty(t, d.VMs)
 	assert.Empty(t, d.Disks)
@@ -474,7 +474,7 @@ func TestDeploymentSync(t *testing.T) {
 	usedIPs := getUsedIPs(dl)
 	network.EXPECT().SetDeploymentIPs(d.Node, d.Id, usedIPs)
 
-	assert.NoError(t, d.sync(context.Background(), sub, d.ThreefoldPluginClient))
+	assert.NoError(t, d.Sync(context.Background(), sub, d.ThreefoldPluginClient))
 	assert.Equal(t, d.VMs, cp.VMs)
 	assert.Equal(t, d.Disks, cp.Disks)
 	assert.Equal(t, d.QSFSs, cp.QSFSs)

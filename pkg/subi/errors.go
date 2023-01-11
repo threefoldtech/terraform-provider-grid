@@ -12,7 +12,7 @@ var ErrNotFound = subv2.ErrNotFound
 // ErrAccountNotFound is an error for substrate account not found
 var ErrAccountNotFound = subv2.ErrAccountNotFound
 
-func isNotFoundErrors(err error) error {
+func normalizeNotFoundErrors(err error) error {
 	if errors.Is(err, subv2.ErrNotFound) || errors.Is(err, subv3.ErrNotFound) {
 		return ErrNotFound
 	}
