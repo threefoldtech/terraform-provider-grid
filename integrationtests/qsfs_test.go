@@ -24,14 +24,14 @@ func TestMultiNodeDeployment(t *testing.T) {
 
 	// retryable errors in terraform testing.
 	// generate ssh keys for test
-	pk, sk, err := tests.GenerateSSHKeyPair()
+	publicKey, privateKey, err := tests.GenerateSSHKeyPair()
 	if err != nil {
-		t.Log(err)
+		t.Fatal()
 	}
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./qsfs_check_metrics",
 		Vars: map[string]interface{}{
-			"public_key": pk,
+			"public_key": publicKey,
 		},
 		Parallelism: 1,
 	})
@@ -50,7 +50,7 @@ func TestMultiNodeDeployment(t *testing.T) {
 	// assert.NoError(t, err)
 
 	// isIPReachable := []string{ygg_ip, metrics}
-	// err = tests.isIPReachable("", isIPReachable, sk)
+	// err = tests.isIPReachable("", isIPReachable, privateKey)
 	// assert.NoError(t, err)
 
 	// get metrics
@@ -58,7 +58,7 @@ func TestMultiNodeDeployment(t *testing.T) {
 	output, _ := cmd.Output()
 
 	// try write to a file in mounted disk
-	_, err = tests.RemoteRun("root", ygg_ip, "cd /qsfs && echo test >> test", sk)
+	_, err = tests.RemoteRun("root", ygg_ip, "cd /qsfs && echo test >> test", privateKey)
 	assert.NoError(t, err)
 	// get metrics after write
 	cmd2 := exec.Command("curl", metrics)

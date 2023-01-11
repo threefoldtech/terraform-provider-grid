@@ -25,15 +25,15 @@ func TestMountWithBiggerFileDeployment(t *testing.T) {
 
 	// retryable errors in terraform testing.
 	// generate ssh keys for test
-	pk, sk, err := tests.GenerateSSHKeyPair()
+	publicKey, privateKey, err := tests.GenerateSSHKeyPair()
 	if err != nil {
-		t.Log(err)
+		t.Fatal()
 	}
 
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./mount_with_file_bigger_than_disk_size",
 		Vars: map[string]interface{}{
-			"public_key": pk,
+			"public_key": publicKey,
 		},
 		Parallelism: 1,
 	})
@@ -49,12 +49,12 @@ func TestMountWithBiggerFileDeployment(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Check that env variables set successfully
-	output, err := tests.RemoteRun("root", planetary, "cat /proc/1/environ", sk)
+	output, err := tests.RemoteRun("root", planetary, "cat /proc/1/environ", privateKey)
 	assert.NoError(t, err)
 	assert.Contains(t, string(output), "SSH_KEY")
 
 	// ssh to VM and try to create a file with size 1G.
-	output, err = tests.RemoteRun("root", planetary, "cd /app/ && dd if=/dev/vda bs=1G count=1 of=test.txt", sk)
+	output, err = tests.RemoteRun("root", planetary, "cd /app/ && dd if=/dev/vda bs=1G count=1 of=test.txt", privateKey)
 	if err == nil {
 		t.Errorf("should fail with out of memory")
 	}

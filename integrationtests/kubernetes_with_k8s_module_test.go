@@ -14,16 +14,16 @@ import (
 )
 
 func TestKubernetesDeployment(t *testing.T) {
-	pk, sk, err := tests.GenerateSSHKeyPair()
+	publicKey, privateKey, err := tests.GenerateSSHKeyPair()
 	if err != nil {
-		t.Log(err)
+		t.Fatal()
 	}
 
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./kubernetes_with_k8s_module",
 		Parallelism:  1,
 		Vars: map[string]interface{}{
-			"ssh":           pk,
+			"ssh":           publicKey,
 			"network_nodes": []int{12, 219},
 			"workers": []map[string]interface{}{
 				{
@@ -55,7 +55,7 @@ func TestKubernetesDeployment(t *testing.T) {
 	})
 
 	terraform.InitAndApply(t, terraformOptions)
-	assertDeploymentStatus(t, terraformOptions, sk)
+	assertDeploymentStatus(t, terraformOptions, privateKey)
 
 	terraformOptions.Vars["workers"] = []map[string]interface{}{
 		{
@@ -101,22 +101,22 @@ func TestKubernetesDeployment(t *testing.T) {
 	}
 
 	terraform.Apply(t, terraformOptions)
-	assertDeploymentStatus(t, terraformOptions, sk)
+	assertDeploymentStatus(t, terraformOptions, privateKey)
 	terraform.Destroy(t, terraformOptions)
 }
 
-func assertDeploymentStatus(t *testing.T, terraformOptions *terraform.Options, sk string) {
+func assertDeploymentStatus(t *testing.T, terraformOptions *terraform.Options, privateKey string) {
 	t.Helper()
 
 	masterYggIP := terraform.Output(t, terraformOptions, "master_yggip")
 	assert.NotEmpty(t, masterYggIP)
 
 	time.Sleep(5 * time.Second)
-	res, err := tests.RemoteRun("root", masterYggIP, "kubectl get node", sk)
-	res = strings.Trim(res, "\n")
+	output, err := tests.RemoteRun("root", masterYggIP, "kubectl get node", privateKey)
+	output = strings.TrimSpaces(output)
 	assert.Empty(t, err)
 
-	nodes := strings.Split(res, "\n")[1:]
+	nodes := strings.Split(output, "\n")[1:]
 
 	for _, node := range nodes {
 		assert.Contains(t, node, "Ready")
