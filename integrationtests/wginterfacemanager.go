@@ -24,7 +24,7 @@ func UpWg(wgConfig, wgConfDir string) (string, error) {
 	cmd := exec.Command("wg-quick", "up", f.Name())
 	_, err = cmd.Output()
 	if err != nil {
-		return "", errors.Wrapf(err, "error executing wg-quick up")
+		return "", errors.Wrapf(err, "error executing wg-quick up with"+f.Name())
 	}
 
 	return f.Name(), nil
@@ -41,7 +41,7 @@ func DownWG(wgConfDir string) (string, error) { //tempdir
 	return string(out), nil
 }
 
-// check if wire guard ip is reachable
+// AreWGIPsReachable used to check if wire guard ip is reachable
 func AreWGIPsReachable(wgConfig string, ipsToCheck []string, privateKey string) error {
 	errChannel := make(chan error, len(ipsToCheck))
 	var wg sync.WaitGroup

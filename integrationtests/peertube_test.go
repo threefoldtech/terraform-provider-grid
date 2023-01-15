@@ -48,8 +48,9 @@ func TestPeerTubeDeployment(t *testing.T) {
 	peertube := terraform.Output(t, terraformOptions, "fqdn")
 	assert.NotEmpty(t, fqdn)
 
-	err = tests.TestConnection(planetary, "22")
-	assert.NoError(t, err)
+	ok = tests.TestConnection(planetary, "22")
+	assert.True(t, ok)
+
 
 	// Check that env variables set successfully
 	output, err := tests.RemoteRun("root", planetary, "zinit list", privateKey)

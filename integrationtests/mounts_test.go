@@ -58,9 +58,9 @@ func TestSingleMountDeployment(t *testing.T) {
 	wgConfig := terraform.Output(t, terraformOptions, "wg_config")
 	assert.NotEmpty(t, wgConfig)
 
-	//test connection to the vm
-	err = tests.TestConnection(planetary, "22")
-	assert.NoError(t, err)
+	//testing connections
+	ok := tests.TestConnection(planetary, "22")
+	assert.True(t, ok)
 
 	// Check that env variables set successfully
 	output, err := tests.RemoteRun("root", planetary, "cat /proc/1/environ", privateKey)

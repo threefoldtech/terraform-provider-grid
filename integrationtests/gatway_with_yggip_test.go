@@ -51,6 +51,6 @@ func TestGateWay_yggipDeployment(t *testing.T) {
 	assert.NotEmpty(t, fqdn)
 
 	// ssh to VM and check if yggdrasil is active
-	out, _ := exec.Command("ping", fqdn, "-c 5", "-i 3", "-w 10").Output()
-	assert.NotContains(t, string(out), "Destination Host Unreachable")
+	output, _ := exec.Command("ping", fqdn, "-c 5", "-i 3", "-w 10").Output()
+	assert.NotContains(t, string(output), "Destination Host Unreachable")
 }

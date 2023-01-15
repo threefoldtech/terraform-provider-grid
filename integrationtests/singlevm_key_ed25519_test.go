@@ -53,6 +53,7 @@ func TestSingleNodeDeployment(t *testing.T) {
 	node1Container2IP := terraform.Output(t, terraformOptions, "node1_container2_ip")
 	assert.NotEmpty(t, node1Container2IP)
 
-	err = tests.TestConnection(planetary, "22")
-	assert.NoError(t, err)
+	ok = tests.TestConnection(planetary, "22")
+	assert.True(t, ok)
+
 }
