@@ -34,7 +34,7 @@ func RemoteRun(user string, addr string, cmd string, privateKey string) (string,
 	}
 	session, err := client.NewSession()
 	if err != nil {
-		return "", errors.Wrapf(err, "error creating new session with message error %s",session)
+		return "", errors.Wrapf(err, "error creating new session with message error ")
 	}
 	defer session.Close()
 
