@@ -33,8 +33,8 @@ func TestState(t *testing.T) {
 		network := networkState.GetNetwork("abc")
 		network.SetNodeSubnet(32, "10.1.1.0/24")
 		network.SetNodeSubnet(15, "10.1.1.0/24")
-		network.SetDeploymentIPs(32, "12345", []byte{1, 2, 3})
-		network.DeleteDeployment(32, "12345")
+		network.SetDeploymentHostIDs(32, "12345", []byte{1, 2, 3})
+		network.DeleteDeploymentHostIDs(32, "12345")
 		network.DeleteNodeSubnet(32)
 
 		err = db.Save()
@@ -51,7 +51,7 @@ func TestState(t *testing.T) {
 
 		newState.Networks["abc"] = NewNetwork()
 		newState.Networks["abc"].Subnets[15] = "10.1.1.0/24"
-		newState.Networks["abc"].NodeIPs[32] = make(DeploymentIPs)
+		newState.Networks["abc"].NodeDeploymentHostIDs[32] = make(DeploymentHostIDs)
 	})
 
 	t.Run("test_marshal_local_state", func(t *testing.T) {

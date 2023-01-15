@@ -31,12 +31,12 @@ type NetworkInterface interface {
 	SetNodeSubnet(nodeID uint32, subnet string)
 	// DeleteNodeSubnet deletes node's subnet from network local state
 	DeleteNodeSubnet(nodeID uint32)
-	// GetNodeIPs retrieves all node's used ips
-	GetNodeIPsList(nodeID uint32) []byte
-	// GetDeploymentIPs retrieves deployment's used ips
-	GetDeploymentIPs(nodeID uint32, deploymentID string) []byte
-	// SetDeploymentIPs sets deployment's used ips
-	SetDeploymentIPs(nodeID uint32, deploymentID string, ips []byte)
+	// GetNodeDeploymentHostIDs retrieves all node's used host id
+	GetUsedNetworkHostIDs(nodeID uint32) []byte
+	// GetDeploymentHostIDs retrieves deployment's used ips
+	GetDeploymentHostIDs(nodeID uint32, deploymentID string) []byte
+	// SetDeploymentHostIDs sets deployment's used ips
+	SetDeploymentHostIDs(nodeID uint32, deploymentID string, ips []byte)
 	// RemoveDeployment deletes deployment entry
-	DeleteDeployment(nodeID uint32, deploymentID string)
+	DeleteDeploymentHostIDs(nodeID uint32, deploymentID string)
 }
