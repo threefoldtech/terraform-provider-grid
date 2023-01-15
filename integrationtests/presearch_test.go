@@ -51,8 +51,6 @@ func TestPreSearchDeployment(t *testing.T) {
 	assert.NotEmpty(t, planetary)
 	// Check that vm is reachable
 	ip := strings.Split(publicIp, "/")[0]
-	// err = tests.TestConnection(planetary, "22")
-	// assert.NoError(t, err)
 
 	// Check that env variables set successfully
 	output, err := tests.RemoteRun("root", ip, "cat /proc/1/environ", privateKey)

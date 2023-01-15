@@ -1,7 +1,6 @@
 package integrationtests
 
 import (
-	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -35,19 +34,15 @@ func RemoteRun(user string, addr string, cmd string, privateKey string) (string,
 	}
 	session, err := client.NewSession()
 	if err != nil {
-		return "", errors.Wrapf(err, "error creating new session")
+		return "", errors.Wrapf(err, "error creating new session with message error %s",session)
 	}
 	defer session.Close()
-	var b bytes.Buffer
-	session.Stdout = &b
-
-	// trying to make compound output work insted of buffer
 
 	output, err := session.CombinedOutput(cmd)
 	if err != nil {
 		return "", errors.Wrapf(err, "error executing command on remote with output %s", output)
 	}
-	return b.String(), nil
+	return string(output), nil
 }
 
 // GenerateSSHKeyPair creats the public and private key for the machine

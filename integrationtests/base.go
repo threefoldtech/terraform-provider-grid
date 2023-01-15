@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+//TestConnection used to test connection
 func TestConnection(addr string, port string) bool {
 	connected := false
 	for t := time.Now(); time.Since(t) < 3*time.Minute; {

@@ -46,13 +46,6 @@ func TestMultiNodeDeployment(t *testing.T) {
 	ygg_ip := terraform.Output(t, terraformOptions, "ygg_ip")
 	assert.NotEmpty(t, ygg_ip)
 
-	// err = tests.Wait(ygg_ip, "22")
-	// assert.NoError(t, err)
-
-	// isIPReachable := []string{ygg_ip, metrics}
-	// err = tests.isIPReachable("", isIPReachable, privateKey)
-	// assert.NoError(t, err)
-
 	// get metrics
 	cmd := exec.Command("curl", metrics)
 	output, _ := cmd.Output()

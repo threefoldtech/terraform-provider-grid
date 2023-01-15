@@ -4,6 +4,7 @@
 package integrationtests
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -113,12 +114,11 @@ func assertDeploymentStatus(t *testing.T, terraformOptions *terraform.Options, p
 
 	time.Sleep(5 * time.Second)
 	output, err := tests.RemoteRun("root", masterYggIP, "kubectl get node", privateKey)
-	output = strings.TrimSpaces(output)
+	output = strings.TrimSpace(output)
 	assert.Empty(t, err)
 
-	nodes := strings.Split(output, "\n")[1:]
+	nodesNumber := reflect.ValueOf(terraformOptions.Vars["workers"]).Len() + 1
+	numberOfReadynodes := strings.Count(output, "Ready")
+	assert.True(t, numberOfReadynodes == nodesNumber, "number of ready nodes is not equal to number of nodes only %s nodes are ready", numberOfReadynodes)
 
-	for _, node := range nodes {
-		assert.Contains(t, node, "Ready")
-	}
 }
