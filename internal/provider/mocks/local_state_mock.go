@@ -49,10 +49,10 @@ func (mr *MockDBMockRecorder) Delete() *gomock.Call {
 }
 
 // GetState mocks base method.
-func (m *MockDB) GetState() state.StateI {
+func (m *MockDB) GetState() state.State {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetState")
-	ret0, _ := ret[0].(state.StateI)
+	ret0, _ := ret[0].(state.State)
 	return ret0
 }
 
@@ -114,10 +114,10 @@ func (m *MockStateI) EXPECT() *MockStateIMockRecorder {
 }
 
 // GetNetworkState mocks base method.
-func (m *MockStateI) GetNetworkState() state.NetworkState {
+func (m *MockStateI) GetNetworkState() state.NetworkMap {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetNetworkState")
-	ret0, _ := ret[0].(state.NetworkState)
+	ret0, _ := ret[0].(state.NetworkMap)
 	return ret0
 }
 

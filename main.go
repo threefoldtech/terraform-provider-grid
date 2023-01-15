@@ -34,16 +34,14 @@ func main() {
 	flag.BoolVar(&debugMode, "debug", false, "set to true to run the provider with support for debuggers like delve")
 	flag.Parse()
 
-	db, err := state.NewLocalStateDB(state.TypeFile)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-	err = db.Load()
+	db := state.NewLocalStateFileDB()
+	err := db.Load()
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 
-	providerFunc, sub := provider.New(version, db.GetState())
+	state := db.GetState()
+	providerFunc, sub := provider.New(version, &state)
 	if sub != nil {
 		defer sub.Close()
 	}

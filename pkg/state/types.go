@@ -1,35 +1,24 @@
 package state
 
-import "errors"
-
-type DBType int
-
-const (
-	TypeFile DBType = iota
-)
-
-var ErrWrongDBType = errors.New("wrong db type")
-
+// DB interface for database
 type DB interface {
-	// LoadState should retrieve local state
+	// Load should retrieve local state
 	Load() error
 	// GetState
-	GetState() StateI
+	GetState() State
 	// Save should save networks data to local state
 	Save() error
 	// Delete should delete networks state
 	Delete() error
 }
 
+// StateI interface for state
 type StateI interface {
 	// GetNetworks retrieves network state from local state
-	GetNetworkState() NetworkState
-	// Marshal
-	Marshal() ([]byte, error)
-	// Unmarshal
-	Unmarshal(data []byte) error
+	GetNetworkState() NetworkMap
 }
 
+// NetworkState interface for network state
 type NetworkState interface {
 	// GetNetwork retrieves network `networkName` from network state
 	GetNetwork(networkName string) Network
@@ -37,7 +26,8 @@ type NetworkState interface {
 	DeleteNetwork(networkName string)
 }
 
-type Network interface {
+// NetworkInterface is an interface for network
+type NetworkInterface interface {
 	// GetNodeSubnet retrieves node's subnet from network local state
 	GetNodeSubnet(nodeID uint32) string
 	// SetNodeSubnet sets node's subnet in network local state
@@ -52,11 +42,4 @@ type Network interface {
 	SetDeploymentIPs(nodeID uint32, deploymentID string, ips []byte)
 	// RemoveDeployment deletes deployment entry
 	DeleteDeployment(nodeID uint32, deploymentID string)
-}
-
-func NewLocalStateDB(t DBType) (DB, error) {
-	if t == TypeFile {
-		return &fileDB{}, nil
-	}
-	return nil, ErrWrongDBType
 }
