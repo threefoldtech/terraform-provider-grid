@@ -1,8 +1,8 @@
 // Package state provides a state to save the user work in a database.
 package state
 
-// NetworkMap is a map of of names and their networks
-type NetworkMap map[string]Network
+// NetworkState is a map of of names and their networks
+type NetworkState map[string]Network
 
 // Network struct includes subnets and node IPs
 type Network struct {
@@ -25,7 +25,7 @@ func NewNetwork() Network {
 }
 
 // GetNetwork get a network using its name
-func (nm NetworkMap) GetNetwork(networkName string) NetworkInterface {
+func (nm NetworkState) GetNetwork(networkName string) Network {
 	if _, ok := nm[networkName]; !ok {
 		nm[networkName] = NewNetwork()
 	}
@@ -34,7 +34,7 @@ func (nm NetworkMap) GetNetwork(networkName string) NetworkInterface {
 }
 
 // DeleteNetwork deletes a network using its name
-func (nm NetworkMap) DeleteNetwork(networkName string) {
+func (nm NetworkState) DeleteNetwork(networkName string) {
 	delete(nm, networkName)
 }
 

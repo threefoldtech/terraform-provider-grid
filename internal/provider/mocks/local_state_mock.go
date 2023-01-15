@@ -114,10 +114,10 @@ func (m *MockStateI) EXPECT() *MockStateIMockRecorder {
 }
 
 // GetNetworkState mocks base method.
-func (m *MockStateI) GetNetworkState() state.NetworkMap {
+func (m *MockStateI) GetNetworkState() state.NetworkState {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetNetworkState")
-	ret0, _ := ret[0].(state.NetworkMap)
+	ret0, _ := ret[0].(state.NetworkState)
 	return ret0
 }
 
@@ -156,7 +156,7 @@ func (mr *MockStateIMockRecorder) Unmarshal(data interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Unmarshal", reflect.TypeOf((*MockStateI)(nil).Unmarshal), data)
 }
 
-// MockNetworkState is a mock of NetworkState interface.
+// MockNetworkState is a mock of NetworkState.
 type MockNetworkState struct {
 	ctrl     *gomock.Controller
 	recorder *MockNetworkStateMockRecorder
@@ -192,10 +192,10 @@ func (mr *MockNetworkStateMockRecorder) DeleteNetwork(networkName interface{}) *
 }
 
 // GetNetwork mocks base method.
-func (m *MockNetworkState) GetNetwork(networkName string) state.NetworkInterface {
+func (m *MockNetworkState) GetNetwork(networkName string) state.Network {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetNetwork", networkName)
-	ret0, _ := ret[0].(state.NetworkInterface)
+	ret0, _ := ret[0].(state.Network)
 	return ret0
 }
 
