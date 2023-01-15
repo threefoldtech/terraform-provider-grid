@@ -6,6 +6,19 @@
 - make sure to have `git`, `make`, `taskfile` installed
 - `make submodules` to populate the git submodules in the project
 
+## Editor setup
+
+- [vscode](https://code.visualstudio.com/)
+- official golang plugin
+- [golangci-lint](https://golangci-lint.run/)
+
+### Configuring linter
+
+- go to extensions
+- choose Go
+- go to extension settings
+![lint](./img/lintscreenshot.png)
+
 ## Before committing code
 
 - Make sure to run the perliminary checks `fmt` `lint` `cyclo` `deadcode` `spelling` `staticcheck`, using the command `make checks`
@@ -30,7 +43,7 @@ Integration tests happen on the repository on the PRs
 - [Learn Go with Tests](https://quii.gitbook.io/learn-go-with-tests/)
 - [Effective Go](https://go.dev/doc/effective_go)
 
-## Code reviews
+## Code Reviews
 
 - [CodeReview Comments](https://github.com/golang/go/wiki/CodeReviewComments)
 - [Common mistakes](https://github.com/golang/go/wiki/CommonMistakes)
