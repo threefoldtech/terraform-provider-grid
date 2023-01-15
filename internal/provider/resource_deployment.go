@@ -420,7 +420,7 @@ func resourceDeployment() *schema.Resource {
 }
 
 func resourceDeploymentCreate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Syncer, error) {
-	deployer, err := getDeploymentDeployer(d, threefoldPluginClient)
+	deployer, err := newDeploymentDeployer(d, threefoldPluginClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
 	}
@@ -429,7 +429,7 @@ func resourceDeploymentCreate(ctx context.Context, sub subi.SubstrateExt, d *sch
 }
 
 func resourceDeploymentRead(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Syncer, error) {
-	deployer, err := getDeploymentDeployer(d, threefoldPluginClient)
+	deployer, err := newDeploymentDeployer(d, threefoldPluginClient)
 	if err != nil {
 		return nil, err
 	}
@@ -448,7 +448,7 @@ func resourceDeploymentUpdate(ctx context.Context, sub subi.SubstrateExt, d *sch
 		}
 		d.SetId("")
 	}
-	deployer, err := getDeploymentDeployer(d, threefoldPluginClient)
+	deployer, err := newDeploymentDeployer(d, threefoldPluginClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
 	}
@@ -457,7 +457,7 @@ func resourceDeploymentUpdate(ctx context.Context, sub subi.SubstrateExt, d *sch
 }
 
 func resourceDeploymentDelete(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Syncer, error) {
-	deployer, err := getDeploymentDeployer(d, threefoldPluginClient)
+	deployer, err := newDeploymentDeployer(d, threefoldPluginClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't load deployer data")
 	}

@@ -10,13 +10,13 @@ type Network struct {
 	NodeDeploymentHostIDs NodeDeploymentHostIDs `json:"node_ips"`
 }
 
-// NodeDeploymentHostIDs is a map for nodes ID and its deployments' host IDs for IPs
+// NodeDeploymentHostIDs is a map for nodes ID and its deployments' IPs
 type NodeDeploymentHostIDs map[uint32]DeploymentHostIDs
 
-// DeploymentHostIDs is a map for deployment and its host IDs for IPs
+// DeploymentHostIDs is a map for deployment and its IPs
 type DeploymentHostIDs map[string][]byte
 
-// NewNetwork generates a new network
+// NewNetwork creates a new Network
 func NewNetwork() Network {
 	return Network{
 		Subnets:               map[uint32]string{},
@@ -53,8 +53,8 @@ func (n *Network) DeleteNodeSubnet(nodeID uint32) {
 	delete(n.Subnets, nodeID)
 }
 
-// GetNodeIPsList returns a list of IPs for a node given its ID
-func (n *Network) GetNodeIPsList(nodeID uint32) []byte {
+// GetUsedNetworkHostIDs gets the used host IDs on the overlay network
+func (n *Network) GetUsedNetworkHostIDs(nodeID uint32) []byte {
 	ips := []byte{}
 	for _, v := range n.NodeDeploymentHostIDs[nodeID] {
 		ips = append(ips, v...)
@@ -62,23 +62,23 @@ func (n *Network) GetNodeIPsList(nodeID uint32) []byte {
 	return ips
 }
 
-// GetDeploymentIPs returns a list of IPs for a deployment on a given node
-func (n *Network) GetDeploymentIPs(nodeID uint32, deploymentID string) []byte {
+// GetDeploymentHostIDs gets the private network host IDs relevant to the deployment
+func (n *Network) GetDeploymentHostIDs(nodeID uint32, deploymentID string) []byte {
 	if n.NodeDeploymentHostIDs[nodeID] == nil {
 		return []byte{}
 	}
 	return n.NodeDeploymentHostIDs[nodeID][deploymentID]
 }
 
-// SetDeploymentIPs sets a list of IPs for a deployment on a given node
-func (n *Network) SetDeploymentIPs(nodeID uint32, deploymentID string, ips []byte) {
+// SetDeploymentHostIDs sets the relevant deployment host IDs
+func (n *Network) SetDeploymentHostIDs(nodeID uint32, deploymentID string, ips []byte) {
 	if n.NodeDeploymentHostIDs[nodeID] == nil {
 		n.NodeDeploymentHostIDs[nodeID] = DeploymentHostIDs{}
 	}
 	n.NodeDeploymentHostIDs[nodeID][deploymentID] = ips
 }
 
-// DeleteDeployment deletes a deployment on a node
-func (n *Network) DeleteDeployment(nodeID uint32, deploymentID string) {
+// DeleteDeploymentHostIDs deletes a deployment host IDs
+func (n *Network) DeleteDeploymentHostIDs(nodeID uint32, deploymentID string) {
 	delete(n.NodeDeploymentHostIDs[nodeID], deploymentID)
 }
