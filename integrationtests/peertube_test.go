@@ -51,7 +51,6 @@ func TestPeerTubeDeployment(t *testing.T) {
 	ok = tests.TestConnection(planetary, "22")
 	assert.True(t, ok)
 
-
 	// Check that env variables set successfully
 	output, err := tests.RemoteRun("root", planetary, "zinit list", privateKey)
 	assert.NoError(t, err)
