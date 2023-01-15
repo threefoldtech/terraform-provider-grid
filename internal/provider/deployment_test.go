@@ -32,7 +32,7 @@ func constructTestDeployer(ctrl *gomock.Controller) DeploymentDeployer {
 	return DeploymentDeployer{
 		ncPool:   pool,
 		deployer: deployer,
-		Id:       "100",
+		ID:       "100",
 		Node:     10,
 		Disks: []workloads.Disk{
 			{
@@ -276,17 +276,17 @@ func TestDeploymentSyncDeletedContract(t *testing.T) {
 	defer ctrl.Finish()
 	d := constructTestDeployer(ctrl)
 
-	id := d.Id
+	id := d.ID
 	subI, _ := d.ThreefoldPluginClient.manager.SubstrateExt()
 	sub := subI.(*mock.MockSubstrateExt)
 
 	sub.EXPECT().IsValidContract(uint64(d.parseID())).Return(false, nil).AnyTimes()
 	assert.NoError(t, d.syncContract(sub))
-	assert.Empty(t, d.Id)
+	assert.Empty(t, d.ID)
 
-	d.Id = id
+	d.ID = id
 	assert.NoError(t, d.Sync(context.Background(), sub, d.ThreefoldPluginClient))
-	assert.Empty(t, d.Id)
+	assert.Empty(t, d.ID)
 	assert.Empty(t, d.VMs)
 	assert.Empty(t, d.Disks)
 	assert.Empty(t, d.QSFSs)
@@ -469,17 +469,17 @@ func TestDeploymentSync(t *testing.T) {
 
 	var cp DeploymentDeployer
 	musUnmarshal(mustMarshal(d), &cp)
-	network.EXPECT().DeleteDeployment(d.Node, d.Id)
+	network.EXPECT().DeleteDeployment(d.Node, d.ID)
 
 	usedIPs := getUsedIPs(dl)
-	network.EXPECT().SetDeploymentIPs(d.Node, d.Id, usedIPs)
+	network.EXPECT().SetDeploymentIPs(d.Node, d.ID, usedIPs)
 
 	assert.NoError(t, d.Sync(context.Background(), sub, d.ThreefoldPluginClient))
 	assert.Equal(t, d.VMs, cp.VMs)
 	assert.Equal(t, d.Disks, cp.Disks)
 	assert.Equal(t, d.QSFSs, cp.QSFSs)
 	assert.Equal(t, d.ZDBs, cp.ZDBs)
-	assert.Equal(t, d.Id, cp.Id)
+	assert.Equal(t, d.ID, cp.ID)
 	assert.Equal(t, d.Node, cp.Node)
 }
 

@@ -22,7 +22,7 @@ import (
 )
 
 type DeploymentDeployer struct {
-	Id                    string
+	ID                    string
 	Node                  uint32
 	Disks                 []workloads.Disk
 	ZDBs                  []workloads.ZDB
@@ -89,7 +89,7 @@ func getDeploymentDeployer(d *schema.ResourceData, threefoldPluginClient *threef
 	ipRange := net.GetNodeSubnet(nodeID)
 
 	deploymentDeployer := DeploymentDeployer{
-		Id:                    d.Id(),
+		ID:                    d.Id(),
 		Node:                  nodeID,
 		Disks:                 disks,
 		VMs:                   vms,
@@ -218,17 +218,17 @@ func (d *DeploymentDeployer) SyncContractsDeployments(r *schema.ResourceData) (e
 		errors = multierror.Append(errors, err)
 	}
 
-	r.SetId(d.Id)
+	r.SetId(d.ID)
 	return
 }
 
 func (d *DeploymentDeployer) GetOldDeployments(ctx context.Context) (map[uint32]uint64, error) {
 	deployments := make(map[uint32]uint64)
-	if d.Id != "" {
+	if d.ID != "" {
 
-		deploymentID, err := strconv.ParseUint(d.Id, 10, 64)
+		deploymentID, err := strconv.ParseUint(d.ID, 10, 64)
 		if err != nil {
-			return nil, errors.Wrapf(err, "couldn't parse deployment id %s", d.Id)
+			return nil, errors.Wrapf(err, "couldn't parse deployment id %s", d.ID)
 		}
 		deployments[d.Node] = deploymentID
 	}
@@ -240,10 +240,10 @@ func (d *DeploymentDeployer) Nullify() {
 	d.QSFSs = nil
 	d.Disks = nil
 	d.ZDBs = nil
-	d.Id = ""
+	d.ID = ""
 }
 func (d *DeploymentDeployer) parseID() uint64 {
-	id, err := strconv.ParseUint(d.Id, 10, 64)
+	id, err := strconv.ParseUint(d.ID, 10, 64)
 	if err != nil {
 		panic(err)
 	}
@@ -251,7 +251,7 @@ func (d *DeploymentDeployer) parseID() uint64 {
 
 }
 func (d *DeploymentDeployer) syncContract(sub subi.SubstrateExt) error {
-	if d.Id == "" {
+	if d.ID == "" {
 		return nil
 	}
 	valid, err := sub.IsValidContract(d.parseID())
@@ -259,7 +259,7 @@ func (d *DeploymentDeployer) syncContract(sub subi.SubstrateExt) error {
 		return errors.Wrap(err, "error checking contract validity")
 	}
 	if !valid {
-		d.Id = ""
+		d.ID = ""
 		return nil
 	}
 	return nil
@@ -270,7 +270,7 @@ func (d *DeploymentDeployer) Sync(ctx context.Context, sub subi.SubstrateExt, cl
 	if err := d.syncContract(sub); err != nil {
 		return err
 	}
-	if d.Id == "" {
+	if d.ID == "" {
 		d.Nullify()
 		return nil
 	}
@@ -286,7 +286,7 @@ func (d *DeploymentDeployer) Sync(ctx context.Context, sub subi.SubstrateExt, cl
 
 	ns := cl.state.GetNetworkState()
 	network := ns.GetNetwork(d.NetworkName)
-	network.DeleteDeployment(d.Node, d.Id)
+	network.DeleteDeployment(d.Node, d.ID)
 
 	usedIPs := []byte{}
 	for _, w := range dl.Workloads {
@@ -328,7 +328,7 @@ func (d *DeploymentDeployer) Sync(ctx context.Context, sub subi.SubstrateExt, cl
 
 		}
 	}
-	network.SetDeploymentIPs(d.Node, d.Id, usedIPs)
+	network.SetDeploymentIPs(d.Node, d.ID, usedIPs)
 	d.Match(disks, qsfs, zdbs, vms)
 	log.Printf("vms: %+v\n", len(vms))
 	d.Disks = disks
@@ -411,7 +411,7 @@ func (d *DeploymentDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt) 
 	}
 	currentDeployments, err := d.deployer.Deploy(ctx, sub, oldDeployments, newDeployments)
 	if currentDeployments[d.Node] != 0 {
-		d.Id = fmt.Sprintf("%d", currentDeployments[d.Node])
+		d.ID = fmt.Sprintf("%d", currentDeployments[d.Node])
 	}
 	return err
 }
@@ -425,9 +425,9 @@ func (d *DeploymentDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt) 
 	currentDeployments, err := d.deployer.Deploy(ctx, sub, oldDeployments, newDeployments)
 	id := currentDeployments[d.Node]
 	if id != 0 {
-		d.Id = fmt.Sprintf("%d", id)
+		d.ID = fmt.Sprintf("%d", id)
 	} else {
-		d.Id = ""
+		d.ID = ""
 	}
 	return err
 }

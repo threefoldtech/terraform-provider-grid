@@ -62,7 +62,7 @@ func (r *ProxyBus) resultEndpoint(twinID uint32, retqueue string) string {
 	return fmt.Sprintf("%s/twin/%d/%s", r.endpoint, twinID, retqueue)
 }
 
-// Call calls a functions via rmb
+// Call calls a function via rmb
 func (r *ProxyBus) Call(ctx context.Context, twin uint32, fn string, data interface{}, result interface{}) error {
 	bs, err := json.Marshal(data)
 	if err != nil {
