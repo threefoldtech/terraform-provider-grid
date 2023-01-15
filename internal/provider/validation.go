@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"net"
 	"net/url"
+	"regexp"
 	"time"
 
 	"github.com/gomodule/redigo/redis"
@@ -15,17 +16,17 @@ import (
 )
 
 // validateAccount checks the mnemonics is associated with an account with key type ed25519
-func validateAccount(apiClient *apiClient, sub subi.SubstrateExt) error {
-	_, err := sub.GetAccount(apiClient.identity)
+func validateAccount(threefoldPluginClient *threefoldPluginClient, sub subi.SubstrateExt) error {
+	_, err := sub.GetAccount(threefoldPluginClient.identity)
 	if err != nil && !errors.Is(err, subi.ErrAccountNotFound) {
 		return errors.Wrap(err, "failed to get account with the given mnemonics")
 	}
 	if err != nil { // Account not found
 		funcs := map[string]func(string) (subi.Identity, error){"ed25519": subi.NewIdentityFromEd25519Phrase, "sr25519": subi.NewIdentityFromSr25519Phrase}
 		for keyType, f := range funcs {
-			ident, err2 := f(apiClient.mnemonics)
+			ident, err2 := f(threefoldPluginClient.mnemonics)
 			if err2 != nil { // shouldn't happen, return original error
-				log.Printf("couldn't convert the mnemomincs to %s key: %s", keyType, err2.Error())
+				log.Printf("couldn't convert the mnemonics to %s key: %s", keyType, err2.Error())
 				return err
 			}
 			_, err2 = sub.GetAccount(ident)
@@ -39,9 +40,9 @@ func validateAccount(apiClient *apiClient, sub subi.SubstrateExt) error {
 	return nil
 }
 
-func validateRedis(apiClient *apiClient) error {
-	errMsg := fmt.Sprintf("redis error. make sure rmb_redis_url is correct and there's a redis server listening there. rmb_redis_url: %s", apiClient.rmb_redis_url)
-	cl, err := newRedisPool(apiClient.rmb_redis_url)
+func validateRedis(threefoldPluginClient *threefoldPluginClient) error {
+	errMsg := fmt.Sprintf("redis error. make sure rmb_redis_url is correct and there's a redis server listening there. rmb_redis_url: %s", threefoldPluginClient.rmbRedisURL)
+	cl, err := newRedisPool(threefoldPluginClient.rmbRedisURL)
 	if err != nil {
 		return errors.Wrap(err, errMsg)
 	}
@@ -53,10 +54,10 @@ func validateRedis(apiClient *apiClient) error {
 	return nil
 }
 
-func validateYggdrasil(apiClient *apiClient, sub subi.SubstrateExt) error {
-	yggIP, err := sub.GetTwinIP(apiClient.twin_id)
+func validateYggdrasil(threefoldPluginClient *threefoldPluginClient, sub subi.SubstrateExt) error {
+	yggIP, err := sub.GetTwinIP(threefoldPluginClient.twinID)
 	if err != nil {
-		return errors.Wrapf(err, "could not get twin %d from substrate", apiClient.twin_id)
+		return errors.Wrapf(err, "could not get twin %d from substrate", threefoldPluginClient.twinID)
 	}
 	ip := net.ParseIP(yggIP)
 	listenIP := yggIP
@@ -67,7 +68,7 @@ func validateYggdrasil(apiClient *apiClient, sub subi.SubstrateExt) error {
 	}
 	s, err := net.Listen("tcp", fmt.Sprintf("%s:0", listenIP))
 	if err != nil {
-		return errors.Wrapf(err, "couldn't listen on port. make sure the twin id is associated with a valid yggdrasil ip, twin id: %d, ygg ip: %s, err", apiClient.twin_id, yggIP)
+		return errors.Wrapf(err, "couldn't listen on port. make sure the twin id is associated with a valid yggdrasil ip, twin id: %d, ygg ip: %s, err", threefoldPluginClient.twinID, yggIP)
 	}
 	defer s.Close()
 	port := s.Addr().(*net.TCPAddr).Port
@@ -85,45 +86,75 @@ func validateYggdrasil(apiClient *apiClient, sub subi.SubstrateExt) error {
 	}()
 	c, err := net.Dial("tcp", fmt.Sprintf("%s:%d", listenIP, port))
 	if err != nil {
-		return errors.Wrapf(err, "failed to connect to ip. make sure the twin id is associated with a valid yggdrasil ip, twin id: %d, ygg ip: %s, err", apiClient.twin_id, yggIP)
+		return errors.Wrapf(err, "failed to connect to ip. make sure the twin id is associated with a valid yggdrasil ip, twin id: %d, ygg ip: %s, err", threefoldPluginClient.twinID, yggIP)
 	}
 	c.Close()
 	if !arrived {
-		return errors.Wrapf(err, "sent request but didn't arrive to me. make sure the twin id is associated with a valid yggdrasil ip, twin id: %d, ygg ip: %s, err", apiClient.twin_id, yggIP)
+		return errors.Wrapf(err, "sent request but didn't arrive to me. make sure the twin id is associated with a valid yggdrasil ip, twin id: %d, ygg ip: %s, err", threefoldPluginClient.twinID, yggIP)
 	}
 	return nil
 }
 
-func validateRMB(apiClient *apiClient, sub subi.SubstrateExt) error {
-	if err := validateRedis(apiClient); err != nil {
+func validateRMB(threefoldPluginClient *threefoldPluginClient, sub subi.SubstrateExt) error {
+	if err := validateRedis(threefoldPluginClient); err != nil {
 		return err
 	}
-	if err := validateYggdrasil(apiClient, sub); err != nil {
-		return err
+
+	return validateYggdrasil(threefoldPluginClient, sub)
+}
+
+func validateRMBProxyServer(threefoldPluginClient *threefoldPluginClient) error {
+	return threefoldPluginClient.gridProxyClient.Ping()
+}
+
+func validateMnemonics(mnemonics string) error {
+	if len(mnemonics) == 0 {
+		return errors.New("mnemonics required")
 	}
+
+	alphaOnly := regexp.MustCompile(`^[A-Za-z]+$`)
+	if !alphaOnly.MatchString(mnemonics) {
+		return errors.New("mnemonics are can only be composed of a non-alphanumeric character or a whitespace")
+	}
+
 	return nil
 }
 
-func validateRMBProxyServer(apiClient *apiClient) error {
-	return apiClient.grid_client.Ping()
-}
-
-func validateRMBProxy(apiClient *apiClient) error {
-	if err := validateRMBProxyServer(apiClient); err != nil {
-		return err
+func validateSubstrateURL(url string) error {
+	if len(url) == 0 {
+		return errors.New("substrate url is required")
 	}
+
+	alphaOnly := regexp.MustCompile(`^wss:\/\/[a-z0-9]+\.[a-z0-9]\/?([^\s<>\#%"\,\{\}\\|\\\^\[\]]+)?$`)
+	if !alphaOnly.MatchString(url) {
+		return errors.New("substrate url is not valid")
+	}
+
 	return nil
 }
 
-func preValidate(apiClient *apiClient, sub subi.SubstrateExt) error {
-	if apiClient.use_rmb_proxy {
-		return validateRMBProxy(apiClient)
+func validateProxyURL(url string) error {
+	if len(url) == 0 {
+		return errors.New("proxy url is required")
+	}
+
+	alphaOnly := regexp.MustCompile(`^https:\/\/[a-z0-9]+\.[a-z0-9]\/?([^\s<>\#%"\,\{\}\\|\\\^\[\]]+)?$`)
+	if !alphaOnly.MatchString(url) {
+		return errors.New("proxy url is not valid")
+	}
+
+	return nil
+}
+
+func validateClientRMB(threefoldPluginClient *threefoldPluginClient, sub subi.SubstrateExt) error {
+	if threefoldPluginClient.useRmbProxy {
+		return validateRMBProxyServer(threefoldPluginClient)
 	} else {
-		return validateRMB(apiClient, sub)
+		return validateRMB(threefoldPluginClient, sub)
 	}
 }
 
-func validateAccountMoneyForExtrinsics(sub subi.SubstrateExt, identity subi.Identity) error {
+func validateAccountBalanceForExtrinsics(sub subi.SubstrateExt, identity subi.Identity) error {
 	acc, err := sub.GetAccount(identity)
 	if err != nil && !errors.Is(err, subi.ErrAccountNotFound) {
 		return errors.Wrap(err, "failed to get account with the given mnemonics")
