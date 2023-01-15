@@ -144,10 +144,12 @@ func schedule(ctx context.Context, d *schema.ResourceData, meta interface{}) dia
 
 }
 
+// ResourceSchedRead reads for schedule resource
 func ResourceSchedRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	return diag.Diagnostics{}
 }
 
+// ResourceSchedRead creates for schedule resource
 func ResourceSchedCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	diags := schedule(ctx, d, meta)
 	if diags.HasError() {
@@ -157,10 +159,12 @@ func ResourceSchedCreate(ctx context.Context, d *schema.ResourceData, meta inter
 	return diags
 }
 
+// ResourceSchedRead updates for schedule resource
 func ResourceSchedUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	return schedule(ctx, d, meta)
 }
 
+// ResourceSchedRead deletes for schedule resource
 func ResourceSchedDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	d.SetId("")
 	return diag.Diagnostics{}
