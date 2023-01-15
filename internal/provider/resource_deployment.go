@@ -453,9 +453,9 @@ func resourceDeploymentRead(ctx context.Context, sub subi.SubstrateExt, d *schem
 
 func resourceDeploymentUpdate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Syncer, error) {
 	if d.HasChange("node") {
-		oldContractID, err := strconv.ParseUint(d.ID(), 10, 64)
+		oldContractID, err := strconv.ParseUint(d.Id(), 10, 64)
 		if err != nil {
-			return nil, errors.Wrapf(err, "couldn't parse deployment id %s", d.ID())
+			return nil, errors.Wrapf(err, "couldn't parse deployment id %s", d.Id())
 		}
 		err = sub.CancelContract(threefoldPluginClient.identity, oldContractID)
 		if err != nil {
