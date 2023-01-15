@@ -50,7 +50,7 @@ func TestState(t *testing.T) {
 
 		newState.Networks["abc"] = NewNetwork()
 		newState.Networks["abc"].Subnets[15] = "10.1.1.0/24"
-		newState.Networks["abc"].NodeIPs[32] = make(DeploymentIPs)
+		newState.Networks["abc"].NodeDeploymentHostIDs[32] = make(DeploymentHostIDs)
 	})
 
 	t.Run("test_marshal_local_state", func(t *testing.T) {

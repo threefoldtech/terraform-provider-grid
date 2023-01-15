@@ -267,10 +267,10 @@ func (mr *MockNetworkMockRecorder) GetDeploymentIPs(nodeID, deploymentID interfa
 }
 
 // GetNodeIPs mocks base method.
-func (m *MockNetwork) GetNodeIPs() state.NodeIPs {
+func (m *MockNetwork) GetNodeIPs() state.NodeDeploymentHostIDs {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetNodeIPs")
-	ret0, _ := ret[0].(state.NodeIPs)
+	ret0, _ := ret[0].(state.NodeDeploymentHostIDs)
 	return ret0
 }
 
