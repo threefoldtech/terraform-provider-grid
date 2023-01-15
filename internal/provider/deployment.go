@@ -89,7 +89,7 @@ func getDeploymentDeployer(d *schema.ResourceData, threefoldPluginClient *threef
 	ipRange := net.GetNodeSubnet(nodeID)
 
 	deploymentDeployer := DeploymentDeployer{
-		ID:                    d.ID(),
+		ID:                    d.Id(),
 		Node:                  nodeID,
 		Disks:                 disks,
 		VMs:                   vms,
