@@ -21,7 +21,7 @@ type StateI interface {
 // NetworkState interface for network state
 type NetworkState interface {
 	// GetNetwork retrieves network `networkName` from network state
-	GetNetwork(networkName string) Network
+	GetNetwork(networkName string) NetworkInterface
 	// DeleteNetwork deletes `networkName` from local state
 	DeleteNetwork(networkName string)
 }

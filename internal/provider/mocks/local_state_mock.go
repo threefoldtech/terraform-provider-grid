@@ -192,10 +192,10 @@ func (mr *MockNetworkStateMockRecorder) DeleteNetwork(networkName interface{}) *
 }
 
 // GetNetwork mocks base method.
-func (m *MockNetworkState) GetNetwork(networkName string) state.Network {
+func (m *MockNetworkState) GetNetwork(networkName string) state.NetworkInterface {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetNetwork", networkName)
-	ret0, _ := ret[0].(state.Network)
+	ret0, _ := ret[0].(state.NetworkInterface)
 	return ret0
 }
 
