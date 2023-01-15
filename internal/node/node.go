@@ -79,8 +79,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
-	"github.com/threefoldtech/zos/client"
 	"github.com/threefoldtech/zos/pkg/capacity/dmi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/rmb"
@@ -283,8 +283,14 @@ func (n *NodeClient) SystemHypervisor(ctx context.Context) (result string, err e
 	return
 }
 
+// Version is ZOS version
+type Version struct {
+	ZOS   string `json:"zos"`
+	ZInit string `json:"zinit"`
+}
+
 // SystemVersion executes system version cmd
-func (n *NodeClient) SystemVersion(ctx context.Context) (ver client.Version, err error) {
+func (n *NodeClient) SystemVersion(ctx context.Context) (ver Version, err error) {
 	const cmd = "zos.system.version"
 
 	if err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &ver); err != nil {
@@ -319,10 +325,11 @@ func AreNodesUp(ctx context.Context, sub subi.SubstrateExt, nodes []uint32, nc N
 			defer wg.Done()
 			cl, clientErr := nc.GetNodeClient(sub, node)
 			if clientErr != nil {
-				err = fmt.Errorf("couldn't get node %d client: %w", node, clientErr)
+				err = multierror.Append(err, fmt.Errorf("couldn't get node %d client: %w", node, clientErr))
+				return
 			}
 			if clientErr := cl.IsNodeUp(ctx); clientErr != nil {
-				err = fmt.Errorf("couldn't reach node %d: %w", node, clientErr)
+				err = multierror.Append(err, fmt.Errorf("couldn't reach node %d: %w", node, clientErr))
 			}
 
 		}(node)

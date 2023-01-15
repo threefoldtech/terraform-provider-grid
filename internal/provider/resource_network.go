@@ -121,14 +121,14 @@ type NetworkDeployer struct {
 	NodeDeploymentID map[uint32]uint64
 	NodesIPRange     map[uint32]gridtypes.IPNet
 
-	WGPort    map[uint32]int
-	Keys      map[uint32]wgtypes.Key
-	APIClient *apiClient
-	ncPool    *client.NodeClientPool
-	deployer  deployer.Deployer
+	WGPort                map[uint32]int
+	Keys                  map[uint32]wgtypes.Key
+	ThreefoldPluginClient *threefoldPluginClient
+	ncPool                *client.NodeClientPool
+	deployer              deployer.Deployer
 }
 
-func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *apiClient) (NetworkDeployer, error) {
+func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (NetworkDeployer, error) {
 	var err error
 	nodesIf := d.Get("nodes").([]interface{})
 	nodes := make([]uint32, len(nodesIf))
@@ -185,7 +185,7 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 	if err != nil {
 		return NetworkDeployer{}, errors.Wrap(err, "couldn't parse network ip range")
 	}
-	pool := client.NewNodeClientPool(apiClient.rmb)
+	pool := client.NewNodeClientPool(threefoldPluginClient.rmb)
 	deploymentData := DeploymentData{
 		Name:        d.Get("name").(string),
 		Type:        "network",
@@ -196,22 +196,22 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 		log.Printf("error parsing deploymentdata: %s", err.Error())
 	}
 	deployer := NetworkDeployer{
-		Name:             d.Get("name").(string),
-		Description:      d.Get("description").(string),
-		Nodes:            nodes,
-		IPRange:          ipRange,
-		AddWGAccess:      addWGAccess,
-		AccessWGConfig:   d.Get("access_wg_config").(string),
-		ExternalIP:       externalIP,
-		ExternalSK:       externalSK,
-		PublicNodeID:     uint32(d.Get("public_node_id").(int)),
-		NodesIPRange:     nodesIPRange,
-		NodeDeploymentID: nodeDeploymentID,
-		Keys:             make(map[uint32]wgtypes.Key),
-		WGPort:           make(map[uint32]int),
-		APIClient:        apiClient,
-		ncPool:           pool,
-		deployer:         deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, nil, string(deploymentDataStr)),
+		Name:                  d.Get("name").(string),
+		Description:           d.Get("description").(string),
+		Nodes:                 nodes,
+		IPRange:               ipRange,
+		AddWGAccess:           addWGAccess,
+		AccessWGConfig:        d.Get("access_wg_config").(string),
+		ExternalIP:            externalIP,
+		ExternalSK:            externalSK,
+		PublicNodeID:          uint32(d.Get("public_node_id").(int)),
+		NodesIPRange:          nodesIPRange,
+		NodeDeploymentID:      nodeDeploymentID,
+		Keys:                  make(map[uint32]wgtypes.Key),
+		WGPort:                make(map[uint32]int),
+		ThreefoldPluginClient: threefoldPluginClient,
+		ncPool:                pool,
+		deployer:              deployer.NewDeployer(threefoldPluginClient.identity, threefoldPluginClient.twinID, threefoldPluginClient.gridProxyClient, pool, true, nil, string(deploymentDataStr)),
 	}
 	return deployer, nil
 }
@@ -256,12 +256,12 @@ func (k *NetworkDeployer) invalidateBrokenAttributes(sub subi.SubstrateExt) erro
 	return nil
 }
 func (k *NetworkDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error {
-	if err := validateAccountMoneyForExtrinsics(sub, k.APIClient.identity); err != nil {
+	if err := validateAccountBalanceForExtrinsics(sub, k.ThreefoldPluginClient.identity); err != nil {
 		return err
 	}
 	mask := k.IPRange.Mask
 	if ones, _ := mask.Size(); ones != 16 {
-		return fmt.Errorf("subnet in iprange %s should be 16", k.IPRange.String())
+		return fmt.Errorf("subnet in ip range %s should be 16", k.IPRange.String())
 	}
 
 	return client.AreNodesUp(ctx, sub, k.Nodes, k.ncPool)
@@ -528,7 +528,7 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 		} else if ipv4Node != 0 { // there's one in the network original nodes
 			k.PublicNodeID = ipv4Node
 		} else {
-			publicNode, err := getPublicNode(ctx, k.APIClient.grid_client, []uint32{})
+			publicNode, err := getPublicNode(ctx, k.ThreefoldPluginClient.gridProxyClient, []uint32{})
 			if err != nil {
 				return nil, errors.Wrap(err, "public node needed because you requested adding wg access or a hidden node is added to the network")
 			}
@@ -642,7 +642,7 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 		}
 		deployment := gridtypes.Deployment{
 			Version: 0,
-			TwinID:  k.APIClient.twin_id, //LocalTwin,
+			TwinID:  k.ThreefoldPluginClient.twinID, //LocalTwin,
 			// this contract id must match the one on substrate
 			Workloads: []gridtypes.Workload{
 				workload,
@@ -651,7 +651,7 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 				WeightRequired: 1,
 				Requests: []gridtypes.SignatureRequest{
 					{
-						TwinID: k.APIClient.twin_id,
+						TwinID: k.ThreefoldPluginClient.twinID,
 						Weight: 1,
 					},
 				},
@@ -689,7 +689,7 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 		}
 		deployment := gridtypes.Deployment{
 			Version: 0,
-			TwinID:  k.APIClient.twin_id,
+			TwinID:  k.ThreefoldPluginClient.twinID,
 			Workloads: []gridtypes.Workload{
 				workload,
 			},
@@ -697,7 +697,7 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 				WeightRequired: 1,
 				Requests: []gridtypes.SignatureRequest{
 					{
-						TwinID: k.APIClient.twin_id,
+						TwinID: k.ThreefoldPluginClient.twinID,
 						Weight: 1,
 					},
 				},
@@ -745,15 +745,19 @@ func (k *NetworkDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt) err
 
 func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	apiClient := meta.(*apiClient)
-	deployer, err := NewNetworkDeployer(ctx, d, apiClient)
+	threefoldPluginClient, ok := meta.(*threefoldPluginClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into api client"))
+	}
+
+	deployer, err := NewNetworkDeployer(ctx, d, threefoldPluginClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
-	if err := deployer.Validate(ctx, apiClient.substrateConn); err != nil {
+	if err := deployer.Validate(ctx, threefoldPluginClient.substrateConn); err != nil {
 		return diag.FromErr(err)
 	}
-	err = deployer.Deploy(ctx, apiClient.substrateConn)
+	err = deployer.Deploy(ctx, threefoldPluginClient.substrateConn)
 	if err != nil {
 		if len(deployer.NodeDeploymentID) != 0 {
 			// failed to deploy and failed to revert, store the current state locally
@@ -762,7 +766,7 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 			return diag.FromErr(err)
 		}
 	}
-	err = deployer.storeState(d, apiClient.state)
+	err = deployer.storeState(d, threefoldPluginClient.state)
 	if err != nil {
 		diags = diag.FromErr(err)
 	}
@@ -773,24 +777,28 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 
 func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	apiClient := meta.(*apiClient)
-	deployer, err := NewNetworkDeployer(ctx, d, apiClient)
+	threefoldPluginClient, ok := meta.(*threefoldPluginClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into api client"))
+	}
+
+	deployer, err := NewNetworkDeployer(ctx, d, threefoldPluginClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	if err := deployer.Validate(ctx, apiClient.substrateConn); err != nil {
+	if err := deployer.Validate(ctx, threefoldPluginClient.substrateConn); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := deployer.invalidateBrokenAttributes(apiClient.substrateConn); err != nil {
+	if err := deployer.invalidateBrokenAttributes(threefoldPluginClient.substrateConn); err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't invalidate broken attributes"))
 	}
 
-	err = deployer.Deploy(ctx, apiClient.substrateConn)
+	err = deployer.Deploy(ctx, threefoldPluginClient.substrateConn)
 	if err != nil {
 		diags = diag.FromErr(err)
 	}
-	err = deployer.storeState(d, apiClient.state)
+	err = deployer.storeState(d, threefoldPluginClient.state)
 	if err != nil {
 		diags = diag.FromErr(err)
 	}
@@ -800,26 +808,30 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 
 func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	apiClient := meta.(*apiClient)
-	deployer, err := NewNetworkDeployer(ctx, d, apiClient)
+	threefoldPluginClient, ok := meta.(*threefoldPluginClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into api client"))
+	}
+
+	deployer, err := NewNetworkDeployer(ctx, d, threefoldPluginClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	if err := deployer.invalidateBrokenAttributes(apiClient.substrateConn); err != nil {
+	if err := deployer.invalidateBrokenAttributes(threefoldPluginClient.substrateConn); err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't invalidate broken attributes"))
 	}
 
-	err = deployer.readNodesConfig(ctx, apiClient.substrateConn)
+	err = deployer.readNodesConfig(ctx, threefoldPluginClient.substrateConn)
 	if err != nil {
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Warning,
-			Summary:  "Error reading data from remote, terraform state might be out of sync with the remote state",
+			Summary:  errTerraformOutSync,
 			Detail:   err.Error(),
 		})
 		return diags
 	}
-	err = deployer.storeState(d, apiClient.state)
+	err = deployer.storeState(d, threefoldPluginClient.state)
 	if err != nil {
 		diags = diag.FromErr(err)
 	}
@@ -829,21 +841,25 @@ func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta inter
 
 func resourceNetworkDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	apiClient := meta.(*apiClient)
-	deployer, err := NewNetworkDeployer(ctx, d, apiClient)
+	threefoldPluginClient, ok := meta.(*threefoldPluginClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into api client"))
+	}
+
+	deployer, err := NewNetworkDeployer(ctx, d, threefoldPluginClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
-	err = deployer.Cancel(ctx, apiClient.substrateConn)
+	err = deployer.Cancel(ctx, threefoldPluginClient.substrateConn)
 	if err != nil {
 		diags = diag.FromErr(err)
 	}
 	if err == nil {
 		d.SetId("")
-		ns := apiClient.state.GetNetworkState()
+		ns := threefoldPluginClient.state.GetNetworkState()
 		ns.DeleteNetwork(deployer.Name)
 	} else {
-		err = deployer.storeState(d, apiClient.state)
+		err = deployer.storeState(d, threefoldPluginClient.state)
 		if err != nil {
 			diags = diag.FromErr(err)
 		}

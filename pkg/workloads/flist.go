@@ -19,6 +19,7 @@ func GetFlistChecksum(url string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	defer response.Body.Close()
 	hash, err := io.ReadAll(response.Body)
 	return strings.TrimSpace(string(hash)), err
 }

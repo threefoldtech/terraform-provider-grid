@@ -20,7 +20,7 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - name: Set up Go
         uses: actions/setup-go@v3
@@ -36,6 +36,14 @@ jobs:
       - name: Get dependencies
         run: |
           go mod download
+      
+      - name: Install GoReleaser
+        uses: goreleaser/goreleaser-action@v4
+        with:
+          install-only: true
+
+      - name: Build provider for all supported platforms
+        run: goreleaser build --snapshot
 
       - name: Build
         run: |

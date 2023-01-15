@@ -6,7 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 	proxy "github.com/threefoldtech/grid_proxy_server/pkg/client"
-	proxytypes "github.com/threefoldtech/grid_proxy_server/pkg/types"
+	proxyTypes "github.com/threefoldtech/grid_proxy_server/pkg/types"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -28,7 +28,7 @@ type ValidatorImpl struct {
 //	if a real error dodges the validation, it'll be fail anyway in the deploying phase
 func (d *ValidatorImpl) Validate(ctx context.Context, sub subi.SubstrateExt, oldDeployments map[uint32]gridtypes.Deployment, newDeployments map[uint32]gridtypes.Deployment) error {
 	farmIPs := make(map[int]int)
-	nodeMap := make(map[uint32]proxytypes.NodeWithNestedCapacity)
+	nodeMap := make(map[uint32]proxyTypes.NodeWithNestedCapacity)
 	for node := range oldDeployments {
 		nodeInfo, err := d.gridClient.Node(node)
 		if err != nil {
@@ -50,9 +50,9 @@ func (d *ValidatorImpl) Validate(ctx context.Context, sub subi.SubstrateExt, old
 	}
 	for farm := range farmIPs {
 		farmUint64 := uint64(farm)
-		farmInfo, _, err := d.gridClient.Farms(proxytypes.FarmFilter{
+		farmInfo, _, err := d.gridClient.Farms(proxyTypes.FarmFilter{
 			FarmID: &farmUint64,
-		}, proxytypes.Limit{
+		}, proxyTypes.Limit{
 			Page: 1,
 			Size: 1,
 		})

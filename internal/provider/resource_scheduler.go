@@ -3,6 +3,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -17,10 +18,10 @@ func ReourceScheduler() *schema.Resource {
 	return &schema.Resource{
 		// TODO: update descriptions
 		Description:   "Resource to dynamically assign resource requests to nodes.",
-		CreateContext: ReourceSchedCreate,
-		UpdateContext: ReourceSchedUpdate,
-		ReadContext:   ReourceSchedRead,
-		DeleteContext: ReourceSchedDelete,
+		CreateContext: ResourceSchedCreate,
+		UpdateContext: ResourceSchedUpdate,
+		ReadContext:   ResourceSchedRead,
+		DeleteContext: ResourceSchedDelete,
 		Schema: map[string]*schema.Schema{
 			"requests": {
 				Type:        schema.TypeList,
@@ -110,10 +111,10 @@ func parseRequests(d *schema.ResourceData, assignment map[string]uint32) []sched
 			HasIPv4:   mp["ipv4"].(bool),
 			HasDomain: mp["domain"].(bool),
 			Certified: mp["certified"].(bool),
-			Cap: scheduler.Capacity{
-				Memory: uint64(mp["mru"].(int)) * uint64(gridtypes.Megabyte),
-				Hru:    uint64(mp["hru"].(int)) * uint64(gridtypes.Megabyte),
-				Sru:    uint64(mp["sru"].(int)) * uint64(gridtypes.Megabyte),
+			Capacity: scheduler.Capacity{
+				MRU: uint64(mp["mru"].(int)) * uint64(gridtypes.Megabyte),
+				HRU: uint64(mp["hru"].(int)) * uint64(gridtypes.Megabyte),
+				SRU: uint64(mp["sru"].(int)) * uint64(gridtypes.Megabyte),
 			},
 		})
 	}
@@ -121,10 +122,14 @@ func parseRequests(d *schema.ResourceData, assignment map[string]uint32) []sched
 }
 
 func schedule(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	apiClient := meta.(*apiClient)
+	threefoldPluginClient, ok := meta.(*threefoldPluginClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into api client"))
+	}
+
 	assignment := parseAssignment(d)
 	reqs := parseRequests(d, assignment)
-	scheduler := scheduler.NewScheduler(apiClient.grid_client, uint64(apiClient.twin_id))
+	scheduler := scheduler.NewScheduler(threefoldPluginClient.gridProxyClient, uint64(threefoldPluginClient.twinID))
 	for _, r := range reqs {
 		node, err := scheduler.Schedule(&r)
 		if err != nil {
@@ -140,11 +145,11 @@ func schedule(ctx context.Context, d *schema.ResourceData, meta interface{}) dia
 
 }
 
-func ReourceSchedRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func ResourceSchedRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	return diag.Diagnostics{}
 }
 
-func ReourceSchedCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func ResourceSchedCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	diags := schedule(ctx, d, meta)
 	if diags.HasError() {
 		return diags
@@ -153,11 +158,11 @@ func ReourceSchedCreate(ctx context.Context, d *schema.ResourceData, meta interf
 	return diags
 }
 
-func ReourceSchedUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func ResourceSchedUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	return schedule(ctx, d, meta)
 }
 
-func ReourceSchedDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func ResourceSchedDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	d.SetId("")
 	return diag.Diagnostics{}
 }
