@@ -8,7 +8,7 @@ import (
 )
 
 func TestState(t *testing.T) {
-	var db LocalStateFileDB
+	var localFileState LocalFileState
 
 	var localState StateI
 	var newState State
@@ -18,16 +18,15 @@ func TestState(t *testing.T) {
 
 	var err error
 
-	t.Run("test_local_db", func(t *testing.T) {
-		db, err = NewLocalStateDB(TypeFile)
-		assert.NoError(t, err)
+	t.Run("test_local_file_state", func(t *testing.T) {
+		localFileState = NewLocalFileState()
 
-		err = db.Load()
+		err = localFileState.Load(FileName)
 		assert.NoError(t, err)
 	})
 
 	t.Run("test_get_local_state", func(t *testing.T) {
-		localState = db.GetState()
+		localState = localFileState.GetState()
 
 		networkState := localState.GetNetworkState()
 		network := networkState.GetNetwork("abc")
@@ -37,7 +36,7 @@ func TestState(t *testing.T) {
 		network.DeleteDeploymentHostIDs(32, "12345")
 		network.DeleteNodeSubnet(32)
 
-		err = db.Save()
+		err = localFileState.Save(FileName)
 		assert.NoError(t, err)
 	})
 
@@ -61,6 +60,11 @@ func TestState(t *testing.T) {
 
 	t.Run("test_equal_local_and_created_state", func(t *testing.T) {
 		assert.Equal(t, marshalLocalState, marshalNewState)
+	})
+
+	t.Run("test_delete_state", func(t *testing.T) {
+		err = localFileState.Delete(FileName)
+		assert.NoError(t, err)
 	})
 
 	assert.NoError(t, err)

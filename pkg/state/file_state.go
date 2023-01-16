@@ -18,23 +18,21 @@ type StateGetter interface {
 const (
 	// FileName is a static file name for state that is generated beside the .tf file
 	FileName = "state.json"
-	// TypeFile is the type of db
-	TypeFile int = iota
 )
 
-// LocalStateFileDB struct is the local state file for DB
-type LocalStateFileDB struct {
+// LocalFileState struct is the local state file
+type LocalFileState struct {
 	st State
 }
 
-// NewLocalStateFileDB generates a new local state
-func NewLocalStateFileDB() LocalStateFileDB {
-	return LocalStateFileDB{}
+// NewLocalFileState generates a new local state
+func NewLocalFileState() LocalFileState {
+	return LocalFileState{}
 
 }
 
 // Load loads state from state.json file
-func (f *LocalStateFileDB) Load() error {
+func (f *LocalFileState) Load(FileName string) error {
 	// os.OpenFile(FileName, os.O_CREATE, 0644)
 	f.st = &State{}
 	_, err := os.Stat(FileName)
@@ -58,7 +56,7 @@ func (f *LocalStateFileDB) Load() error {
 }
 
 // GetState returns the current state
-func (f *LocalStateFileDB) GetState() State {
+func (f *LocalFileState) GetState() State {
 	if reflect.DeepEqual(f.st, State{}) {
 		state := NewState()
 		f.st = state
@@ -67,7 +65,7 @@ func (f *LocalStateFileDB) GetState() State {
 }
 
 // Save saves the state to the state,json file
-func (f *LocalStateFileDB) Save() error {
+func (f *LocalFileState) Save(FileName string) error {
 	if content, err := json.Marshal(f.st); err == nil {
 		err = os.WriteFile(FileName, content, 0644)
 		if err != nil {
@@ -80,6 +78,6 @@ func (f *LocalStateFileDB) Save() error {
 }
 
 // Delete deletes state,json file
-func (f *LocalStateFileDB) Delete() error {
+func (f *LocalFileState) Delete(FileName string) error {
 	return os.Remove(FileName)
 }
