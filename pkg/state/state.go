@@ -16,8 +16,7 @@ func (s *State) GetNetworkState() NetworkState {
 
 // NewState generates a new state
 func NewState() State {
-	state := State{
+	return State{
 		Networks: make(NetworkState),
 	}
-	return state
 }
