@@ -15,16 +15,16 @@ func UpWg(wgConfig, wgConfDir string) (string, error) {
 
 	f, err := os.Create(path.Join(wgConfDir, "test.conf"))
 	if err != nil {
-		return "", errors.Wrapf(err, "error creating file")
+		return "", errors.Wrapf(err, "couldn't create file")
 	}
 	_, err = f.WriteString(wgConfig)
 	if err != nil {
-		return "", errors.Wrapf(err, "error writing file")
+		return "", errors.Wrapf(err, "couldn't write on file")
 	}
 	cmd := exec.Command("wg-quick", "up", f.Name())
 	_, err = cmd.Output()
 	if err != nil {
-		return "", errors.Wrapf(err, "error executing wg-quick up with"+f.Name())
+		return "", errors.Wrapf(err, "couldn't excute wg-quick up with"+f.Name())
 	}
 
 	return f.Name(), nil
@@ -36,7 +36,7 @@ func DownWG(wgConfDir string) (string, error) { //tempdir
 	cmd := exec.Command("wg-quick", "down", path.Join(wgConfDir, "test.conf"))
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", errors.Wrapf(err, "error executing wg-quick down with output %s", out)
+		return "", errors.Wrapf(err, "couldn't excute wg-quick down with output %s", out)
 	}
 	return string(out), nil
 }

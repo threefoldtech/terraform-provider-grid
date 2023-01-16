@@ -25,8 +25,8 @@ website/node_modules
 *.test
 *.iml
 *.lock.hcl
-state.json
-/home/khaled/final final/terraform-provider-grid/pkg/*
+*state.json
+terraform-provider-grid/pkg/*
 
 website/vendor
 
