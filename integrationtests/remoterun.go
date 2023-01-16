@@ -15,7 +15,7 @@ import (
 func RemoteRun(user string, addr string, cmd string, privateKey string) (string, error) {
 	key, err := ssh.ParsePrivateKey([]byte(privateKey))
 	if err != nil {
-		return "", errors.Wrapf(err, "couldn't parse ssh private key %v", key)
+		return "", errors.Wrapf(err, "could not parse ssh private key %v", key)
 	}
 	// Authentication
 	config := &ssh.ClientConfig{
@@ -30,17 +30,17 @@ func RemoteRun(user string, addr string, cmd string, privateKey string) (string,
 	port := "22"
 	client, err := ssh.Dial("tcp", net.JoinHostPort(addr, port), config)
 	if err != nil {
-		return "", errors.Wrapf(err, "couldn't start ssh connection")
+		return "", errors.Wrapf(err, "could not start ssh connection")
 	}
 	session, err := client.NewSession()
 	if err != nil {
-		return "", errors.Wrapf(err, "couldn't create new session with message error")
+		return "", errors.Wrapf(err, "could not create new session with message error")
 	}
 	defer session.Close()
 
 	output, err := session.CombinedOutput(cmd)
 	if err != nil {
-		return "", errors.Wrapf(err, "couldn't excute command on remote with output %s", output)
+		return "", errors.Wrapf(err, "could not excute command on remote with output %s", output)
 	}
 	return string(output), nil
 }
@@ -50,7 +50,7 @@ func GenerateSSHKeyPair() (string, string, error) {
 
 	rsaKey, err := rsa.GenerateKey(rand.Reader, 1024)
 	if err != nil {
-		return "", "", errors.Wrapf(err, "couldn't generate rsa key")
+		return "", "", errors.Wrapf(err, "could not generate rsa key")
 	}
 
 	pemKey := &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(rsaKey)}

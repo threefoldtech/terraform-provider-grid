@@ -15,16 +15,16 @@ func UpWg(wgConfig, wgConfDir string) (string, error) {
 
 	f, err := os.Create(path.Join(wgConfDir, "test.conf"))
 	if err != nil {
-		return "", errors.Wrapf(err, "couldn't create file")
+		return "", errors.Wrapf(err, "could not create file")
 	}
 	_, err = f.WriteString(wgConfig)
 	if err != nil {
-		return "", errors.Wrapf(err, "couldn't write on file")
+		return "", errors.Wrapf(err, "could not write on file")
 	}
 	cmd := exec.Command("wg-quick", "up", f.Name())
 	_, err = cmd.Output()
 	if err != nil {
-		return "", errors.Wrapf(err, "couldn't excute wg-quick up with"+f.Name())
+		return "", errors.Wrapf(err, "could not excute wg-quick up with"+f.Name())
 	}
 
 	return f.Name(), nil
@@ -36,7 +36,7 @@ func DownWG(wgConfDir string) (string, error) { //tempdir
 	cmd := exec.Command("wg-quick", "down", path.Join(wgConfDir, "test.conf"))
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", errors.Wrapf(err, "couldn't excute wg-quick down with output %s", out)
+		return "", errors.Wrapf(err, "could not excute wg-quick down with output %s", out)
 	}
 	return string(out), nil
 }
@@ -51,7 +51,7 @@ func AreWGIPsReachable(wgConfig string, ipsToCheck []string, privateKey string) 
 			defer wg.Done()
 			output, err := RemoteRun("root", ip, "ifconfig", privateKey)
 			if err != nil {
-				errChannel <- errors.Wrapf(err, "couldn't connect as a root user to the machine with ip %s with output %s", ip, output)
+				errChannel <- errors.Wrapf(err, "could not connect as a root user to the machine with ip %s with output %s", ip, output)
 				return
 			}
 			if !strings.Contains(string(output), ip) {
