@@ -82,10 +82,10 @@ func newDeploymentDeployer(d *schema.ResourceData, threefoldPluginClient *threef
 	}
 	deploymentDataBytes, err := json.Marshal(deploymentData)
 	if err != nil {
-		log.Printf("error parsing deploymentdata: %s", err.Error())
+		log.Printf("error parsing deployment data: %s", err.Error())
 	}
 
-	networkingState := threefoldPluginClient.state.GetNetworkState()
+	networkingState := threefoldPluginClient.state.GetState().Networks
 	net := networkingState.GetNetwork(networkName)
 	ipRange := net.GetNodeSubnet(nodeID)
 
@@ -106,7 +106,7 @@ func newDeploymentDeployer(d *schema.ResourceData, threefoldPluginClient *threef
 }
 
 func (d *DeploymentDeployer) assignNodesHostIDs() error {
-	networkingState := d.ThreefoldPluginClient.state.GetNetworkState()
+	networkingState := d.ThreefoldPluginClient.state.GetState().Networks
 	network := networkingState.GetNetwork(d.NetworkName)
 	usedHosts := network.GetUsedNetworkHostIDs(d.Node)
 	if len(d.VMs) == 0 {
@@ -289,7 +289,7 @@ func (d *DeploymentDeployer) Sync(ctx context.Context, sub subi.SubstrateExt, cl
 	var qsfs []workloads.QSFS
 	var disks []workloads.Disk
 
-	ns := cl.state.GetNetworkState()
+	ns := cl.state.GetState().Networks
 	network := ns.GetNetwork(d.NetworkName)
 	network.DeleteDeploymentHostIDs(d.Node, d.ID)
 
@@ -391,7 +391,7 @@ func (d *DeploymentDeployer) Match(
 	}
 }
 
-//TODO: are there any more validations on workloads needed other than vm and networkname relation?
+// TODO: are there any more validations on workloads needed other than vm and networkname relation?
 func (d *DeploymentDeployer) validate() error {
 	if len(d.VMs) != 0 && len(strings.TrimSpace(d.NetworkName)) == 0 {
 		return errors.New("if you pass a vm, network_name must be non-empty")

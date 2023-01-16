@@ -271,7 +271,7 @@ func (k *NetworkDeployer) ValidateDelete(ctx context.Context) error {
 	return nil
 }
 
-func (k *NetworkDeployer) storeState(d *schema.ResourceData, state state.StateI) (errors error) {
+func (k *NetworkDeployer) storeState(d *schema.ResourceData, state state.StateGetter) (errors error) {
 
 	nodeDeploymentID := make(map[string]interface{})
 	for node, id := range k.NodeDeploymentID {
@@ -355,8 +355,8 @@ func (k *NetworkDeployer) storeState(d *schema.ResourceData, state state.StateI)
 	return
 }
 
-func (k *NetworkDeployer) updateNetworkLocalState(state state.StateI) {
-	ns := state.GetNetworkState()
+func (k *NetworkDeployer) updateNetworkLocalState(state state.StateGetter) {
+	ns := state.GetState().Networks
 	ns.DeleteNetwork(k.Name)
 	network := ns.GetNetwork(k.Name)
 	for nodeID, subnet := range k.NodesIPRange {
@@ -856,7 +856,7 @@ func resourceNetworkDelete(ctx context.Context, d *schema.ResourceData, meta int
 	}
 	if err == nil {
 		d.SetId("")
-		ns := threefoldPluginClient.state.GetNetworkState()
+		ns := threefoldPluginClient.state.GetState().Networks
 		ns.DeleteNetwork(deployer.Name)
 	} else {
 		err = deployer.storeState(d, threefoldPluginClient.state)

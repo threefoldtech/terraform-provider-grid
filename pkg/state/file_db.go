@@ -9,29 +9,32 @@ import (
 	"github.com/pkg/errors"
 )
 
-// DBType number
-type DBType int
+// StateGetter interface for local state
+type StateGetter interface {
+	// GetState
+	GetState() State
+}
 
 const (
-	// FileName is a static file name for state
+	// FileName is a static file name for state that is generated beside the .tf file
 	FileName = "state.json"
 	// TypeFile is the type of db
-	TypeFile DBType = iota
+	TypeFile int = iota
 )
 
-// FileDB struct is the state file for DB
-type FileDB struct {
+// LocalStateFileDB struct is the local state file for DB
+type LocalStateFileDB struct {
 	st State
 }
 
 // NewLocalStateFileDB generates a new local state
-func NewLocalStateFileDB() FileDB {
-	return FileDB{}
+func NewLocalStateFileDB() LocalStateFileDB {
+	return LocalStateFileDB{}
 
 }
 
 // Load loads state from state.json file
-func (f *FileDB) Load() error {
+func (f *LocalStateFileDB) Load() error {
 	// os.OpenFile(FileName, os.O_CREATE, 0644)
 	f.st = State{}
 	_, err := os.Stat(FileName)
@@ -55,7 +58,7 @@ func (f *FileDB) Load() error {
 }
 
 // GetState returns the current state
-func (f *FileDB) GetState() State {
+func (f *LocalStateFileDB) GetState() State {
 	if reflect.DeepEqual(f.st, State{}) {
 		state := NewState()
 		f.st = state
@@ -64,7 +67,7 @@ func (f *FileDB) GetState() State {
 }
 
 // Save saves the state to the state,json file
-func (f *FileDB) Save() error {
+func (f *LocalStateFileDB) Save() error {
 	if content, err := json.Marshal(f.st); err == nil {
 		err = os.WriteFile(FileName, content, 0644)
 		if err != nil {
@@ -77,6 +80,6 @@ func (f *FileDB) Save() error {
 }
 
 // Delete deletes state,json file
-func (f *FileDB) Delete() error {
+func (f *LocalStateFileDB) Delete() error {
 	return os.Remove(FileName)
 }

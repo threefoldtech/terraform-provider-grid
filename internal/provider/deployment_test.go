@@ -22,7 +22,7 @@ func constructTestDeployer(ctrl *gomock.Controller) DeploymentDeployer {
 	pool := mock.NewMockNodeClientGetter(ctrl)
 	deployer := mock.NewMockDeployer(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
-	state := mock.NewMockStateI(ctrl)
+	state := mock.NewMockStateGetter(ctrl)
 
 	manager := mock.NewMockManager(ctrl)
 	manager.EXPECT().SubstrateExt().Return(sub, nil).AnyTimes()
@@ -298,11 +298,15 @@ func TestDeploymentGenerateDeployment(t *testing.T) {
 	defer ctrl.Finish()
 	d := constructTestDeployer(ctrl)
 
+	testState := state.NewState()
 	testNetworkState := state.NetworkState{}
 	testNetwork := state.NewNetwork()
 
-	state := d.ThreefoldPluginClient.state.(*mock.MockStateI)
-	state.EXPECT().GetNetworkState().Return(testNetworkState)
+	state := d.ThreefoldPluginClient.state.(*mock.MockStateGetter)
+	state.EXPECT().GetState().Return(testState)
+
+	stateI := mock.NewMockStateI(ctrl)
+	stateI.EXPECT().GetNetworkState().Return(testNetworkState).AnyTimes()
 
 	netState := mock.NewMockNetworkState(ctrl)
 	netState.EXPECT().GetNetwork(d.NetworkName).Return(testNetwork).AnyTimes()
@@ -346,12 +350,16 @@ func TestDeploymentSync(t *testing.T) {
 	subI, err := d.ThreefoldPluginClient.manager.SubstrateExt()
 	assert.NoError(t, err)
 
+	testState := state.NewState()
 	testNetworkState := state.NetworkState{}
 	testNetwork := state.NewNetwork()
 
 	sub := subI.(*mock.MockSubstrateExt)
-	state := d.ThreefoldPluginClient.state.(*mock.MockStateI)
-	state.EXPECT().GetNetworkState().AnyTimes().Return(testNetworkState)
+	state := d.ThreefoldPluginClient.state.(*mock.MockStateGetter)
+	state.EXPECT().GetState().AnyTimes().Return(testState)
+
+	stateI := mock.NewMockStateI(ctrl)
+	stateI.EXPECT().GetNetworkState().AnyTimes().Return(testNetworkState)
 
 	netState := mock.NewMockNetworkState(ctrl)
 	netState.EXPECT().GetNetwork(d.NetworkName).AnyTimes().Return(testNetwork)

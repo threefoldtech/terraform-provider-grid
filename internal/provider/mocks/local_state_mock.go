@@ -11,45 +11,31 @@ import (
 	state "github.com/threefoldtech/terraform-provider-grid/pkg/state"
 )
 
-// MockDB is a mock of DB interface.
-type MockDB struct {
+// MockStateGetter is a mock of StateGetter interface.
+type MockStateGetter struct {
 	ctrl     *gomock.Controller
-	recorder *MockDBMockRecorder
+	recorder *MockStateGetterMockRecorder
 }
 
-// MockDBMockRecorder is the mock recorder for MockDB.
-type MockDBMockRecorder struct {
-	mock *MockDB
+// MockStateGetterMockRecorder is the mock recorder for StateGetter.
+type MockStateGetterMockRecorder struct {
+	mock *MockStateGetter
 }
 
-// NewMockDB creates a new mock instance.
-func NewMockDB(ctrl *gomock.Controller) *MockDB {
-	mock := &MockDB{ctrl: ctrl}
-	mock.recorder = &MockDBMockRecorder{mock}
+// NewMockStateGetter creates a new mock instance.
+func NewMockStateGetter(ctrl *gomock.Controller) *MockStateGetter {
+	mock := &MockStateGetter{ctrl: ctrl}
+	mock.recorder = &MockStateGetterMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockDB) EXPECT() *MockDBMockRecorder {
+func (m *MockStateGetter) EXPECT() *MockStateGetterMockRecorder {
 	return m.recorder
 }
 
-// Delete mocks base method.
-func (m *MockDB) Delete() error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Delete")
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Delete indicates an expected call of Delete.
-func (mr *MockDBMockRecorder) Delete() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockDB)(nil).Delete))
-}
-
 // GetState mocks base method.
-func (m *MockDB) GetState() state.State {
+func (m *MockStateGetter) GetState() state.State {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetState")
 	ret0, _ := ret[0].(state.State)
@@ -57,37 +43,9 @@ func (m *MockDB) GetState() state.State {
 }
 
 // GetState indicates an expected call of GetState.
-func (mr *MockDBMockRecorder) GetState() *gomock.Call {
+func (mr *MockStateGetterMockRecorder) GetState() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetState", reflect.TypeOf((*MockDB)(nil).GetState))
-}
-
-// Load mocks base method.
-func (m *MockDB) Load() error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Load")
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Load indicates an expected call of Load.
-func (mr *MockDBMockRecorder) Load() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Load", reflect.TypeOf((*MockDB)(nil).Load))
-}
-
-// Save mocks base method.
-func (m *MockDB) Save() error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Save")
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Save indicates an expected call of Save.
-func (mr *MockDBMockRecorder) Save() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockDB)(nil).Save))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetState", reflect.TypeOf((*MockStateGetter)(nil).GetState))
 }
 
 // MockStateI is a mock of StateI interface.
@@ -125,35 +83,6 @@ func (m *MockStateI) GetNetworkState() state.NetworkState {
 func (mr *MockStateIMockRecorder) GetNetworkState() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNetworkState", reflect.TypeOf((*MockStateI)(nil).GetNetworkState))
-}
-
-// Marshal mocks base method.
-func (m *MockStateI) Marshal() ([]byte, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Marshal")
-	ret0, _ := ret[0].([]byte)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Marshal indicates an expected call of Marshal.
-func (mr *MockStateIMockRecorder) Marshal() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Marshal", reflect.TypeOf((*MockStateI)(nil).Marshal))
-}
-
-// Unmarshal mocks base method.
-func (m *MockStateI) Unmarshal(data []byte) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Unmarshal", data)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Unmarshal indicates an expected call of Unmarshal.
-func (mr *MockStateIMockRecorder) Unmarshal(data interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Unmarshal", reflect.TypeOf((*MockStateI)(nil).Unmarshal), data)
 }
 
 // MockNetworkState is a mock of NetworkState.
