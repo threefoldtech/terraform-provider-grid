@@ -8,7 +8,7 @@ import (
 )
 
 func TestState(t *testing.T) {
-	var db DB
+	var db LocalStateFileDB
 
 	var localState StateI
 	var newState State

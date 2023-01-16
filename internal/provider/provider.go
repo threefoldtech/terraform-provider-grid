@@ -53,7 +53,7 @@ func init() {
 	// }
 }
 
-func New(version string, st state.StateI) (func() *schema.Provider, subi.SubstrateExt) {
+func New(version string, st state.StateGetter) (func() *schema.Provider, subi.SubstrateExt) {
 	var substrateConnection subi.SubstrateExt
 	return func() *schema.Provider {
 		p := &schema.Provider{
@@ -143,10 +143,10 @@ type threefoldPluginClient struct {
 	substrateConn   subi.SubstrateExt
 	manager         subi.Manager
 	identity        subi.Identity
-	state           state.StateI
+	state           state.StateGetter
 }
 
-func providerConfigure(st state.StateI) (func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics), subi.SubstrateExt) {
+func providerConfigure(st state.StateGetter) (func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics), subi.SubstrateExt) {
 	var substrateConn subi.SubstrateExt
 	return func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 		var err error

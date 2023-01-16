@@ -327,7 +327,7 @@ func NewK8sNodeDataFromWorkload(w gridtypes.Workload, nodeID uint32, diskSize in
 
 func NewK8sDeployer(d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (K8sDeployer, error) {
 	networkName := d.Get("network_name").(string)
-	ns := threefoldPluginClient.state.GetNetworkState()
+	ns := threefoldPluginClient.state.GetState().Networks
 	network := ns.GetNetwork(networkName)
 
 	master := NewK8sNodeData(d.Get("master").([]interface{})[0].(map[string]interface{}))
@@ -507,8 +507,8 @@ func (k *K8sDeployer) storeState(d *schema.ResourceData, cl *threefoldPluginClie
 	return
 }
 
-func (k *K8sDeployer) updateNetworkState(d *schema.ResourceData, state state.StateI) {
-	ns := state.GetNetworkState()
+func (k *K8sDeployer) updateNetworkState(d *schema.ResourceData, state state.StateGetter) {
+	ns := state.GetState().Networks
 	network := ns.GetNetwork(k.NetworkName)
 	before, _ := d.GetChange("node_deployment_id")
 	for node, deploymentID := range before.(map[string]interface{}) {
@@ -734,7 +734,7 @@ func printDeployments(dls map[uint32]gridtypes.Deployment) (err error) {
 }
 
 func (k *K8sDeployer) removeUsedIPsFromLocalState(cl *threefoldPluginClient) {
-	ns := cl.state.GetNetworkState()
+	ns := cl.state.GetState().Networks
 	network := ns.GetNetwork(k.NetworkName)
 
 	network.DeleteDeploymentHostIDs(k.Master.Node, fmt.Sprint(k.NodeDeploymentID[k.Master.Node]))
