@@ -34,13 +34,13 @@ func main() {
 	flag.BoolVar(&debugMode, "debug", false, "set to true to run the provider with support for debuggers like delve")
 	flag.Parse()
 
-	stateDB := state.NewLocalStateFileDB()
-	err := stateDB.Load()
+	stateFile := state.NewLocalFileState()
+	err := stateFile.Load(state.FileName)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 
-	providerFunc, sub := provider.New(version, &stateDB)
+	providerFunc, sub := provider.New(version, &stateFile)
 	if sub != nil {
 		defer sub.Close()
 	}
@@ -55,7 +55,7 @@ func main() {
 	}
 
 	plugin.Serve(opts)
-	err = stateDB.Save()
+	err = stateFile.Save(state.FileName)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
