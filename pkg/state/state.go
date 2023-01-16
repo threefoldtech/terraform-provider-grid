@@ -3,21 +3,20 @@ package state
 
 // State struct
 type State struct {
-	Networks NetworkMap `json:"networks"`
+	Networks NetworkState `json:"networks"`
 }
 
 // GetNetworkState gets network state (names and their networks)
 func (s *State) GetNetworkState() NetworkState {
 	if s.Networks == nil {
-		s.Networks = make(NetworkMap)
+		s.Networks = make(NetworkState)
 	}
-	return &s.Networks
+	return s.Networks
 }
 
 // NewState generates a new state
 func NewState() State {
-	state := State{
-		Networks: make(NetworkMap),
+	return State{
+		Networks: make(NetworkState),
 	}
-	return state
 }

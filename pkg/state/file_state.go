@@ -4,40 +4,37 @@ package state
 import (
 	"encoding/json"
 	"os"
+	"reflect"
 
 	"github.com/pkg/errors"
 )
 
-// DBType number
-type DBType int
-
-const (
-	// FileName is a static file name for state
-	FileName = "state.json"
-	// TypeFile is the type of db
-	TypeFile DBType = iota
-)
-
-// ErrWrongDBType is an error for wrong db type
-var ErrWrongDBType = errors.New("wrong db type")
-
-// FileDB struct is the state file for DB
-type FileDB struct {
-	st StateI
+// StateGetter interface for local state
+type StateGetter interface {
+	// GetState
+	GetState() State
 }
 
-// NewLocalStateDB generates a new local state
-func NewLocalStateDB(t DBType) (DB, error) {
-	if t == TypeFile {
-		return &FileDB{}, nil
-	}
-	return nil, ErrWrongDBType
+const (
+	// FileName is a static file name for state that is generated beside the .tf file
+	FileName = "state.json"
+)
+
+// LocalFileState struct is the local state file
+type LocalFileState struct {
+	st State
+}
+
+// NewLocalFileState generates a new local state
+func NewLocalFileState() LocalFileState {
+	return LocalFileState{}
+
 }
 
 // Load loads state from state.json file
-func (f *FileDB) Load() error {
+func (f *LocalFileState) Load(FileName string) error {
 	// os.OpenFile(FileName, os.O_CREATE, 0644)
-	f.st = &State{}
+	f.st = State{}
 	_, err := os.Stat(FileName)
 	if err != nil && os.IsNotExist(err) {
 		_, err = os.OpenFile(FileName, os.O_CREATE, 0644)
@@ -59,16 +56,16 @@ func (f *FileDB) Load() error {
 }
 
 // GetState returns the current state
-func (f *FileDB) GetState() StateI {
-	if f.st == nil {
+func (f *LocalFileState) GetState() State {
+	if reflect.DeepEqual(f.st, State{}) {
 		state := NewState()
-		f.st = &state
+		f.st = state
 	}
 	return f.st
 }
 
 // Save saves the state to the state,json file
-func (f *FileDB) Save() error {
+func (f *LocalFileState) Save(FileName string) error {
 	if content, err := json.Marshal(f.st); err == nil {
 		err = os.WriteFile(FileName, content, 0644)
 		if err != nil {
@@ -81,6 +78,6 @@ func (f *FileDB) Save() error {
 }
 
 // Delete deletes state,json file
-func (f *FileDB) Delete() error {
+func (f *LocalFileState) Delete(FileName string) error {
 	return os.Remove(FileName)
 }
