@@ -9,7 +9,6 @@ import (
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
-	tests "github.com/threefoldtech/terraform-provider-grid/integrationtests"
 )
 
 func TestGateWay_yggipDeployment(t *testing.T) {
@@ -27,7 +26,7 @@ func TestGateWay_yggipDeployment(t *testing.T) {
 
 	// retryable errors in terraform testing.
 	// generate ssh keys for test
-	publicKey, _, err := tests.GenerateSSHKeyPair()
+	publicKey, _, err := GenerateSSHKeyPair()
 	if err != nil {
 		t.Fatal()
 	}

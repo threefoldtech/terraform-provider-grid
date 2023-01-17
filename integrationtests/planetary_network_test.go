@@ -8,8 +8,6 @@ import (
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/threefoldtech/terraform-provider-grid/integrationtests"
 )
 
 func TestSingleVMWithPlanetary(t *testing.T) {
@@ -27,7 +25,7 @@ func TestSingleVMWithPlanetary(t *testing.T) {
 
 	// retryable errors in terraform testing.
 	// generate ssh keys for test
-	publicKey, privateKey, err := tests.GenerateSSHKeyPair()
+	publicKey, privateKey, err := GenerateSSHKeyPair()
 	if err != nil {
 		t.Fatal()
 	}
@@ -47,7 +45,7 @@ func TestSingleVMWithPlanetary(t *testing.T) {
 	assert.NotEmpty(t, yggIP)
 
 	// ssh to VM by ygg_ip
-	output, err := tests.RemoteRun("root", yggIP, "cat /proc/1/environ", privateKey)
+	output, err := RemoteRun("root", yggIP, "cat /proc/1/environ", privateKey)
 	assert.NoError(t, err)
 	assert.Contains(t, string(output), "TEST_VAR=this value for test")
 }

@@ -1,4 +1,4 @@
-// Package integrationtests includes integration tests and wireguard testing utilities to run the tests
+// Package integration includes integration  and wireguard testing utilities to run the tests
 package integrationtests
 
 import (
@@ -56,7 +56,7 @@ func AreWGIPsReachable(wgConfig string, ipsToCheck []string, privateKey string) 
 				return
 			}
 			if !strings.Contains(string(output), ip) {
-				errChannel <- errors.Wrapf(err, "ip %s couldnt be verified. ifconfig output: %s", ip, output)
+				errChannel <- errors.Wrapf(err, "ip %s could not be verified. ifconfig output: %s", ip, output)
 				return
 			}
 		}(ip)
