@@ -4,6 +4,7 @@ package workloads
 import (
 	"encoding/hex"
 	"log"
+	"reflect"
 
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
@@ -102,15 +103,17 @@ func GroupsFromZos(gs []zos.ZdbGroup) Groups {
 	return z
 }
 
-// Dictify converts a metadata to a map
-func (m *Metadata) Dictify() map[string]interface{} {
-	res := make(map[string]interface{})
-	res["type"] = m.Type
-	res["prefix"] = m.Prefix
-	res["encryption_algorithm"] = m.EncryptionAlgorithm
-	res["encryption_key"] = m.EncryptionKey
-	res["backends"] = m.Backends.Listify()
-	return res
+func getBackends(backendsIf []interface{}) Backends {
+	backends := make([]Backend, 0, len(backendsIf))
+	for _, b := range backendsIf {
+		backendMap := b.(map[string]interface{})
+		backends = append(backends, Backend{
+			Address:   backendMap["address"].(string),
+			Password:  backendMap["password"].(string),
+			Namespace: backendMap["namespace"].(string),
+		})
+	}
+	return backends
 }
 
 // Dictify converts a group data to a map
@@ -147,6 +150,17 @@ func (gs *Groups) Listify() []interface{} {
 	return res
 }
 
+// Dictify converts a metadata to a map
+func (m *Metadata) Dictify() map[string]interface{} {
+	res := make(map[string]interface{})
+	res["type"] = m.Type
+	res["prefix"] = m.Prefix
+	res["encryption_algorithm"] = m.EncryptionAlgorithm
+	res["encryption_key"] = m.EncryptionKey
+	res["backends"] = m.Backends.Listify()
+	return res
+}
+
 // NewQSFSFromSchema generates a new QSFS from a given map of its data
 func NewQSFSFromSchema(qsfs map[string]interface{}) QSFS {
 	metadataIf := qsfs["metadata"].([]interface{})
@@ -171,11 +185,11 @@ func NewQSFSFromSchema(qsfs map[string]interface{}) QSFS {
 		Name:                 qsfs["name"].(string),
 		Description:          qsfs["description"].(string),
 		Cache:                qsfs["cache"].(int),
-		MinimalShards:        uint32(qsfs["minimal_shards"].(int)),
-		ExpectedShards:       uint32(qsfs["expected_shards"].(int)),
-		RedundantGroups:      uint32(qsfs["redundant_groups"].(int)),
-		RedundantNodes:       uint32(qsfs["redundant_nodes"].(int)),
-		MaxZDBDataDirSize:    uint32(qsfs["max_zdb_data_dir_size"].(int)),
+		MinimalShards:        qsfs["minimal_shards"].(uint32),
+		ExpectedShards:       qsfs["expected_shards"].(uint32),
+		RedundantGroups:      qsfs["redundant_groups"].(uint32),
+		RedundantNodes:       qsfs["redundant_nodes"].(uint32),
+		MaxZDBDataDirSize:    qsfs["max_zdb_data_dir_size"].(uint32),
 		EncryptionAlgorithm:  qsfs["encryption_algorithm"].(string),
 		EncryptionKey:        qsfs["encryption_key"].(string),
 		CompressionAlgorithm: qsfs["compression_algorithm"].(string),
@@ -193,9 +207,13 @@ func NewQSFSFromWorkload(wl *gridtypes.Workload) (QSFS, error) {
 		return QSFS{}, err
 	}
 	var res zos.QuatumSafeFSResult
-	if err := wl.Result.Unmarshal(&res); err != nil {
-		return QSFS{}, err
+
+	if !reflect.DeepEqual(wl.Result, gridtypes.Result{}) {
+		if err := wl.Result.Unmarshal(&res); err != nil {
+			return QSFS{}, err
+		}
 	}
+
 	log.Printf("wl.Result.unm: %s %s\n", res.MetricsEndpoint, res.Path)
 	data = wd.(*zos.QuantumSafeFS)
 	return QSFS{
@@ -220,19 +238,6 @@ func NewQSFSFromWorkload(wl *gridtypes.Workload) (QSFS, error) {
 		Groups:          GroupsFromZos(data.Config.Groups),
 		MetricsEndpoint: res.MetricsEndpoint,
 	}, nil
-}
-
-func getBackends(backendsIf []interface{}) []Backend {
-	backends := make([]Backend, 0, len(backendsIf))
-	for _, b := range backendsIf {
-		backendMap := b.(map[string]interface{})
-		backends = append(backends, Backend{
-			Address:   backendMap["address"].(string),
-			Password:  backendMap["password"].(string),
-			Namespace: backendMap["namespace"].(string),
-		})
-	}
-	return backends
 }
 
 // ZosWorkload generates a zos workload
@@ -284,11 +289,6 @@ func (q *QSFS) ZosWorkload() (gridtypes.Workload, error) {
 	return workload, nil
 }
 
-// QSFS returns the name of QSFS
-func (q *QSFS) QSFS() string {
-	return q.Name
-}
-
 // UpdateFromWorkload updates a QSFS from a workload
 // TODO: no updates, should construct itself from the workload
 func (q *QSFS) UpdateFromWorkload(wl *gridtypes.Workload) error {
@@ -297,10 +297,14 @@ func (q *QSFS) UpdateFromWorkload(wl *gridtypes.Workload) error {
 		return nil
 	}
 	var res zos.QuatumSafeFSResult
-	if err := wl.Result.Unmarshal(&res); err != nil {
-		return errors.Wrap(err, "error unmarshalling json")
 
+	if !reflect.DeepEqual(wl.Result, gridtypes.Result{}) {
+		if err := wl.Result.Unmarshal(&res); err != nil {
+			return errors.Wrap(err, "error unmarshalling json")
+
+		}
 	}
+
 	q.MetricsEndpoint = res.MetricsEndpoint
 	return nil
 }

@@ -54,8 +54,8 @@ func zdbWl(zdb *ZDB) gridtypes.Workload {
 	}
 }
 
-func TestGetZDBData(t *testing.T) {
-	zdb := GetZdbData(zdbInterface())
+func TestNewZDBFromSchema(t *testing.T) {
+	zdb := NewZDBFromSchema(zdbInterface())
 	obj := zdbObj()
 	assert.Equal(t, zdb, *obj)
 }

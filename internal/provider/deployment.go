@@ -46,13 +46,13 @@ func newDeploymentDeployer(d *schema.ResourceData, threefoldPluginClient *threef
 	nodeID := uint32(d.Get("node").(int))
 	disks := make([]workloads.Disk, 0)
 	for _, disk := range d.Get("disks").([]interface{}) {
-		d := workloads.GetDiskData(disk.(map[string]interface{}))
+		d := workloads.NewDiskFromSchema(disk.(map[string]interface{}))
 		disks = append(disks, d)
 	}
 
 	zdbs := make([]workloads.ZDB, 0)
 	for _, zdb := range d.Get("zdbs").([]interface{}) {
-		z := workloads.GetZdbData(zdb.(map[string]interface{}))
+		z := workloads.NewZDBFromSchema(zdb.(map[string]interface{}))
 		zdbs = append(zdbs, z)
 	}
 
@@ -119,7 +119,7 @@ func (d *DeploymentDeployer) assignNodesHostIDs() error {
 	for _, vm := range d.VMs {
 		vmIP := net.ParseIP(vm.IP)
 		vmHostID := vmIP[3]
-		if vm.IP != "" && ipRangeCIDR.Contains(vmIP) && !Contains(usedHosts, vmHostID) {
+		if vm.IP != "" && ipRangeCIDR.Contains(vmIP) && !workloads.Contains(usedHosts, vmHostID) {
 			usedHosts = append(usedHosts, vmHostID)
 		}
 	}
@@ -131,7 +131,7 @@ func (d *DeploymentDeployer) assignNodesHostIDs() error {
 			continue
 		}
 
-		for Contains(usedHosts, curHostID) {
+		for workloads.Contains(usedHosts, curHostID) {
 			if curHostID == 254 {
 				return errors.New("all 253 ips of the network are exhausted")
 			}

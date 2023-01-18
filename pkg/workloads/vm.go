@@ -2,11 +2,8 @@
 package workloads
 
 import (
-	"crypto/md5"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net"
 	"sort"
 
@@ -44,11 +41,6 @@ type VM struct {
 type Mount struct {
 	DiskName   string
 	MountPoint string
-}
-
-// Zlog logger struct
-type Zlog struct {
-	Output string
 }
 
 // NewVMFromSchema generates a new vm from a map of its data
@@ -91,6 +83,7 @@ func NewVMFromSchema(vm map[string]interface{}) *VM {
 		Corex:         vm["corex"].(bool),
 		Description:   vm["description"].(string),
 		Zlogs:         zlogs,
+		NetworkName:   vm["network_name"].(string),
 	}
 }
 
@@ -103,28 +96,30 @@ func NewVMFromWorkloads(wl *gridtypes.Workload, dl *gridtypes.Deployment) (VM, e
 	// TODO: check ok?
 	data := dataI.(*zos.ZMachine)
 	var result zos.ZMachineResult
-	log.Printf("%+v\n", wl.Result)
-	if err := json.Unmarshal(wl.Result.Data, &result); err != nil {
-		return VM{}, errors.Wrap(err, "failed to get vm result")
+
+	if len(wl.Result.Data) > 0 {
+		if err := json.Unmarshal(wl.Result.Data, &result); err != nil {
+			return VM{}, errors.Wrap(err, "failed to get vm result")
+		}
 	}
 
-	pubip := pubIP(dl, data.Network.PublicIP)
-	var pubip4, pubip6 = "", ""
-	if !pubip.IP.Nil() {
-		pubip4 = pubip.IP.String()
+	pubIP := pubIP(dl, data.Network.PublicIP)
+	var pubIP4, pubIP6 = "", ""
+	if !pubIP.IP.Nil() {
+		pubIP4 = pubIP.IP.String()
 	}
-	if !pubip.IPv6.Nil() {
-		pubip6 = pubip.IPv6.String()
+	if !pubIP.IPv6.Nil() {
+		pubIP6 = pubIP.IPv6.String()
 	}
 	return VM{
 		Name:          wl.Name.String(),
 		Description:   wl.Description,
 		Flist:         data.FList,
 		FlistChecksum: "",
-		PublicIP:      !pubip.IP.Nil(),
-		ComputedIP:    pubip4,
-		PublicIP6:     !pubip.IPv6.Nil(),
-		ComputedIP6:   pubip6,
+		PublicIP:      !pubIP.IP.Nil(),
+		ComputedIP:    pubIP4,
+		PublicIP6:     !pubIP.IPv6.Nil(),
+		ComputedIP6:   pubIP6,
 		Planetary:     result.YggIP != "",
 		Corex:         data.Corex,
 		YggIP:         result.YggIP,
@@ -139,33 +134,13 @@ func NewVMFromWorkloads(wl *gridtypes.Workload, dl *gridtypes.Deployment) (VM, e
 		NetworkName:   string(data.Network.Interfaces[0].Network),
 	}, nil
 }
+
 func mounts(mounts []zos.MachineMount) []Mount {
 	var res []Mount
 	for _, mount := range mounts {
 		res = append(res, Mount{
 			DiskName:   mount.Name.String(),
 			MountPoint: mount.Mountpoint,
-		})
-	}
-	return res
-}
-
-func zlogs(dl *gridtypes.Deployment, name string) []Zlog {
-	var res []Zlog
-	for _, wl := range dl.ByType(zos.ZLogsType) {
-		if !wl.Result.State.IsOkay() {
-			continue
-		}
-		dataI, err := wl.WorkloadData()
-		if err != nil {
-			continue
-		}
-		data := dataI.(*zos.ZLogs)
-		if data.ZMachine.String() != name {
-			continue
-		}
-		res = append(res, Zlog{
-			Output: data.Output,
 		})
 	}
 	return res
@@ -232,21 +207,6 @@ func (vm *VM) GenerateVMWorkload() []gridtypes.Workload {
 	return workloads
 }
 
-// GenerateWorkload generates a zmachine workload
-func (zlog *Zlog) GenerateWorkload(zmachine string) gridtypes.Workload {
-	url := []byte(zlog.Output)
-	urlHash := md5.Sum([]byte(url))
-	return gridtypes.Workload{
-		Version: 0,
-		Name:    gridtypes.Name(hex.EncodeToString(urlHash[:])),
-		Type:    zos.ZLogsType,
-		Data: gridtypes.MustMarshal(zos.ZLogs{
-			ZMachine: gridtypes.Name(zmachine),
-			Output:   zlog.Output,
-		}),
-	}
-}
-
 // Dictify converts vm data to a map (dict)
 func (vm *VM) Dictify() map[string]interface{} {
 	envVars := make(map[string]interface{})
@@ -284,6 +244,7 @@ func (vm *VM) Dictify() map[string]interface{} {
 	res["env_vars"] = envVars
 	res["entrypoint"] = vm.Entrypoint
 	res["zlogs"] = zlogs
+	res["network_name"] = vm.NetworkName
 	return res
 }
 
