@@ -83,7 +83,7 @@ func TestMount(t *testing.T) {
 		})
 		defer terraform.Destroy(t, terraformOptions)
 
-		terraform.InitAndApplyE(t, terraformOptions)
+		terraform.InitAndApply(t, terraformOptions)
 
 		planetary := terraform.Output(t, terraformOptions, "ygg_ip")
 		assert.NotEmpty(t, planetary)
