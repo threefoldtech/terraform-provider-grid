@@ -24,7 +24,11 @@ type ZDB struct {
 
 // NewZDBFromSchema converts a map including zdb data to a zdb struct
 func NewZDBFromSchema(zdb map[string]interface{}) ZDB {
-	ips := zdb["ips"].([]string)
+	ipsIf := zdb["ips"].([]interface{})
+	ips := make([]string, len(ipsIf))
+	for idx, ip := range ipsIf {
+		ips[idx] = ip.(string)
+	}
 
 	return ZDB{
 		Name:        zdb["name"].(string),

@@ -83,7 +83,6 @@ func NewVMFromSchema(vm map[string]interface{}) *VM {
 		Corex:         vm["corex"].(bool),
 		Description:   vm["description"].(string),
 		Zlogs:         zlogs,
-		NetworkName:   vm["network_name"].(string),
 	}
 }
 
@@ -244,7 +243,6 @@ func (vm *VM) Dictify() map[string]interface{} {
 	res["env_vars"] = envVars
 	res["entrypoint"] = vm.Entrypoint
 	res["zlogs"] = zlogs
-	res["network_name"] = vm.NetworkName
 	return res
 }
 
