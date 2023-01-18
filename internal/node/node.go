@@ -161,8 +161,8 @@ func (n *NodeClient) DeploymentDelete(ctx context.Context, contractID uint64) er
 	return n.bus.Call(ctx, n.nodeTwin, cmd, in, nil)
 }
 
-// Counters returns some node statistics. Including total and available cpu, memory, storage, etc...
-func (n *NodeClient) Counters(ctx context.Context) (total gridtypes.Capacity, used gridtypes.Capacity, err error) {
+// Statistics returns some node statistics. Including total and available cpu, memory, storage, etc...
+func (n *NodeClient) Statistics(ctx context.Context) (total gridtypes.Capacity, used gridtypes.Capacity, err error) {
 	const cmd = "zos.statistics.get"
 	var result struct {
 		Total gridtypes.Capacity `json:"total"`

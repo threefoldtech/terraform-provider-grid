@@ -3,7 +3,6 @@ package workloads
 
 import (
 	"encoding/json"
-	"log"
 
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
@@ -23,14 +22,9 @@ type ZDB struct {
 	Namespace   string
 }
 
-// GetZdbData converts a map including zdb data to a zdb struct
-func GetZdbData(zdb map[string]interface{}) ZDB {
-	log.Printf("%+v\n", zdb)
-	ipsIf := zdb["ips"].([]interface{})
-	ips := make([]string, len(ipsIf))
-	for idx, ip := range ipsIf {
-		ips[idx] = ip.(string)
-	}
+// NewZDBFromSchema converts a map including zdb data to a zdb struct
+func NewZDBFromSchema(zdb map[string]interface{}) ZDB {
+	ips := zdb["ips"].([]string)
 
 	return ZDB{
 		Name:        zdb["name"].(string),
@@ -55,9 +49,12 @@ func NewZDBFromWorkload(wl *gridtypes.Workload) (ZDB, error) {
 	data := dataI.(*zos.ZDB)
 	var result zos.ZDBResult
 
-	if err := json.Unmarshal(wl.Result.Data, &result); err != nil {
-		return ZDB{}, errors.Wrap(err, "failed to get zdb result")
+	if len(wl.Result.Data) > 0 {
+		if err := json.Unmarshal(wl.Result.Data, &result); err != nil {
+			return ZDB{}, errors.Wrap(err, "failed to get zdb result")
+		}
 	}
+
 	return ZDB{
 		Name:        wl.Name.String(),
 		Description: wl.Description,
