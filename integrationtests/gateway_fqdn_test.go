@@ -23,8 +23,6 @@ func Testgateway_fqdnDeployment(t *testing.T) {
 	   - Destroy the deployment
 	*/
 
-	// retryable errors in terraform testing.
-	// name :=  RandomName()
 	backend := "http://69.164.223.208:443"
 	fqdn := "remote.hassan.grid.tf" // "remote." + name + ".grid.tf"
 

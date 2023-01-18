@@ -11,9 +11,9 @@ terraform {
   }
 }
 
-# provider "grid" {
-#   key_type = "ed25519"
-# }
+provider "grid" {
+  key_type = "ed25519"
+}
 
 resource "grid_network" "net1" {
   nodes         = [2]
