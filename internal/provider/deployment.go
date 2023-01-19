@@ -119,7 +119,7 @@ func (d *DeploymentDeployer) assignNodesHostIDs() error {
 	for _, vm := range d.VMs {
 		vmIP := net.ParseIP(vm.IP)
 		vmHostID := vmIP[3]
-		if vm.IP != "" && ipRangeCIDR.Contains(vmIP) && !workloads.Contains(usedHosts, vmHostID) {
+		if vm.IP != "" && ipRangeCIDR.Contains(vmIP) && !Contains(usedHosts, vmHostID) {
 			usedHosts = append(usedHosts, vmHostID)
 		}
 	}
@@ -131,7 +131,7 @@ func (d *DeploymentDeployer) assignNodesHostIDs() error {
 			continue
 		}
 
-		for workloads.Contains(usedHosts, curHostID) {
+		for Contains(usedHosts, curHostID) {
 			if curHostID == 254 {
 				return errors.New("all 253 ips of the network are exhausted")
 			}

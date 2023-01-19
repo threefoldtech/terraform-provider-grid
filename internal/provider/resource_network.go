@@ -296,7 +296,7 @@ func (k *NetworkDeployer) storeState(d *schema.ResourceData, state state.StateGe
 		}
 	}
 	for node := range k.NodeDeploymentID {
-		if !workloads.Contains(nodes, node) {
+		if !Contains(nodes, node) {
 			if k.PublicNodeID == node {
 				continue
 			}
@@ -371,7 +371,7 @@ func (k *NetworkDeployer) updateNetworkLocalState(state state.StateGetter) {
 }
 
 func nextFreeOctet(used []byte, start *byte) error {
-	for workloads.Contains(used, *start) && *start <= 254 {
+	for Contains(used, *start) && *start <= 254 {
 		*start += 1
 	}
 	if *start == 255 {
@@ -385,7 +385,7 @@ func (k *NetworkDeployer) assignNodesHostIDs(nodes []uint32) error {
 	l := len(k.ZNet.IPRange.IP)
 	usedIPs := make([]byte, 0) // the third octet
 	for node, ip := range k.NodesIPRange {
-		if workloads.Contains(nodes, node) {
+		if Contains(nodes, node) {
 			usedIPs = append(usedIPs, ip.IP[l-2])
 			ips[node] = ip
 		}
@@ -400,7 +400,7 @@ func (k *NetworkDeployer) assignNodesHostIDs(nodes []uint32) error {
 				return err
 			}
 			usedIPs = append(usedIPs, cur)
-			ip := workloads.IpNet(k.ZNet.IPRange.IP[l-4], k.ZNet.IPRange.IP[l-3], cur, k.ZNet.IPRange.IP[l-1], 24)
+			ip := workloads.IPNet(k.ZNet.IPRange.IP[l-4], k.ZNet.IPRange.IP[l-3], cur, k.ZNet.IPRange.IP[l-1], 24)
 			k.ExternalIP = &ip
 		}
 	}
@@ -411,7 +411,7 @@ func (k *NetworkDeployer) assignNodesHostIDs(nodes []uint32) error {
 				return err
 			}
 			usedIPs = append(usedIPs, cur)
-			ips[node] = workloads.IpNet(k.ZNet.IPRange.IP[l-4], k.ZNet.IPRange.IP[l-3], cur, k.ZNet.IPRange.IP[l-2], 24)
+			ips[node] = workloads.IPNet(k.ZNet.IPRange.IP[l-4], k.ZNet.IPRange.IP[l-3], cur, k.ZNet.IPRange.IP[l-2], 24)
 		}
 	}
 	k.NodesIPRange = ips
@@ -528,7 +528,7 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 	if needsIPv4Access {
 		if k.PublicNodeID != 0 { // it's set
 			// if public node id is already set, it should be added to accessible nodes
-			if !workloads.Contains(accessibleNodes, k.PublicNodeID) {
+			if !Contains(accessibleNodes, k.PublicNodeID) {
 				accessibleNodes = append(accessibleNodes, k.PublicNodeID)
 			}
 		} else if ipv4Node != 0 { // there's one in the network original nodes
@@ -675,7 +675,7 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 				Subnet:      nodeIPRange,
 				AllowedIPs: []gridtypes.IPNet{
 					k.ZNet.IPRange,
-					workloads.IpNet(100, 64, 0, 0, 16),
+					workloads.IPNet(100, 64, 0, 0, 16),
 				},
 				Endpoint: fmt.Sprintf("%s:%d", endpoints[k.PublicNodeID], k.WGPort[k.PublicNodeID]),
 			})
