@@ -3,19 +3,22 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"math/rand"
+	"os"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
 	proxy "github.com/threefoldtech/grid_proxy_server/pkg/client"
+	"github.com/threefoldtech/rmb-sdk-go"
+	"github.com/threefoldtech/rmb-sdk-go/direct"
 	"github.com/threefoldtech/substrate-client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/state"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
-	"github.com/threefoldtech/zos/pkg/rmb"
 )
 
 var (
@@ -30,6 +33,9 @@ var (
 		"test": "https://gridproxy.test.grid.tf/",
 		"qa":   "https://gridproxy.qa.grid.tf/",
 		"main": "https://gridproxy.grid.tf/",
+	}
+	RelayURLs = map[string]string{
+		"dev": "wss://relay.dev.grid.tf",
 	}
 )
 
@@ -201,12 +207,15 @@ func providerConfigure(st state.StateI) (func(ctx context.Context, d *schema.Res
 		}
 		apiClient.twin_id = twin
 		var cl rmb.Client
-		if apiClient.use_rmb_proxy {
-			verify_reply := d.Get("verify_reply").(bool)
-			cl, err = client.NewProxyBus(rmb_proxy_url, apiClient.twin_id, apiClient.substrateConn, identity, verify_reply)
-		} else {
-			cl, err = rmb.NewRMBClient(apiClient.rmb_redis_url)
+
+		relayURL, ok := RelayURLs[network]
+		if !ok {
+			return nil, diag.Errorf("error getting relay url for network %s", network)
 		}
+
+		sessionID := generateSessionID(twin)
+		db := client.NewTwinDB(sub)
+		cl, err = direct.NewClient(context.Background(), identity, relayURL, sessionID, db)
 		if err != nil {
 			return nil, diag.FromErr(errors.Wrap(err, "couldn't create rmb client"))
 		}
@@ -220,4 +229,8 @@ func providerConfigure(st state.StateI) (func(ctx context.Context, d *schema.Res
 		apiClient.state = st
 		return &apiClient, nil
 	}, substrateConn
+}
+
+func generateSessionID(twinID uint32) string {
+	return fmt.Sprintf("terraform-%d-%d", twinID, os.Getpid())
 }
