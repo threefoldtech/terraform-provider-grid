@@ -34,6 +34,7 @@ type K8sNodeData struct {
 	Memory        int
 }
 
+// K8sCluster struct for k8s cluster
 type K8sCluster struct {
 	Master      *K8sNodeData
 	Workers     []K8sNodeData
@@ -42,6 +43,7 @@ type K8sCluster struct {
 	NetworkName string
 }
 
+// NewK8sNodeData generates new k8s node data
 func NewK8sNodeData(m map[string]interface{}) K8sNodeData {
 	return K8sNodeData{
 		Name:          m["name"].(string),
@@ -61,6 +63,7 @@ func NewK8sNodeData(m map[string]interface{}) K8sNodeData {
 	}
 }
 
+// NewK8sNodeDataFromWorkload generates a new k8s data from a workload
 func NewK8sNodeDataFromWorkload(w gridtypes.Workload, nodeID uint32, diskSize int, computedIP string, computedIP6 string) (K8sNodeData, error) {
 	var k K8sNodeData
 	data, err := w.WorkloadData()
@@ -101,6 +104,7 @@ func NewK8sNodeDataFromWorkload(w gridtypes.Workload, nodeID uint32, diskSize in
 	return k, nil
 }
 
+// Dictify converts k8s data to a map (dict)
 func (k *K8sNodeData) Dictify() map[string]interface{} {
 	res := make(map[string]interface{})
 	res["name"] = k.Name
@@ -120,6 +124,7 @@ func (k *K8sNodeData) Dictify() map[string]interface{} {
 	return res
 }
 
+// GenerateK8sWorkload generates a k8s workload from a k8s data
 func (k *K8sNodeData) GenerateK8sWorkload(cluster *K8sCluster, masterIP string) []gridtypes.Workload {
 	diskName := fmt.Sprintf("%sdisk", k.Name)
 	K8sWorkloads := make([]gridtypes.Workload, 0)
@@ -181,19 +186,17 @@ func (k *K8sNodeData) GenerateK8sWorkload(cluster *K8sCluster, masterIP string) 
 	return K8sWorkloads
 }
 
+// validate cluster token
 func (k *K8sCluster) ValidateToken(ctx context.Context) error {
-	if k.Token == "" {
-		return errors.New("empty token is now allowed")
-	}
-
-	is_alphanumeric := regexp.MustCompile(`^[a-zA-Z0-9]*$`).MatchString(k.Token)
-	if !is_alphanumeric {
+	isAlphanumeric := regexp.MustCompile(`^[a-zA-Z0-9]+$`).MatchString(k.Token)
+	if !isAlphanumeric {
 		return errors.New("token should be alphanumeric")
 	}
 
 	return nil
 }
 
+// ValidateNames validate names for master and workers
 func (k *K8sCluster) ValidateNames(ctx context.Context) error {
 
 	names := make(map[string]bool)
