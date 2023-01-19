@@ -5,7 +5,8 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
-	"github.com/threefoldtech/zos/pkg/rmb"
+
+	"github.com/threefoldtech/rmb-sdk-go"
 )
 
 // NodeClientGetter is an interface for node client
