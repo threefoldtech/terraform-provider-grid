@@ -232,5 +232,5 @@ func providerConfigure(st state.StateI) (func(ctx context.Context, d *schema.Res
 }
 
 func generateSessionID(twinID uint32) string {
-	return fmt.Sprintf("terraform-%d-%d", twinID, os.Getpid())
+	return fmt.Sprintf("tf-%d", os.Getpid())
 }
