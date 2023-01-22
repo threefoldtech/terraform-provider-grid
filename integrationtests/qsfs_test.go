@@ -40,22 +40,22 @@ func TestQSFS(t *testing.T) {
 		metrics := terraform.Output(t, terraformOptions, "metrics")
 		assert.NotEmpty(t, metrics)
 
-		ygg_ip := terraform.Output(t, terraformOptions, "ygg_ip")
-		assert.NotEmpty(t, ygg_ip)
+		yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
+		assert.NotEmpty(t, yggIP)
 
 		// get metrics
 		cmd := exec.Command("curl", metrics)
 		output, _ := cmd.Output()
 
 		// try write to a file in mounted disk
-		_, err = RemoteRun("root", ygg_ip, "cd /qsfs && echo test >> test", privateKey)
+		_, err = RemoteRun("root", yggIP, "cd /qsfs && echo test >> test", privateKey)
 		assert.NoError(t, err)
 		// get metrics after write
 		cmd = exec.Command("curl", metrics)
-		output, _ = cmd.Output()
+		outputAfter, _ := cmd.Output()
 
 		// check that syscalls for write should increase
-		assert.NotEqual(t, output, output)
+		assert.NotEqual(t, outputAfter, output)
 	})
 
 	t.Run("qsfs_read_write", func(t *testing.T) {
