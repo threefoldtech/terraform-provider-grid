@@ -1,4 +1,4 @@
-// Package integrationtests includes integration  and wireguard testing utilities to run the tests
+// Package integrationtests includes integration tests and wireguard testing utilities to run the tests
 package integrationtests
 
 import (
