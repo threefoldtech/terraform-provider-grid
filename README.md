@@ -66,6 +66,6 @@ make integrationtests
 
 ## Known Issues
 
-- [parallelism=1](https://github.com/threefoldtech/terraform-provider-grid/issues/12)
-- [increasing IPs in active deployment](https://github.com/threefoldtech/terraform-provider-grid/issues/15)
-- [introducing new nodes to kubernetes deployment](https://github.com/threefoldtech/terraform-provider-grid/issues/13)
+- [parallelism=1](https://github.com/threefoldtech/terraform-provider-grid/issues/12).
+- [increasing IPs in active deployment](https://github.com/threefoldtech/terraform-provider-grid/issues/15).
+- [introducing new nodes to kubernetes deployment](https://github.com/threefoldtech/terraform-provider-grid/issues/13).
