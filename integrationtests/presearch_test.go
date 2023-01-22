@@ -22,6 +22,7 @@ func TestPreSearchDeployment(t *testing.T) {
 	   - Check that node is reachable.
 	   - Check that vm is reachable
 	   - Check that env variables set successfully
+	   - Check prenode service is running
 	   - Destroy the deployment
 	*/
 

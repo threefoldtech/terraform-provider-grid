@@ -42,8 +42,8 @@ func TestK8s(t *testing.T) {
 		   - Deploy a k8s.
 		   - Check that the outputs not empty.
 		   - Check that master is reachable
-		   - Check workers deployed number.
-		   - Check that workers is ready.
+		   - Check all workers are deployed.
+		   - Check that all workers are ready.
 		   - Destroy the deployment
 		*/
 		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
@@ -61,12 +61,12 @@ func TestK8s(t *testing.T) {
 		masterIP := terraform.Output(t, terraformOptions, "ygg_ip")
 		assert.NotEmpty(t, masterIP)
 
-		// Up wireguard
+		// Check wireguard config in output
 		wgConfig := terraform.Output(t, terraformOptions, "wg_config")
 		assert.NotEmpty(t, wgConfig)
 
 		// Check that master is reachable
-		// testing connection
+		// testing connection on port 22, waits at max 3mins until it becomes ready otherwise it fails
 		ok := TestConnection(masterIP, "22")
 		assert.True(t, ok)
 		// ssh to master node
@@ -122,10 +122,10 @@ func TestK8s(t *testing.T) {
 
 		   **Test Scenario**
 
-		   - Deploy a singlenode.
-		   - Check that the outputs not empty.
-		   - connect to the machine
-		   - Destroy the deployment
+		   - Deploy a k8s with modules with one master and one worker.
+		   - Make sure master and worker deployed and ready.
+		   - Add one more worker.
+		   - Make sure that worker added and ready.
 
 		*/
 		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{

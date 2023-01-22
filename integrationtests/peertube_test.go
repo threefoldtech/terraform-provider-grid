@@ -18,7 +18,7 @@ func TestPeerTubeDeployment(t *testing.T) {
 	   - Deploy a peertube.
 	   - Check that the outputs not empty.
 	   - Check that vm is reachable
-	   - Check that env variables set successfully
+	   - Check that peertube service is running
 	   - Destroy the deployment
 	*/
 
