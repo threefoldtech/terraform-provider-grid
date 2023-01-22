@@ -17,7 +17,6 @@ func TestMultiNodeDeployment(t *testing.T) {
 	   - Deploy a multinode.
 	   - Check that the outputs not empty.
 	   - Verify the VMs ips
-	   - Check that env variables set successfully
 	   - Destroy the deployment
 	*/
 

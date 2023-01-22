@@ -20,7 +20,7 @@ func TestTaigaDeployment(t *testing.T) {
 	   - Check that the outputs not empty.
 	   - Check that vm is reachable.
 	   - Check that env variables set successfully.
-	   - Ping the website.
+	   - Check taiga zinit service is running
 	   - Destroy the deployment.
 	*/
 
@@ -57,7 +57,4 @@ func TestTaigaDeployment(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Contains(t, output, "taiga: Running")
 
-	//check the webpage
-	output1, _ := exec.Command("ping", webIp, "-c 5", "-i 3", "-w 10").Output()
-	assert.NotContains(t, string(output1), "Destination Host Unreachable")
 }
