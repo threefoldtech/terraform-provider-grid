@@ -6,9 +6,9 @@ import (
 	"os/exec"
 	"path"
 	"strings"
-	"sync"
 
 	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 )
 
 // UpWg used for setting up the wireguard interface
@@ -44,23 +44,19 @@ func DownWG(wgConfDir string) (string, error) { //tempdir
 
 // AreWGIPsReachable used to check if wire guard ip is reachable
 func AreWGIPsReachable(wgConfig string, ipsToCheck []string, privateKey string) error {
-	errChannel := make(chan error, len(ipsToCheck))
-	var wg sync.WaitGroup
+	g := new(errgroup.Group)
 	for _, ip := range ipsToCheck {
-		wg.Add(1)
-		go func(ip string) {
-			defer wg.Done()
+		ip := ip
+		g.Go(func() error {
 			output, err := RemoteRun("root", ip, "ifconfig", privateKey)
 			if err != nil {
-				errChannel <- errors.Wrapf(err, "could not connect as a root user to the machine with ip %s with output %s", ip, output)
-				return
+				return errors.Wrapf(err, "could not connect as a root user to the machine with ip %s with output %s", ip, output)
 			}
 			if !strings.Contains(string(output), ip) {
-				errChannel <- errors.Wrapf(err, "ip %s could not be verified. ifconfig output: %s", ip, output)
-				return
+				return errors.Wrapf(err, "ip %s could not be verified. ifconfig output: %s", ip, output)
 			}
-		}(ip)
+			return nil
+		})
 	}
-	wg.Wait()
-	return <-errChannel
+	return g.Wait()
 }
