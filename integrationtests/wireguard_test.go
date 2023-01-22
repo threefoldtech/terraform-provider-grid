@@ -8,7 +8,6 @@ import (
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
-	tests "github.com/threefoldtech/terraform-provider-grid/integrationtests"
 )
 
 func TestWireguard(t *testing.T) {
@@ -27,7 +26,7 @@ func TestWireguard(t *testing.T) {
 
 	// retryable errors in terraform testing.
 	// generate ssh keys for test
-	publicKey, _, err := tests.GenerateSSHKeyPair()
+	publicKey, _, err := GenerateSSHKeyPair()
 	if err != nil {
 		t.Fatal()
 	}
@@ -54,14 +53,14 @@ func TestWireguard(t *testing.T) {
 	assert.NotEmpty(t, wgConfig)
 
 	tempDir := t.TempDir()
-	conf, err := tests.UpWg(wgConfig, tempDir)
+	conf, err := UpWg(wgConfig, tempDir)
 	assert.NoError(t, err)
 
-	defer tests.DownWG(conf, tempDir)
+	defer DownWG(conf)
 	ips := []string{wgVM1IP, wgVM2IP}
 	for i := range ips {
-		err = tests.TestConnection(ips[i], "22")
-
-		assert.NoError(t, err)
+		// testing connection
+		ok := TestConnection(ips[i], "22")
+		assert.True(t, ok)
 	}
 }

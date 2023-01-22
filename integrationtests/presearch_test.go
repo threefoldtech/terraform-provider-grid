@@ -10,7 +10,6 @@ import (
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
-	tests "github.com/threefoldtech/terraform-provider-grid/integrationtests"
 )
 
 func TestPreSearchDeployment(t *testing.T) {
@@ -28,7 +27,7 @@ func TestPreSearchDeployment(t *testing.T) {
 
 	// retryable errors in terraform testing.
 	// generate ssh keys for test
-	publicKey, privateKey, err := tests.GenerateSSHKeyPair()
+	publicKey, privateKey, err := GenerateSSHKeyPair()
 	if err != nil {
 		t.Fatal()
 	}
@@ -53,13 +52,13 @@ func TestPreSearchDeployment(t *testing.T) {
 	ip := strings.Split(publicIp, "/")[0]
 
 	// Check that env variables set successfully
-	output, err := tests.RemoteRun("root", ip, "cat /proc/1/environ", privateKey)
+	output, err := RemoteRun("root", ip, "cat /proc/1/environ", privateKey)
 	assert.NoError(t, err)
 	assert.Contains(t, string(output), "PRESEARCH_REGISTRATION_CODE=e5083a8d0a6362c6cf7a3078bfac81e3")
 
 	time.Sleep(60 * time.Second) // Sleeps for 60 seconds
 
-	output, err = tests.RemoteRun("root", ip, "zinit list", privateKey)
+	output, err = RemoteRun("root", ip, "zinit list", privateKey)
 	assert.NoError(t, err)
 	assert.Contains(t, output, "prenode: Success")
 }
