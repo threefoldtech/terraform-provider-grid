@@ -105,7 +105,7 @@ func newDeploymentDeployer(d *schema.ResourceData, threefoldPluginClient *threef
 	return deploymentDeployer, nil
 }
 
-func (d *DeploymentDeployer) assignNodesHostIDs() error {
+func (d *DeploymentDeployer) assignNodesIPs() error {
 	networkingState := d.ThreefoldPluginClient.state.GetState().Networks
 	network := networkingState.GetNetwork(d.NetworkName)
 	usedHosts := network.GetUsedNetworkHostIDs(d.Node)
@@ -146,7 +146,7 @@ func (d *DeploymentDeployer) assignNodesHostIDs() error {
 }
 func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
 	dl := workloads.NewDeployment(d.ThreefoldPluginClient.twinID)
-	err := d.assignNodesHostIDs()
+	err := d.assignNodesIPs()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to assign node ips")
 	}

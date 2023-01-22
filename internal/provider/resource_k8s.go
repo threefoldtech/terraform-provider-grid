@@ -460,7 +460,7 @@ func (k *K8sDeployer) updateNetworkState(d *schema.ResourceData, state state.Sta
 	}
 }
 
-func (k *K8sDeployer) assignNodesHostIDs() error {
+func (k *K8sDeployer) assignNodesIPs() error {
 	// TODO: when a k8s node changes its zos node, remove its ip from the used ones. better at the beginning
 	masterNodeRange := k.NodesIPRange[k.K8sCluster.Master.Node]
 	if k.K8sCluster.Master.IP == "" || !masterNodeRange.Contains(net.ParseIP(k.K8sCluster.Master.IP)) {
@@ -484,7 +484,7 @@ func (k *K8sDeployer) assignNodesHostIDs() error {
 	return nil
 }
 func (k *K8sDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
-	err := k.assignNodesHostIDs()
+	err := k.assignNodesIPs()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to assign node ips")
 	}

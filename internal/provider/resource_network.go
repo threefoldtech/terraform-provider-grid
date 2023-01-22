@@ -380,7 +380,7 @@ func nextFreeOctet(used []byte, start *byte) error {
 	return nil
 }
 
-func (k *NetworkDeployer) assignNodesHostIDs(nodes []uint32) error {
+func (k *NetworkDeployer) assignNodesIPs(nodes []uint32) error {
 	ips := make(map[uint32]gridtypes.IPNet)
 	l := len(k.ZNet.IPRange.IP)
 	usedIPs := make([]byte, 0) // the third octet
@@ -554,7 +554,7 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 		}
 	}
 	all := append(hiddenNodes, accessibleNodes...)
-	if err := k.assignNodesHostIDs(all); err != nil {
+	if err := k.assignNodesIPs(all); err != nil {
 		return nil, errors.Wrap(err, "couldn't assign node ips")
 	}
 	if err := k.assignNodesWGKey(all); err != nil {
