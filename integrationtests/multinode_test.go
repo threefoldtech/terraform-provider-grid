@@ -4,11 +4,11 @@
 package integrationtests
 
 import (
-	"github.com/gruntwork-io/terratest/modules/terraform"
-	"github.com/stretchr/testify/assert"
-	tests "github.com/threefoldtech/terraform-provider-grid/integrationtests"
 	"strings"
 	"testing"
+
+	"github.com/gruntwork-io/terratest/modules/terraform"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMultiNodeDeployment(t *testing.T) {
@@ -23,7 +23,7 @@ func TestMultiNodeDeployment(t *testing.T) {
 
 	// retryable errors in terraform testing.
 	// generate ssh keys for test
-	publicKey, _, err := tests.GenerateSSHKeyPair()
+	publicKey, _, err := GenerateSSHKeyPair()
 	if err != nil {
 		t.Fatal()
 	}
@@ -58,10 +58,10 @@ func TestMultiNodeDeployment(t *testing.T) {
 	pIP2 := strings.Split(publicIP2, "/")[0]
 
 	//testing connections
-	ok := tests.TestConnection(pIP1, "22")
+	ok := TestConnection(pIP1, "22")
 	assert.True(t, ok)
 
-	ok = tests.TestConnection(pIP2, "22")
+	ok = TestConnection(pIP2, "22")
 	assert.True(t, ok)
 
 }

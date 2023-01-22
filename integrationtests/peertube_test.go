@@ -8,7 +8,6 @@ import (
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
-	tests "github.com/threefoldtech/terraform-provider-grid/integrationtests"
 )
 
 func TestPeerTubeDeployment(t *testing.T) {
@@ -25,7 +24,7 @@ func TestPeerTubeDeployment(t *testing.T) {
 
 	// retryable errors in terraform testing.
 	// generate ssh keys for test
-	publicKey, privateKey, err := tests.GenerateSSHKeyPair()
+	publicKey, privateKey, err := GenerateSSHKeyPair()
 	if err != nil {
 		t.Fatal()
 	}
@@ -46,13 +45,13 @@ func TestPeerTubeDeployment(t *testing.T) {
 	assert.NotEmpty(t, planetary)
 
 	peertube := terraform.Output(t, terraformOptions, "fqdn")
-	assert.NotEmpty(t, fqdn)
+	assert.NotEmpty(t, peertube)
 
-	ok = tests.TestConnection(planetary, "22")
+	ok := TestConnection(planetary, "22")
 	assert.True(t, ok)
 
 	// Check that env variables set successfully
-	output, err := tests.RemoteRun("root", planetary, "zinit list", privateKey)
+	output, err := RemoteRun("root", planetary, "zinit list", privateKey)
 	assert.NoError(t, err)
 	assert.Contains(t, output, "peertube: Running")
 

@@ -8,7 +8,6 @@ import (
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
-	tests "github.com/threefoldtech/terraform-provider-grid/integrationtests"
 )
 
 func TestMattermostDeployment(t *testing.T) {
@@ -25,7 +24,7 @@ func TestMattermostDeployment(t *testing.T) {
 
 	// retryable errors in terraform testing.
 	// generate ssh keys for test
-	publicKey, privateKey, err := tests.GenerateSSHKeyPair()
+	publicKey, privateKey, err := GenerateSSHKeyPair()
 	if err != nil {
 		t.Fatal()
 	}
@@ -48,13 +47,13 @@ func TestMattermostDeployment(t *testing.T) {
 	assert.NotEmpty(t, fqdn)
 
 	// Check that env variables set successfully
-	output, err := tests.RemoteRun("root", planetary, "cat /proc/1/environ", privateKey)
+	output, err := RemoteRun("root", planetary, "cat /proc/1/environ", privateKey)
 	assert.NoError(t, err)
 	assert.Contains(t, string(output), "SSH_KEY")
 
 	// Check that the solution is running successfully
 
-	output, err = tests.RemoteRun("root", planetary, "zinit list", privateKey)
+	output, err = RemoteRun("root", planetary, "zinit list", privateKey)
 	assert.NoError(t, err)
 	assert.Contains(t, output, "mattermost: Running")
 
