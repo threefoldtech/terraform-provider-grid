@@ -51,11 +51,11 @@ func TestQSFS(t *testing.T) {
 		_, err = RemoteRun("root", ygg_ip, "cd /qsfs && echo test >> test", privateKey)
 		assert.NoError(t, err)
 		// get metrics after write
-		cmd2 := exec.Command("curl", metrics)
-		output_after_write, _ := cmd2.Output()
+		cmd = exec.Command("curl", metrics)
+		output, _ = cmd.Output()
 
 		// check that syscalls for write should increase
-		assert.NotEqual(t, output, output_after_write)
+		assert.NotEqual(t, output, output)
 	})
 
 	t.Run("qsfs_read_write", func(t *testing.T) {
