@@ -84,7 +84,7 @@ func TestK8s(t *testing.T) {
 		}
 	})
 
-	t.Run("K8s_with_2Workers_same_name", func(t *testing.T) {
+	t.Run("k8s_with_2workers_same_name", func(t *testing.T) {
 		/* Test case for deployeng a k8s.
 
 		   **Test Scenario**
@@ -117,7 +117,7 @@ func TestK8s(t *testing.T) {
 		}
 	})
 
-	t.Run("k8s_with_Module", func(t *testing.T) {
+	t.Run("k8s_with_module", func(t *testing.T) {
 		/* Test case for deployeng a singlenode.
 
 		   **Test Scenario**

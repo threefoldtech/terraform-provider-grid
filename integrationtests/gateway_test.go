@@ -43,10 +43,10 @@ func TestGateWay(t *testing.T) {
 		terraform.InitAndApply(t, terraformOptions)
 
 		// Check that the outputs not empty
-		fqdn_ := terraform.Output(t, terraformOptions, "fqdn")
-		assert.NotEmpty(t, fqdn_)
+		fqdn = terraform.Output(t, terraformOptions, "fqdn")
+		assert.NotEmpty(t, fqdn)
 
-		output, _ := exec.Command("ping", fqdn_, "-c 5", "-i 3", "-w 10").Output()
+		output, _ := exec.Command("ping", fqdn, "-c 5", "-i 3", "-w 10").Output()
 		assert.NotContains(t, string(output), "Destination Host Unreachable")
 	})
 

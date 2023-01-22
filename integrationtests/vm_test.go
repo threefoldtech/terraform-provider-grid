@@ -57,7 +57,7 @@ func TestVM(t *testing.T) {
 		assert.True(t, ok)
 	})
 
-	t.Run("single_vm_with_public_IP", func(t *testing.T) {
+	t.Run("single_vm_with_public_ip", func(t *testing.T) {
 		/* Test case for deployeng a singlenode.
 
 		   **Test Scenario**
@@ -134,7 +134,7 @@ func TestVM(t *testing.T) {
 		assert.True(t, ok)
 	})
 
-	t.Run("single_vm_with_zero_CPU", func(t *testing.T) {
+	t.Run("single_vm_with_zero_cpu", func(t *testing.T) {
 		/* Test case for deployeng a singlenode.
 
 		   **Test Scenario**
@@ -160,7 +160,7 @@ func TestVM(t *testing.T) {
 		}
 	})
 
-	t.Run("single_vm_with_memory_Less_Than_250", func(t *testing.T) {
+	t.Run("single_vm_with_memory_less_than_250", func(t *testing.T) {
 		/* Test case for deployeng a singlenode.
 
 		   **Test Scenario**
@@ -211,19 +211,19 @@ func TestVM(t *testing.T) {
 		metrics := terraform.Output(t, terraformOptions, "metrics")
 		assert.NotEmpty(t, metrics)
 
-		ygg_ip := terraform.Output(t, terraformOptions, "ygg_ip")
-		assert.NotEmpty(t, ygg_ip)
+		yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
+		assert.NotEmpty(t, yggIP)
 
 		// get metrics
 		cmd := exec.Command("curl", metrics)
 		output, _ := cmd.Output()
 
 		// try write to a file in mounted disk
-		_, err = RemoteRun("root", ygg_ip, "cd /qsfs && echo test >> test", privateKey)
+		_, err = RemoteRun("root", yggIP, "cd /qsfs && echo test >> test", privateKey)
 		assert.NoError(t, err)
 		// get metrics after write
-		cmd2 := exec.Command("curl", metrics)
-		output_after_write, _ := cmd2.Output()
+		cmd = exec.Command("curl", metrics)
+		output_after_write, _ := cmd.Output()
 
 		// check that syscalls for write should increase
 		assert.NotEqual(t, output, output_after_write)
