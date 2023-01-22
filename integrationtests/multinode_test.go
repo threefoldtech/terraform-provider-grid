@@ -1,6 +1,3 @@
-//go:build integration
-// +build integration
-
 package integrationtests
 
 import (
@@ -45,22 +42,22 @@ func TestMultiNodeDeployment(t *testing.T) {
 	node2Container1IP := terraform.Output(t, terraformOptions, "node2_zmachine1_ip")
 	assert.NotEmpty(t, node2Container1IP)
 
-	publicIP1 := terraform.Output(t, terraformOptions, "node1_zmachine_computed_public_ip")
-	assert.NotEmpty(t, publicIP1)
+	yggIP1 := terraform.Output(t, terraformOptions, "node1_zmachine_ygg_ip")
+	assert.NotEmpty(t, yggIP1)
 
-	publicIP2 := terraform.Output(t, terraformOptions, "node2_zmachine_computed_public_ip")
-	assert.NotEmpty(t, publicIP2)
+	yggIP2 := terraform.Output(t, terraformOptions, "node2_zmachine_ygg_ip")
+	assert.NotEmpty(t, yggIP2)
 
 	//spliting ip to connect on it
-	pIP1 := strings.Split(publicIP1, "/")[0]
+	yggIP1 = strings.Split(yggIP1, "/")[0]
 
-	pIP2 := strings.Split(publicIP2, "/")[0]
+	yggIP2 = strings.Split(yggIP2, "/")[0]
 
 	//testing connections
-	ok := TestConnection(pIP1, "22")
+	ok := TestConnection(yggIP1, "22")
 	assert.True(t, ok)
 
-	ok = TestConnection(pIP2, "22")
+	ok = TestConnection(yggIP2, "22")
 	assert.True(t, ok)
 
 }

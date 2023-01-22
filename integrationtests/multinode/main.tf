@@ -16,11 +16,10 @@ provider "grid" {
 
 
 resource "grid_network" "net1" {
-  nodes         = [2, 3]
-  ip_range      = "172.20.0.0/16"
-  name          = "net1"
-  description   = "new network"
-  add_wg_access = true
+  nodes       = [2, 3]
+  ip_range    = "172.20.0.0/16"
+  name        = "net1"
+  description = "new network"
 }
 
 resource "grid_deployment" "d1" {
@@ -30,7 +29,6 @@ resource "grid_deployment" "d1" {
     name       = "vm1"
     flist      = "https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-20.04.flist"
     cpu        = 2
-    publicip   = true
     memory     = 1024
     entrypoint = "/init.sh"
     env_vars = {
@@ -46,10 +44,9 @@ resource "grid_deployment" "d2" {
   node         = 3
   network_name = grid_network.net1.name
   vms {
-    name       = "vm3"
+    name       = "vm2"
     flist      = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
     cpu        = 1
-    publicip   = true
     memory     = 1024
     entrypoint = "/sbin/zinit init"
     env_vars = {
@@ -68,7 +65,6 @@ output "ygg_ip2" {
   value = grid_deployment.d2.vms[0].ygg_ip
 }
 
-
 output "wg_config" {
   value = grid_network.net1.access_wg_config
 }
@@ -76,13 +72,13 @@ output "wg_config" {
 output "node1_zmachine1_ip" {
   value = grid_deployment.d1.vms[0].ip
 }
-output "node1_zmachine_computed_public_ip" {
-  value = grid_deployment.d1.vms[0].computedip
+output "node1_zmachine_ygg_ip" {
+  value = grid_deployment.d1.vms[0].ygg_ip
 }
 
 output "node2_zmachine1_ip" {
   value = grid_deployment.d2.vms[0].ip
 }
-output "node2_zmachine_computed_public_ip" {
-  value = grid_deployment.d2.vms[0].computedip
+output "node2_zmachine_ygg_ip" {
+  value = grid_deployment.d2.vms[0].ygg_ip
 }
