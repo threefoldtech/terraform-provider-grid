@@ -223,10 +223,10 @@ func TestVM(t *testing.T) {
 		assert.NoError(t, err)
 		// get metrics after write
 		cmd = exec.Command("curl", metrics)
-		output_after_write, _ := cmd.Output()
+		outputAfter, _ := cmd.Output()
 
 		// check that syscalls for write should increase
-		assert.NotEqual(t, output, output_after_write)
+		assert.NotEqual(t, output, outputAfter)
 	})
 
 	t.Run("qsfs_read_write", func(t *testing.T) {
