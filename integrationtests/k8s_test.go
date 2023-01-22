@@ -1,7 +1,6 @@
 package integrationtests
 
 import (
-	"log"
 	"reflect"
 	"strings"
 	"testing"
@@ -11,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// AssertDeploymentStatus to test the number workers
-func AssertDeploymentStatus(t *testing.T, terraformOptions *terraform.Options, privateKey string) {
+// AssertNodesAreReady runs `kubectl get node` on the master node and asserts that all nodes are ready
+func AssertNodesAreReady(t *testing.T, terraformOptions *terraform.Options, privateKey string) {
 	t.Helper()
 
 	masterYggIP := terraform.Output(t, terraformOptions, "master_yggip")
@@ -31,7 +30,7 @@ func AssertDeploymentStatus(t *testing.T, terraformOptions *terraform.Options, p
 func TestK8s(t *testing.T) {
 	publicKey, privateKey, err := GenerateSSHKeyPair()
 	if err != nil {
-		log.Fatalf("failed to generate ssh key pair: %s", err.Error())
+		t.Fatalf("failed to generate ssh key pair: %s", err.Error())
 	}
 
 	t.Run("k8s", func(t *testing.T) {
@@ -39,11 +38,9 @@ func TestK8s(t *testing.T) {
 
 		   **Test Scenario**
 
-		   - Deploy a k8s.
+		   - Deploy a k8s cluster.
 		   - Check that the outputs not empty.
-		   - Check that master is reachable
-		   - Check all workers are deployed.
-		   - Check that all workers are ready.
+		   - Assert that all nodes are ready.
 		   - Destroy the deployment
 		*/
 		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
@@ -55,7 +52,8 @@ func TestK8s(t *testing.T) {
 		})
 		defer terraform.Destroy(t, terraformOptions)
 
-		terraform.InitAndApply(t, terraformOptions)
+		_, err = terraform.InitAndApplyE(t, terraformOptions)
+		assert.NoError(t, err)
 
 		// Check that the outputs not empty
 		masterIP := terraform.Output(t, terraformOptions, "ygg_ip")
@@ -69,19 +67,9 @@ func TestK8s(t *testing.T) {
 		// testing connection on port 22, waits at max 3mins until it becomes ready otherwise it fails
 		ok := TestConnection(masterIP, "22")
 		assert.True(t, ok)
+
 		// ssh to master node
-		output, err := RemoteRun("root", masterIP, "kubectl get node", privateKey)
-		assert.NoError(t, err)
-		output = strings.Trim(output, "\n")
-
-		// // Check worker deployed number
-		nodes := strings.Split(string(output), "\n")[1:]
-		assert.Equal(t, 2, len(nodes)) // assert that there are 1 worker and 1 master
-
-		// Check that worker is ready
-		for i := 0; i < len(nodes); i++ {
-			assert.Contains(t, nodes[i], "Ready")
-		}
+		AssertNodesAreReady(t, terraformOptions, privateKey)
 	})
 
 	t.Run("k8s_with_2workers_same_name", func(t *testing.T) {
@@ -91,15 +79,7 @@ func TestK8s(t *testing.T) {
 
 		   - Deploy a k8s with 2 workers having the same name.
 		   - Check that the deployment failed.
-
 		*/
-
-		// retryable errors in terraform testing.
-		// generate ssh keys for test
-		publicKey, _, err := GenerateSSHKeyPair()
-		if err != nil {
-			t.Fatal()
-		}
 
 		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 			TerraformDir: "./kubernetes_with_2worker_same_name",
@@ -125,7 +105,7 @@ func TestK8s(t *testing.T) {
 		   - Deploy a k8s with modules with one master and one worker.
 		   - Make sure master and worker deployed and ready.
 		   - Add one more worker.
-		   - Make sure that worker added and ready.
+		   - Make sure that worker is added and ready.
 
 		*/
 		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
@@ -163,8 +143,10 @@ func TestK8s(t *testing.T) {
 			},
 		})
 
-		terraform.InitAndApply(t, terraformOptions)
-		AssertDeploymentStatus(t, terraformOptions, privateKey)
+		_, err = terraform.InitAndApplyE(t, terraformOptions)
+		assert.NoError(t, err)
+
+		AssertNodesAreReady(t, terraformOptions, privateKey)
 
 		terraformOptions.Vars["workers"] = []map[string]interface{}{
 			{
@@ -208,10 +190,11 @@ func TestK8s(t *testing.T) {
 				"description": "",
 			},
 		}
+		_, err = terraform.ApplyE(t, terraformOptions)
+		assert.NoError(t, err)
 
-		terraform.Apply(t, terraformOptions)
-		AssertDeploymentStatus(t, terraformOptions, privateKey)
+		AssertNodesAreReady(t, terraformOptions, privateKey)
+
 		terraform.Destroy(t, terraformOptions)
-
 	})
 }

@@ -83,10 +83,10 @@ func TestQSFS(t *testing.T) {
 		metrics := terraform.Output(t, terraformOptions, "metrics")
 		assert.NotEmpty(t, metrics)
 
-		ygg_ip := terraform.Output(t, terraformOptions, "ygg_ip")
-		assert.NotEmpty(t, ygg_ip)
+		yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
+		assert.NotEmpty(t, yggIP)
 
-		output, err := RemoteRun("root", ygg_ip, "cd /qsfs && echo test >> test && cat test", privateKey)
+		output, err := RemoteRun("root", yggIP, "cd /qsfs && echo test >> test && cat test", privateKey)
 		assert.NoError(t, err)
 		assert.Contains(t, string(output), "test")
 	})
