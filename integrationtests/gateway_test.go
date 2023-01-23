@@ -1,77 +1,38 @@
 package integrationtests
 
 import (
+	"fmt"
+	"io"
 	"log"
-	"os/exec"
+	"net/http"
 	"testing"
+	"time"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGateWay(t *testing.T) {
-	_, _, err := GenerateSSHKeyPair()
+	publicKey, privateKey, err := GenerateSSHKeyPair()
 	if err != nil {
 		log.Fatalf("failed to generate ssh key pair: %s", err.Error())
 	}
 
-	t.Run("gateway_fqdn", func(t *testing.T) {
-		/* Test case for deployeng a gateway with fdqn.
+	t.Run("gateway_name", func(t *testing.T) {
+		/* Test case for deployeng a gateway name proxy.
 
 		   **Test Scenario**
 
-		   - Deploy a gateway with fdqn.
-		   - Check that the outputs not empty.
-		   - Check that ygg ip is reachable.
-		   - Check that gateway point to backend.
+		   - Deploy a gateway name.
+		   - Deploy a vm.
+		   - Assert deployments outputs are not empty.
+		   - Run python server on vm.
+		   - Make an http request to fqdn and assert that the response is correct.
 		   - Destroy the deployment
 		*/
 
-		backend := "http://69.164.223.208:443"
-		fqdn := "remote.hassan.grid.tf" // "remote." + name + ".grid.tf"
-
 		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-			TerraformDir: "./gateway_with_fqdn",
-			Vars: map[string]interface{}{
-				"fqdn":    fqdn,
-				"backend": backend,
-			},
-			Parallelism: 1,
-		})
-		defer terraform.Destroy(t, terraformOptions)
-
-		terraform.InitAndApply(t, terraformOptions)
-
-		// Check that the outputs not empty
-		fqdn = terraform.Output(t, terraformOptions, "fqdn")
-		assert.NotEmpty(t, fqdn)
-
-		output, _ := exec.Command("ping", fqdn, "-c 5", "-i 3", "-w 10").Output()
-		assert.NotContains(t, string(output), "Destination Host Unreachable")
-	})
-
-	t.Run("gateway_yggip", func(t *testing.T) {
-		/* Test case for deployeng a gateway with ygg ip.
-
-		   **Test Scenario**
-
-		   - Deploy a VM in single node.
-		   - Deploy a gateway with ygg ip.
-		   - Check that the outputs not empty.
-		   - Check that ygg ip is reachable.
-		   - Check that gateway point to backend.
-		   - Destroy the deployment.
-		*/
-
-		// retryable errors in terraform testing.
-		// generate ssh keys for test
-		publicKey, _, err := GenerateSSHKeyPair()
-		if err != nil {
-			t.Fatal()
-		}
-
-		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-			TerraformDir: "./gateway_with_yggdrasil_ip",
+			TerraformDir: "./gateway_name",
 			Vars: map[string]interface{}{
 				"public_key": publicKey,
 			},
@@ -79,18 +40,81 @@ func TestGateWay(t *testing.T) {
 		})
 		defer terraform.Destroy(t, terraformOptions)
 
-		terraform.InitAndApply(t, terraformOptions)
+		_, err := terraform.InitAndApplyE(t, terraformOptions)
+		assert.NoError(t, err)
 
 		// Check that the outputs not empty
-		yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
-		assert.NotEmpty(t, yggIP)
-
 		fqdn := terraform.Output(t, terraformOptions, "fqdn")
 		assert.NotEmpty(t, fqdn)
 
-		// ssh to VM and check if yggdrasil is active
-		output, _ := exec.Command("ping", fqdn, "-c 5", "-i 3", "-w 10").Output()
-		assert.NotContains(t, string(output), "Destination Host Unreachable")
+		yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
+		assert.NotEmpty(t, yggIP)
+
+		ok := TestConnection(yggIP, "22")
+		assert.True(t, ok)
+
+		_, err = RemoteRun("root", yggIP, "apk add python3; python3 -m http.server 9000 --bind :: &> /dev/null &", privateKey)
+		assert.NoError(t, err)
+
+		time.Sleep(3 * time.Second)
+
+		response, err := http.Get(fmt.Sprintf("http://%s", fqdn))
+		assert.NoError(t, err)
+		body, err := io.ReadAll(response.Body)
+		defer response.Body.Close()
+		assert.NoError(t, err)
+		assert.Contains(t, string(body), "Directory listing for")
+
 	})
 
+	t.Run("gateway_fqdn", func(t *testing.T) {
+		/* Test case for deployeng a gateway with fdqn.
+
+		   **Test Scenario**
+
+		   - Deploy a gateway with fdqn.
+		   - Deploy a vm.
+		   - Assert that outputs are not empty.
+		   - Run python server on vm.
+		   - Make an http request to fqdn and assert that the response is correct.
+		   - Destroy the deployment
+		*/
+
+		fqdn := "hamada1.3x0.me" // points to node 15 devnet
+
+		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
+			TerraformDir: "./gateway_with_fqdn",
+			Vars: map[string]interface{}{
+				"public_key": publicKey,
+				"fqdn":       fqdn,
+			},
+			Parallelism: 1,
+		})
+		defer terraform.Destroy(t, terraformOptions)
+
+		_, err := terraform.InitAndApplyE(t, terraformOptions)
+		assert.NoError(t, err)
+
+		// Check that the outputs not empty
+		fqdn = terraform.Output(t, terraformOptions, "fqdn")
+		assert.NotEmpty(t, fqdn)
+
+		yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
+		assert.NotEmpty(t, yggIP)
+
+		ok := TestConnection(yggIP, "22")
+		assert.True(t, ok)
+
+		_, err = RemoteRun("root", yggIP, "apk add python3; python3 -m http.server 9000 --bind :: &> /dev/null &", privateKey)
+		assert.NoError(t, err)
+
+		time.Sleep(3 * time.Second)
+
+		response, err := http.Get(fmt.Sprintf("http://%s", fqdn))
+		assert.NoError(t, err)
+		body, err := io.ReadAll(response.Body)
+		defer response.Body.Close()
+		assert.NoError(t, err)
+		assert.Contains(t, string(body), "Directory listing for")
+	})
 }
