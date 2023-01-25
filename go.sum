@@ -1223,8 +1223,8 @@ github.com/threefoldtech/go-rmb v0.2.2 h1:BfLavyRbZ818xtXGf7VbI4u+a691bILfLSt5GR
 github.com/threefoldtech/go-rmb v0.2.2/go.mod h1:/ZQY/0xUqgHKMNVillCDi/XJ5zwHlDhFOJd/sYreaY4=
 github.com/threefoldtech/go-substrate-rpc-client/v4 v4.0.6-0.20230102154731-7c633b7d3c71 h1:vvoXPRI10quMOEXHKcakKhBZe+TlLXhNsh1wwX4cyk4=
 github.com/threefoldtech/go-substrate-rpc-client/v4 v4.0.6-0.20230102154731-7c633b7d3c71/go.mod h1:5g1oM4Zu3BOaLpsKQ+O8PAv2kNuq+kPcA1VzFbsSqxE=
-github.com/threefoldtech/grid_proxy_server v1.6.6 h1:NL/iKUx7wk1GHN7WjahtU4GSAGK/PsGOrzBksdx1xe4=
-github.com/threefoldtech/grid_proxy_server v1.6.6/go.mod h1:CCj6+Y+8juSCp+FCtaYa1rZAYFAc+vrX3Mh+dzoc4m8=
+github.com/threefoldtech/grid_proxy_server v1.6.9 h1:ZspR2myRxeyp5VwaC49d7v0XrRHqu2q3e61nC+tbvp0=
+github.com/threefoldtech/grid_proxy_server v1.6.9/go.mod h1:CCj6+Y+8juSCp+FCtaYa1rZAYFAc+vrX3Mh+dzoc4m8=
 github.com/threefoldtech/substrate-client v0.0.0-20220224131248-f56a2e9fa1d4/go.mod h1:Lpsz7gVNSdbWD8erfVh1AZv2wnProc7g/QHJiYp5lP8=
 github.com/threefoldtech/substrate-client v0.0.0-20220927111941-026e0cf92661/go.mod h1:U8sNNYpXyxEKuLUm4jTacuWu43vU0iu2l+K8GXIcbLo=
 github.com/threefoldtech/substrate-client v0.0.0-20230103083438-c6d86a2e6338 h1:944udPn3N1Nwx0qYWeZJTlvurPMuKyhcCRXJcRA8/pE=
