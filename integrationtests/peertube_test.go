@@ -6,6 +6,7 @@ package integrationtests
 import (
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
@@ -55,6 +56,7 @@ func TestPeerTubeDeployment(t *testing.T) {
 	output, err := RemoteRun("root", planetary, "zinit list", privateKey)
 	assert.NoError(t, err)
 	assert.Contains(t, output, "peertube: Running")
+	time.Sleep(60 * time.Second) // Sleeps for 60 seconds
 	_, err = http.Get(peertube)
 	assert.NoError(t, err)
 
