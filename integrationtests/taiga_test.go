@@ -4,7 +4,7 @@
 package integrationtests
 
 import (
-	"os/exec"
+	"net/http"
 	"testing"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
@@ -56,5 +56,7 @@ func TestTaigaDeployment(t *testing.T) {
 	output, err = RemoteRun("root", planetary, "zinit list", privateKey)
 	assert.NoError(t, err)
 	assert.Contains(t, output, "taiga: Running")
+	_, err = http.Get(webIp)
+	assert.NoError(t, err)
 
 }

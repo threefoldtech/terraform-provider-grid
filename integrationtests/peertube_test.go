@@ -4,6 +4,7 @@
 package integrationtests
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
@@ -54,5 +55,7 @@ func TestPeerTubeDeployment(t *testing.T) {
 	output, err := RemoteRun("root", planetary, "zinit list", privateKey)
 	assert.NoError(t, err)
 	assert.Contains(t, output, "peertube: Running")
+	_, err = http.Get(peertube)
+	assert.NoError(t, err)
 
 }
