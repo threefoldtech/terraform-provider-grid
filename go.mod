@@ -26,6 +26,12 @@ require (
 	github.com/threefoldtech/grid_proxy_server v1.6.6
 	github.com/vedhavyas/go-subkey v1.0.3
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
+	golang.org/x/sync v0.1.0
+)
+
+require (
+	github.com/onsi/ginkgo v1.16.5 // indirect
+	github.com/onsi/gomega v1.25.0 // indirect
 )
 
 require (
@@ -42,7 +48,7 @@ require (
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d // indirect
 	github.com/bgentry/speakeasy v0.1.0 // indirect
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
-	github.com/cespare/xxhash/v2 v2.1.2 // indirect
+	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/cosmos/go-bip39 v1.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
@@ -52,6 +58,7 @@ require (
 	github.com/ethereum/go-ethereum v1.10.17 // indirect
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
+	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/go-redis/redis/v8 v8.11.4 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
@@ -119,7 +126,6 @@ require (
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
 	golang.org/x/mod v0.7.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20210514164344-f6687ab2804c // indirect
-	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.4.0 // indirect
 	golang.org/x/text v0.6.0 // indirect
 	golang.org/x/tools v0.5.0 // indirect

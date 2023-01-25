@@ -1,47 +1,65 @@
-//go:build integration
-// +build integration
-
 package integrationtests
 
 import (
 	"testing"
 
+	"github.com/go-redis/redis"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestZdbsDeployment(t *testing.T) {
-	/* Test case for deployeng a singlenode.
+func TestZdbs(t *testing.T) {
 
-	   **Test Scenario**
+	t.Run("zdb_test", func(t *testing.T) {
+		/* Test case for deployeng a singlenode.
 
-	   - Deploy a zdbs.
-	   - Deploy a VM (have a IPv6)
-	   - Check that the outputs not empty.
-	   - Check that zdb reachable from VM.
-	   - Destroy the deployment
+		   **Test Scenario**
 
-	*/
+		   - Deploy a zdb.
+		   - Connect to the zdb.
+		   - Write and read from the zdb.
+		   - Assert that the written and read values match.
+		   - Destroy the deployment
 
-	// retryable errors in terraform testing.
-	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-		TerraformDir: "./zdbs",
-		Parallelism:  1,
+		*/
+
+		// retryable errors in terraform testing.
+		password := "password123"
+		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
+			TerraformDir: "./zdbs",
+			Parallelism:  1,
+			Vars: map[string]interface{}{
+				"password": password,
+			},
+		})
+		defer terraform.Destroy(t, terraformOptions)
+
+		_, err := terraform.InitAndApplyE(t, terraformOptions)
+		assert.NoError(t, err)
+
+		// Check that the outputs not empty
+		deploymentId := terraform.Output(t, terraformOptions, "deployment_id")
+		assert.NotEmpty(t, deploymentId)
+
+		zdbEndpoint := terraform.Output(t, terraformOptions, "zdb1_endpoint")
+		assert.NotEmpty(t, zdbEndpoint)
+
+		zdbNamespace := terraform.Output(t, terraformOptions, "zdb1_namespace")
+		assert.NotEmpty(t, zdbNamespace)
+
+		rdb := redis.NewClient(&redis.Options{
+			Addr: zdbEndpoint,
+		})
+		_, err = rdb.Do("SELECT", zdbNamespace, password).Result()
+		assert.NoError(t, err)
+
+		_, err = rdb.Set("key1", "val1", 0).Result()
+		assert.NoError(t, err)
+
+		res, err := rdb.Get("key1").Result()
+		assert.NoError(t, err)
+		assert.Equal(t, res, "val1")
+
 	})
-	defer terraform.Destroy(t, terraformOptions)
-
-	terraform.InitAndApply(t, terraformOptions)
-
-	// Check that the outputs not empty
-	deploymentId := terraform.Output(t, terraformOptions, "deployment_id")
-	assert.NotEmpty(t, deploymentId)
-
-	zdb1Endpoint := terraform.Output(t, terraformOptions, "zdb1_endpoint")
-	assert.NotEmpty(t, zdb1Endpoint)
-
-	zdb1Namespace := terraform.Output(t, terraformOptions, "zdb1_namespace")
-	assert.NotEmpty(t, zdb1Namespace)
-
-	// Check that zdb reachable from VM.
 
 }

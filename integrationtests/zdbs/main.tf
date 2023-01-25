@@ -1,3 +1,7 @@
+variable "password" {
+  type = string
+  
+}
 terraform {
   required_providers {
     grid = {
@@ -10,13 +14,13 @@ provider "grid" {
 }
 
 resource "grid_deployment" "d1" {
-  node = 1
+  node = 14
   
   zdbs{
-    name = "zdb1"
+    name = "zdb123"
     size = 10 
     description = "zdb1 description"
-    password = "zdbpasswd1"
+    password = var.password
     mode = "user"
   }
 }
@@ -27,7 +31,7 @@ output "deployment_id" {
 }
 
 output "zdb1_endpoint" {
-    value = format("[%s]:%d", grid_deployment.d1.zdbs[0].ips[0], grid_deployment.d1.zdbs[0].port)
+    value = format("[%s]:%d", grid_deployment.d1.zdbs[0].ips[1], grid_deployment.d1.zdbs[0].port)
 }
 
 output "zdb1_namespace" {
