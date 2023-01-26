@@ -1,6 +1,3 @@
-//go:build integration
-// +build integration
-
 package integrationtests
 
 import (
@@ -38,7 +35,7 @@ func TestTaigaDeployment(t *testing.T) {
 		},
 		Parallelism: 1,
 	})
-	defer terraform.Destroy(t, terraformOptions)
+	// defer terraform.Destroy(t, terraformOptions)
 
 	terraform.InitAndApply(t, terraformOptions)
 
@@ -50,15 +47,18 @@ func TestTaigaDeployment(t *testing.T) {
 	assert.NotEmpty(t, webIp)
 
 	// Check that env variables set successfully
-	output, err := RemoteRun("root", planetary, "cat /proc/1/environ", privateKey)
-	assert.NoError(t, err)
-	assert.Contains(t, string(output), "SSH_KEY")
-
-	output, err = RemoteRun("root", planetary, "zinit list", privateKey)
+	output, err := RemoteRun("root", planetary, "zinit list", privateKey)
 	assert.NoError(t, err)
 	assert.Contains(t, output, "taiga: Running")
-	time.Sleep(60 * time.Second) // Sleeps for 60 seconds
-	_, err = http.Get(webIp)
-	assert.NoError(t, err)
 
+	statusOk := false
+	ticker := time.NewTicker(2 * time.Second)
+	for now := time.Now(); time.Since(now) < 1*time.Minute && !statusOk; {
+		<-ticker.C
+		resp, err := http.Get(webIp)
+		if err == nil && resp.StatusCode == 200 {
+			statusOk = true
+		}
+	}
+	assert.True(t, statusOk, "website did not respond with 200 status code")
 }

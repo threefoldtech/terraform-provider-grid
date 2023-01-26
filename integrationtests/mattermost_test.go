@@ -49,8 +49,15 @@ func TestMattermostDeployment(t *testing.T) {
 	output, err := RemoteRun("root", planetary, "zinit list", privateKey)
 	assert.NoError(t, err)
 	assert.Contains(t, output, "mattermost: Running")
-	time.Sleep(60 * time.Second) // Sleeps for 60 seconds
-	_, err = http.Get(fqdn)
-	assert.NoError(t, err)
 
+	statusOk := false
+	ticker := time.NewTicker(2 * time.Second)
+	for now := time.Now(); time.Since(now) < 1*time.Minute && !statusOk; {
+		<-ticker.C
+		resp, err := http.Get(fqdn)
+		if err == nil && resp.StatusCode == 200 {
+			statusOk = true
+		}
+	}
+	assert.True(t, statusOk, "website did not respond with 200 status code")
 }

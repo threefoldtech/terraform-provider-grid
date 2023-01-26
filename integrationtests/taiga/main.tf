@@ -16,20 +16,19 @@ provider "grid" {
 }
 
 resource "grid_network" "net2" {
-  nodes         = [12]
+  nodes         = [7]
   ip_range      = "10.1.0.0/16"
   name          = "network1"
   description   = "newer network"
-  add_wg_access = true
 }
 
 resource "grid_deployment" "node1" {
-  node         = 12
+  node         = 7
   network_name = grid_network.net2.name
   disks {
     name        = "data0"
     # will hold images, volumes etc. modify the size according to your needs
-    size        = 20
+    size        = 5
     description = "volume holding docker data"
   }
   vms {
@@ -60,23 +59,19 @@ resource "grid_deployment" "node1" {
       EMAIL_HOST_PASSWORD = "",
     }
     planetary = true
-    publicip = true
+    publicip = false
   }
 }
 
 data "grid_gateway_domain" "domain" {
-  node = 12
+  node = 219
   name = "grid3taiga"
 }
 resource "grid_name_proxy" "p1" {
-  node            = 12
+  node            = 219
   name            = "grid3taiga"
   backends        = [format("http://%s:9000", grid_deployment.node1.vms[0].ygg_ip)]
   tls_passthrough = false
-}
-
-output "node1_zmachine1_ip" {
-  value = grid_deployment.node1.vms[0].ip
 }
 
 
