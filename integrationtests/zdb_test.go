@@ -22,8 +22,6 @@ func TestZdbs(t *testing.T) {
 		   - Destroy the deployment
 
 		*/
-
-		// retryable errors in terraform testing.
 		password := "password123"
 		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 			TerraformDir: "./zdbs",
@@ -59,7 +57,5 @@ func TestZdbs(t *testing.T) {
 		res, err := rdb.Get("key1").Result()
 		assert.NoError(t, err)
 		assert.Equal(t, res, "val1")
-
 	})
-
 }

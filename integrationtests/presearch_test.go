@@ -1,6 +1,3 @@
-//go:build integration
-// +build integration
-
 package integrationtests
 
 import (
@@ -30,7 +27,7 @@ func TestPreSearchDeployment(t *testing.T) {
 	// generate ssh keys for test
 	publicKey, privateKey, err := GenerateSSHKeyPair()
 	if err != nil {
-		t.Fatal()
+		t.Fatalf("failed to generate ssh key pair: %s", err.Error())
 	}
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./presearch",
@@ -41,16 +38,17 @@ func TestPreSearchDeployment(t *testing.T) {
 	})
 	defer terraform.Destroy(t, terraformOptions)
 
-	terraform.InitAndApply(t, terraformOptions)
+	_, err = terraform.InitAndApplyE(t, terraformOptions)
+	assert.NoError(t, err)
 
 	// Check that the outputs not empty
-	publicIp := terraform.Output(t, terraformOptions, "computed_public_ip")
-	assert.NotEmpty(t, publicIp)
+	publicIP := terraform.Output(t, terraformOptions, "computed_public_ip")
+	assert.NotEmpty(t, publicIP)
 
 	planetary := terraform.Output(t, terraformOptions, "ygg_ip")
 	assert.NotEmpty(t, planetary)
 	// Check that vm is reachable
-	ip := strings.Split(publicIp, "/")[0]
+	ip := strings.Split(publicIP, "/")[0]
 
 	// Check that env variables set successfully
 	output, err := RemoteRun("root", ip, "cat /proc/1/environ", privateKey)

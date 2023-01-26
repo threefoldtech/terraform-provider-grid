@@ -25,7 +25,7 @@ func TestMattermostDeployment(t *testing.T) {
 	// generate ssh keys for test
 	publicKey, privateKey, err := GenerateSSHKeyPair()
 	if err != nil {
-		t.Fatal()
+		t.Fatalf("failed to generate ssh key pair: %s", err.Error())
 	}
 
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
@@ -37,7 +37,8 @@ func TestMattermostDeployment(t *testing.T) {
 	})
 	defer terraform.Destroy(t, terraformOptions)
 
-	terraform.InitAndApply(t, terraformOptions)
+	_, err = terraform.InitAndApplyE(t, terraformOptions)
+	assert.NoError(t, err)
 
 	// Check that the outputs not empty
 	planetary := terraform.Output(t, terraformOptions, "ygg_ip")

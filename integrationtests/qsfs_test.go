@@ -1,7 +1,6 @@
 package integrationtests
 
 import (
-	"log"
 	"os/exec"
 	"testing"
 
@@ -12,7 +11,7 @@ import (
 func TestQSFS(t *testing.T) {
 	publicKey, privateKey, err := GenerateSSHKeyPair()
 	if err != nil {
-		log.Fatalf("failed to generate ssh key pair: %s", err.Error())
+		t.Fatalf("failed to generate ssh key pair: %s", err.Error())
 	}
 
 	t.Run("qsfs_test", func(t *testing.T) {
@@ -27,7 +26,7 @@ func TestQSFS(t *testing.T) {
 		*/
 
 		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-			TerraformDir: "./qsfs_check_metrics",
+			TerraformDir: "./qsfs",
 			Vars: map[string]interface{}{
 				"public_key": publicKey,
 			},
@@ -35,7 +34,8 @@ func TestQSFS(t *testing.T) {
 		})
 		defer terraform.Destroy(t, terraformOptions)
 
-		terraform.InitAndApply(t, terraformOptions)
+		_, err = terraform.InitAndApplyE(t, terraformOptions)
+		assert.NoError(t, err)
 
 		// Check that the outputs not empty
 		metrics := terraform.Output(t, terraformOptions, "metrics")

@@ -3,7 +3,6 @@ package integrationtests
 import (
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"testing"
 	"time"
@@ -15,7 +14,7 @@ import (
 func TestGateWay(t *testing.T) {
 	publicKey, privateKey, err := GenerateSSHKeyPair()
 	if err != nil {
-		log.Fatalf("failed to generate ssh key pair: %s", err.Error())
+		t.Fatalf("failed to generate ssh key pair: %s", err.Error())
 	}
 
 	t.Run("gateway_name", func(t *testing.T) {
@@ -60,8 +59,11 @@ func TestGateWay(t *testing.T) {
 
 		response, err := http.Get(fmt.Sprintf("http://%s", fqdn))
 		assert.NoError(t, err)
+
 		body, err := io.ReadAll(response.Body)
-		defer response.Body.Close()
+		if body != nil {
+			defer response.Body.Close()
+		}
 		assert.NoError(t, err)
 		assert.Contains(t, string(body), "Directory listing for")
 
@@ -113,7 +115,9 @@ func TestGateWay(t *testing.T) {
 		response, err := http.Get(fmt.Sprintf("http://%s", fqdn))
 		assert.NoError(t, err)
 		body, err := io.ReadAll(response.Body)
-		defer response.Body.Close()
+		if body != nil {
+			defer response.Body.Close()
+		}
 		assert.NoError(t, err)
 		assert.Contains(t, string(body), "Directory listing for")
 	})

@@ -26,7 +26,7 @@ func TestTaigaDeployment(t *testing.T) {
 	// generate ssh keys for test
 	publicKey, privateKey, err := GenerateSSHKeyPair()
 	if err != nil {
-		t.Fatal()
+		t.Fatalf("failed to generate ssh key pair: %s", err.Error())
 	}
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./taiga",
@@ -35,16 +35,17 @@ func TestTaigaDeployment(t *testing.T) {
 		},
 		Parallelism: 1,
 	})
-	// defer terraform.Destroy(t, terraformOptions)
+	defer terraform.Destroy(t, terraformOptions)
 
-	terraform.InitAndApply(t, terraformOptions)
+	_, err = terraform.InitAndApplyE(t, terraformOptions)
+	assert.NoError(t, err)
 
 	// Check that the outputs not empty
 	planetary := terraform.Output(t, terraformOptions, "node1_zmachine1_ygg_ip")
 	assert.NotEmpty(t, planetary)
 
-	webIp := terraform.Output(t, terraformOptions, "fqdn")
-	assert.NotEmpty(t, webIp)
+	fqdn := terraform.Output(t, terraformOptions, "fqdn")
+	assert.NotEmpty(t, fqdn)
 
 	// Check that env variables set successfully
 	output, err := RemoteRun("root", planetary, "zinit list", privateKey)
@@ -55,7 +56,7 @@ func TestTaigaDeployment(t *testing.T) {
 	ticker := time.NewTicker(2 * time.Second)
 	for now := time.Now(); time.Since(now) < 1*time.Minute && !statusOk; {
 		<-ticker.C
-		resp, err := http.Get(webIp)
+		resp, err := http.Get(fqdn)
 		if err == nil && resp.StatusCode == 200 {
 			statusOk = true
 		}

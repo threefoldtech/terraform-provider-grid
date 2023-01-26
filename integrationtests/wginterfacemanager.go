@@ -1,3 +1,6 @@
+//go:build integration
+// +build integration
+
 // Package integrationtests includes integration tests and wireguard testing utilities to run the tests
 package integrationtests
 
@@ -18,12 +21,13 @@ func UpWg(wgConfig, wgConfDir string) (string, error) {
 	if err != nil {
 		return "", errors.Wrapf(err, "could not create file")
 	}
+
 	_, err = f.WriteString(wgConfig)
 	if err != nil {
 		return "", errors.Wrapf(err, "could not write on file")
 	}
-	cmd := exec.Command("wg-quick", "up", f.Name())
-	_, err = cmd.Output()
+
+	_, err = exec.Command("wg-quick", "up", f.Name()).Output()
 	if err != nil {
 		return "", errors.Wrapf(err, "could not excute wg-quick up with"+f.Name())
 	}
@@ -33,7 +37,7 @@ func UpWg(wgConfig, wgConfDir string) (string, error) {
 }
 
 // DownWG used for tearing down the wireguard interface
-func DownWG(wgConfDir string) (string, error) { //tempdir
+func DownWG(wgConfDir string) (string, error) {
 	cmd := exec.Command("wg-quick", "down", path.Join(wgConfDir, "test.conf"))
 	out, err := cmd.CombinedOutput()
 	if err != nil {

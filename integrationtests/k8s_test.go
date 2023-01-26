@@ -44,7 +44,7 @@ func TestK8s(t *testing.T) {
 		   - Destroy the deployment
 		*/
 		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-			TerraformDir: "./kubernetes",
+			TerraformDir: "./k8s",
 			Vars: map[string]interface{}{
 				"public_key": publicKey,
 			},
@@ -72,7 +72,7 @@ func TestK8s(t *testing.T) {
 		AssertNodesAreReady(t, terraformOptions, privateKey)
 	})
 
-	t.Run("k8s_with_2workers_same_name", func(t *testing.T) {
+	t.Run("k8s_invalid_names", func(t *testing.T) {
 		/* Test case for deployeng a k8s.
 
 		   **Test Scenario**
@@ -82,7 +82,7 @@ func TestK8s(t *testing.T) {
 		*/
 
 		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-			TerraformDir: "./kubernetes_with_2worker_same_name",
+			TerraformDir: "./k8s_invalid_names",
 			Vars: map[string]interface{}{
 				"public_key": publicKey,
 			},
@@ -97,7 +97,7 @@ func TestK8s(t *testing.T) {
 		}
 	})
 
-	t.Run("k8s_with_module", func(t *testing.T) {
+	t.Run("k8s_using_module", func(t *testing.T) {
 		/* Test case for deployeng a singlenode.
 
 		   **Test Scenario**
@@ -109,7 +109,7 @@ func TestK8s(t *testing.T) {
 
 		*/
 		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-			TerraformDir: "./kubernetes_with_k8s_module",
+			TerraformDir: "./k8s_using_module",
 			Parallelism:  1,
 			Vars: map[string]interface{}{
 				"ssh":           publicKey,
@@ -145,6 +145,7 @@ func TestK8s(t *testing.T) {
 
 		_, err = terraform.InitAndApplyE(t, terraformOptions)
 		assert.NoError(t, err)
+		defer terraform.Destroy(t, terraformOptions)
 
 		AssertNodesAreReady(t, terraformOptions, privateKey)
 
@@ -195,6 +196,5 @@ func TestK8s(t *testing.T) {
 
 		AssertNodesAreReady(t, terraformOptions, privateKey)
 
-		terraform.Destroy(t, terraformOptions)
 	})
 }

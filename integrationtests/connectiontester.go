@@ -1,3 +1,6 @@
+//go:build integration
+// +build integration
+
 // Package integrationtests includes integration tests and connection testing utilities to run the tests
 package integrationtests
 

@@ -1,7 +1,7 @@
 package integrationtests
 
 import (
-	"log"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -12,10 +12,10 @@ import (
 func TestVM(t *testing.T) {
 	publicKey, privateKey, err := GenerateSSHKeyPair()
 	if err != nil {
-		log.Fatalf("failed to generate ssh key pair: %s", err.Error())
+		t.Fatalf("failed to generate ssh key pair: %s", err.Error())
 	}
 
-	t.Run("single_vm", func(t *testing.T) {
+	t.Run("vm", func(t *testing.T) {
 		/* Test case for deployeng a singlenode.
 
 		   **Test Scenario**
@@ -26,7 +26,7 @@ func TestVM(t *testing.T) {
 		   - Destroy the deployment
 		*/
 		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-			TerraformDir: "./singlevm",
+			TerraformDir: "./vm",
 			Vars: map[string]interface{}{
 				"public_key": publicKey,
 			},
@@ -34,7 +34,8 @@ func TestVM(t *testing.T) {
 		})
 		defer terraform.Destroy(t, terraformOptions)
 
-		terraform.InitAndApply(t, terraformOptions)
+		_, err = terraform.InitAndApplyE(t, terraformOptions)
+		assert.NoError(t, err)
 
 		// Check that the outputs not empty
 
@@ -56,7 +57,7 @@ func TestVM(t *testing.T) {
 		assert.True(t, ok)
 	})
 
-	t.Run("single_vm_with_public_ip", func(t *testing.T) {
+	t.Run("vm_public_ip", func(t *testing.T) {
 		/* Test case for deployeng a singlenode.
 
 		   **Test Scenario**
@@ -67,7 +68,7 @@ func TestVM(t *testing.T) {
 		   - Destroy the deployment
 		*/
 		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-			TerraformDir: "./singlevm_publicIP",
+			TerraformDir: "./vm_public_ip",
 			Vars: map[string]interface{}{
 				"public_key": publicKey,
 			},
@@ -97,43 +98,7 @@ func TestVM(t *testing.T) {
 
 	})
 
-	t.Run("single_vm_with_key", func(t *testing.T) {
-		/* Test case for deployeng a singlenode.
-
-		   **Test Scenario**
-
-		   - Deploy a singlenode.
-		   - Check that the outputs not empty.
-		   - connect to the machine
-		   - Destroy the deployment
-
-		*/
-		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-			TerraformDir: "./singlevm_key_ed25519",
-			Vars: map[string]interface{}{
-				"public_key": publicKey,
-			},
-			Parallelism: 1,
-		})
-		defer terraform.Destroy(t, terraformOptions)
-
-		terraform.InitAndApply(t, terraformOptions)
-
-		// Check that the outputs not empty
-		planetary := terraform.Output(t, terraformOptions, "ygg_ip")
-		assert.NotEmpty(t, planetary)
-
-		node1Container1IP := terraform.Output(t, terraformOptions, "node1_container1_ip")
-		assert.NotEmpty(t, node1Container1IP)
-
-		node1Container2IP := terraform.Output(t, terraformOptions, "node1_container2_ip")
-		assert.NotEmpty(t, node1Container2IP)
-
-		ok := TestConnection(planetary, "22")
-		assert.True(t, ok)
-	})
-
-	t.Run("single_vm_with_zero_cpu", func(t *testing.T) {
+	t.Run("vm_invalid_cpu", func(t *testing.T) {
 		/* Test case for deployeng a singlenode.
 
 		   **Test Scenario**
@@ -144,7 +109,7 @@ func TestVM(t *testing.T) {
 
 		*/
 		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-			TerraformDir: "./singlevm_with_zero_cpu",
+			TerraformDir: "./vm_invalid_cpu",
 			Vars: map[string]interface{}{
 				"public_key": publicKey,
 			},
@@ -159,7 +124,7 @@ func TestVM(t *testing.T) {
 		}
 	})
 
-	t.Run("single_vm_with_memory_less_than_250", func(t *testing.T) {
+	t.Run("vm_invalid_memory", func(t *testing.T) {
 		/* Test case for deployeng a singlenode.
 
 		   **Test Scenario**
@@ -170,7 +135,7 @@ func TestVM(t *testing.T) {
 
 		*/
 		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-			TerraformDir: "./singlevm_with_memory_less_than_250M",
+			TerraformDir: "./vm_invalid_memory",
 			Vars: map[string]interface{}{
 				"public_key": publicKey,
 			},
@@ -179,13 +144,14 @@ func TestVM(t *testing.T) {
 		defer terraform.Destroy(t, terraformOptions)
 
 		_, err = terraform.InitAndApplyE(t, terraformOptions)
+		assert.NoError(t, err)
 
 		if err == nil {
 			t.Errorf("Should fail with mem capacity can't be less that 250M but err is null")
 		}
 
 	})
-	t.Run("mounts", func(t *testing.T) {
+	t.Run("vm_mounts", func(t *testing.T) {
 		/* Test case for deployeng a disk and mount it.
 
 		   **Test Scenario**
@@ -200,16 +166,19 @@ func TestVM(t *testing.T) {
 
 		// retryable errors in terraform testing.
 		// generate ssh keys for test
+		diskSize := 2
 		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-			TerraformDir: "./mounts",
+			TerraformDir: "./vm_mounts",
 			Vars: map[string]interface{}{
 				"public_key": publicKey,
+				"disk_size":  diskSize,
 			},
 			Parallelism: 1,
 		})
 		defer terraform.Destroy(t, terraformOptions)
 
-		terraform.InitAndApply(t, terraformOptions)
+		_, err = terraform.InitAndApplyE(t, terraformOptions)
+		assert.NoError(t, err)
 
 		// Check that the outputs not empty
 		planetary := terraform.Output(t, terraformOptions, "ygg_ip")
@@ -226,13 +195,13 @@ func TestVM(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Contains(t, string(output), "SSH_KEY")
 
-		// Check that disk has been mounted successfully with 10G
+		// Check that disk has been mounted successfully
 		output, err = RemoteRun("root", planetary, "df -h | grep -w /app", privateKey)
 		assert.NoError(t, err)
-		assert.Contains(t, string(output), "10G")
+		assert.Contains(t, string(output), fmt.Sprintf("%dG", diskSize))
 	})
 
-	t.Run("mounts_with_bigger_file", func(t *testing.T) {
+	t.Run("vm_mount_invalid_write", func(t *testing.T) {
 		/* Test case for deployeng a mount disk and try to create a file bigger than disk size.
 
 		   **Test Scenario**
@@ -242,16 +211,19 @@ func TestVM(t *testing.T) {
 		   - ssh to VM and try to create a file with size 1G.
 		   - Destroy the deployment
 		*/
+		diskSize := 1
 		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-			TerraformDir: "./mount_with_file_bigger_than_disk_size",
+			TerraformDir: "./vm_mount_invalid_write",
 			Vars: map[string]interface{}{
 				"public_key": publicKey,
+				"disk_size":  diskSize,
 			},
 			Parallelism: 1,
 		})
 		defer terraform.Destroy(t, terraformOptions)
 
-		terraform.InitAndApply(t, terraformOptions)
+		_, err = terraform.InitAndApplyE(t, terraformOptions)
+		assert.NoError(t, err)
 
 		planetary := terraform.Output(t, terraformOptions, "ygg_ip")
 		assert.NotEmpty(t, planetary)
@@ -261,24 +233,23 @@ func TestVM(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Contains(t, string(output), "SSH_KEY")
 
-		// ssh to VM and try to create a file with size 1G.
-		_, err = RemoteRun("root", planetary, "cd /app/ && dd if=/dev/vda bs=2G count=1 of=test.txt", privateKey)
+		// ssh to VM and try to create a file bigger than disk size.
+		_, err = RemoteRun("root", planetary, fmt.Sprintf("cd /app/ && dd if=/dev/vda bs=%dG count=1 of=test.txt", diskSize+1), privateKey)
 		if err == nil {
 			t.Errorf("should fail with out of memory")
 		}
 	})
-	t.Run("mounts_with_bigger_file", func(t *testing.T) {
-		/* Test case for deployeng a mount disk and try to create a file bigger than disk size.
-
+	t.Run("vm_multinode", func(t *testing.T) {
+		/* Test case for deployeng a multinode.
 		   **Test Scenario**
-
-		   - Deploy a mount disk with size 1G.
+		   - Deploy multinode deployments.
 		   - Check that the outputs not empty.
-		   - ssh to VM and try to create a file with size 1G.
+		   - Verify the VMs ips
 		   - Destroy the deployment
 		*/
+
 		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-			TerraformDir: "./mount_with_file_bigger_than_disk_size",
+			TerraformDir: "./vm_multinode",
 			Vars: map[string]interface{}{
 				"public_key": publicKey,
 			},
@@ -286,20 +257,32 @@ func TestVM(t *testing.T) {
 		})
 		defer terraform.Destroy(t, terraformOptions)
 
-		terraform.InitAndApply(t, terraformOptions)
-
-		planetary := terraform.Output(t, terraformOptions, "ygg_ip")
-		assert.NotEmpty(t, planetary)
-
-		// Check that env variables set successfully
-		output, err := RemoteRun("root", planetary, "cat /proc/1/environ", privateKey)
+		_, err = terraform.InitAndApplyE(t, terraformOptions)
 		assert.NoError(t, err)
-		assert.Contains(t, string(output), "SSH_KEY")
 
-		// ssh to VM and try to create a file with size 1G.
-		_, err = RemoteRun("root", planetary, "cd /app/ && dd if=/dev/vda bs=1G count=1 of=test.txt", privateKey)
-		if err == nil {
-			t.Errorf("should fail with out of memory")
-		}
+		// Check that the outputs not empty
+		node1Container1IP := terraform.Output(t, terraformOptions, "node1_zmachine1_ip")
+		assert.NotEmpty(t, node1Container1IP)
+
+		node2Container1IP := terraform.Output(t, terraformOptions, "node2_zmachine1_ip")
+		assert.NotEmpty(t, node2Container1IP)
+
+		yggIP1 := terraform.Output(t, terraformOptions, "node1_zmachine_ygg_ip")
+		assert.NotEmpty(t, yggIP1)
+
+		yggIP2 := terraform.Output(t, terraformOptions, "node2_zmachine_ygg_ip")
+		assert.NotEmpty(t, yggIP2)
+
+		//spliting ip to connect on it
+		yggIP1 = strings.Split(yggIP1, "/")[0]
+
+		yggIP2 = strings.Split(yggIP2, "/")[0]
+
+		//testing connections
+		ok := TestConnection(yggIP1, "22")
+		assert.True(t, ok)
+
+		ok = TestConnection(yggIP2, "22")
+		assert.True(t, ok)
 	})
 }

@@ -1,6 +1,3 @@
-//go:build integration
-// +build integration
-
 package integrationtests
 
 import (
@@ -39,7 +36,8 @@ func TestWireguard(t *testing.T) {
 	})
 	defer terraform.Destroy(t, terraformOptions)
 
-	terraform.InitAndApply(t, terraformOptions)
+	_, err = terraform.InitAndApplyE(t, terraformOptions)
+	assert.NoError(t, err)
 
 	// Check that the outputs not empty
 	wgVM1IP := terraform.Output(t, terraformOptions, "vm1_wg_ip")

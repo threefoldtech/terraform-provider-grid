@@ -3,6 +3,10 @@ variable "public_key" {
   type = string
 }
 
+variable "disk_size" {
+  type = number
+}
+
 terraform {
   required_providers {
     grid = {
@@ -19,14 +23,13 @@ resource "grid_network" "net1" {
   ip_range      = "10.1.0.0/16"
   name          = "network"
   description   = "newer network"
-  add_wg_access = true
 }
 resource "grid_deployment" "d1" {
   node         = 2
   network_name = grid_network.net1.name
   disks {
     name        = "data"
-    size        = 10
+    size        = var.disk_size
     description = "volume holding app data"
   }
   vms {
@@ -44,17 +47,6 @@ resource "grid_deployment" "d1" {
       SSH_KEY  = "${var.public_key}"
     }
       planetary = true
-
-  }
-  vms {
-    name       = "anothervm"
-    flist      = "https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-20.04.flist"
-    cpu        = 1
-    memory     = 1024
-    entrypoint = "/init.sh"
-    env_vars = {
-      SSH_KEY  = "${var.public_key}"
-    }
   }
 }
 output "wg_config" {

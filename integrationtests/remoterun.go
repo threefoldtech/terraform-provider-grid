@@ -1,3 +1,6 @@
+//go:build integration
+// +build integration
+
 // Package integrationtests includes integration tests and ssh connection testing utilities to run the tests
 package integrationtests
 
@@ -33,6 +36,7 @@ func RemoteRun(user string, addr string, cmd string, privateKey string) (string,
 	if err != nil {
 		return "", errors.Wrapf(err, "could not start ssh connection")
 	}
+
 	session, err := client.NewSession()
 	if err != nil {
 		return "", errors.Wrapf(err, "could not create new session with message error")

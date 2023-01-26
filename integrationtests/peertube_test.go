@@ -1,6 +1,3 @@
-//go:build integration
-// +build integration
-
 package integrationtests
 
 import (
@@ -28,7 +25,7 @@ func TestPeerTubeDeployment(t *testing.T) {
 	// generate ssh keys for test
 	publicKey, privateKey, err := GenerateSSHKeyPair()
 	if err != nil {
-		t.Fatal()
+		t.Fatalf("failed to generate ssh key pair: %s", err.Error())
 	}
 
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
@@ -40,14 +37,15 @@ func TestPeerTubeDeployment(t *testing.T) {
 	})
 	defer terraform.Destroy(t, terraformOptions)
 
-	terraform.InitAndApply(t, terraformOptions)
+	_, err = terraform.InitAndApplyE(t, terraformOptions)
+	assert.NoError(t, err)
 
 	// Check that the outputs not empty
 	planetary := terraform.Output(t, terraformOptions, "ygg_ip")
 	assert.NotEmpty(t, planetary)
 
-	peertube := terraform.Output(t, terraformOptions, "fqdn")
-	assert.NotEmpty(t, peertube)
+	fqdn := terraform.Output(t, terraformOptions, "fqdn")
+	assert.NotEmpty(t, fqdn)
 
 	ok := TestConnection(planetary, "22")
 	assert.True(t, ok)
@@ -61,7 +59,7 @@ func TestPeerTubeDeployment(t *testing.T) {
 	ticker := time.NewTicker(2 * time.Second)
 	for now := time.Now(); time.Since(now) < 1*time.Minute && !statusOk; {
 		<-ticker.C
-		resp, err := http.Get(peertube)
+		resp, err := http.Get(fqdn)
 		if err == nil && resp.StatusCode == 200 {
 			statusOk = true
 		}
