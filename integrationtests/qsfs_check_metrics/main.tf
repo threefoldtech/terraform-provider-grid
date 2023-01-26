@@ -19,21 +19,21 @@ locals {
 }
 
 resource "grid_network" "net1" {
-    nodes = [5]
+    nodes = [27]
     ip_range = "10.1.0.0/16"
-    name = "network"
+    name = "net1"
     description = "newer network"
 }
 
 resource "grid_deployment" "d1" {
-    node = 5
+    node = 27
     dynamic "zdbs" {
         for_each = local.metas
         content {
             name = zdbs.value
             description = "description"
             password = "password"
-            size = 10
+            size = 1
             mode = "user"
         }
     }
@@ -43,19 +43,19 @@ resource "grid_deployment" "d1" {
             name = zdbs.value
             description = "description"
             password = "password"
-            size = 10
+            size = 1
             mode = "seq"
         }
     }
 }
 
 resource "grid_deployment" "qsfs" {
-  node = 5
+  node = 27
   network_name = grid_network.net1.name
   qsfs {
     name = "qsfs"
     description = "description6"
-    cache = 1024 # 1 GB
+    cache = 2048 
     minimal_shards = 2
     expected_shards = 3
     redundant_groups = 0

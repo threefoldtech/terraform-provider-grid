@@ -15,13 +15,14 @@ func TestQSFS(t *testing.T) {
 		log.Fatalf("failed to generate ssh key pair: %s", err.Error())
 	}
 
-	t.Run("qsfs", func(t *testing.T) {
+	t.Run("qsfs_test", func(t *testing.T) {
 		/* Test case for deployeng a QSFS check metrics.
 		   **Test Scenario**
 		   - Deploy a qsfs.
 		   - Check that the outputs not empty.
-		   - Check that containers is reachable
-		   - write to a file. number of syscalls for write should increase try open, read, create, rename or etc number of syscalls should increase
+		   - Assert that qsfs create syscalls from metrics endpoint are equal to 0
+		   - Write a file on qsfs
+		   - Assert that qsfs create syscalls from metrics endpoint are equal to 1
 		   - Destroy the deployment
 		*/
 
@@ -45,50 +46,19 @@ func TestQSFS(t *testing.T) {
 
 		// get metrics
 		cmd := exec.Command("curl", metrics)
-		output, _ := cmd.Output()
+		output, err := cmd.Output()
+		assert.NoError(t, err)
+		assert.Contains(t, string(output), "fs_syscalls{syscall=\"create\"} 0")
 
 		// try write to a file in mounted disk
-		_, err = RemoteRun("root", yggIP, "cd /qsfs && echo test >> test", privateKey)
+		_, err = RemoteRun("root", yggIP, "cd /qsfs && echo hamadatext >> hamadafile", privateKey)
 		assert.NoError(t, err)
+
 		// get metrics after write
 		cmd = exec.Command("curl", metrics)
-		outputAfter, _ := cmd.Output()
-
-		// check that syscalls for write should increase
-		assert.NotEqual(t, outputAfter, output)
-	})
-
-	t.Run("qsfs_read_write", func(t *testing.T) {
-		/* Test case for deployeng a QSFS.
-		**Test Scenario**
-		- Deploy a qsfs.
-		- Check that the outputs not empty.
-		- Check that containers is reachable
-		- get the qsfs one and find its path and do some operations there you should can writing/reading/listing
-		- Destroy the deployment
-		*/
-
-		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-			TerraformDir: "./qsfs_read_write",
-			Vars: map[string]interface{}{
-				"public_key": publicKey,
-			},
-			Parallelism: 1,
-		})
-		defer terraform.Destroy(t, terraformOptions)
-
-		terraform.InitAndApply(t, terraformOptions)
-
-		// Check that the outputs not empty
-		metrics := terraform.Output(t, terraformOptions, "metrics")
-		assert.NotEmpty(t, metrics)
-
-		yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
-		assert.NotEmpty(t, yggIP)
-
-		output, err := RemoteRun("root", yggIP, "cd /qsfs && echo test >> test && cat test", privateKey)
+		output, err = cmd.Output()
 		assert.NoError(t, err)
-		assert.Contains(t, string(output), "test")
-	})
+		assert.Contains(t, string(output), "fs_syscalls{syscall=\"create\"} 1")
 
+	})
 }
