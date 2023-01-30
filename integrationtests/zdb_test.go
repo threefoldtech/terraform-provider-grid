@@ -36,8 +36,8 @@ func TestZdbs(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Check that the outputs not empty
-		deploymentId := terraform.Output(t, terraformOptions, "deployment_id")
-		assert.NotEmpty(t, deploymentId)
+		deploymentID := terraform.Output(t, terraformOptions, "deployment_id")
+		assert.NotEmpty(t, deploymentID)
 
 		zdbEndpoint := terraform.Output(t, terraformOptions, "zdb1_endpoint")
 		assert.NotEmpty(t, zdbEndpoint)
