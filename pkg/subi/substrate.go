@@ -1,3 +1,4 @@
+// subi package exposes substrate functionality
 package subi
 
 import (
