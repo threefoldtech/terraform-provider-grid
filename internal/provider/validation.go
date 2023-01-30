@@ -11,17 +11,18 @@ import (
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/pkg/errors"
+	"github.com/threefoldtech/substrate-client"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 )
 
 // validateAccount checks the mnemonics is associated with an account with key type ed25519
 func validateAccount(apiClient *apiClient, sub subi.SubstrateExt) error {
 	_, err := sub.GetAccount(apiClient.identity)
-	if err != nil && !errors.Is(err, subi.ErrAccountNotFound) {
+	if err != nil && !errors.Is(err, substrate.ErrAccountNotFound) {
 		return errors.Wrap(err, "failed to get account with the given mnemonics")
 	}
 	if err != nil { // Account not found
-		funcs := map[string]func(string) (subi.Identity, error){"ed25519": subi.NewIdentityFromEd25519Phrase, "sr25519": subi.NewIdentityFromSr25519Phrase}
+		funcs := map[string]func(string) (substrate.Identity, error){"ed25519": substrate.NewIdentityFromEd25519Phrase, "sr25519": substrate.NewIdentityFromSr25519Phrase}
 		for keyType, f := range funcs {
 			ident, err2 := f(apiClient.mnemonics)
 			if err2 != nil { // shouldn't happen, return original error
@@ -123,9 +124,9 @@ func preValidate(apiClient *apiClient, sub subi.SubstrateExt) error {
 	}
 }
 
-func validateAccountMoneyForExtrinsics(sub subi.SubstrateExt, identity subi.Identity) error {
+func validateAccountMoneyForExtrinsics(sub subi.SubstrateExt, identity substrate.Identity) error {
 	acc, err := sub.GetAccount(identity)
-	if err != nil && !errors.Is(err, subi.ErrAccountNotFound) {
+	if err != nil && !errors.Is(err, substrate.ErrAccountNotFound) {
 		return errors.Wrap(err, "failed to get account with the given mnemonics")
 	}
 	log.Printf("money %d\n", acc.Data.Free)

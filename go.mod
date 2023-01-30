@@ -15,11 +15,8 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.1
 	github.com/threefoldtech/go-rmb v0.2.2
-	github.com/threefoldtech/substrate-client v0.0.0-20230103083438-c6d86a2e6338
-	github.com/threefoldtech/substrate-client-main v0.0.1
-	github.com/threefoldtech/substrate-client-qa v0.0.1
-	github.com/threefoldtech/substrate-client-test v0.0.1
-	github.com/threefoldtech/zos v0.5.6-0.20230103093557-d9c7fe2b92e7
+	github.com/threefoldtech/substrate-client v0.0.0-20220927111941-026e0cf92661
+	github.com/threefoldtech/zos v0.5.6-0.20221018094127-d678e483dcc4
 	golang.org/x/net v0.3.0 // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20210803171230-4253848d036c
 )
@@ -28,7 +25,6 @@ require (
 	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/threefoldtech/grid_proxy_server v1.6.6
-	github.com/threefoldtech/substrate-client-dev v0.0.1
 	github.com/vedhavyas/go-subkey v1.0.3
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 )
@@ -135,12 +131,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.5 => github.com/threefoldtech/go-substrate-rpc-client/v4 v4.0.6-0.20230102154731-7c633b7d3c71
-
-replace github.com/threefoldtech/substrate-client-dev v0.0.1 => ./pkg/substrates/substrate-dev
-
-replace github.com/threefoldtech/substrate-client-test v0.0.1 => ./pkg/substrates/substrate-test
-
-replace github.com/threefoldtech/substrate-client-qa v0.0.1 => ./pkg/substrates/substrate-qa
-
-replace github.com/threefoldtech/substrate-client-main v0.0.1 => ./pkg/substrates/substrate-main
+replace github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.5 => github.com/threefoldtech/go-substrate-rpc-client/v4 v4.0.6-0.20220927094755-0f0d22c73cc7

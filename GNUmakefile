@@ -1,13 +1,10 @@
 GOPATH=$(shell go env GOPATH)
 
-default: submodules build-dev
+default: build-dev
 
 # Run acceptance tests
 .PHONY: testacc build docs
 
-submodules:
-	git submodule init
-	git submodule update
 
 build-dev:
 	go get
@@ -19,13 +16,13 @@ build-dev:
 docs:
 	go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs	
 
-testacc: submodules
+testacc:
 	TF_ACC=1 go test ./... -v $(TESTARGS) -timeout 120m
 
-unittests: submodules
+unittests:
 	go test -v ./...
 
-integrationtests: submodules
+integrationtests: 
 	go test -v ./tests/... -p 1 --tags=integration
 
 tests: unittests integrationtests

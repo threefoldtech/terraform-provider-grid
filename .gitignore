@@ -5,6 +5,7 @@ example.tf
 terraform.tfplan
 terraform.tfstate
 **/.terraform/*
+**/.terraform*
 bin/
 dist/
 modules-dev/
@@ -24,7 +25,7 @@ website/node_modules
 *.iml
 *.test
 *.iml
-
+state.json
 website/vendor
 
 # Test exclusions

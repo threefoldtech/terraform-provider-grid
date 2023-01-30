@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
 	proxy "github.com/threefoldtech/grid_proxy_server/pkg/client"
+	"github.com/threefoldtech/substrate-client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/state"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
@@ -30,12 +31,12 @@ var (
 		"qa":   "https://gridproxy.qa.grid.tf/",
 		"main": "https://gridproxy.grid.tf/",
 	}
-	SubstrateVersion = map[string]func(url ...string) subi.Manager{
-		"dev":  subi.NewDevManager,
-		"qa":   subi.NewQAManager,
-		"test": subi.NewTestManager,
-		"main": subi.NewMMainanager,
-	}
+	// SubstrateVersion = map[string]func(url ...string) subi.Manager{
+	// 	"dev":  subi.NewDevManager,
+	// 	"qa":   subi.NewQAManager,
+	// 	"test": subi.NewTestManager,
+	// 	"main": subi.NewMMainanager,
+	// }
 )
 
 func init() {
@@ -137,7 +138,7 @@ type apiClient struct {
 	rmb           rmb.Client
 	substrateConn subi.SubstrateExt
 	manager       subi.Manager
-	identity      subi.Identity
+	identity      substrate.Identity
 	state         state.StateI
 }
 
@@ -149,11 +150,11 @@ func providerConfigure(st state.StateI) (func(ctx context.Context, d *schema.Res
 		apiClient := apiClient{}
 		apiClient.mnemonics = d.Get("mnemonics").(string)
 		key_type := d.Get("key_type").(string)
-		var identity subi.Identity
+		var identity substrate.Identity
 		if key_type == "ed25519" {
-			identity, err = subi.NewIdentityFromEd25519Phrase(string(apiClient.mnemonics))
+			identity, err = substrate.NewIdentityFromEd25519Phrase(string(apiClient.mnemonics))
 		} else if key_type == "sr25519" {
-			identity, err = subi.NewIdentityFromSr25519Phrase(string(apiClient.mnemonics))
+			identity, err = substrate.NewIdentityFromSr25519Phrase(string(apiClient.mnemonics))
 		} else {
 			err = errors.New("key_type must be one of ed25519 and sr25519")
 		}
@@ -181,7 +182,7 @@ func providerConfigure(st state.StateI) (func(ctx context.Context, d *schema.Res
 			rmb_proxy_url = passed_rmb_proxy_url
 		}
 		log.Printf("substrate url: %s %s\n", apiClient.substrate_url, substrate_url)
-		apiClient.manager = SubstrateVersion[network](apiClient.substrate_url)
+		apiClient.manager = subi.NewManager(apiClient.substrate_url)
 		sub, err := apiClient.manager.SubstrateExt()
 		if err != nil {
 			return nil, diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
@@ -198,7 +199,7 @@ func providerConfigure(st state.StateI) (func(ctx context.Context, d *schema.Res
 		}
 		pub := sk.Public()
 		twin, err := sub.GetTwinByPubKey(pub)
-		if err != nil && errors.Is(err, subi.ErrNotFound) {
+		if err != nil && errors.Is(err, substrate.ErrNotFound) {
 			return nil, diag.Errorf("no twin associated with the accound with the given mnemonics")
 		}
 		if err != nil {
@@ -210,7 +211,7 @@ func providerConfigure(st state.StateI) (func(ctx context.Context, d *schema.Res
 			verify_reply := d.Get("verify_reply").(bool)
 			cl, err = client.NewProxyBus(rmb_proxy_url, apiClient.twin_id, apiClient.substrateConn, identity, verify_reply)
 		} else {
-			cl, err = rmb.NewRMBClient(apiClient.rmb_redis_url)
+			cl, err = rmb.NewClient(apiClient.rmb_redis_url)
 		}
 		if err != nil {
 			return nil, diag.FromErr(errors.Wrap(err, "couldn't create rmb client"))
