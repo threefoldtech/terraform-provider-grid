@@ -15,12 +15,12 @@ func TestVM(t *testing.T) {
 		t.Fatalf("failed to generate ssh key pair: %s", err.Error())
 	}
 
-	t.Run("vm", func(t *testing.T) {
+	t.Run("single_vm", func(t *testing.T) {
 		/* Test case for deployeng a singlenode.
 
 		   **Test Scenario**
 
-		   - Deploy a singlenode.
+		   - Deploy a single vm.
 		   - Check that the outputs not empty.
 		   - Check that vm is reachable.
 		   - Destroy the deployment
@@ -37,23 +37,14 @@ func TestVM(t *testing.T) {
 		_, err = terraform.InitAndApplyE(t, terraformOptions)
 		assert.NoError(t, err)
 
-		// Check that the outputs not empty
+		yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
+		assert.NotEmpty(t, yggIP)
 
-		planetary := terraform.Output(t, terraformOptions, "ygg_ip")
-		assert.NotEmpty(t, planetary)
-
-		node1Container1IP := terraform.Output(t, terraformOptions, "node1_container1_ip")
-		assert.NotEmpty(t, node1Container1IP)
-
-		node1Container2IP := terraform.Output(t, terraformOptions, "node1_container2_ip")
-		assert.NotEmpty(t, node1Container2IP)
-
-		// Up wireguard
-		wgConfig := terraform.Output(t, terraformOptions, "wg_config")
-		assert.NotEmpty(t, wgConfig)
+		vmIP := terraform.Output(t, terraformOptions, "vm_ip")
+		assert.NotEmpty(t, vmIP)
 
 		// testing connection
-		ok := TestConnection(planetary, "22")
+		ok := TestConnection(yggIP, "22")
 		assert.True(t, ok)
 	})
 
@@ -62,9 +53,9 @@ func TestVM(t *testing.T) {
 
 		   **Test Scenario**
 
-		   - Deploy a singlenode.
+		   - Deploy a vm with a public ip.
 		   - Check that the outputs not empty.
-		   - Check that vm is reachable
+		   - Check that vm is reachable through its public ip
 		   - Destroy the deployment
 		*/
 		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
@@ -76,24 +67,20 @@ func TestVM(t *testing.T) {
 		})
 		defer terraform.Destroy(t, terraformOptions)
 
-		terraform.InitAndApply(t, terraformOptions)
+		_, err = terraform.InitAndApplyE(t, terraformOptions)
+		assert.NoError(t, err)
 
-		// Check that the outputs not empty
+		vmComputedIP := terraform.Output(t, terraformOptions, "vm_public_ip")
+		assert.NotEmpty(t, vmComputedIP)
 
-		publicip := terraform.Output(t, terraformOptions, "computed_public_ip")
-		assert.NotEmpty(t, publicip)
-
-		node1Container1IP := terraform.Output(t, terraformOptions, "node1_container1_ip")
-		assert.NotEmpty(t, node1Container1IP)
-
-		node1Container2IP := terraform.Output(t, terraformOptions, "node1_container2_ip")
-		assert.NotEmpty(t, node1Container2IP)
+		vmIP := terraform.Output(t, terraformOptions, "vm_ip")
+		assert.NotEmpty(t, vmIP)
 
 		//spliting ip to connect on it
-		pIP := strings.Split(publicip, "/")[0]
+		publicIP := strings.Split(vmComputedIP, "/")[0]
 
 		//testing connections
-		ok := TestConnection(pIP, "22")
+		ok := TestConnection(publicIP, "22")
 		assert.True(t, ok)
 
 	})
@@ -103,9 +90,9 @@ func TestVM(t *testing.T) {
 
 		   **Test Scenario**
 
-		   - Deploy a singlenode with zero cpu.
-		   - The deployment should fail
-		   - Destroy the network
+		   - Deploy a vm with invalid cpu (0).
+		   - The deployment should fail.
+		   - Destroy the deployment.
 
 		*/
 		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
@@ -129,9 +116,9 @@ func TestVM(t *testing.T) {
 
 		   **Test Scenario**
 
-		   - Deploy a singlenode with memory less than 250.
+		   - Deploy a vm with memory less than 256.
 		   - The deployment should fail.
-		   - Destroy the network.
+		   - Destroy the deployment.
 
 		*/
 		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
@@ -144,11 +131,7 @@ func TestVM(t *testing.T) {
 		defer terraform.Destroy(t, terraformOptions)
 
 		_, err = terraform.InitAndApplyE(t, terraformOptions)
-		assert.NoError(t, err)
-
-		if err == nil {
-			t.Errorf("Should fail with mem capacity can't be less that 250M but err is null")
-		}
+		assert.Error(t, err, "Should fail with mem capacity can't be less that 250M but err is null")
 
 	})
 	t.Run("vm_mounts", func(t *testing.T) {
@@ -156,10 +139,9 @@ func TestVM(t *testing.T) {
 
 		   **Test Scenario**
 
-		   - Deploy a disk.
-		   - Check that the outputs not empty.
-		   - Verify the VMs ips.
-		   - Check that disk has been mounted successfully with 10G.
+		   - Deploy a vm mouting a disk.
+		   - Check that the outputs are not empty.
+		   - Check that disk has been mounted successfully.
 		   - Destroy the deployment.
 
 		*/
@@ -167,11 +149,13 @@ func TestVM(t *testing.T) {
 		// retryable errors in terraform testing.
 		// generate ssh keys for test
 		diskSize := 2
+		mountPoint := "app"
 		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 			TerraformDir: "./vm_mounts",
 			Vars: map[string]interface{}{
-				"public_key": publicKey,
-				"disk_size":  diskSize,
+				"public_key":  publicKey,
+				"disk_size":   diskSize,
+				"mount_point": mountPoint,
 			},
 			Parallelism: 1,
 		})
@@ -181,24 +165,19 @@ func TestVM(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Check that the outputs not empty
-		planetary := terraform.Output(t, terraformOptions, "ygg_ip")
-		assert.NotEmpty(t, planetary)
+		yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
+		assert.NotEmpty(t, yggIP)
 
-		node1Container1IP := terraform.Output(t, terraformOptions, "node1_container1_ip")
-		assert.NotEmpty(t, node1Container1IP)
+		vmIP := terraform.Output(t, terraformOptions, "vm_ip")
+		assert.NotEmpty(t, vmIP)
 
-		wgConfig := terraform.Output(t, terraformOptions, "wg_config")
-		assert.NotEmpty(t, wgConfig)
-
-		// Check that env variables set successfully
-		output, err := RemoteRun("root", planetary, "cat /proc/1/environ", privateKey)
-		assert.NoError(t, err)
-		assert.Contains(t, string(output), "SSH_KEY")
+		ok := TestConnection(yggIP, "22")
+		assert.True(t, ok)
 
 		// Check that disk has been mounted successfully
-		output, err = RemoteRun("root", planetary, "df -h | grep -w /app", privateKey)
+		output, err := RemoteRun("root", yggIP, fmt.Sprintf("df -h | grep -w /%s", mountPoint), privateKey)
 		assert.NoError(t, err)
-		assert.Contains(t, string(output), fmt.Sprintf("%dG", diskSize))
+		assert.Contains(t, string(output), fmt.Sprintf("%d.0G", diskSize))
 	})
 
 	t.Run("vm_mount_invalid_write", func(t *testing.T) {
@@ -206,9 +185,9 @@ func TestVM(t *testing.T) {
 
 		   **Test Scenario**
 
-		   - Deploy a mount disk with size 1G.
+		   - Deploy a vm mounting a disk.
 		   - Check that the outputs not empty.
-		   - ssh to VM and try to create a file with size 1G.
+		   - ssh to VM and try to create a file with size larger than the disk size.
 		   - Destroy the deployment
 		*/
 		diskSize := 1
@@ -225,26 +204,22 @@ func TestVM(t *testing.T) {
 		_, err = terraform.InitAndApplyE(t, terraformOptions)
 		assert.NoError(t, err)
 
-		planetary := terraform.Output(t, terraformOptions, "ygg_ip")
-		assert.NotEmpty(t, planetary)
+		yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
+		assert.NotEmpty(t, yggIP)
 
-		// Check that env variables set successfully
-		output, err := RemoteRun("root", planetary, "cat /proc/1/environ", privateKey)
-		assert.NoError(t, err)
-		assert.Contains(t, string(output), "SSH_KEY")
+		ok := TestConnection(yggIP, "22")
+		assert.True(t, ok)
 
 		// ssh to VM and try to create a file bigger than disk size.
-		_, err = RemoteRun("root", planetary, fmt.Sprintf("cd /app/ && dd if=/dev/vda bs=%dG count=1 of=test.txt", diskSize+1), privateKey)
-		if err == nil {
-			t.Errorf("should fail with out of memory")
-		}
+		_, err = RemoteRun("root", yggIP, fmt.Sprintf("cd /app/ && dd if=/dev/vda bs=%dG count=1 of=test.txt", diskSize+1), privateKey)
+		assert.Error(t, err, "should fail with out of memory")
 	})
 	t.Run("vm_multinode", func(t *testing.T) {
 		/* Test case for deployeng a multinode.
 		   **Test Scenario**
-		   - Deploy multinode deployments.
-		   - Check that the outputs not empty.
-		   - Verify the VMs ips
+
+		   - Deploy two vms on multiple nodes.
+		   - Check that the outputs are not empty.
 		   - Destroy the deployment
 		*/
 
@@ -261,28 +236,23 @@ func TestVM(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Check that the outputs not empty
-		node1Container1IP := terraform.Output(t, terraformOptions, "node1_zmachine1_ip")
-		assert.NotEmpty(t, node1Container1IP)
+		vm1IP := terraform.Output(t, terraformOptions, "vm1_ip")
+		assert.NotEmpty(t, vm1IP)
 
-		node2Container1IP := terraform.Output(t, terraformOptions, "node2_zmachine1_ip")
-		assert.NotEmpty(t, node2Container1IP)
+		vm2IP := terraform.Output(t, terraformOptions, "vm2_ip")
+		assert.NotEmpty(t, vm2IP)
 
-		yggIP1 := terraform.Output(t, terraformOptions, "node1_zmachine_ygg_ip")
-		assert.NotEmpty(t, yggIP1)
+		vm1YggIP := terraform.Output(t, terraformOptions, "vm1_ygg_ip")
+		assert.NotEmpty(t, vm1YggIP)
 
-		yggIP2 := terraform.Output(t, terraformOptions, "node2_zmachine_ygg_ip")
-		assert.NotEmpty(t, yggIP2)
-
-		//spliting ip to connect on it
-		yggIP1 = strings.Split(yggIP1, "/")[0]
-
-		yggIP2 = strings.Split(yggIP2, "/")[0]
+		vm2YggIP := terraform.Output(t, terraformOptions, "vm2_ygg_ip")
+		assert.NotEmpty(t, vm2YggIP)
 
 		//testing connections
-		ok := TestConnection(yggIP1, "22")
+		ok := TestConnection(vm1YggIP, "22")
 		assert.True(t, ok)
 
-		ok = TestConnection(yggIP2, "22")
+		ok = TestConnection(vm2YggIP, "22")
 		assert.True(t, ok)
 	})
 }

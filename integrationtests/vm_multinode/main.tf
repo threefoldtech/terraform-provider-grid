@@ -16,14 +16,14 @@ provider "grid" {
 
 
 resource "grid_network" "net1" {
-  nodes       = [2, 3]
+  nodes       = [33, 34]
   ip_range    = "172.20.0.0/16"
   name        = "net1"
   description = "new network"
 }
 
 resource "grid_deployment" "d1" {
-  node         = 2
+  node         = 33
   network_name = grid_network.net1.name
   vms {
     name       = "vm1"
@@ -41,7 +41,7 @@ resource "grid_deployment" "d1" {
 }
 
 resource "grid_deployment" "d2" {
-  node         = 3
+  node         = 34
   network_name = grid_network.net1.name
   vms {
     name       = "vm2"
@@ -58,27 +58,16 @@ resource "grid_deployment" "d2" {
   }
 }
 
-output "ygg_ip1" {
-  value = grid_deployment.d1.vms[0].ygg_ip
-}
-output "ygg_ip2" {
-  value = grid_deployment.d2.vms[0].ygg_ip
-}
-
-output "wg_config" {
-  value = grid_network.net1.access_wg_config
-}
-
-output "node1_zmachine1_ip" {
+output "vm1_ip" {
   value = grid_deployment.d1.vms[0].ip
 }
-output "node1_zmachine_ygg_ip" {
+output "vm1_ygg_ip" {
   value = grid_deployment.d1.vms[0].ygg_ip
 }
 
-output "node2_zmachine1_ip" {
+output "vm2_ip" {
   value = grid_deployment.d2.vms[0].ip
 }
-output "node2_zmachine_ygg_ip" {
+output "vm2_ygg_ip" {
   value = grid_deployment.d2.vms[0].ygg_ip
 }

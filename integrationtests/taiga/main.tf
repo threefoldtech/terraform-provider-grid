@@ -16,14 +16,14 @@ provider "grid" {
 }
 
 resource "grid_network" "net2" {
-  nodes         = [7]
+  nodes         = [33]
   ip_range      = "10.1.0.0/16"
   name          = "network1"
   description   = "newer network"
 }
 
 resource "grid_deployment" "node1" {
-  node         = 7
+  node         = 33
   network_name = grid_network.net2.name
   disks {
     name        = "data0"
@@ -64,18 +64,18 @@ resource "grid_deployment" "node1" {
 }
 
 data "grid_gateway_domain" "domain" {
-  node = 219
+  node = 14
   name = "grid3taiga"
 }
 resource "grid_name_proxy" "p1" {
-  node            = 219
+  node            = 14
   name            = "grid3taiga"
-  backends        = [format("http://%s:9000", grid_deployment.node1.vms[0].ygg_ip)]
+  backends        = [format("http://[%s]:9000", grid_deployment.node1.vms[0].ygg_ip)]
   tls_passthrough = false
 }
 
 
-output "node1_zmachine1_ygg_ip" {
+output "ygg_ip" {
   value = grid_deployment.node1.vms[0].ygg_ip
 }
 

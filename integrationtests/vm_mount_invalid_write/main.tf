@@ -20,13 +20,13 @@ provider "grid" {
 }
 
 resource "grid_network" "net1" {
-  nodes         = [2]
+  nodes         = [33]
   ip_range      = "10.1.0.0/16"
   name          = "network"
   description   = "newer network"
 }
 resource "grid_deployment" "d1" {
-  node         = 2
+  node         = 33
   network_name = grid_network.net1.name
   disks {
     name        = "data"
@@ -37,7 +37,6 @@ resource "grid_deployment" "d1" {
     name       = "vm1"
     flist      = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
     cpu        = 1
-    publicip   = true
     memory     = 1024
     entrypoint = "/sbin/zinit init"
     mounts {
@@ -51,12 +50,7 @@ resource "grid_deployment" "d1" {
 
   }
 }
-output "wg_config" {
-  value = grid_network.net1.access_wg_config
-}
-output "node1_container1_ip" {
-  value = grid_deployment.d1.vms[0].ip
-}
+
 output "ygg_ip" {
   value = grid_deployment.d1.vms[0].ygg_ip
 }

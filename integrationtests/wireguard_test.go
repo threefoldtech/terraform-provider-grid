@@ -54,7 +54,10 @@ func TestWireguard(t *testing.T) {
 	conf, err := UpWg(wgConfig, tempDir)
 	assert.NoError(t, err)
 
-	defer DownWG(conf)
+	defer func() {
+		_, err := DownWG(conf)
+		assert.NoError(t, err)
+	}()
 
 	ips := []string{wgVM1IP, wgVM2IP}
 	for i := range ips {
