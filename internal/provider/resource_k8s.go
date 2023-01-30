@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
+	"github.com/threefoldtech/substrate-client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/deployer"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/state"
@@ -414,7 +415,7 @@ func (k *K8sDeployer) invalidateBrokenAttributes(sub subi.SubstrateExt) error {
 	validNodes := make(map[uint32]struct{})
 	for node, contractID := range k.NodeDeploymentID {
 		contract, err := sub.GetContract(contractID)
-		if (err == nil && !contract.IsCreated()) || errors.Is(err, subi.ErrNotFound) {
+		if (err == nil && !contract.State.IsCreated) || errors.Is(err, substrate.ErrNotFound) {
 			delete(k.NodeDeploymentID, node)
 			delete(k.NodesIPRange, node)
 		} else if err != nil {
@@ -805,7 +806,7 @@ func (k *K8sDeployer) removeDeletedContracts(ctx context.Context, sub subi.Subst
 		if err != nil {
 			return errors.Wrap(err, "failed to get deployments")
 		}
-		if !cont.IsDeleted() {
+		if !cont.State.IsDeleted {
 			nodeDeploymentID[nodeID] = deploymentID
 		}
 	}

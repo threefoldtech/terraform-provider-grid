@@ -107,7 +107,7 @@ func (d *ValidatorImpl) Validate(ctx context.Context, sub subi.SubstrateExt, old
 			if err != nil {
 				return errors.Wrapf(err, "couldn't get node contract %d", oldDl.ContractID)
 			}
-			current := int(contract.PublicIPCount())
+			current := int(contract.ContractType.NodeContract.PublicIPsCount)
 			if requiredIPs > current {
 				return fmt.Errorf(
 					"currently, it's not possible to increase the number of reserved public ips in a deployment, node: %d, current: %d, requested: %d",
