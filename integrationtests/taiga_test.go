@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestTaigaDeployment(t *testing.T) {
+func TestTaiga(t *testing.T) {
 	/* Test case for deploying a presearch.
 
 	   **Test Scenario**

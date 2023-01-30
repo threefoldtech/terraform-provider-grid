@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMattermostDeployment(t *testing.T) {
+func TestMattermost(t *testing.T) {
 	/* Test case for deploying a matermost.
 
 	   **Test Scenario**

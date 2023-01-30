@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestPreSearchDeployment(t *testing.T) {
+func TestPresearch(t *testing.T) {
 	/* Test case for deploying a presearch.
 
 	   **Test Scenario**

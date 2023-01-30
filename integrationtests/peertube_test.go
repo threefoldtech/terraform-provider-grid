@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestPeerTubeDeployment(t *testing.T) {
+func TestPeertube(t *testing.T) {
 	/* Test case for deploying a presearch.
 
 	   **Test Scenario**
