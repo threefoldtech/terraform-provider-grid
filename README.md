@@ -27,7 +27,7 @@ A terraform provider for the [threefold grid](https://threefold.io) to manage yo
     required_providers{
       grid = {
         source = "threeflodtech/grid"
-        version = "v1.7.0-rcX"
+        version = "1.7.0-rcX"
       }
     }
   }

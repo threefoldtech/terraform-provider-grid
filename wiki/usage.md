@@ -19,7 +19,7 @@
     required_providers{
       grid = {
         source = "threeflodtech/grid"
-        version = "v1.7.0-rcX"
+        version = "1.7.0-rcX"
       }
     }
   }
@@ -32,7 +32,7 @@
     required_providers{
       grid = {
         source = "threeflodtech/grid"
-        version = "v1.7.0-dev"
+        version = "1.7.0-dev"
       }
     }
   }
@@ -45,7 +45,7 @@
     required_providers{
       grid = {
         source = "threeflodtech/grid"
-        version = "v1.7.0-qa"
+        version = "1.7.0-qa"
       }
     }
   }
