@@ -8,17 +8,56 @@ A terraform provider for the [threefold grid](https://threefold.io) to manage yo
 - [Go](https://golang.org/doc/install) >= 1.15
 - [Gettting started document](https://library.threefold.me/info/manual/#/manual3_iac/grid3_terraform/manual__grid3_terraform_home)
 
-- to use the built plugin in a terraform file, use the following provider config:
+- to use the `mainnet`'s version of the provider for `v1.7.0`, use the following configs:
 
-```terraform
-terraform {
-  required_providers {
-    grid = {
-      source = "threefoldtech/grid"
+  ```terraform
+  terraform {
+    required_providers {
+      grid = {
+        source = "threefoldtech/grid"
+      }
     }
   }
-}
-```
+  ```
+
+- to use the `testnet`'s version of the provider for `v1.7.0`, use the following configs:
+
+  ```terraform
+  terraform{
+    required_providers{
+      grid = {
+        source = "threeflodtech/grid"
+        version = "v1.7.0-rc"
+      }
+    }
+  }
+  ```
+
+- to use the `devnet`'s version of the provider for `v1.7.0`, use the following configs:
+
+  ```terraform
+  terraform{
+    required_providers{
+      grid = {
+        source = "threeflodtech/grid"
+        version = "v1.7.0-dev"
+      }
+    }
+  }
+  ```
+
+- to use the `qanet`'s version of the provider for `v1.7.0`, use the following configs:
+
+  ```terraform
+  terraform{
+    required_providers{
+      grid = {
+        source = "threeflodtech/grid"
+        version = "v1.7.0-qa"
+      }
+    }
+  }
+  ```
 
 ## Generating the docs
 
@@ -30,8 +69,8 @@ make docs
 
 ```bash
 cd examples/resources/singlenode
-export MNEMONICS="<mnemonics words>"
-export NETWORK="<network>" # dev or test
+export MNEMONICS="mnemonics words"
+export NETWORK="network" # dev, qa, test, main
 terraform init && terraform apply -parallelism=1 # creates resources defined in main.tf
 terraform destroy -parallelism=1 # destroy the created resource
 ```
@@ -47,25 +86,24 @@ make
 
 ## Run tests
 
-To run the tests, export MNEMONICS and NETWORK
-export MNEMONICS="<mnemonics words>"
-export NETWORK="<network>" # dev or test
-run the following command
+  ```bash
+  export MNEMONICS="mnemonics words"
+  export NETWORK="network" # dev or test
+  ```
 
-### running unit tests
+- ### Unit tests
 
-```bash
-make unittests
-```
+  ```bash
+  make unittests
+  ```
 
-### running integration tests
+- ### Integration tests
 
-```bash
-make integrationtests
-```
+  ```bash
+  make integrationtests
+  ```
 
 ## Known Issues
 
 - [parallelism=1](https://github.com/threefoldtech/terraform-provider-grid/issues/12)
 - [increasing IPs in active deployment](https://github.com/threefoldtech/terraform-provider-grid/issues/15)
-- [introducing new nodes to kubernetes deployment](https://github.com/threefoldtech/terraform-provider-grid/issues/13)
