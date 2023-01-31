@@ -27,7 +27,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
-          args: --timeout 3m --verbose
+          args: --timeout 3m --verbose --build-tags integration
 
       - name: gofmt
         uses: Jerome1337/gofmt-action@v1.0.5
