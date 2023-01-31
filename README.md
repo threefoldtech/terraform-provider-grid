@@ -27,7 +27,7 @@ A terraform provider for the [threefold grid](https://threefold.io) to manage yo
     required_providers{
       grid = {
         source = "threeflodtech/grid"
-        version = "v1.7.0-rc"
+        version = "v1.7.0-rcX"
       }
     }
   }
@@ -107,3 +107,12 @@ make
 
 - [parallelism=1](https://github.com/threefoldtech/terraform-provider-grid/issues/12)
 - [increasing IPs in active deployment](https://github.com/threefoldtech/terraform-provider-grid/issues/15)
+
+## Latest Releases
+
+  Releasing for each environment is done using the methods in this [Wiki](wiki/release.md#releasing-for-each-environment)
+
+- `mainnet`: v1.7.0
+- `test`: v1.7.0-rc1
+- `qa`: v1.7.0-qa
+- `dev`: v1.7.0-dev
