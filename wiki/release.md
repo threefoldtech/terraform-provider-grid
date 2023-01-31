@@ -37,17 +37,6 @@ This basicly done as any go dependency update the required version in go.mod and
  go get https://github.com/threefoldtech/zos@d9c7fe2
 ```
 
-#### Updating substrate client
-
-1. In the current design we have substrate pkg for each environment as submodules(this should be changed soon, we should use provider versions instead).
-2. When we want to update substrate-client for any environment for example for `dev` environment we go to `pkgs/substrates/substrate-dev` and checkout the commit we want to update to and then we do the required changes on code.
-3. substrate client depends on `go-substrate-rpc-client` so consider updating it if needed
-    for example if we are going to update to the commit `c3a7ge8`
-
-```bash
-go get github.com/threefoldtech/go-substrate-rpc-client/v4@c3a7ge8
-```
-
 ### Known issues
 
 The approach of having susbstrate-client for each environment is not good because

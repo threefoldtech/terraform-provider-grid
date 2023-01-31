@@ -33,32 +33,6 @@ A terraform provider for the [threefold grid](https://threefold.io) to manage yo
   }
   ```
 
-- to use the `devnet`'s version of the provider for `v1.7.0`, use the following configs:
-
-  ```terraform
-  terraform{
-    required_providers{
-      grid = {
-        source = "threeflodtech/grid"
-        version = "v1.7.0-dev"
-      }
-    }
-  }
-  ```
-
-- to use the `qanet`'s version of the provider for `v1.7.0`, use the following configs:
-
-  ```terraform
-  terraform{
-    required_providers{
-      grid = {
-        source = "threeflodtech/grid"
-        version = "v1.7.0-qa"
-      }
-    }
-  }
-  ```
-
 ## Generating the docs
 
 ```bash
@@ -88,7 +62,7 @@ make
 
   ```bash
   export MNEMONICS="mnemonics words"
-  export NETWORK="network" # dev or test
+  export NETWORK="network" # dev, qa, test, main
   ```
 
 - ### Unit tests
@@ -114,5 +88,3 @@ make
 
 - `mainnet`: v1.7.0
 - `test`: v1.7.0-rc1
-- `qa`: v1.7.0-qa
-- `dev`: v1.7.0-dev
