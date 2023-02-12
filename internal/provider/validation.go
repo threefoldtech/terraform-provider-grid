@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"math/big"
-	"net"
 	"net/url"
 	"time"
 
@@ -54,57 +53,6 @@ func validateRedis(apiClient *apiClient) error {
 	return nil
 }
 
-func validateYggdrasil(apiClient *apiClient, sub subi.SubstrateExt) error {
-	yggIP, err := sub.GetTwinIP(apiClient.twin_id)
-	if err != nil {
-		return errors.Wrapf(err, "could not get twin %d from substrate", apiClient.twin_id)
-	}
-	ip := net.ParseIP(yggIP)
-	listenIP := yggIP
-	if ip != nil && ip.To4() == nil {
-		// if it's ipv6 surround it with brackets
-		// otherwise, keep as is (can be ipv4 or a domain (probably will fail later but we don't care))
-		listenIP = fmt.Sprintf("[%s]", listenIP)
-	}
-	s, err := net.Listen("tcp", fmt.Sprintf("%s:0", listenIP))
-	if err != nil {
-		return errors.Wrapf(err, "couldn't listen on port. make sure the twin id is associated with a valid yggdrasil ip, twin id: %d, ygg ip: %s, err", apiClient.twin_id, yggIP)
-	}
-	defer s.Close()
-	port := s.Addr().(*net.TCPAddr).Port
-	arrived := false
-	go func() {
-		c, err := s.Accept()
-		if errors.Is(err, net.ErrClosed) {
-			return
-		}
-		if err != nil {
-			return
-		}
-		arrived = true
-		c.Close()
-	}()
-	c, err := net.Dial("tcp", fmt.Sprintf("%s:%d", listenIP, port))
-	if err != nil {
-		return errors.Wrapf(err, "failed to connect to ip. make sure the twin id is associated with a valid yggdrasil ip, twin id: %d, ygg ip: %s, err", apiClient.twin_id, yggIP)
-	}
-	c.Close()
-	if !arrived {
-		return errors.Wrapf(err, "sent request but didn't arrive to me. make sure the twin id is associated with a valid yggdrasil ip, twin id: %d, ygg ip: %s, err", apiClient.twin_id, yggIP)
-	}
-	return nil
-}
-
-func validateRMB(apiClient *apiClient, sub subi.SubstrateExt) error {
-	if err := validateRedis(apiClient); err != nil {
-		return err
-	}
-	if err := validateYggdrasil(apiClient, sub); err != nil {
-		return err
-	}
-	return nil
-}
-
 func validateRMBProxyServer(apiClient *apiClient) error {
 	return apiClient.grid_client.Ping()
 }
@@ -117,11 +65,7 @@ func validateRMBProxy(apiClient *apiClient) error {
 }
 
 func preValidate(apiClient *apiClient, sub subi.SubstrateExt) error {
-	if apiClient.use_rmb_proxy {
-		return validateRMBProxy(apiClient)
-	} else {
-		return validateRMB(apiClient, sub)
-	}
+	return validateRMBProxy(apiClient)
 }
 
 func validateAccountMoneyForExtrinsics(sub subi.SubstrateExt, identity substrate.Identity) error {

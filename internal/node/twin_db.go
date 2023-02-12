@@ -31,7 +31,7 @@ func (t *twinDB) Get(id uint32) (direct.Twin, error) {
 
 	publikKey, err := t.sub.GetTwinPK(id)
 	if err != nil {
-		return direct.Twin{}, errors.Wrapf(err, "could not get publik key of twin with id %d", id)
+		return direct.Twin{}, errors.Wrapf(err, "could not get public key of twin with id %d", id)
 	}
 
 	twin := direct.Twin{
