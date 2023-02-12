@@ -34,7 +34,7 @@ var (
 		"qa":   "https://gridproxy.qa.grid.tf/",
 		"main": "https://gridproxy.grid.tf/",
 	}
-	RelayURLs = map[string]string{
+	RELAYS_URLS = map[string]string{
 		"dev": "wss://relay.dev.grid.tf",
 	}
 )
@@ -94,6 +94,12 @@ func New(version string, st state.StateI) (func() *schema.Provider, subi.Substra
 					Optional:    true,
 					Description: "rmb proxy url, example: https://gridproxy.dev.grid.tf/",
 					DefaultFunc: schema.EnvDefaultFunc("RMB_PROXY_URL", nil),
+				},
+				"relay_url": {
+					Type:        schema.TypeString,
+					Optional:    true,
+					Description: "rmb proxy url, example: wss://relay.dev.grid.tf",
+					DefaultFunc: schema.EnvDefaultFunc("RELAY_URL", nil),
 				},
 				"use_rmb_proxy": {
 					Type:        schema.TypeBool,
@@ -208,14 +214,20 @@ func providerConfigure(st state.StateI) (func(ctx context.Context, d *schema.Res
 		apiClient.twin_id = twin
 		var cl rmb.Client
 
-		relayURL, ok := RelayURLs[network]
-		if !ok {
-			return nil, diag.Errorf("error getting relay url for network %s", network)
-		}
-
 		sessionID := generateSessionID(twin)
 		db := client.NewTwinDB(sub)
-		cl, err = direct.NewClient(context.Background(), identity, relayURL, sessionID, db)
+
+		relayURL := d.Get("relay_url").(string)
+		if relayURL != "" {
+			cl, err = direct.NewClient(context.Background(), identity, relayURL, sessionID, db)
+		} else {
+			relayURL, ok := RELAYS_URLS[network]
+			if !ok {
+				return nil, diag.Errorf("error getting relay url for network %s", network)
+			}
+			cl, err = direct.NewClient(context.Background(), identity, relayURL, sessionID, db)
+		}
+
 		if err != nil {
 			return nil, diag.FromErr(errors.Wrap(err, "couldn't create rmb client"))
 		}
