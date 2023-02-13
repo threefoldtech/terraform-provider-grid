@@ -8,6 +8,8 @@ A terraform provider for the [threefold grid](https://threefold.io) to manage yo
 - [Go](https://golang.org/doc/install) >= 1.15
 - [Gettting started document](https://library.threefold.me/info/manual/#/manual3_iac/grid3_terraform/manual__grid3_terraform_home)
 
+## Using provider for different environments
+
 - to use the `mainnet`'s version of the provider for `v1.7.0`, use the following configs:
 
   ```terraform
@@ -32,6 +34,8 @@ A terraform provider for the [threefold grid](https://threefold.io) to manage yo
     }
   }
   ```
+
+- for devnet, qanet use <VERSION>-dev and <VERSION>-qa respectivly
 
 ## Generating the docs
 
@@ -60,10 +64,10 @@ make
 
 ## Run tests
 
-  ```bash
-  export MNEMONICS="mnemonics words"
-  export NETWORK="network" # dev, qa, test, main
-  ```
+```bash
+export MNEMONICS="mnemonics words"
+export NETWORK="network" # dev, qa, test, main
+```
 
 - ### Unit tests
 
@@ -84,7 +88,7 @@ make
 
 ## Latest Releases
 
-  Releasing for each environment is done using the methods in this [Wiki](wiki/release.md#releasing-for-each-environment)
+Releasing for each environment is done using the methods in this [Wiki](wiki/release.md#releasing-for-each-environment)
 
 - `mainnet`: v1.7.0
 - `test`: v1.7.0-rc1
