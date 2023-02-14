@@ -23,7 +23,7 @@ resource "grid_network" "net2" {
 }
 
 resource "grid_deployment" "node1" {
-  node         = 33
+  node_id        = 33
   network_name = grid_network.net2.name
   disks {
     name        = "data0"
@@ -64,11 +64,11 @@ resource "grid_deployment" "node1" {
 }
 
 data "grid_gateway_domain" "domain" {
-  node = 14
+  node_id= 14
   name = "grid3taiga"
 }
 resource "grid_name_proxy" "p1" {
-  node            = 14
+  node_id           = 14
   name            = "grid3taiga"
   backends        = [format("http://[%s]:9000", grid_deployment.node1.vms[0].ygg_ip)]
   tls_passthrough = false

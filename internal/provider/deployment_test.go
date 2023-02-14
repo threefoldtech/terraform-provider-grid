@@ -30,7 +30,7 @@ func constructTestDeployer(ctrl *gomock.Controller) DeploymentDeployer {
 		ncPool:   pool,
 		deployer: deployer,
 		Id:       "100",
-		Node:     10,
+		NodeID:   10,
 		Disks: []workloads.Disk{
 			{
 				Name:        "disk1",
@@ -291,7 +291,7 @@ func TestDeploymentGenerateDeployment(t *testing.T) {
 	state.EXPECT().GetNetworkState().Return(netState)
 	network := mock.NewMockNetwork(ctrl)
 	netState.EXPECT().GetNetwork(d.NetworkName).Return(network)
-	network.EXPECT().GetNodeIPsList(d.Node).Return([]byte{})
+	network.EXPECT().GetNodeIPsList(d.NodeID).Return([]byte{})
 	dl, err := d.GenerateVersionlessDeployments(context.Background())
 	assert.NoError(t, err)
 	var wls []gridtypes.Workload
@@ -305,14 +305,14 @@ func TestDeploymentGenerateDeployment(t *testing.T) {
 	wls = append(wls, d.ZDBs[0].GenerateZDBWorkload())
 	wls = append(wls, d.ZDBs[1].GenerateZDBWorkload())
 	names := make(map[string]int)
-	for idx, wl := range dl[d.Node].Workloads {
+	for idx, wl := range dl[d.NodeID].Workloads {
 		names[wl.Name.String()] = idx
 	}
 	sort.Slice(wls, func(i, j int) bool {
 		return names[wls[i].Name.String()] < names[wls[j].Name.String()]
 	})
-	assert.Equal(t, len(wls), len(dl[d.Node].Workloads))
-	assert.Equal(t, wls, dl[d.Node].Workloads)
+	assert.Equal(t, len(wls), len(dl[d.NodeID].Workloads))
+	assert.Equal(t, wls, dl[d.NodeID].Workloads)
 }
 
 func TestDeploymentSync(t *testing.T) {
@@ -327,10 +327,10 @@ func TestDeploymentSync(t *testing.T) {
 	state.EXPECT().GetNetworkState().AnyTimes().Return(netState)
 	network := mock.NewMockNetwork(ctrl)
 	netState.EXPECT().GetNetwork(d.NetworkName).AnyTimes().Return(network)
-	network.EXPECT().GetNodeIPsList(d.Node).Return([]byte{})
+	network.EXPECT().GetNodeIPsList(d.NodeID).Return([]byte{})
 	dls, err := d.GenerateVersionlessDeployments(context.Background())
 	assert.NoError(t, err)
-	dl := dls[d.Node]
+	dl := dls[d.NodeID]
 	err = json.NewEncoder(log.Writer()).Encode(dl.Workloads)
 	assert.NoError(t, err)
 	for _, zlog := range dl.ByType(zos.ZLogsType) {
@@ -424,16 +424,16 @@ func TestDeploymentSync(t *testing.T) {
 		}, nil)
 	var cp DeploymentDeployer
 	musUnmarshal(mustMarshal(d), &cp)
-	network.EXPECT().DeleteDeployment(d.Node, d.Id)
+	network.EXPECT().DeleteDeployment(d.NodeID, d.Id)
 	usedIPs := getUsedIPs(dl)
-	network.EXPECT().SetDeploymentIPs(d.Node, d.Id, usedIPs)
+	network.EXPECT().SetDeploymentIPs(d.NodeID, d.Id, usedIPs)
 	assert.NoError(t, d.sync(context.Background(), sub, d.APIClient))
 	assert.Equal(t, d.VMs, cp.VMs)
 	assert.Equal(t, d.Disks, cp.Disks)
 	assert.Equal(t, d.QSFSs, cp.QSFSs)
 	assert.Equal(t, d.ZDBs, cp.ZDBs)
 	assert.Equal(t, d.Id, cp.Id)
-	assert.Equal(t, d.Node, cp.Node)
+	assert.Equal(t, d.NodeID, cp.NodeID)
 }
 
 func getUsedIPs(dl gridtypes.Deployment) []byte {

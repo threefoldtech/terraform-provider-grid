@@ -3,12 +3,14 @@
 page_title: "grid_deployment Resource - terraform-provider-grid"
 subcategory: ""
 description: |-
-  Deployment resource (zdbs + vms + disks + qsfs).
+  Resource for deploying multiple workloads like vms (Zmachines), zdbs, disks, Qsfss, and/or zlogs.
+  A user should specify node id for this deployment, the (already) deployed network that this deployment should be a part of, and the desired workloads configurations.
 ---
 
 # grid_deployment (Resource)
 
-Deployment resource (zdbs + vms + disks + qsfs).
+Resource for deploying multiple workloads like vms (Zmachines), zdbs, disks, Qsfss, and/or zlogs.
+A user should specify node id for this deployment, the (already) deployed network that this deployment should be a part of, and the desired workloads configurations.
 
 
 
@@ -17,36 +19,37 @@ Deployment resource (zdbs + vms + disks + qsfs).
 
 ### Required
 
-- `node` (Number) Node id to place the deployment on
+- `node_id` (Number) Node id to place the deployment on.
 
 ### Optional
 
-- `disks` (Block List) (see [below for nested schema](#nestedblock--disks))
-- `name` (String)
-- `network_name` (String) Network to use for Zmachines
-- `qsfs` (Block List) (see [below for nested schema](#nestedblock--qsfs))
-- `solution_provider` (Number) Solution provider ID
-- `solution_type` (String)
+- `disks` (Block List) List of disk workloads configurations. (see [below for nested schema](#nestedblock--disks))
+- `name` (String) Solution name for created contract, displayed [here](https://play.dev.grid.tf/#/contractslist).
+- `network_name` (String) Network name of the deployed network resource to connect vms.
+- `qsfs` (Block List) List of Qsfs workloads configurations. Qsfs is a quantum storage file system.
+You can read more about it [here](https://github.com/threefoldtech/quantum-storage). (see [below for nested schema](#nestedblock--qsfs))
+- `solution_provider` (Number) Solution provider ID for the deployed solution which allows the creator of the solution to gain a percentage of the rewards.
+- `solution_type` (String) Solution type for created contract, displayed [here](https://play.dev.grid.tf/#/contractslist).
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
-- `vms` (Block List) (see [below for nested schema](#nestedblock--vms))
-- `zdbs` (Block List) (see [below for nested schema](#nestedblock--zdbs))
+- `vms` (Block List) List of vm (Zmachine) workloads configurations. (see [below for nested schema](#nestedblock--vms))
+- `zdbs` (Block List) List of Zdb workloads configurations. You can read more about 0-db (Zdb) [here](https://github.com/threefoldtech/0-db/). (see [below for nested schema](#nestedblock--zdbs))
 
 ### Read-Only
 
 - `id` (String) The ID of this resource.
-- `ip_range` (String) IP range of the node (e.g. 10.1.2.0/24)
+- `ip_range` (String) IP range of the node for the wireguard network (e.g. 10.1.2.0/24). Has to have a subnet mask of 24.
 
 <a id="nestedblock--disks"></a>
 ### Nested Schema for `disks`
 
 Required:
 
-- `name` (String) the disk name, used to reference it in zmachine mounts
-- `size` (Number) the disk size in GBs
+- `name` (String) Disk workload name.
+- `size` (Number) Disk size in GBs.
 
 Optional:
 
-- `description` (String)
+- `description` (String) Description for disk workload.
 
 
 <a id="nestedblock--qsfs"></a>
@@ -54,42 +57,42 @@ Optional:
 
 Required:
 
-- `cache` (Number) The size of the fuse mountpoint on the node in MBs (holds qsfs local data before pushing)
-- `encryption_key` (String) 64 long hex encoded encryption key (e.g. 0000000000000000000000000000000000000000000000000000000000000000)
+- `cache` (Number) The size of the fuse mountpoint on the node in MBs (holds qsfs local data before pushing).
+- `encryption_key` (String) 64 long hex encoded encryption key (e.g. 0000000000000000000000000000000000000000000000000000000000000000).
 - `expected_shards` (Number) The amount of shards which are generated when the data is encoded. Essentially, this is the amount of shards which is needed to be able to recover the data, and some disposable shards which could be lost. The amount of disposable shards can be calculated as expected_shards - minimal_shards.
 - `groups` (Block List, Min: 1) The backend groups to write the data to. (see [below for nested schema](#nestedblock--qsfs--groups))
 - `max_zdb_data_dir_size` (Number) Maximum size of the data dir in MiB, if this is set and the sum of the file sizes in the data dir gets higher than this value, the least used, already encoded file will be removed.
 - `metadata` (Block List, Min: 1, Max: 1) (see [below for nested schema](#nestedblock--qsfs--metadata))
 - `minimal_shards` (Number) The minimum amount of shards which are needed to recover the original data.
-- `name` (String)
+- `name` (String) Qsfs workload name.
 - `redundant_groups` (Number) The amount of groups which one should be able to loose while still being able to recover the original data.
 - `redundant_nodes` (Number) The amount of nodes that can be lost in every group while still being able to recover the original data.
 
 Optional:
 
-- `compression_algorithm` (String) configuration to use for the compression stage. Currently only snappy is supported
-- `description` (String)
+- `compression_algorithm` (String) configuration to use for the compression stage. Currently only snappy is supported.
+- `description` (String) Description of the qsfs workload.
 - `encryption_algorithm` (String) configuration to use for the encryption stage. Currently only AES is supported.
 
 Read-Only:
 
-- `metrics_endpoint` (String) QSFS exposed metrics
+- `metrics_endpoint` (String) QSFS exposed metrics endpoint.
 
 <a id="nestedblock--qsfs--groups"></a>
 ### Nested Schema for `qsfs.groups`
 
 Optional:
 
-- `backends` (Block List) (see [below for nested schema](#nestedblock--qsfs--groups--backends))
+- `backends` (Block List) List of zdb backends configurations. (see [below for nested schema](#nestedblock--qsfs--groups--backends))
 
 <a id="nestedblock--qsfs--groups--backends"></a>
 ### Nested Schema for `qsfs.groups.backends`
 
 Required:
 
-- `address` (String) Address of backend zdb (e.g. [300:a582:c60c:df75:f6da:8a92:d5ed:71ad]:9900 or 60.60.60.60:9900)
-- `namespace` (String) ZDB namespace
-- `password` (String) Namespace password
+- `address` (String) Address of backend zdb (e.g. [300:a582:c60c:df75:f6da:8a92:d5ed:71ad]:9900 or 60.60.60.60:9900).
+- `namespace` (String) ZDB namespace.
+- `password` (String) Namespace password.
 
 
 
@@ -98,23 +101,23 @@ Required:
 
 Required:
 
-- `encryption_key` (String) 64 long hex encoded encryption key (e.g. 0000000000000000000000000000000000000000000000000000000000000000)
-- `prefix` (String) Data stored on the remote metadata is prefixed with
+- `encryption_key` (String) 64 long hex encoded encryption key (e.g. 0000000000000000000000000000000000000000000000000000000000000000).
+- `prefix` (String) Data stored on the remote metadata is prefixed with.
 
 Optional:
 
-- `backends` (Block List) (see [below for nested schema](#nestedblock--qsfs--metadata--backends))
+- `backends` (Block List) List of zdb backends configurations. (see [below for nested schema](#nestedblock--qsfs--metadata--backends))
 - `encryption_algorithm` (String) configuration to use for the encryption stage. Currently only AES is supported.
-- `type` (String) configuration for the metadata store to use, currently only zdb is supported
+- `type` (String) configuration for the metadata store to use, currently only zdb is supported.
 
 <a id="nestedblock--qsfs--metadata--backends"></a>
 ### Nested Schema for `qsfs.metadata.backends`
 
 Required:
 
-- `address` (String) Address of backend zdb (e.g. [300:a582:c60c:df75:f6da:8a92:d5ed:71ad]:9900 or 60.60.60.60:9900)
-- `namespace` (String) ZDB namespace
-- `password` (String) Namespace password
+- `address` (String) Address of backend zdb (e.g. [300:a582:c60c:df75:f6da:8a92:d5ed:71ad]:9900 or 60.60.60.60:9900).
+- `namespace` (String) ZDB namespace.
+- `password` (String) Namespace password.
 
 
 
@@ -132,39 +135,39 @@ Optional:
 
 Required:
 
-- `flist` (String) e.g. https://hub.grid.tf/omar0.3bot/omarelawady-ubuntu-20.04.flist
-- `name` (String)
+- `flist` (String) Flist used on this vm, e.g. https://hub.grid.tf/tf-official-apps/base:latest.flist. All flists could be found in `https://hub.grid.tf/`.
+- `name` (String) Vm (zmachine) workload name.
 
 Optional:
 
-- `corex` (Boolean) Enable corex
-- `cpu` (Number) Number of VCPUs
-- `description` (String)
-- `entrypoint` (String) command to execute as the Zmachine init
-- `env_vars` (Map of String) Environment variables to pass to the zmachine
-- `flist_checksum` (String) if present, the flist is rejected if it has a different hash. the flist hash can be found by append
-- `ip` (String) The private wg IP of the Zmachine
-- `memory` (Number) Memory size
-- `mounts` (Block List) Zmachine mounts, can reference QSFSs and Disks (see [below for nested schema](#nestedblock--vms--mounts))
-- `planetary` (Boolean) Enable Yggdrasil allocation
-- `publicip` (Boolean) true to enable public ip reservation
-- `publicip6` (Boolean) true to enable public ipv6 reservation
-- `rootfs_size` (Number) Rootfs size in MB
-- `zlogs` (List of String) Zlogs is a utility workload that allows you to stream `zmachine` logs to a remote location.
+- `corex` (Boolean) Flag to enable corex.
+- `cpu` (Number) Number of virtual cpus.
+- `description` (String) Description for the vm.
+- `entrypoint` (String) Command to execute as the Zmachine init.
+- `env_vars` (Map of String) Environment variables to pass to the zmachine.
+- `flist_checksum` (String) if present, the flist is rejected if it has a different hash.
+- `ip` (String) The private wireguard IP of the vm.
+- `memory` (Number) Memory size in MB.
+- `mounts` (Block List) List of vm (Zmachine) mounts. Can reference QSFSs and Disks. (see [below for nested schema](#nestedblock--vms--mounts))
+- `planetary` (Boolean) Flag to enable Yggdrasil ip allocation.
+- `publicip` (Boolean) Flag to enable public ipv4 reservation.
+- `publicip6` (Boolean) Flag to enable public ipv6 reservation.
+- `rootfs_size` (Number) Rootfs size in MB.
+- `zlogs` (List of String) List of Zlogs workloads configurations. Zlogs is a utility workload that allows you to stream `zmachine` logs to a remote location.
 
 Read-Only:
 
-- `computedip` (String) The reserved public ip
-- `computedip6` (String) The reserved public ipv6
-- `ygg_ip` (String) Allocated Yggdrasil IP
+- `computedip` (String) The reserved public ipv4 if any.
+- `computedip6` (String) The reserved public ipv6 if any.
+- `ygg_ip` (String) The allocated Yggdrasil IP.
 
 <a id="nestedblock--vms--mounts"></a>
 ### Nested Schema for `vms.mounts`
 
 Required:
 
-- `disk_name` (String) Name of QSFS or Disk to mount
-- `mount_point` (String) Directory to mount the disk on inside the Zmachine
+- `disk_name` (String) Name of QSFS or Disk to mount.
+- `mount_point` (String) Directory to mount the disk on inside the Zmachine.
 
 
 
@@ -173,20 +176,20 @@ Required:
 
 Required:
 
-- `name` (String)
-- `password` (String)
-- `size` (Number) Size of the zdb in GBs
+- `name` (String) Zdb worklod name.
+- `password` (String) Zdb password.
+- `size` (Number) Size of the zdb in GBs.
 
 Optional:
 
-- `description` (String)
-- `mode` (String) Mode of the zdb, user or seq
-- `public` (Boolean) Makes it read-only if password is set, writable if no password set
+- `description` (String) Zdb workload description.
+- `mode` (String) Mode of the zdb, `user` or `seq`. `user` is the default mode where a user can SET their own keys, like any key-value store. All keys are kept in memory. in `seq` mode, keys are sequential and autoincremented.
+- `public` (Boolean) Makes it read-only if password is set, writable if no password set.
 
 Read-Only:
 
-- `ips` (List of String) IPs of the zdb
-- `namespace` (String) Namespace of the zdb
-- `port` (Number) Port of the zdb
+- `ips` (List of String) Computed IPs of the zdb.
+- `namespace` (String) Namespace of the zdb.
+- `port` (Number) Port of the zdb.
 
 

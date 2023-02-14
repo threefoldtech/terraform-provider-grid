@@ -3,12 +3,12 @@
 page_title: "grid_network Resource - terraform-provider-grid"
 subcategory: ""
 description: |-
-  Network resource.
+  Resource to deploy a network on the grid. This is a private wireguard network. A user could specify that they want to have a user access endpoint to this network through the add_wireguard_access flag. A separate workload is deployed on each of the specified nodes, with the peers for each workload configured in a way making any pair of nodes in the network accessible to each other.
 ---
 
 # grid_network (Resource)
 
-Network resource.
+Resource to deploy a network on the grid. This is a private wireguard network. A user could specify that they want to have a user access endpoint to this network through the `add_wireguard_access` flag. A separate workload is deployed on each of the specified nodes, with the peers for each workload configured in a way making any pair of nodes in the network accessible to each other.
 
 
 
@@ -17,24 +17,24 @@ Network resource.
 
 ### Required
 
-- `ip_range` (String) Network ip range
-- `name` (String) Network Name
-- `nodes` (List of Number) List of nodes to add to the network
+- `ip_range` (String) Network ip range (e.g. 10.1.2.0/16). Has to have a subnet mask of 16.
+- `name` (String) Network workloads Name.
+- `nodes` (List of Number) List of node ids to add to the network.
 
 ### Optional
 
-- `add_wg_access` (Boolean) Whether to add a public node to network and use it to generate a wg config
-- `description` (String)
-- `nodes_ip_range` (Map of String) Computed values of nodes' ip ranges after deployment
-- `solution_type` (String) Project Name
+- `add_wireguard_access` (Boolean) Flag to generate wireguard configuration for external user access to the network.
+- `description` (String) Description of the network workloads.
+- `nodes_ip_range` (Map of String) Computed values of nodes' ip ranges after deployment.
+- `solution_type` (String) Solution type for created contract, displayed [here](https://play.dev.grid.tf/#/contractslist).
 
 ### Read-Only
 
-- `access_wg_config` (String) WG config for access
-- `external_ip` (String) IP of the access point (the IP to use in local wireguard config)
-- `external_sk` (String) Access point private key (the one to use in the local wireguard config to access the network)
+- `external_ip` (String) Wireguard IP assigned for external user access.
+- `external_sk` (String) External user private key used in encryption while communicating through Wireguard network.
 - `id` (String) The ID of this resource.
-- `node_deployment_id` (Map of Number) Mapping from each node to its deployment id
+- `node_deployment_id` (Map of Number) Mapping from each node to its deployment id.
 - `public_node_id` (Number) Public node id (in case it's added). Used for wireguard access and supporting hidden nodes.
+- `wireguard_config` (String) Generated wireguard configuration for external user access to the network.
 
 

@@ -22,7 +22,7 @@ locals {
 
   master = {
     name        = "mr"
-    node        = 45
+    node_id       = 45
     cpu         = 2
     memory      = 1024
     disk_name   = "mrdisk"
@@ -34,7 +34,7 @@ locals {
   workers = [
     {
       name        = "w0"
-      node        = 45
+      node_id       = 45
       cpu         = 1
       memory      = 1024
       disk_name   = "w0disk"
@@ -47,13 +47,13 @@ locals {
   disks = [
     {
       name        = "mrdisk"
-      node        = 45
+      node_id       = 45
       size        = 5
       description = ""
     },
     {
       name        = "w0disk"
-      node        = 45
+      node_id       = 45
       size        = 2
       description = ""
     },

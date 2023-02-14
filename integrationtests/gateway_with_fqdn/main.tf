@@ -30,7 +30,7 @@ resource "grid_network" "net1" {
 }
 resource "grid_deployment" "d1" {
   name         = local.name
-  node         = 34
+  node_id        = 34
   network_name = grid_network.net1.name
   vms {
     name  = "vm1"
@@ -46,7 +46,7 @@ resource "grid_deployment" "d1" {
 }
 
 resource "grid_fqdn_proxy" "p1" {
-  node = 15
+  node_id= 15
   name = "test"
   fqdn = "${var.fqdn}"
   backends = [format("http://[%s]:9000", grid_deployment.d1.vms[0].ygg_ip)]

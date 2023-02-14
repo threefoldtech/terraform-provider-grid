@@ -8,9 +8,9 @@ terraform {
 
 locals {
   names       = concat([for w in var.workers : w.name], [var.master.name])
-  disks_map   = { for d in var.disks : d.node => d... }
+  disks_map   = { for d in var.disks : d.node_id=> d... }
   master_disk = lookup(local.disks_map, "${var.master.node}", {})[0]
-  vms_list    = flatten([for node in grid_deployment.workers : node.vms])
+  vms_list    = flatten([for node_idin grid_deployment.workers : node.vms])
 }
 
 module "validator" {
@@ -27,7 +27,7 @@ resource "grid_network" "net" {
 }
 
 resource "grid_deployment" "master" {
-  node         = var.master.node
+  node_id        = var.master.node
   network_name = grid_network.net.name
   vms {
     name       = var.master.name
@@ -59,8 +59,8 @@ resource "grid_deployment" "master" {
 }
 
 resource "grid_deployment" "workers" {
-  for_each     = { for w in var.workers : w.node => w... }
-  node         = tonumber(each.key)
+  for_each     = { for w in var.workers : w.node_id=> w... }
+  node_id        = tonumber(each.key)
   network_name = grid_network.net.name
 
   dynamic "vms" {

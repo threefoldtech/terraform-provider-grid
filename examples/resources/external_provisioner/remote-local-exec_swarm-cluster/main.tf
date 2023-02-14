@@ -22,7 +22,7 @@ resource "grid_network" "net1" {
  
 resource "grid_deployment" "swarm1" {
   name = local.name
-  node = 1
+  node_id= 1
   network_name = grid_network.net1.name
   vms {
     name = "swarmManager1"

@@ -69,7 +69,7 @@ func NewGatewayNameDeployer(d *schema.ResourceData, apiClient *apiClient) (Gatew
 		},
 		ID:               d.Id(),
 		Description:      d.Get("description").(string),
-		Node:             uint32(d.Get("node").(int)),
+		Node:             uint32(d.Get("node_id").(int)),
 		NodeDeploymentID: nodeDeploymentID,
 		NameContractID:   uint64(d.Get("name_contract_id").(int)),
 
@@ -92,7 +92,7 @@ func (k *GatewayNameDeployer) Marshal(d *schema.ResourceData) (errors error) {
 	}
 
 	d.SetId(k.ID)
-	err := d.Set("node", k.Node)
+	err := d.Set("node_id", k.Node)
 	if err != nil {
 		errors = multierror.Append(errors, err)
 	}

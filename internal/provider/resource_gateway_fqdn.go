@@ -12,7 +12,7 @@ import (
 func resourceGatewayFQDNProxy() *schema.Resource {
 	return &schema.Resource{
 		// This description is used by the documentation generator and the language server.
-		Description: "Resource for deploying gateway domains.",
+		Description: "Resource for deploying a gateway with a fully qualified domain name.\nA user should have some fully qualified domain name (fqdn) (e.g. example.com), pointing to the specified node working as a gateway, then connect this gateway to whichever backend services they desire, making these backend services accessible through the computed fqdn.",
 
 		CreateContext: ResourceFunc(resourceGatewayFQDNCreate),
 		ReadContext:   ResourceReadFunc(resourceGatewayFQDNRead),
@@ -24,35 +24,35 @@ func resourceGatewayFQDNProxy() *schema.Resource {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Default:     "name",
-				Description: "Gateway workload name (of no actual significance)",
+				Description: "Gateway workload name.",
 			},
 			"solution_type": {
 				Type:        schema.TypeString,
 				Optional:    true,
-				Description: "Gateway name (the fqdn will be <name>.<gateway-domain>)",
+				Description: "Solution type for created contract, displayed [here](https://play.dev.grid.tf/#/contractslist).",
 				Default:     "Gateway",
 			},
 			"description": {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Default:     "",
-				Description: "Description field",
+				Description: "Description for the gateway fqdn workload.",
 			},
-			"node": {
+			"node_id": {
 				Type:        schema.TypeInt,
 				Required:    true,
-				Description: "The gateway's node id",
+				Description: "The gateway's node id.",
 			},
 			"fqdn": {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: "The fully quallified domain name of the deployed workload",
+				Description: "The fully quallified domain name of the deployed workload.",
 			},
 			"tls_passthrough": {
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Default:     false,
-				Description: "true to pass the tls as is to the backends",
+				Description: "True to pass the tls as is to the backends.",
 			},
 			"backends": {
 				Type:     schema.TypeList,
@@ -60,13 +60,13 @@ func resourceGatewayFQDNProxy() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
-				Description: "The backends of the gateway proxy (in the format (http|https)://ip:port), with tls_passthrough the scheme must be https",
+				Description: "The backends of the gateway proxy (in the format (http|https)://ip:port), with tls_passthrough the scheme must be https.",
 			},
 			"node_deployment_id": {
 				Type:        schema.TypeMap,
 				Computed:    true,
 				Elem:        &schema.Schema{Type: schema.TypeInt},
-				Description: "Mapping from each node to its deployment id",
+				Description: "Mapping from each node to its deployment id.",
 			},
 		},
 	}

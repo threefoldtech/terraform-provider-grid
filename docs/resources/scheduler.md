@@ -3,12 +3,12 @@
 page_title: "grid_scheduler Resource - terraform-provider-grid"
 subcategory: ""
 description: |-
-  Resource to dynamically assign resource requests to nodes.
+  Resource to dynamically assign resource requests to nodes. A user could specify their desired node configurations, and the scheduler searches the grid for eligible nodes.
 ---
 
 # grid_scheduler (Resource)
 
-Resource to dynamically assign resource requests to nodes.
+Resource to dynamically assign resource requests to nodes. A user could specify their desired node configurations, and the scheduler searches the grid for eligible nodes.
 
 
 
@@ -17,29 +17,29 @@ Resource to dynamically assign resource requests to nodes.
 
 ### Required
 
-- `requests` (Block List, Min: 1) List of node assignment requests (see [below for nested schema](#nestedblock--requests))
+- `requests` (Block List, Min: 1) List of requests. Here a user defines their required nodes configurations. (see [below for nested schema](#nestedblock--requests))
 
 ### Read-Only
 
 - `id` (String) The ID of this resource.
-- `nodes` (Map of Number) Mapping from the request name to the node id
+- `nodes` (Map of Number) Mapping from the request name to the node id.
 
 <a id="nestedblock--requests"></a>
 ### Nested Schema for `requests`
 
 Required:
 
-- `name` (String) used as a key in the `nodes` dict to be used as a reference
+- `name` (String) Request name. Used as a reference in the `nodes` dict.
 
 Optional:
 
-- `certified` (Boolean) Pick only certified nodes (Not implemented)
-- `cru` (Number) Number of VCPUs
-- `domain` (Boolean) Pick only nodes with public config containing domain
-- `farm` (String) Farm name
-- `hru` (Number) Disk HDD size in MBs
-- `ipv4` (Boolean) Pick only nodes with public config containing ipv4
-- `mru` (Number) Memory size in MBs
-- `sru` (Number) Disk SSD size in MBs
+- `certified` (Boolean) Flag to pick only certified nodes (Not implemented).
+- `cru` (Number) Number of required virtual CPUs.
+- `domain` (Boolean) Flag to pick only nodes with public config containing domain.
+- `farm` (String) Farm name to search for eligible nodes.
+- `hru` (Number) Disk HDD size in MBs.
+- `ipv4` (Boolean) Flag to pick only nodes with public ipv4 configuration.
+- `mru` (Number) Memory size in MBs.
+- `sru` (Number) Disk SSD size in MBs.
 
 

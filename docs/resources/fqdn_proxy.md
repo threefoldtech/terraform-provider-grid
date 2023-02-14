@@ -3,12 +3,14 @@
 page_title: "grid_fqdn_proxy Resource - terraform-provider-grid"
 subcategory: ""
 description: |-
-  Resource for deploying gateway domains.
+  Resource for deploying a gateway with a fully qualified domain name.
+  A user should have some fully qualified domain name (fqdn) (e.g. example.com), pointing to the specified node working as a gateway, then connect this gateway to whichever backend services they desire, making these backend services accessible through the computed fqdn.
 ---
 
 # grid_fqdn_proxy (Resource)
 
-Resource for deploying gateway domains.
+Resource for deploying a gateway with a fully qualified domain name.
+A user should have some fully qualified domain name (fqdn) (e.g. example.com), pointing to the specified node working as a gateway, then connect this gateway to whichever backend services they desire, making these backend services accessible through the computed fqdn.
 
 
 
@@ -17,20 +19,20 @@ Resource for deploying gateway domains.
 
 ### Required
 
-- `backends` (List of String) The backends of the gateway proxy (in the format (http|https)://ip:port), with tls_passthrough the scheme must be https
-- `fqdn` (String) The fully quallified domain name of the deployed workload
-- `node` (Number) The gateway's node id
+- `backends` (List of String) The backends of the gateway proxy (in the format (http|https)://ip:port), with tls_passthrough the scheme must be https.
+- `fqdn` (String) The fully quallified domain name of the deployed workload.
+- `node_id` (Number) The gateway's node id.
 
 ### Optional
 
-- `description` (String) Description field
-- `name` (String) Gateway workload name (of no actual significance)
-- `solution_type` (String) Gateway name (the fqdn will be <name>.<gateway-domain>)
-- `tls_passthrough` (Boolean) true to pass the tls as is to the backends
+- `description` (String) Description for the gateway fqdn workload.
+- `name` (String) Gateway workload name.
+- `solution_type` (String) Solution type for created contract, displayed [here](https://play.dev.grid.tf/#/contractslist).
+- `tls_passthrough` (Boolean) True to pass the tls as is to the backends.
 
 ### Read-Only
 
 - `id` (String) The ID of this resource.
-- `node_deployment_id` (Map of Number) Mapping from each node to its deployment id
+- `node_deployment_id` (Map of Number) Mapping from each node to its deployment id.
 
 

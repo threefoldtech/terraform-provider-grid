@@ -27,7 +27,7 @@ resource "grid_network" "net1" {
 
 # Deployment specs
 resource "grid_deployment" "d1" {
-  node         = 33
+  node_id        = 33
   network_name = grid_network.net1.name
 
   disks {

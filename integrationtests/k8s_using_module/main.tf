@@ -19,7 +19,7 @@ variable "network_nodes" {
 variable "workers" {
   type = list(object({
     name        = string
-    node        = number
+    node_id       = number
     cpu         = number
     memory      = number
     disk_name   = string
@@ -31,7 +31,7 @@ variable "workers" {
 
 variable "disks" {
   type = list(object({
-    node        = number
+    node_id       = number
     name        = string
     size        = number
     description = string
@@ -51,7 +51,7 @@ locals {
 
   master = {
     name        = "mr"
-    node        = 12
+    node_id       = 12
     cpu         = 2
     memory      = 1024
     disk_name   = "mrdisk"

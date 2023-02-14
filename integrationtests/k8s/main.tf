@@ -29,7 +29,7 @@ resource "grid_kubernetes" "k8s1" {
 
   master {
     disk_size = 22
-    node      = 5
+    node_id     = 5
     name      = "mr"
     cpu       = 2
     publicip  = false
@@ -38,7 +38,7 @@ resource "grid_kubernetes" "k8s1" {
   }
   workers {
     disk_size = 15
-    node      = 7
+    node_id     = 7
     name      = "w0"
     cpu       = 2
     memory    = 2048

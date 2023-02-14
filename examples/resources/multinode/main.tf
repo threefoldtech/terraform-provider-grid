@@ -23,7 +23,7 @@ resource "grid_network" "net1" {
 
 resource "grid_deployment" "d1" {
   name         = local.name
-  node         = 4
+  node_id        = 4
   network_name = grid_network.net1.name
   vms {
     name       = "vm1"
@@ -41,7 +41,7 @@ resource "grid_deployment" "d1" {
 }
 
 resource "grid_deployment" "d2" {
-  node         = 2
+  node_id        = 2
   network_name = grid_network.net1.name
   vms {
     name       = "vm3"

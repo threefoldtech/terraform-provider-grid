@@ -3,12 +3,14 @@
 page_title: "grid_name_proxy Resource - terraform-provider-grid"
 subcategory: ""
 description: |-
-  Resource for deploying gateway domains.
+  Resource for deploying a gateway name workload.
+  A user should specify some unique name and a node working as a gateway, and the grid generates a fully qualified domain name (fqdn) in the form name.gateway-domain. Then, the user could connect this gateway workload to whichever backend services the user desires, making these backend services accessible through the computed fqdn.
 ---
 
 # grid_name_proxy (Resource)
 
-Resource for deploying gateway domains.
+Resource for deploying a gateway name workload.
+A user should specify some unique `name` and a node working as a gateway, and the grid generates a fully qualified domain name (fqdn) in the form `name`.`gateway-domain`. Then, the user could connect this gateway workload to whichever backend services the user desires, making these backend services accessible through the computed fqdn.
 
 
 
@@ -17,21 +19,21 @@ Resource for deploying gateway domains.
 
 ### Required
 
-- `backends` (List of String) The backends of the gateway proxy (in the format (http|https)://ip:port), with tls_passthrough the scheme must be https
-- `name` (String) Gateway name (the fqdn will be <name>.<gateway-domain>)
-- `node` (Number) The gateway's node id
+- `backends` (List of String) The backends of the gateway proxy (in the format (http|https)://ip:port), with tls_passthrough the scheme must be https.
+- `name` (String) Gateway name. The fqdn will be <name>.<gateway-domain>.
+- `node_id` (Number) The gateway's node id.
 
 ### Optional
 
 - `description` (String)
-- `solution_type` (String) Gateway name (the fqdn will be <name>.<gateway-domain>)
+- `solution_type` (String) Solution type for created contract, displayed [here](https://play.dev.grid.tf/#/contractslist).
 - `tls_passthrough` (Boolean) True to pass the tls as is to the backends.
 
 ### Read-Only
 
 - `fqdn` (String) The computed fully quallified domain name of the deployed workload.
 - `id` (String) The ID of this resource.
-- `name_contract_id` (Number) The id of the name contract
-- `node_deployment_id` (Map of Number) Mapping from each node to its deployment id
+- `name_contract_id` (Number) The id of the created name contract.
+- `node_deployment_id` (Map of Number) Mapping from each node to its deployment id.
 
 

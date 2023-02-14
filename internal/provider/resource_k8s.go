@@ -28,7 +28,7 @@ import (
 func resourceKubernetes() *schema.Resource {
 	return &schema.Resource{
 		// This description is used by the documentation generator and the language server.
-		Description: "Kubernetes resource.",
+		Description: "Resource to deploy a kubernetes cluster. A cluster should consist of one master node, and a number (could be zero) of worker nodes.",
 
 		CreateContext: resourceK8sCreate,
 		ReadContext:   resourceK8sRead,
@@ -39,196 +39,201 @@ func resourceKubernetes() *schema.Resource {
 			"name": {
 				Type:        schema.TypeString,
 				Optional:    true,
-				Description: "Instance name",
+				Description: "Solution name for the created contracts, displayed [here](https://play.dev.grid.tf/#/contractslist).",
 			},
 			"solution_type": {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Default:     "",
-				Description: "Kubernetes",
+				Description: "Solution type for the created contracts, displayed [here](https://play.dev.grid.tf/#/contractslist).",
 			},
 			"node_deployment_id": {
 				Type:        schema.TypeMap,
 				Computed:    true,
 				Elem:        &schema.Schema{Type: schema.TypeInt},
-				Description: "Mapping from each node to its deployment id",
+				Description: "Mapping from each node to its deployment id (contract id).",
 			},
 			"network_name": {
 				Type:        schema.TypeString,
 				Optional:    true,
-				Description: "The network name to deploy the cluster on",
+				Description: "The network name to deploy the cluster on.",
 			},
 			"ssh_key": {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Default:     "",
-				Description: "SSH key to access the cluster nodes",
+				Description: "SSH key to access the cluster nodes.",
 			},
 			"token": {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: "The cluster secret token",
+				Description: "The cluster secret token. Each node has to have this token to be part of the cluster.",
 			},
 			"nodes_ip_range": {
 				Type:        schema.TypeMap,
 				Computed:    true,
 				Elem:        &schema.Schema{Type: schema.TypeString},
-				Description: "Network IP ranges of nodes in the cluster (usually assigned from grid_network.<network-resource-name>.nodes_ip_range)",
+				Description: "Reserved network IP ranges for nodes in the cluster (this is assigned from grid_network.<network-resource-name>.nodes_ip_range).",
 			},
 			"master": {
-				MaxItems: 1,
-				Type:     schema.TypeList,
-				Required: true,
+				MaxItems:    1,
+				Type:        schema.TypeList,
+				Required:    true,
+				Description: "Master holds the configuration of master node in the kubernetes cluster.",
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
 							Type:        schema.TypeString,
 							Required:    true,
-							Description: "Master name",
+							Description: "Master node Zmachine workload name.",
 						},
-						"node": {
+						"node_id": {
 							Type:        schema.TypeInt,
 							Required:    true,
-							Description: "Node ID",
+							Description: "Node ID to deploy master node on.",
 						},
 						"disk_size": {
 							Type:        schema.TypeInt,
 							Required:    true,
-							Description: "Data disk size in GBs",
+							Description: "Disk size for master node in GBs.",
 						},
 						"publicip": {
 							Type:        schema.TypeBool,
 							Optional:    true,
-							Description: "true to enable public ip reservation",
+							Description: "Flag to enable/disable public ipv4 reservation.",
 						},
 						"publicip6": {
 							Type:        schema.TypeBool,
 							Optional:    true,
-							Description: "true to enable public ipv6 reservation",
+							Description: "Flag to enable/disable public ipv6 reservation.",
 						},
 						"flist": {
-							Type:     schema.TypeString,
-							Optional: true,
-							Default:  "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist",
+							Type:        schema.TypeString,
+							Optional:    true,
+							Default:     "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist",
+							Description: "Flist used on master node, e.g. https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist. All flists could be found in `https://hub.grid.tf/`",
 						},
 						"flist_checksum": {
 							Type:        schema.TypeString,
 							Optional:    true,
-							Description: "if present, the flist is rejected if it has a different hash. the flist hash can be found by append",
+							Description: "if present, the flist is rejected if it has a different hash.",
 						},
 						"computedip": {
 							Type:        schema.TypeString,
 							Computed:    true,
-							Description: "The reserved public IP",
+							Description: "The reserved public IPv4.",
 						},
 						"computedip6": {
 							Type:        schema.TypeString,
 							Computed:    true,
-							Description: "The reserved public IPv6",
+							Description: "The reserved public IPv6.",
 						},
 						"ip": {
 							Type:        schema.TypeString,
 							Computed:    true,
-							Description: "The private IP (computed from nodes_ip_range)",
+							Description: "The private wireguard IP of master node.",
 						},
 						"cpu": {
 							Type:        schema.TypeInt,
 							Required:    true,
-							Description: "Number of VCPUs",
+							Description: "Number of virtual CPUs.",
 						},
 						"memory": {
 							Type:        schema.TypeInt,
 							Required:    true,
-							Description: "Memory size",
+							Description: "Memory size in MB.",
 						},
 						"planetary": {
 							Type:        schema.TypeBool,
 							Optional:    true,
 							Default:     false,
-							Description: "Enable Yggdrasil allocation",
+							Description: "Flag to enable Yggdrasil ip allocation.",
 						},
 						"ygg_ip": {
 							Type:        schema.TypeString,
 							Computed:    true,
-							Description: "Allocated Yggdrasil IP",
+							Description: "The allocated Yggdrasil IP.",
 						},
 					},
 				},
 			},
 			"workers": {
-				Type:     schema.TypeList,
-				Optional: true,
+				Type:        schema.TypeList,
+				Optional:    true,
+				Description: "Workers is a list holding the workers configuration for the kubernetes cluster.",
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
-							Type:     schema.TypeString,
-							Required: true,
+							Type:        schema.TypeString,
+							Required:    true,
+							Description: "Worker node Zmachine workload name.",
 						},
 						"flist": {
-							Type:     schema.TypeString,
-							Optional: true,
-							Default:  "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist",
+							Type:        schema.TypeString,
+							Optional:    true,
+							Default:     "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist",
+							Description: "Flist used on worker node, e.g. https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist. All flists could be found in `https://hub.grid.tf/`.",
 						},
 						"flist_checksum": {
 							Type:        schema.TypeString,
 							Optional:    true,
-							Description: "if present, the flist is rejected if it has a different hash. the flist hash can be found by append",
+							Description: "if present, the flist is rejected if it has a different hash.",
 						},
 						"disk_size": {
 							Type:        schema.TypeInt,
 							Required:    true,
-							Description: "Data disk size in GBs",
+							Description: "Data disk size in GBs.",
 						},
-						"node": {
+						"node_id": {
 							Type:        schema.TypeInt,
 							Required:    true,
-							Description: "Node ID",
+							Description: "Node ID to deploy worker node on.",
 						},
 						"publicip": {
 							Type:        schema.TypeBool,
 							Optional:    true,
-							Description: "true to enable public ip reservation",
+							Description: "Flag to enable/disable public ipv4 reservation.",
 						},
 						"computedip": {
 							Type:        schema.TypeString,
 							Computed:    true,
-							Description: "The reserved public ip",
+							Description: "The reserved public ipv4.",
 						},
 						"publicip6": {
 							Type:        schema.TypeBool,
 							Optional:    true,
-							Description: "true to enable public ipv6 reservation",
+							Description: "Flag to enable/disable public ipv6 reservation.",
 						},
 						"computedip6": {
 							Type:        schema.TypeString,
 							Computed:    true,
-							Description: "The reserved public ipv6",
+							Description: "The reserved public ipv6.",
 						},
 						"ip": {
 							Type:        schema.TypeString,
 							Computed:    true,
-							Description: "The private IP (computed from nodes_ip_range)",
+							Description: "The private IP (computed from nodes_ip_range).",
 						},
 						"cpu": {
 							Type:        schema.TypeInt,
 							Required:    true,
-							Description: "Number of VCPUs",
+							Description: "Number of virtual CPUs.",
 						},
 						"memory": {
 							Type:        schema.TypeInt,
 							Required:    true,
-							Description: "Memory size",
+							Description: "Memory size in MB.",
 						},
 						"planetary": {
 							Type:        schema.TypeBool,
 							Optional:    true,
 							Default:     false,
-							Description: "Enable Yggdrasil allocation",
+							Description: "Flag to enable Yggdrasil ip allocation.",
 						},
 						"ygg_ip": {
 							Type:        schema.TypeString,
 							Computed:    true,
-							Description: "Allocated Yggdrasil IP",
+							Description: "The allocated Yggdrasil IP.",
 						},
 					},
 				},
@@ -239,7 +244,7 @@ func resourceKubernetes() *schema.Resource {
 
 type K8sNodeData struct {
 	Name          string
-	Node          uint32
+	NodeID        uint32
 	DiskSize      int
 	PublicIP      bool
 	PublicIP6     bool
@@ -274,7 +279,7 @@ type K8sDeployer struct {
 func NewK8sNodeData(m map[string]interface{}) K8sNodeData {
 	return K8sNodeData{
 		Name:          m["name"].(string),
-		Node:          uint32(m["node"].(int)),
+		NodeID:        uint32(m["node_id"].(int)),
 		DiskSize:      m["disk_size"].(int),
 		PublicIP:      m["publicip"].(bool),
 		PublicIP6:     m["publicip6"].(bool),
@@ -304,7 +309,7 @@ func NewK8sNodeDataFromWorkload(w gridtypes.Workload, nodeID uint32, diskSize in
 	}
 	k = K8sNodeData{
 		Name:        string(w.Name),
-		Node:        nodeID,
+		NodeID:      nodeID,
 		DiskSize:    diskSize,
 		PublicIP:    computedIP != "",
 		PublicIP6:   computedIP6 != "",
@@ -330,27 +335,27 @@ func NewK8sDeployer(d *schema.ResourceData, apiClient *apiClient) (K8sDeployer, 
 	usedIPs := make(map[uint32][]byte)
 
 	if master.IP != "" {
-		usedIPs[master.Node] = append(usedIPs[master.Node], net.ParseIP(master.IP)[3])
+		usedIPs[master.NodeID] = append(usedIPs[master.NodeID], net.ParseIP(master.IP)[3])
 	}
-	usedIPs[master.Node] = append(usedIPs[master.Node], network.GetNodeIPsList(master.Node)...)
+	usedIPs[master.NodeID] = append(usedIPs[master.NodeID], network.GetNodeIPsList(master.NodeID)...)
 	for _, w := range d.Get("workers").([]interface{}) {
 		data := NewK8sNodeData(w.(map[string]interface{}))
 		workers = append(workers, data)
 		if data.IP != "" {
-			usedIPs[data.Node] = append(usedIPs[data.Node], net.ParseIP(data.IP)[3])
-			usedIPs[data.Node] = append(usedIPs[data.Node], network.GetNodeIPsList(data.Node)...)
+			usedIPs[data.NodeID] = append(usedIPs[data.NodeID], net.ParseIP(data.IP)[3])
+			usedIPs[data.NodeID] = append(usedIPs[data.NodeID], network.GetNodeIPsList(data.NodeID)...)
 		}
 	}
 	nodesIPRange := make(map[uint32]gridtypes.IPNet)
 	var err error
-	nodesIPRange[master.Node], err = gridtypes.ParseIPNet(network.GetNodeSubnet(master.Node))
+	nodesIPRange[master.NodeID], err = gridtypes.ParseIPNet(network.GetNodeSubnet(master.NodeID))
 	if err != nil {
 		return K8sDeployer{}, errors.Wrap(err, "couldn't parse master node ip range")
 	}
 	for _, worker := range workers {
-		nodesIPRange[worker.Node], err = gridtypes.ParseIPNet(network.GetNodeSubnet(worker.Node))
+		nodesIPRange[worker.NodeID], err = gridtypes.ParseIPNet(network.GetNodeSubnet(worker.NodeID))
 		if err != nil {
-			return K8sDeployer{}, errors.Wrapf(err, "couldn't parse worker node (%d) ip range", worker.Node)
+			return K8sDeployer{}, errors.Wrapf(err, "couldn't parse worker node (%d) ip range", worker.NodeID)
 		}
 	}
 	nodeDeploymentIDIf := d.Get("node_deployment_id").(map[string]interface{})
@@ -394,7 +399,7 @@ func NewK8sDeployer(d *schema.ResourceData, apiClient *apiClient) (K8sDeployer, 
 func (k *K8sNodeData) Dictify() map[string]interface{} {
 	res := make(map[string]interface{})
 	res["name"] = k.Name
-	res["node"] = int(k.Node)
+	res["node_id"] = int(k.NodeID)
 	res["disk_size"] = k.DiskSize
 	res["publicip"] = k.PublicIP
 	res["publicip6"] = k.PublicIP6
@@ -425,11 +430,11 @@ func (k *K8sDeployer) invalidateBrokenAttributes(sub subi.SubstrateExt) error {
 		}
 
 	}
-	if _, ok := validNodes[k.Master.Node]; !ok {
+	if _, ok := validNodes[k.Master.NodeID]; !ok {
 		k.Master = &K8sNodeData{}
 	}
 	for _, worker := range k.Workers {
-		if _, ok := validNodes[worker.Node]; ok {
+		if _, ok := validNodes[worker.NodeID]; ok {
 			newWorkers = append(newWorkers, worker)
 		}
 	}
@@ -516,48 +521,48 @@ func (k *K8sDeployer) updateNetworkState(d *schema.ResourceData, state state.Sta
 		network.DeleteDeployment(uint32(nodeID), deploymentIDStr)
 	}
 	// remove old ips
-	network.DeleteDeployment(k.Master.Node, fmt.Sprint(k.NodeDeploymentID[k.Master.Node]))
+	network.DeleteDeployment(k.Master.NodeID, fmt.Sprint(k.NodeDeploymentID[k.Master.NodeID]))
 	for _, worker := range k.Workers {
-		network.DeleteDeployment(worker.Node, fmt.Sprint(k.NodeDeploymentID[worker.Node]))
+		network.DeleteDeployment(worker.NodeID, fmt.Sprint(k.NodeDeploymentID[worker.NodeID]))
 	}
 
 	// append new ips
-	masterNodeIPs := network.GetDeploymentIPs(k.Master.Node, fmt.Sprint(k.NodeDeploymentID[k.Master.Node]))
+	masterNodeIPs := network.GetDeploymentIPs(k.Master.NodeID, fmt.Sprint(k.NodeDeploymentID[k.Master.NodeID]))
 	masterIP := net.ParseIP(k.Master.IP)
 	if masterIP == nil {
 		log.Printf("couldn't parse master ip")
 	} else {
 		masterNodeIPs = append(masterNodeIPs, masterIP.To4()[3])
 	}
-	network.SetDeploymentIPs(k.Master.Node, fmt.Sprint(k.NodeDeploymentID[k.Master.Node]), masterNodeIPs)
+	network.SetDeploymentIPs(k.Master.NodeID, fmt.Sprint(k.NodeDeploymentID[k.Master.NodeID]), masterNodeIPs)
 	for _, worker := range k.Workers {
-		workerNodeIPs := network.GetDeploymentIPs(worker.Node, fmt.Sprint(k.NodeDeploymentID[worker.Node]))
+		workerNodeIPs := network.GetDeploymentIPs(worker.NodeID, fmt.Sprint(k.NodeDeploymentID[worker.NodeID]))
 		workerIP := net.ParseIP(worker.IP)
 		if workerIP == nil {
-			log.Printf("couldn't parse worker ip at node (%d)", worker.Node)
+			log.Printf("couldn't parse worker ip at node (%d)", worker.NodeID)
 		} else {
 			workerNodeIPs = append(workerNodeIPs, workerIP.To4()[3])
 		}
-		network.SetDeploymentIPs(worker.Node, fmt.Sprint(k.NodeDeploymentID[worker.Node]), workerNodeIPs)
+		network.SetDeploymentIPs(worker.NodeID, fmt.Sprint(k.NodeDeploymentID[worker.NodeID]), workerNodeIPs)
 	}
 }
 
 func (k *K8sDeployer) assignNodesIPs() error {
 	// TODO: when a k8s node changes its zos node, remove its ip from the used ones. better at the beginning
-	masterNodeRange := k.NodesIPRange[k.Master.Node]
+	masterNodeRange := k.NodesIPRange[k.Master.NodeID]
 	if k.Master.IP == "" || !masterNodeRange.Contains(net.ParseIP(k.Master.IP)) {
-		ip, err := k.getK8sFreeIP(masterNodeRange, k.Master.Node)
+		ip, err := k.getK8sFreeIP(masterNodeRange, k.Master.NodeID)
 		if err != nil {
 			return errors.Wrap(err, "failed to find free ip for master")
 		}
 		k.Master.IP = ip
 	}
 	for idx, w := range k.Workers {
-		workerNodeRange := k.NodesIPRange[w.Node]
+		workerNodeRange := k.NodesIPRange[w.NodeID]
 		if w.IP != "" && workerNodeRange.Contains(net.ParseIP(w.IP)) {
 			continue
 		}
-		ip, err := k.getK8sFreeIP(workerNodeRange, w.Node)
+		ip, err := k.getK8sFreeIP(workerNodeRange, w.NodeID)
 		if err != nil {
 			return errors.Wrap(err, "failed to find free ip for worker")
 		}
@@ -573,10 +578,10 @@ func (k *K8sDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[u
 	deployments := make(map[uint32]gridtypes.Deployment)
 	nodeWorkloads := make(map[uint32][]gridtypes.Workload)
 	masterWorkloads := k.Master.GenerateK8sWorkload(k, "")
-	nodeWorkloads[k.Master.Node] = append(nodeWorkloads[k.Master.Node], masterWorkloads...)
+	nodeWorkloads[k.Master.NodeID] = append(nodeWorkloads[k.Master.NodeID], masterWorkloads...)
 	for _, w := range k.Workers {
 		workerWorkloads := w.GenerateK8sWorkload(k, k.Master.IP)
-		nodeWorkloads[w.Node] = append(nodeWorkloads[w.Node], workerWorkloads...)
+		nodeWorkloads[w.NodeID] = append(nodeWorkloads[w.NodeID], workerWorkloads...)
 	}
 
 	for node, ws := range nodeWorkloads {
@@ -637,12 +642,12 @@ func (k *K8sDeployer) ValidateNames(ctx context.Context) error {
 
 func (k *K8sDeployer) ValidateIPranges(ctx context.Context) error {
 
-	if _, ok := k.NodesIPRange[k.Master.Node]; !ok {
-		return fmt.Errorf("the master node %d doesn't exist in the network's ip ranges", k.Master.Node)
+	if _, ok := k.NodesIPRange[k.Master.NodeID]; !ok {
+		return fmt.Errorf("the master node %d doesn't exist in the network's ip ranges", k.Master.NodeID)
 	}
 	for _, w := range k.Workers {
-		if _, ok := k.NodesIPRange[w.Node]; !ok {
-			return fmt.Errorf("the node with id %d in worker %s doesn't exist in the network's ip ranges", w.Node, w.Name)
+		if _, ok := k.NodesIPRange[w.NodeID]; !ok {
+			return fmt.Errorf("the node with id %d in worker %s doesn't exist in the network's ip ranges", w.NodeID, w.Name)
 		}
 	}
 	return nil
@@ -675,9 +680,9 @@ func (k *K8sDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error
 		return err
 	}
 	nodes := make([]uint32, 0)
-	nodes = append(nodes, k.Master.Node)
+	nodes = append(nodes, k.Master.NodeID)
 	for _, w := range k.Workers {
-		nodes = append(nodes, w.Node)
+		nodes = append(nodes, w.NodeID)
 
 	}
 	return client.AreNodesUp(ctx, sub, nodes, k.ncPool)
@@ -732,9 +737,9 @@ func (k *K8sDeployer) removeUsedIPsFromLocalState(cl *apiClient) {
 	ns := cl.state.GetNetworkState()
 	network := ns.GetNetwork(k.NetworkName)
 
-	network.DeleteDeployment(k.Master.Node, fmt.Sprint(k.NodeDeploymentID[k.Master.Node]))
+	network.DeleteDeployment(k.Master.NodeID, fmt.Sprint(k.NodeDeploymentID[k.Master.NodeID]))
 	for _, worker := range k.Workers {
-		network.DeleteDeployment(worker.Node, fmt.Sprint(k.NodeDeploymentID[worker.Node]))
+		network.DeleteDeployment(worker.NodeID, fmt.Sprint(k.NodeDeploymentID[worker.NodeID]))
 	}
 }
 

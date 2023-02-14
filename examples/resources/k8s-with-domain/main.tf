@@ -31,7 +31,7 @@ resource "grid_kubernetes" "k8s1" {
 
   master {
     disk_size = 23
-    node      = 2
+    node_id     = 2
     name      = "mr"
     cpu       = 2
     publicip  = true
@@ -39,21 +39,21 @@ resource "grid_kubernetes" "k8s1" {
   }
   workers {
     disk_size = 15
-    node      = 2
+    node_id     = 2
     name      = "w0"
     cpu       = 2
     memory    = 2048
   }
   workers {
     disk_size = 14
-    node      = 4
+    node_id     = 4
     name      = "w2"
     cpu       = 1
     memory    = 2048
   }
   workers {
     disk_size = 13
-    node      = 4
+    node_id     = 4
     name      = "w3"
     cpu       = 1
     memory    = 2048
@@ -61,11 +61,11 @@ resource "grid_kubernetes" "k8s1" {
 }
 
 data "grid_gateway_domain" "domain" {
-  node = 7
+  node_id= 7
   name = "ashraf"
 }
 resource "grid_name_proxy" "p1" {
-  node            = 7
+  node_id           = 7
   name            = "ashraf"
   backends        = [format("https://%s:443", split("/", grid_kubernetes.k8s1.master[0].computedip)[0])]
   tls_passthrough = true

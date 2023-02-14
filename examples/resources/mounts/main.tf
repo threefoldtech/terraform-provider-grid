@@ -22,7 +22,7 @@ resource "grid_network" "net1" {
 }
 resource "grid_deployment" "d1" {
   name         = local.name
-  node         = 2
+  node_id        = 2
   network_name = grid_network.net1.name
   disks {
     name        = "data"

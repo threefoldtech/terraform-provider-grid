@@ -14,7 +14,7 @@ provider "grid" {
 }
 
 resource "grid_deployment" "d1" {
-  node = 14
+  node_id= 14
   
   zdbs{
     name = "zdb123"
