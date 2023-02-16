@@ -20,22 +20,22 @@ provider "grid" {
 # - the fqdn can be computed from grid_gateway_domain for the vm
 # - the backend can reference the vm ip directly 
 data "grid_gateway_domain" "domain" {
-  node= 14
+  node = 14
   name = "ashrafpeertube"
 }
 resource "grid_network" "net1" {
-  nodes         = [33]
-  ip_range      = "10.1.0.0/16"
-  name          = "network"
-  description   = "newer network"
+  nodes       = [33]
+  ip_range    = "10.1.0.0/16"
+  name        = "network"
+  description = "newer network"
 }
 resource "grid_deployment" "d1" {
-  node        = 33
+  node         = 33
   network_name = grid_network.net1.name
   vms {
-    name  = "vm1"
-    flist = "https://hub.grid.tf/tf-official-apps/peertube-v3.1.1.flist"
-    cpu   = 2
+    name       = "vm1"
+    flist      = "https://hub.grid.tf/tf-official-apps/peertube-v3.1.1.flist"
+    cpu        = 2
     entrypoint = "/sbin/zinit init"
     memory     = 4096
     env_vars = {
@@ -55,7 +55,7 @@ resource "grid_deployment" "d1" {
   }
 }
 resource "grid_name_proxy" "p1" {
-  node           = 14
+  node            = 14
   name            = "ashrafpeertube"
   backends        = [format("http://[%s]:9000", grid_deployment.d1.vms[0].ygg_ip)]
   tls_passthrough = false

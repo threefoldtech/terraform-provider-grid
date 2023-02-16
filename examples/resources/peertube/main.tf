@@ -19,7 +19,7 @@ locals {
   node          = 34
 }
 data "grid_gateway_domain" "domain" {
-  node= 45
+  node = 45
   name = local.name
 }
 
@@ -31,7 +31,7 @@ resource "grid_network" "net1" {
   description   = "newer network"
 }
 resource "grid_deployment" "d1" {
-  node         = local.node
+  node          = local.node
   solution_type = local.solution_type
   name          = local.name
   network_name  = grid_network.net1.name
@@ -59,7 +59,7 @@ resource "grid_deployment" "d1" {
   }
 }
 resource "grid_name_proxy" "p1" {
-  node           = 45
+  node            = 45
   solution_type   = local.solution_type
   name            = local.name
   backends        = [format("http://[%s]:9000", grid_deployment.d1.vms[0].ygg_ip)]

@@ -27,7 +27,7 @@ resource "grid_network" "net1" {
 resource "grid_deployment" "d1" {
   solution_type = local.solution_type
   name          = local.name
-  node         = 8
+  node          = 8
   network_name  = grid_network.net1.name
 
   disks {

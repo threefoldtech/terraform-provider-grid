@@ -6,7 +6,7 @@ variable "public_key" {
 variable "disk_size" {
   type = number
 }
-variable "mount_point"{
+variable "mount_point" {
   type = string
 }
 
@@ -22,13 +22,13 @@ provider "grid" {
 }
 
 resource "grid_network" "net1" {
-  nodes         = [33]
-  ip_range      = "10.1.0.0/16"
-  name          = "network"
-  description   = "newer network"
+  nodes       = [33]
+  ip_range    = "10.1.0.0/16"
+  name        = "network"
+  description = "newer network"
 }
 resource "grid_deployment" "d1" {
-  node        = 33
+  node         = 33
   network_name = grid_network.net1.name
   disks {
     name        = "data"
@@ -46,9 +46,9 @@ resource "grid_deployment" "d1" {
       mount_point = "/${var.mount_point}"
     }
     env_vars = {
-      SSH_KEY  = "${var.public_key}"
+      SSH_KEY = "${var.public_key}"
     }
-      planetary = true
+    planetary = true
   }
 }
 output "vm_ip" {

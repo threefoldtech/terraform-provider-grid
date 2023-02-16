@@ -15,14 +15,14 @@ provider "grid" {
 }
 
 resource "grid_network" "net1" {
-  nodes         = [33]
-  ip_range      = "10.1.0.0/16"
-  name          = "network"
-  description   = "newer network"
+  nodes       = [33]
+  ip_range    = "10.1.0.0/16"
+  name        = "network"
+  description = "newer network"
 }
 
 resource "grid_deployment" "d1" {
-  node        = 33
+  node         = 33
   network_name = grid_network.net1.name
   vms {
     name       = "vm1"
@@ -41,6 +41,6 @@ output "ygg_ip" {
   value = grid_deployment.d1.vms[0].ygg_ip
 }
 
-output "vm_ip"{
+output "vm_ip" {
   value = grid_deployment.d1.vms[0].ip
 }

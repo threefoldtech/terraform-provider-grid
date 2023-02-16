@@ -15,14 +15,14 @@ provider "grid" {
 }
 
 resource "grid_network" "net1" {
-  nodes         = [14]
-  ip_range      = "10.1.0.0/16"
-  name          = "network"
-  description   = "newer network"
+  nodes       = [14]
+  ip_range    = "10.1.0.0/16"
+  name        = "network"
+  description = "newer network"
 }
 
 resource "grid_deployment" "d1" {
-  node        = 14
+  node         = 14
   network_name = grid_network.net1.name
   vms {
     name       = "vm1"

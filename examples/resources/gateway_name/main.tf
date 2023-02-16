@@ -15,16 +15,16 @@ provider "grid" {
 # - the fqdn can be computed from grid_gateway_domain for the vm
 # - the backend can reference the vm ip directly 
 data "grid_gateway_domain" "domain" {
-  node= 7 
+  node = 7
   name = "example2"
 }
 
 resource "grid_name_proxy" "p1" {
-  node= 7
-  name = "example2"
-  backends = [format("http://69.164.223.208")]
+  node            = 7
+  name            = "example2"
+  backends        = [format("http://69.164.223.208")]
   tls_passthrough = false
 }
 output "fqdn" {
-    value = data.grid_gateway_domain.domain.fqdn
+  value = data.grid_gateway_domain.domain.fqdn
 }
