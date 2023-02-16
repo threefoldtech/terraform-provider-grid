@@ -34,7 +34,7 @@ func dataSourceGatewayDomain() *schema.Resource {
 			"fqdn": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: "Fullly qualified domain name",
+				Description: "Fully qualified domain name",
 			},
 		},
 	}

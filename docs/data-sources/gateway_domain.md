@@ -22,7 +22,7 @@ Data source for computing gateway name proxy fqdn.
 
 ### Read-Only
 
-- `fqdn` (String) Fullly qualified domain name
+- `fqdn` (String) Fully qualified domain name
 - `id` (String) The ID of this resource.
 
 

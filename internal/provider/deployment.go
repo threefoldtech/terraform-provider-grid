@@ -23,7 +23,7 @@ import (
 
 type DeploymentDeployer struct {
 	Id          string
-	Node        uint32
+	NodeID      uint32
 	Disks       []workloads.Disk
 	ZDBs        []workloads.ZDB
 	VMs         []workloads.VM
@@ -90,7 +90,7 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 
 	deploymentDeployer := DeploymentDeployer{
 		Id:          d.Id(),
-		Node:        nodeID,
+		NodeID:      nodeID,
 		Disks:       disks,
 		VMs:         vms,
 		QSFSs:       qsfs,
@@ -107,7 +107,7 @@ func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (Deploy
 func (d *DeploymentDeployer) assignNodesIPs() error {
 	networkingState := d.APIClient.state.GetNetworkState()
 	network := networkingState.GetNetwork(d.NetworkName)
-	usedIPs := network.GetNodeIPsList(d.Node)
+	usedIPs := network.GetNodeIPsList(d.NodeID)
 	if len(d.VMs) == 0 {
 		return nil
 	}
@@ -163,7 +163,7 @@ func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context)
 		dl.Workloads = append(dl.Workloads, qsfsWorkload)
 	}
 
-	return map[uint32]gridtypes.Deployment{d.Node: dl}, nil
+	return map[uint32]gridtypes.Deployment{d.NodeID: dl}, nil
 }
 
 func (d *DeploymentDeployer) Marshal(r *schema.ResourceData) (errors error) {
@@ -203,7 +203,7 @@ func (d *DeploymentDeployer) Marshal(r *schema.ResourceData) (errors error) {
 		errors = multierror.Append(errors, err)
 	}
 
-	err = r.Set("node", d.Node)
+	err = r.Set("node", d.NodeID)
 	if err != nil {
 		errors = multierror.Append(errors, err)
 	}
@@ -230,7 +230,7 @@ func (d *DeploymentDeployer) GetOldDeployments(ctx context.Context) (map[uint32]
 		if err != nil {
 			return nil, errors.Wrapf(err, "couldn't parse deployment id %s", d.Id)
 		}
-		deployments[d.Node] = deploymentID
+		deployments[d.NodeID] = deploymentID
 	}
 
 	return deployments, nil
@@ -272,11 +272,11 @@ func (d *DeploymentDeployer) sync(ctx context.Context, sub subi.SubstrateExt, cl
 		d.Nullify()
 		return nil
 	}
-	currentDeployments, err := d.deployer.GetDeployments(ctx, sub, map[uint32]uint64{d.Node: d.ID()})
+	currentDeployments, err := d.deployer.GetDeployments(ctx, sub, map[uint32]uint64{d.NodeID: d.ID()})
 	if err != nil {
 		return errors.Wrap(err, "failed to get deployments to update local state")
 	}
-	dl := currentDeployments[d.Node]
+	dl := currentDeployments[d.NodeID]
 	var vms []workloads.VM
 	var zdbs []workloads.ZDB
 	var qsfs []workloads.QSFS
@@ -284,7 +284,7 @@ func (d *DeploymentDeployer) sync(ctx context.Context, sub subi.SubstrateExt, cl
 
 	ns := cl.state.GetNetworkState()
 	network := ns.GetNetwork(d.NetworkName)
-	network.DeleteDeployment(d.Node, d.Id)
+	network.DeleteDeployment(d.NodeID, d.Id)
 
 	usedIPs := []byte{}
 	for _, w := range dl.Workloads {
@@ -326,7 +326,7 @@ func (d *DeploymentDeployer) sync(ctx context.Context, sub subi.SubstrateExt, cl
 
 		}
 	}
-	network.SetDeploymentIPs(d.Node, d.Id, usedIPs)
+	network.SetDeploymentIPs(d.NodeID, d.Id, usedIPs)
 	d.Match(disks, qsfs, zdbs, vms)
 	log.Printf("vms: %+v\n", len(vms))
 	d.Disks = disks
@@ -408,8 +408,8 @@ func (d *DeploymentDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt) 
 		return errors.Wrap(err, "couldn't get old deployments data")
 	}
 	currentDeployments, err := d.deployer.Deploy(ctx, sub, oldDeployments, newDeployments)
-	if currentDeployments[d.Node] != 0 {
-		d.Id = fmt.Sprintf("%d", currentDeployments[d.Node])
+	if currentDeployments[d.NodeID] != 0 {
+		d.Id = fmt.Sprintf("%d", currentDeployments[d.NodeID])
 	}
 	return err
 }
@@ -421,7 +421,7 @@ func (d *DeploymentDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt) 
 		return err
 	}
 	currentDeployments, err := d.deployer.Deploy(ctx, sub, oldDeployments, newDeployments)
-	id := currentDeployments[d.Node]
+	id := currentDeployments[d.NodeID]
 	if id != 0 {
 		d.Id = fmt.Sprintf("%d", id)
 	} else {

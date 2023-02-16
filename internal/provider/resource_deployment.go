@@ -14,8 +14,7 @@ import (
 func resourceDeployment() *schema.Resource {
 	return &schema.Resource{
 		// This description is used by the documentation generator and the language server.
-		Description: "Deployment resource (zdbs + vms + disks + qsfs).",
-
+		Description:   "Resource for deploying multiple workloads like vms (ZMachines), ZDBs, disks, Qsfss, and/or zlogs. A user should specify node id for this deployment, the (already) deployed network that this deployment should be a part of, and the desired workloads configurations.",
 		CreateContext: ResourceFunc(resourceDeploymentCreate),
 		ReadContext:   ResourceReadFunc(resourceDeploymentRead),
 		UpdateContext: ResourceFunc(resourceDeploymentUpdate),
@@ -29,91 +28,99 @@ func resourceDeployment() *schema.Resource {
 			"node": {
 				Type:        schema.TypeInt,
 				Required:    true,
-				Description: "Node id to place the deployment on",
+				Description: "Node id to place the deployment on.",
 			},
 			"name": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Default:  "vm",
+				Type:        schema.TypeString,
+				Optional:    true,
+				Default:     "vm",
+				Description: "Solution name for created contract to be consistent across threefold tooling.",
 			},
 			"solution_type": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Default:  "Virtual Machine",
+				Type:        schema.TypeString,
+				Optional:    true,
+				Default:     "Virtual Machine",
+				Description: "Solution type for created contract to be consistent across threefold tooling.",
 			},
 			"solution_provider": {
 				Type:        schema.TypeInt,
 				Optional:    true,
 				Default:     0,
-				Description: "Solution provider ID",
+				Description: "Solution provider ID for the deployed solution which allows the creator of the solution to gain a percentage of the rewards.",
 			},
 			"ip_range": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: "IP range of the node (e.g. 10.1.2.0/24)",
+				Description: "IP range of the node for the wireguard network (e.g. 10.1.2.0/24). Has to have a subnet mask of 24.",
 			},
 			"network_name": {
 				Type:        schema.TypeString,
 				Optional:    true,
-				Description: "Network to use for Zmachines",
+				Description: "Network name of the deployed network resource to connect vms.",
 			},
 			"disks": {
-				Type:     schema.TypeList,
-				Optional: true,
+				Type:        schema.TypeList,
+				Optional:    true,
+				Description: "List of disk workloads configurations.",
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
 							Type:        schema.TypeString,
 							Required:    true,
-							Description: "the disk name, used to reference it in zmachine mounts",
+							Description: "Disk workload name. This has to be unique within the deployment.",
 						},
 						"size": {
 							Type:        schema.TypeInt,
 							Required:    true,
-							Description: "the disk size in GBs",
+							Description: "Disk size in GBs.",
 						},
 						"description": {
-							Type:     schema.TypeString,
-							Optional: true,
-							Default:  "",
+							Type:        schema.TypeString,
+							Optional:    true,
+							Default:     "",
+							Description: "Description of disk workload.",
 						},
 					},
 				},
 			},
 			"zdbs": {
-				Type:     schema.TypeList,
-				Optional: true,
+				Type:        schema.TypeList,
+				Optional:    true,
+				Description: "List of ZDB workloads configurations. You can read more about 0-db (ZDB) [here](https://github.com/threefoldtech/0-db/).",
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
-							Type:     schema.TypeString,
-							Required: true,
+							Type:        schema.TypeString,
+							Required:    true,
+							Description: "ZDB worklod name. This has to be unique within the deployment.",
 						},
 						"password": {
-							Type:     schema.TypeString,
-							Required: true,
+							Type:        schema.TypeString,
+							Required:    true,
+							Description: "ZDB password.",
 						},
 						"public": {
 							Type:        schema.TypeBool,
 							Optional:    true,
 							Default:     false,
-							Description: "Makes it read-only if password is set, writable if no password set",
+							Description: "Makes it read-only if password is set, writable if no password set.",
 						},
 						"size": {
 							Type:        schema.TypeInt,
 							Required:    true,
-							Description: "Size of the zdb in GBs",
+							Description: "Size of the ZDB in GBs.",
 						},
 						"description": {
-							Type:     schema.TypeString,
-							Optional: true,
-							Default:  "",
+							Type:        schema.TypeString,
+							Optional:    true,
+							Default:     "",
+							Description: "ZDB workload description.",
 						},
 						"mode": {
 							Type:        schema.TypeString,
 							Optional:    true,
 							Computed:    true,
-							Description: "Mode of the zdb, user or seq",
+							Description: "Mode of the ZDB, `user` or `seq`. `user` is the default mode where a user can SET their own keys, like any key-value store. All keys are kept in memory. in `seq` mode, keys are sequential and autoincremented.",
 						},
 						"ips": {
 							Type: schema.TypeList,
@@ -121,163 +128,169 @@ func resourceDeployment() *schema.Resource {
 								Type: schema.TypeString,
 							},
 							Computed:    true,
-							Description: "IPs of the zdb",
+							Description: "Computed IPs of the ZDB. Two IPs are returned: a public IPv6, and a YggIP, in this order",
 						},
 						"namespace": {
 							Type:        schema.TypeString,
 							Computed:    true,
-							Description: "Namespace of the zdb",
+							Description: "Namespace of the ZDB.",
 						},
 						"port": {
 							Type:        schema.TypeInt,
 							Computed:    true,
-							Description: "Port of the zdb",
+							Description: "Port of the ZDB.",
 						},
 					},
 				},
 			},
 			"vms": {
-				Type:     schema.TypeList,
-				Optional: true,
+				Type:        schema.TypeList,
+				Optional:    true,
+				Description: "List of vm (ZMachine) workloads configurations.",
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
-							Type:     schema.TypeString,
-							Required: true,
+							Type:        schema.TypeString,
+							Required:    true,
+							Description: "Vm (zmachine) workload name. This has to be unique within the deployment.",
 						},
 						"flist": {
 							Type:        schema.TypeString,
 							Required:    true,
-							Description: "e.g. https://hub.grid.tf/omar0.3bot/omarelawady-ubuntu-20.04.flist",
+							Description: "Flist used on this vm, e.g. https://hub.grid.tf/tf-official-apps/base:latest.flist. All flists could be found in `https://hub.grid.tf/`.",
 						},
 						"flist_checksum": {
 							Type:        schema.TypeString,
 							Optional:    true,
-							Description: "if present, the flist is rejected if it has a different hash. the flist hash can be found by append",
+							Description: "if present, the flist is rejected if it has a different hash.",
 						},
 						"publicip": {
 							Type:        schema.TypeBool,
 							Optional:    true,
-							Description: "true to enable public ip reservation",
+							Description: "Flag to enable public ipv4 reservation.",
 						},
 						"publicip6": {
 							Type:        schema.TypeBool,
 							Optional:    true,
-							Description: "true to enable public ipv6 reservation",
+							Description: "Flag to enable public ipv6 reservation.",
 						},
 						"computedip": {
 							Type:        schema.TypeString,
 							Computed:    true,
-							Description: "The reserved public ip",
+							Description: "The reserved public ipv4 if any.",
 						},
 						"computedip6": {
 							Type:        schema.TypeString,
 							Computed:    true,
-							Description: "The reserved public ipv6",
+							Description: "The reserved public ipv6 if any.",
 						},
 						"ip": {
 							Type:        schema.TypeString,
 							Optional:    true,
 							Computed:    true,
-							Description: "The private wg IP of the Zmachine",
+							Description: "The private wireguard IP of the vm.",
 						},
 						"cpu": {
 							Type:        schema.TypeInt,
 							Optional:    true,
 							Default:     1,
-							Description: "Number of VCPUs",
+							Description: "Number of virtual CPUs.",
 						},
 						"description": {
-							Type:     schema.TypeString,
-							Optional: true,
-							Default:  "",
+							Type:        schema.TypeString,
+							Optional:    true,
+							Default:     "",
+							Description: "Description of the vm.",
 						},
 						"memory": {
 							Type:        schema.TypeInt,
 							Optional:    true,
-							Description: "Memory size",
+							Description: "Memory size in MB.",
 						},
 						"rootfs_size": {
 							Type:        schema.TypeInt,
 							Optional:    true,
-							Description: "Rootfs size in MB",
+							Description: "Root file system size in MB.",
 						},
 						"entrypoint": {
 							Type:        schema.TypeString,
 							Optional:    true,
-							Description: "command to execute as the Zmachine init",
+							Description: "Command to execute as the ZMachine init.",
 						},
 						"mounts": {
-							Type:     schema.TypeList,
-							Optional: true,
+							Type:        schema.TypeList,
+							Optional:    true,
+							Description: "List of vm (ZMachine) mounts. Can reference QSFSs and Disks.",
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
 									"disk_name": {
 										Type:        schema.TypeString,
 										Required:    true,
-										Description: "Name of QSFS or Disk to mount",
+										Description: "Name of QSFS or Disk to mount.",
 									},
 									"mount_point": {
 										Type:        schema.TypeString,
 										Required:    true,
-										Description: "Directory to mount the disk on inside the Zmachine",
+										Description: "Directory to mount the disk on inside the ZMachine.",
 									},
 								},
 							},
-							Description: "Zmachine mounts, can reference QSFSs and Disks",
 						},
 						"env_vars": {
 							Type:        schema.TypeMap,
 							Optional:    true,
 							Elem:        &schema.Schema{Type: schema.TypeString},
-							Description: "Environment variables to pass to the zmachine",
+							Description: "Environment variables to pass to the zmachine.",
 						},
 						"planetary": {
 							Type:        schema.TypeBool,
 							Optional:    true,
 							Default:     false,
-							Description: "Enable Yggdrasil allocation",
+							Description: "Flag to enable Yggdrasil IP allocation.",
 						},
 						"corex": {
 							Type:        schema.TypeBool,
 							Optional:    true,
 							Default:     false,
-							Description: "Enable corex",
+							Description: "Flag to enable corex. More information about corex could be found [here](https://github.com/threefoldtech/corex)",
 						},
 						"ygg_ip": {
 							Type:        schema.TypeString,
 							Computed:    true,
-							Description: "Allocated Yggdrasil IP",
+							Description: "The allocated Yggdrasil IP.",
 						},
 						"zlogs": {
 							Type:        schema.TypeList,
 							Optional:    true,
-							Description: "Zlogs is a utility workload that allows you to stream `zmachine` logs to a remote location.",
+							Description: "List of Zlogs workloads configurations (URLs). Zlogs is a utility workload that allows you to stream `ZMachine` logs to a remote location.",
 							Elem: &schema.Schema{
 								Type:        schema.TypeString,
-								Description: "Url of the remote machine receiving logs."},
+								Description: "Url of the remote location receiving logs. URLs should use one of `redis, ws, wss` schema. e.g. wss://example_ip.com:9000"},
 						},
 					},
 				},
 			},
 			"qsfs": {
-				Type:     schema.TypeList,
-				Optional: true,
+				Type:        schema.TypeList,
+				Optional:    true,
+				Description: "List of Qsfs workloads configurations. Qsfs is a quantum storage file system.\nYou can read more about it [here](https://github.com/threefoldtech/quantum-storage).",
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
-							Type:     schema.TypeString,
-							Required: true,
+							Type:        schema.TypeString,
+							Required:    true,
+							Description: "Qsfs workload name. This has to be unique within the deployment.",
 						},
 						"description": {
-							Type:     schema.TypeString,
-							Optional: true,
-							Default:  "",
+							Type:        schema.TypeString,
+							Optional:    true,
+							Default:     "",
+							Description: "Description of the qsfs workload.",
 						},
 						"cache": {
 							Type:        schema.TypeInt,
 							Required:    true,
-							Description: "The size of the fuse mountpoint on the node in MBs (holds qsfs local data before pushing)",
+							Description: "The size of the fuse mountpoint on the node in MBs (holds qsfs local data before pushing).",
 						},
 						"minimal_shards": {
 							Type:        schema.TypeInt,
@@ -313,13 +326,13 @@ func resourceDeployment() *schema.Resource {
 						"encryption_key": {
 							Type:        schema.TypeString,
 							Required:    true,
-							Description: "64 long hex encoded encryption key (e.g. 0000000000000000000000000000000000000000000000000000000000000000)",
+							Description: "64 long hex encoded encryption key (e.g. 0000000000000000000000000000000000000000000000000000000000000000).",
 						},
 						"compression_algorithm": {
 							Type:        schema.TypeString,
 							Optional:    true,
 							Default:     "snappy",
-							Description: "configuration to use for the compression stage. Currently only snappy is supported",
+							Description: "configuration to use for the compression stage. Currently only snappy is supported.",
 						},
 						"metadata": {
 							Type:     schema.TypeList,
@@ -332,12 +345,12 @@ func resourceDeployment() *schema.Resource {
 										Type:        schema.TypeString,
 										Optional:    true,
 										Default:     "zdb",
-										Description: "configuration for the metadata store to use, currently only zdb is supported",
+										Description: "configuration for the metadata store to use, currently only ZDB is supported.",
 									},
 									"prefix": {
 										Type:        schema.TypeString,
 										Required:    true,
-										Description: "Data stored on the remote metadata is prefixed with",
+										Description: "Data stored on the remote metadata is prefixed with.",
 									},
 									"encryption_algorithm": {
 										Type:        schema.TypeString,
@@ -348,27 +361,28 @@ func resourceDeployment() *schema.Resource {
 									"encryption_key": {
 										Type:        schema.TypeString,
 										Required:    true,
-										Description: "64 long hex encoded encryption key (e.g. 0000000000000000000000000000000000000000000000000000000000000000)",
+										Description: "64 long hex encoded encryption key (e.g. 0000000000000000000000000000000000000000000000000000000000000000).",
 									},
 									"backends": {
-										Type:     schema.TypeList,
-										Optional: true,
+										Type:        schema.TypeList,
+										Optional:    true,
+										Description: "List of ZDB backends configurations.",
 										Elem: &schema.Resource{
 											Schema: map[string]*schema.Schema{
 												"address": {
 													Type:        schema.TypeString,
 													Required:    true,
-													Description: "Address of backend zdb (e.g. [300:a582:c60c:df75:f6da:8a92:d5ed:71ad]:9900 or 60.60.60.60:9900)",
+													Description: "Address of backend ZDB (e.g. [300:a582:c60c:df75:f6da:8a92:d5ed:71ad]:9900 or 60.60.60.60:9900).",
 												},
 												"namespace": {
 													Type:        schema.TypeString,
 													Required:    true,
-													Description: "ZDB namespace",
+													Description: "ZDB namespace.",
 												},
 												"password": {
 													Type:        schema.TypeString,
 													Required:    true,
-													Description: "Namespace password",
+													Description: "Namespace password.",
 												},
 											},
 										},
@@ -382,24 +396,25 @@ func resourceDeployment() *schema.Resource {
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
 									"backends": {
-										Type:     schema.TypeList,
-										Optional: true,
+										Type:        schema.TypeList,
+										Optional:    true,
+										Description: "List of ZDB backends configurations.",
 										Elem: &schema.Resource{
 											Schema: map[string]*schema.Schema{
 												"address": {
 													Type:        schema.TypeString,
 													Required:    true,
-													Description: "Address of backend zdb (e.g. [300:a582:c60c:df75:f6da:8a92:d5ed:71ad]:9900 or 60.60.60.60:9900)",
+													Description: "Address of backend ZDB (e.g. [300:a582:c60c:df75:f6da:8a92:d5ed:71ad]:9900 or 60.60.60.60:9900).",
 												},
 												"namespace": {
 													Type:        schema.TypeString,
 													Required:    true,
-													Description: "ZDB namespace",
+													Description: "ZDB namespace.",
 												},
 												"password": {
 													Type:        schema.TypeString,
 													Required:    true,
-													Description: "Namespace password",
+													Description: "Namespace password.",
 												},
 											},
 										},
@@ -410,7 +425,7 @@ func resourceDeployment() *schema.Resource {
 						"metrics_endpoint": {
 							Type:        schema.TypeString,
 							Computed:    true,
-							Description: "QSFS exposed metrics",
+							Description: "QSFS exposed metrics endpoint.",
 						},
 					},
 				},

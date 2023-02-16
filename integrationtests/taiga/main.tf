@@ -16,17 +16,17 @@ provider "grid" {
 }
 
 resource "grid_network" "net2" {
-  nodes         = [33]
-  ip_range      = "10.1.0.0/16"
-  name          = "network1"
-  description   = "newer network"
+  nodes       = [33]
+  ip_range    = "10.1.0.0/16"
+  name        = "network1"
+  description = "newer network"
 }
 
 resource "grid_deployment" "node1" {
   node         = 33
   network_name = grid_network.net2.name
   disks {
-    name        = "data0"
+    name = "data0"
     # will hold images, volumes etc. modify the size according to your needs
     size        = 5
     description = "volume holding docker data"
@@ -43,23 +43,23 @@ resource "grid_deployment" "node1" {
       mount_point = "/var/lib/docker"
     }
     env_vars = {
-      SSH_KEY = "${var.public_key}",
-      DOMAIN_NAME = data.grid_gateway_domain.domain.fqdn,
+      SSH_KEY        = "${var.public_key}",
+      DOMAIN_NAME    = data.grid_gateway_domain.domain.fqdn,
       ADMIN_USERNAME = "khaled",
       ADMIN_PASSWORD = "password",
-      ADMIN_EMAIL = "khaledgx96@gmail.com",
+      ADMIN_EMAIL    = "khaledgx96@gmail.com",
       # configure smtp settings bellow only If you have an working smtp service and you know what you’re doing.
       # otherwise leave these settings empty. gives wrong smtp settings will cause issues/server errors in taiga.
-      DEFAULT_FROM_EMAIL = "",
-      EMAIL_USE_TLS = "", # either "True" or "False"
-      EMAIL_USE_SSL = "", # either "True" or "False"
-      EMAIL_HOST = "",
-      EMAIL_PORT = "",
-      EMAIL_HOST_USER = "",
+      DEFAULT_FROM_EMAIL  = "",
+      EMAIL_USE_TLS       = "", # either "True" or "False"
+      EMAIL_USE_SSL       = "", # either "True" or "False"
+      EMAIL_HOST          = "",
+      EMAIL_PORT          = "",
+      EMAIL_HOST_USER     = "",
       EMAIL_HOST_PASSWORD = "",
     }
     planetary = true
-    publicip = false
+    publicip  = false
   }
 }
 

@@ -3,12 +3,12 @@
 page_title: "grid_name_proxy Resource - terraform-provider-grid"
 subcategory: ""
 description: |-
-  Resource for deploying gateway domains.
+  Resource for deploying a gateway name workload. A user should specify some unique name, for example hamada, and a node working as a gateway that has the domain gent01.dev.grid.tf, and the grid generates a fully qualified domain name (fqdn) hamada.getn01.dev.grid.tf. Then, the user could connect this gateway workload to whichever backend services the user desires, making these backend services accessible through the computed fqdn.
 ---
 
 # grid_name_proxy (Resource)
 
-Resource for deploying gateway domains.
+Resource for deploying a gateway name workload. A user should specify some unique name, for example hamada, and a node working as a gateway that has the domain gent01.dev.grid.tf, and the grid generates a fully qualified domain name (fqdn) `hamada.getn01.dev.grid.tf`. Then, the user could connect this gateway workload to whichever backend services the user desires, making these backend services accessible through the computed fqdn.
 
 
 
@@ -17,21 +17,21 @@ Resource for deploying gateway domains.
 
 ### Required
 
-- `backends` (List of String) The backends of the gateway proxy (in the format (http|https)://ip:port), with tls_passthrough the scheme must be https
-- `name` (String) Gateway name (the fqdn will be <name>.<gateway-domain>)
-- `node` (Number) The gateway's node id
+- `backends` (List of String) The backends of the gateway proxy (in the format (http|https)://ip:port), with tls_passthrough the scheme must be https.
+- `name` (String) Domain prefix. The fqdn will be <name>.<gateway-domain>.  This has to be unique within the deployment.
+- `node` (Number) The gateway's node id.
 
 ### Optional
 
 - `description` (String)
-- `solution_type` (String) Gateway name (the fqdn will be <name>.<gateway-domain>)
-- `tls_passthrough` (Boolean) True to pass the tls as is to the backends.
+- `solution_type` (String) Solution type for created contract to be consistent across threefold tooling.
+- `tls_passthrough` (Boolean) TLS passthrough controls the TLS termination, if false, the gateway will terminate the TLS, if True, it will only be terminated by the backend service.
 
 ### Read-Only
 
 - `fqdn` (String) The computed fully quallified domain name of the deployed workload.
 - `id` (String) The ID of this resource.
-- `name_contract_id` (Number) The id of the name contract
-- `node_deployment_id` (Map of Number) Mapping from each node to its deployment id
+- `name_contract_id` (Number) The id of the created name contract.
+- `node_deployment_id` (Map of Number) Mapping from each node to its deployment id.
 
 

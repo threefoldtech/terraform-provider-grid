@@ -3,12 +3,12 @@
 page_title: "grid_kubernetes Resource - terraform-provider-grid"
 subcategory: ""
 description: |-
-  Kubernetes resource.
+  Resource to deploy a kubernetes cluster. A cluster should consist of one master node, and a number (could be zero) of worker nodes.
 ---
 
 # grid_kubernetes (Resource)
 
-Kubernetes resource.
+Resource to deploy a kubernetes cluster. A cluster should consist of one master node, and a number (could be zero) of worker nodes.
 
 
 
@@ -17,48 +17,48 @@ Kubernetes resource.
 
 ### Required
 
-- `master` (Block List, Min: 1, Max: 1) (see [below for nested schema](#nestedblock--master))
-- `token` (String) The cluster secret token
+- `master` (Block List, Min: 1, Max: 1) Master holds the configuration of master node in the kubernetes cluster. (see [below for nested schema](#nestedblock--master))
+- `token` (String) The cluster secret token. Each node has to have this token to be part of the cluster. This token should be an alphanumeric non-empty string.
 
 ### Optional
 
-- `name` (String) Instance name
-- `network_name` (String) The network name to deploy the cluster on
-- `solution_type` (String) Kubernetes
-- `ssh_key` (String) SSH key to access the cluster nodes
-- `workers` (Block List) (see [below for nested schema](#nestedblock--workers))
+- `name` (String) Solution name for the created contracts to be consistent across threefold tooling.
+- `network_name` (String) The network name to deploy the cluster on.
+- `solution_type` (String) Solution type for the created contracts to be consistent across threefold tooling.
+- `ssh_key` (String) SSH key to access the cluster nodes.
+- `workers` (Block List) Workers is a list holding the workers configuration for the kubernetes cluster. (see [below for nested schema](#nestedblock--workers))
 
 ### Read-Only
 
 - `id` (String) The ID of this resource.
-- `node_deployment_id` (Map of Number) Mapping from each node to its deployment id
-- `nodes_ip_range` (Map of String) Network IP ranges of nodes in the cluster (usually assigned from grid_network.<network-resource-name>.nodes_ip_range)
+- `node_deployment_id` (Map of Number) Mapping from each node to its deployment id (contract id).
+- `nodes_ip_range` (Map of String) Reserved network IP ranges for nodes in the cluster (this is assigned from grid_network.<network-resource-name>.nodes_ip_range).
 
 <a id="nestedblock--master"></a>
 ### Nested Schema for `master`
 
 Required:
 
-- `cpu` (Number) Number of VCPUs
-- `disk_size` (Number) Data disk size in GBs
-- `memory` (Number) Memory size
-- `name` (String) Master name
-- `node` (Number) Node ID
+- `cpu` (Number) Number of virtual CPUs.
+- `disk_size` (Number) Disk size for master node in GBs.
+- `memory` (Number) Memory size in MB.
+- `name` (String) Master node ZMachine workload name.  This has to be unique within the node.
+- `node` (Number) Node ID to deploy master node on.
 
 Optional:
 
-- `flist` (String)
-- `flist_checksum` (String) if present, the flist is rejected if it has a different hash. the flist hash can be found by append
-- `planetary` (Boolean) Enable Yggdrasil allocation
-- `publicip` (Boolean) true to enable public ip reservation
-- `publicip6` (Boolean) true to enable public ipv6 reservation
+- `flist` (String) Flist used on master node, e.g. https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist. All flists could be found in `https://hub.grid.tf/`
+- `flist_checksum` (String) if present, the flist is rejected if it has a different hash.
+- `planetary` (Boolean) Flag to enable Yggdrasil IP allocation.
+- `publicip` (Boolean) Flag to enable/disable public ipv4 reservation.
+- `publicip6` (Boolean) Flag to enable/disable public ipv6 reservation.
 
 Read-Only:
 
-- `computedip` (String) The reserved public IP
-- `computedip6` (String) The reserved public IPv6
-- `ip` (String) The private IP (computed from nodes_ip_range)
-- `ygg_ip` (String) Allocated Yggdrasil IP
+- `computedip` (String) The reserved public IPv4.
+- `computedip6` (String) The reserved public IPv6.
+- `ip` (String) The private wireguard IP of master node.
+- `ygg_ip` (String) The allocated Yggdrasil IP.
 
 
 <a id="nestedblock--workers"></a>
@@ -66,25 +66,25 @@ Read-Only:
 
 Required:
 
-- `cpu` (Number) Number of VCPUs
-- `disk_size` (Number) Data disk size in GBs
-- `memory` (Number) Memory size
-- `name` (String)
-- `node` (Number) Node ID
+- `cpu` (Number) Number of virtual CPUs.
+- `disk_size` (Number) Data disk size in GBs.
+- `memory` (Number) Memory size in MB.
+- `name` (String) Worker node ZMachine workload name. This has to be unique within the node.
+- `node` (Number) Node ID to deploy worker node on.
 
 Optional:
 
-- `flist` (String)
-- `flist_checksum` (String) if present, the flist is rejected if it has a different hash. the flist hash can be found by append
-- `planetary` (Boolean) Enable Yggdrasil allocation
-- `publicip` (Boolean) true to enable public ip reservation
-- `publicip6` (Boolean) true to enable public ipv6 reservation
+- `flist` (String) Flist used on worker node, e.g. https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist. All flists could be found in `https://hub.grid.tf/`.
+- `flist_checksum` (String) if present, the flist is rejected if it has a different hash.
+- `planetary` (Boolean) Flag to enable Yggdrasil IP allocation.
+- `publicip` (Boolean) Flag to enable/disable public ipv4 reservation.
+- `publicip6` (Boolean) Flag to enable/disable public ipv6 reservation.
 
 Read-Only:
 
-- `computedip` (String) The reserved public ip
-- `computedip6` (String) The reserved public ipv6
-- `ip` (String) The private IP (computed from nodes_ip_range)
-- `ygg_ip` (String) Allocated Yggdrasil IP
+- `computedip` (String) The reserved public ipv4.
+- `computedip6` (String) The reserved public ipv6.
+- `ip` (String) The private IP (computed from nodes_ip_range).
+- `ygg_ip` (String) The allocated Yggdrasil IP.
 
 

@@ -16,8 +16,7 @@ import (
 
 func ReourceScheduler() *schema.Resource {
 	return &schema.Resource{
-		// TODO: update descriptions
-		Description:   "Resource to dynamically assign resource requests to nodes.",
+		Description:   "Resource to dynamically assign resource requests to nodes. A user could specify their desired node configurations, and the scheduler searches the grid for eligible nodes.",
 		CreateContext: ResourceSchedCreate,
 		UpdateContext: ResourceSchedUpdate,
 		ReadContext:   ResourceSchedRead,
@@ -26,53 +25,53 @@ func ReourceScheduler() *schema.Resource {
 			"requests": {
 				Type:        schema.TypeList,
 				Required:    true,
-				Description: "List of node assignment requests",
+				Description: "List of requests. Here a user defines their required nodes configurations.",
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
 							Type:        schema.TypeString,
 							Required:    true,
-							Description: "used as a key in the `nodes` dict to be used as a reference",
+							Description: "Request name. Used as a reference in the `nodes` dict.",
 						},
 						"cru": {
 							Type:        schema.TypeInt,
 							Optional:    true,
-							Description: "Number of VCPUs",
+							Description: "Number of required virtual CPUs.",
 						},
 						"mru": {
 							Type:        schema.TypeInt,
 							Optional:    true,
-							Description: "Memory size in MBs",
+							Description: "Memory size in MBs.",
 						},
 						"sru": {
 							Type:        schema.TypeInt,
 							Optional:    true,
-							Description: "Disk SSD size in MBs",
+							Description: "Disk SSD size in MBs.",
 						},
 						"hru": {
 							Type:        schema.TypeInt,
 							Optional:    true,
-							Description: "Disk HDD size in MBs",
+							Description: "Disk HDD size in MBs.",
 						},
 						"farm": {
 							Type:        schema.TypeString,
 							Optional:    true,
-							Description: "Farm name",
+							Description: "Farm name to search for eligible nodes.",
 						},
 						"ipv4": {
 							Type:        schema.TypeBool,
 							Optional:    true,
-							Description: "Pick only nodes with public config containing ipv4",
+							Description: "Flag to pick only nodes with public ipv4 configuration.",
 						},
 						"domain": {
 							Type:        schema.TypeBool,
 							Optional:    true,
-							Description: "Pick only nodes with public config containing domain",
+							Description: "Flag to pick only nodes with public config containing domain.",
 						},
 						"certified": {
 							Type:        schema.TypeBool,
 							Optional:    true,
-							Description: "Pick only certified nodes (Not implemented)",
+							Description: "Flag to pick only certified nodes (Not implemented).",
 						},
 					},
 				},
@@ -81,7 +80,7 @@ func ReourceScheduler() *schema.Resource {
 				Type:        schema.TypeMap,
 				Computed:    true,
 				Elem:        &schema.Schema{Type: schema.TypeInt},
-				Description: "Mapping from the request name to the node id",
+				Description: "Mapping from the request name to the node id.",
 			},
 		},
 	}
