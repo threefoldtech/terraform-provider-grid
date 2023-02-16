@@ -22,9 +22,9 @@ Resource to deploy a kubernetes cluster. A cluster should consist of one master 
 
 ### Optional
 
-- `name` (String) Solution name for the created contracts, displayed [here](https://play.dev.grid.tf/#/contractslist).
+- `name` (String) Solution name for the created contracts to be consistent across threefold tooling.
 - `network_name` (String) The network name to deploy the cluster on.
-- `solution_type` (String) Solution type for the created contracts, displayed [here](https://play.dev.grid.tf/#/contractslist).
+- `solution_type` (String) Solution type for the created contracts to be consistent across threefold tooling.
 - `ssh_key` (String) SSH key to access the cluster nodes.
 - `workers` (Block List) Workers is a list holding the workers configuration for the kubernetes cluster. (see [below for nested schema](#nestedblock--workers))
 

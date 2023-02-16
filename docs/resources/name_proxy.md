@@ -26,7 +26,7 @@ A user should specify some unique `name` and a node working as a gateway, and th
 ### Optional
 
 - `description` (String)
-- `solution_type` (String) Solution type for created contract, displayed [here](https://play.dev.grid.tf/#/contractslist).
+- `solution_type` (String) Solution type for created contract to be consistent across threefold tooling.
 - `tls_passthrough` (Boolean) True to pass the tls as is to the backends.
 
 ### Read-Only

@@ -24,12 +24,12 @@ A user should specify node id for this deployment, the (already) deployed networ
 ### Optional
 
 - `disks` (Block List) List of disk workloads configurations. (see [below for nested schema](#nestedblock--disks))
-- `name` (String) Solution name for created contract, displayed [here](https://play.dev.grid.tf/#/contractslist).
+- `name` (String) Solution name for created contract to be consistent across threefold tooling.
 - `network_name` (String) Network name of the deployed network resource to connect vms.
 - `qsfs` (Block List) List of Qsfs workloads configurations. Qsfs is a quantum storage file system.
 You can read more about it [here](https://github.com/threefoldtech/quantum-storage). (see [below for nested schema](#nestedblock--qsfs))
 - `solution_provider` (Number) Solution provider ID for the deployed solution which allows the creator of the solution to gain a percentage of the rewards.
-- `solution_type` (String) Solution type for created contract, displayed [here](https://play.dev.grid.tf/#/contractslist).
+- `solution_type` (String) Solution type for created contract to be consistent across threefold tooling.
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 - `vms` (Block List) List of vm (Zmachine) workloads configurations. (see [below for nested schema](#nestedblock--vms))
 - `zdbs` (Block List) List of Zdb workloads configurations. You can read more about 0-db (Zdb) [here](https://github.com/threefoldtech/0-db/). (see [below for nested schema](#nestedblock--zdbs))

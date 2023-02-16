@@ -24,19 +24,19 @@ func resourceGatewayFQDNProxy() *schema.Resource {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Default:     "name",
-				Description: "Gateway workload name.",
+				Description: "Gateway workload name.  This has to be unique within the deployment.",
 			},
 			"solution_type": {
 				Type:        schema.TypeString,
 				Optional:    true,
-				Description: "Solution type for created contract, displayed [here](https://play.dev.grid.tf/#/contractslist).",
+				Description: "Solution type for created contract to be consistent across threefold tooling.",
 				Default:     "Gateway",
 			},
 			"description": {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Default:     "",
-				Description: "Description for the gateway fqdn workload.",
+				Description: "Description of the gateway fqdn workload.",
 			},
 			"node_id": {
 				Type:        schema.TypeInt,
@@ -52,7 +52,7 @@ func resourceGatewayFQDNProxy() *schema.Resource {
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Default:     false,
-				Description: "True to pass the tls as is to the backends.",
+				Description: "TLS passthrough controls the TLS termination, if false, the gateway will terminate the TLS, if True, it will only be terminated by the backend service.",
 			},
 			"backends": {
 				Type:     schema.TypeList,

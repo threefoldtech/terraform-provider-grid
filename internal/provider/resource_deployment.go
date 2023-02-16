@@ -14,7 +14,7 @@ import (
 func resourceDeployment() *schema.Resource {
 	return &schema.Resource{
 		// This description is used by the documentation generator and the language server.
-		Description:   "Resource for deploying multiple workloads like vms (Zmachines), zdbs, disks, Qsfss, and/or zlogs.\nA user should specify node id for this deployment, the (already) deployed network that this deployment should be a part of, and the desired workloads configurations.",
+		Description:   "Resource for deploying multiple workloads like vms (ZMachines), ZDBs, disks, Qsfss, and/or zlogs.\nA user should specify node id for this deployment, the (already) deployed network that this deployment should be a part of, and the desired workloads configurations.",
 		CreateContext: ResourceFunc(resourceDeploymentCreate),
 		ReadContext:   ResourceReadFunc(resourceDeploymentRead),
 		UpdateContext: ResourceFunc(resourceDeploymentUpdate),
@@ -34,13 +34,13 @@ func resourceDeployment() *schema.Resource {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Default:     "vm",
-				Description: "Solution name for created contract, displayed [here](https://play.dev.grid.tf/#/contractslist).",
+				Description: "Solution name for created contract to be consistent across threefold tooling.",
 			},
 			"solution_type": {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Default:     "Virtual Machine",
-				Description: "Solution type for created contract, displayed [here](https://play.dev.grid.tf/#/contractslist).",
+				Description: "Solution type for created contract to be consistent across threefold tooling.",
 			},
 			"solution_provider": {
 				Type:        schema.TypeInt,
@@ -67,7 +67,7 @@ func resourceDeployment() *schema.Resource {
 						"name": {
 							Type:        schema.TypeString,
 							Required:    true,
-							Description: "Disk workload name.",
+							Description: "Disk workload name. This has to be unique within the deployment.",
 						},
 						"size": {
 							Type:        schema.TypeInt,
@@ -78,7 +78,7 @@ func resourceDeployment() *schema.Resource {
 							Type:        schema.TypeString,
 							Optional:    true,
 							Default:     "",
-							Description: "Description for disk workload.",
+							Description: "Description of disk workload.",
 						},
 					},
 				},
@@ -86,18 +86,18 @@ func resourceDeployment() *schema.Resource {
 			"zdbs": {
 				Type:        schema.TypeList,
 				Optional:    true,
-				Description: "List of Zdb workloads configurations. You can read more about 0-db (Zdb) [here](https://github.com/threefoldtech/0-db/).",
+				Description: "List of ZDB workloads configurations. You can read more about 0-db (ZDB) [here](https://github.com/threefoldtech/0-db/).",
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
 							Type:        schema.TypeString,
 							Required:    true,
-							Description: "Zdb worklod name.",
+							Description: "ZDB worklod name. This has to be unique within the deployment.",
 						},
 						"password": {
 							Type:        schema.TypeString,
 							Required:    true,
-							Description: "Zdb password.",
+							Description: "ZDB password.",
 						},
 						"public": {
 							Type:        schema.TypeBool,
@@ -108,19 +108,19 @@ func resourceDeployment() *schema.Resource {
 						"size": {
 							Type:        schema.TypeInt,
 							Required:    true,
-							Description: "Size of the zdb in GBs.",
+							Description: "Size of the ZDB in GBs.",
 						},
 						"description": {
 							Type:        schema.TypeString,
 							Optional:    true,
 							Default:     "",
-							Description: "Zdb workload description.",
+							Description: "ZDB workload description.",
 						},
 						"mode": {
 							Type:        schema.TypeString,
 							Optional:    true,
 							Computed:    true,
-							Description: "Mode of the zdb, `user` or `seq`. `user` is the default mode where a user can SET their own keys, like any key-value store. All keys are kept in memory. in `seq` mode, keys are sequential and autoincremented.",
+							Description: "Mode of the ZDB, `user` or `seq`. `user` is the default mode where a user can SET their own keys, like any key-value store. All keys are kept in memory. in `seq` mode, keys are sequential and autoincremented.",
 						},
 						"ips": {
 							Type: schema.TypeList,
@@ -128,17 +128,17 @@ func resourceDeployment() *schema.Resource {
 								Type: schema.TypeString,
 							},
 							Computed:    true,
-							Description: "Computed IPs of the zdb.",
+							Description: "Computed IPs of the ZDB.",
 						},
 						"namespace": {
 							Type:        schema.TypeString,
 							Computed:    true,
-							Description: "Namespace of the zdb.",
+							Description: "Namespace of the ZDB.",
 						},
 						"port": {
 							Type:        schema.TypeInt,
 							Computed:    true,
-							Description: "Port of the zdb.",
+							Description: "Port of the ZDB.",
 						},
 					},
 				},
@@ -146,13 +146,13 @@ func resourceDeployment() *schema.Resource {
 			"vms": {
 				Type:        schema.TypeList,
 				Optional:    true,
-				Description: "List of vm (Zmachine) workloads configurations.",
+				Description: "List of vm (ZMachine) workloads configurations.",
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
 							Type:        schema.TypeString,
 							Required:    true,
-							Description: "Vm (zmachine) workload name.",
+							Description: "Vm (zmachine) workload name. This has to be unique within the deployment.",
 						},
 						"flist": {
 							Type:        schema.TypeString,
@@ -194,13 +194,13 @@ func resourceDeployment() *schema.Resource {
 							Type:        schema.TypeInt,
 							Optional:    true,
 							Default:     1,
-							Description: "Number of virtual cpus.",
+							Description: "Number of virtual CPUs.",
 						},
 						"description": {
 							Type:        schema.TypeString,
 							Optional:    true,
 							Default:     "",
-							Description: "Description for the vm.",
+							Description: "Description of the vm.",
 						},
 						"memory": {
 							Type:        schema.TypeInt,
@@ -210,17 +210,17 @@ func resourceDeployment() *schema.Resource {
 						"rootfs_size": {
 							Type:        schema.TypeInt,
 							Optional:    true,
-							Description: "Rootfs size in MB.",
+							Description: "Root file system size in MB.",
 						},
 						"entrypoint": {
 							Type:        schema.TypeString,
 							Optional:    true,
-							Description: "Command to execute as the Zmachine init.",
+							Description: "Command to execute as the ZMachine init.",
 						},
 						"mounts": {
 							Type:        schema.TypeList,
 							Optional:    true,
-							Description: "List of vm (Zmachine) mounts. Can reference QSFSs and Disks.",
+							Description: "List of vm (ZMachine) mounts. Can reference QSFSs and Disks.",
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
 									"disk_name": {
@@ -231,7 +231,7 @@ func resourceDeployment() *schema.Resource {
 									"mount_point": {
 										Type:        schema.TypeString,
 										Required:    true,
-										Description: "Directory to mount the disk on inside the Zmachine.",
+										Description: "Directory to mount the disk on inside the ZMachine.",
 									},
 								},
 							},
@@ -246,13 +246,13 @@ func resourceDeployment() *schema.Resource {
 							Type:        schema.TypeBool,
 							Optional:    true,
 							Default:     false,
-							Description: "Flag to enable Yggdrasil ip allocation.",
+							Description: "Flag to enable Yggdrasil IP allocation.",
 						},
 						"corex": {
 							Type:        schema.TypeBool,
 							Optional:    true,
 							Default:     false,
-							Description: "Flag to enable corex.",
+							Description: "Flag to enable corex. More information about corex could be found [here](https://github.com/threefoldtech/corex)",
 						},
 						"ygg_ip": {
 							Type:        schema.TypeString,
@@ -262,10 +262,10 @@ func resourceDeployment() *schema.Resource {
 						"zlogs": {
 							Type:        schema.TypeList,
 							Optional:    true,
-							Description: "List of Zlogs workloads configurations. Zlogs is a utility workload that allows you to stream `zmachine` logs to a remote location.",
+							Description: "List of Zlogs workloads configurations (URLs). Zlogs is a utility workload that allows you to stream `ZMachine` logs to a remote location.",
 							Elem: &schema.Schema{
 								Type:        schema.TypeString,
-								Description: "Url of the remote machine receiving logs."},
+								Description: "Url of the remote location receiving logs. URLs should use one of `redis, ws, wss` schema. e.g. wss://example_ip.com:9000"},
 						},
 					},
 				},
@@ -279,7 +279,7 @@ func resourceDeployment() *schema.Resource {
 						"name": {
 							Type:        schema.TypeString,
 							Required:    true,
-							Description: "Qsfs workload name.",
+							Description: "Qsfs workload name. This has to be unique within the deployment.",
 						},
 						"description": {
 							Type:        schema.TypeString,
@@ -345,7 +345,7 @@ func resourceDeployment() *schema.Resource {
 										Type:        schema.TypeString,
 										Optional:    true,
 										Default:     "zdb",
-										Description: "configuration for the metadata store to use, currently only zdb is supported.",
+										Description: "configuration for the metadata store to use, currently only ZDB is supported.",
 									},
 									"prefix": {
 										Type:        schema.TypeString,
@@ -366,13 +366,13 @@ func resourceDeployment() *schema.Resource {
 									"backends": {
 										Type:        schema.TypeList,
 										Optional:    true,
-										Description: "List of zdb backends configurations.",
+										Description: "List of ZDB backends configurations.",
 										Elem: &schema.Resource{
 											Schema: map[string]*schema.Schema{
 												"address": {
 													Type:        schema.TypeString,
 													Required:    true,
-													Description: "Address of backend zdb (e.g. [300:a582:c60c:df75:f6da:8a92:d5ed:71ad]:9900 or 60.60.60.60:9900).",
+													Description: "Address of backend ZDB (e.g. [300:a582:c60c:df75:f6da:8a92:d5ed:71ad]:9900 or 60.60.60.60:9900).",
 												},
 												"namespace": {
 													Type:        schema.TypeString,
@@ -398,13 +398,13 @@ func resourceDeployment() *schema.Resource {
 									"backends": {
 										Type:        schema.TypeList,
 										Optional:    true,
-										Description: "List of zdb backends configurations.",
+										Description: "List of ZDB backends configurations.",
 										Elem: &schema.Resource{
 											Schema: map[string]*schema.Schema{
 												"address": {
 													Type:        schema.TypeString,
 													Required:    true,
-													Description: "Address of backend zdb (e.g. [300:a582:c60c:df75:f6da:8a92:d5ed:71ad]:9900 or 60.60.60.60:9900).",
+													Description: "Address of backend ZDB (e.g. [300:a582:c60c:df75:f6da:8a92:d5ed:71ad]:9900 or 60.60.60.60:9900).",
 												},
 												"namespace": {
 													Type:        schema.TypeString,

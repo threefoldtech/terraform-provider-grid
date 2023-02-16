@@ -39,12 +39,12 @@ func resourceNetwork() *schema.Resource {
 			"name": {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: "Network workloads Name.",
+				Description: "Network workloads Name.  This has to be unique within the node.",
 			},
 			"solution_type": {
 				Type:        schema.TypeString,
 				Optional:    true,
-				Description: "Solution type for created contract, displayed [here](https://play.dev.grid.tf/#/contractslist).",
+				Description: "Solution type for created contract to be consistent across threefold tooling.",
 				Default:     "Network",
 			},
 			"description": {
@@ -64,7 +64,7 @@ func resourceNetwork() *schema.Resource {
 			"ip_range": {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: "Network ip range (e.g. 10.1.2.0/16). Has to have a subnet mask of 16.",
+				Description: "Network IP range (e.g. 10.1.2.0/16). Has to have a subnet mask of 16.",
 			},
 			"add_wireguard_access": {
 				Type:        schema.TypeBool,
@@ -97,7 +97,7 @@ func resourceNetwork() *schema.Resource {
 				Computed:    true,
 				Optional:    true,
 				Elem:        &schema.Schema{Type: schema.TypeString},
-				Description: "Computed values of nodes' ip ranges after deployment.",
+				Description: "Computed values of nodes' IP ranges after deployment.",
 			},
 			"node_deployment_id": {
 				Type:        schema.TypeMap,

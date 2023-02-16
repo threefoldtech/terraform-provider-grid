@@ -26,7 +26,7 @@ Resource to deploy a network on the grid. This is a private wireguard network. A
 - `add_wireguard_access` (Boolean) Flag to generate wireguard configuration for external user access to the network.
 - `description` (String) Description of the network workloads.
 - `nodes_ip_range` (Map of String) Computed values of nodes' ip ranges after deployment.
-- `solution_type` (String) Solution type for created contract, displayed [here](https://play.dev.grid.tf/#/contractslist).
+- `solution_type` (String) Solution type for created contract to be consistent across threefold tooling.
 
 ### Read-Only
 

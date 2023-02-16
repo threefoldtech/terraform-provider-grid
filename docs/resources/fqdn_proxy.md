@@ -27,7 +27,7 @@ A user should have some fully qualified domain name (fqdn) (e.g. example.com), p
 
 - `description` (String) Description for the gateway fqdn workload.
 - `name` (String) Gateway workload name.
-- `solution_type` (String) Solution type for created contract, displayed [here](https://play.dev.grid.tf/#/contractslist).
+- `solution_type` (String) Solution type for created contract to be consistent across threefold tooling.
 - `tls_passthrough` (Boolean) True to pass the tls as is to the backends.
 
 ### Read-Only

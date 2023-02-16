@@ -12,7 +12,7 @@ import (
 func resourceGatewayNameProxy() *schema.Resource {
 	return &schema.Resource{
 		// This description is used by the documentation generator and the language server.
-		Description: "Resource for deploying a gateway name workload.\nA user should specify some unique `name` and a node working as a gateway, and the grid generates a fully qualified domain name (fqdn) in the form `name`.`gateway-domain`. Then, the user could connect this gateway workload to whichever backend services the user desires, making these backend services accessible through the computed fqdn.",
+		Description: "Resource for deploying a gateway name workload. A user should specify some unique name, for example hamada, and a node working as a gateway that has the domain gent01.dev.grid.tf, and the grid generates a fully qualified domain name (fqdn) `hamada.getn01.dev.grid.tf`. Then, the user could connect this gateway workload to whichever backend services the user desires, making these backend services accessible through the computed fqdn.",
 
 		CreateContext: ResourceFunc(resourceGatewayNameCreate),
 		ReadContext:   ResourceReadFunc(resourceGatewayNameRead),
@@ -23,18 +23,18 @@ func resourceGatewayNameProxy() *schema.Resource {
 			"name": {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: "Gateway name. The fqdn will be <name>.<gateway-domain>.",
+				Description: "Domain prefix. The fqdn will be <name>.<gateway-domain>.  This has to be unique within the deployment.",
 			},
 			"solution_type": {
 				Type:        schema.TypeString,
 				Optional:    true,
-				Description: "Solution type for created contract, displayed [here](https://play.dev.grid.tf/#/contractslist).",
+				Description: "Solution type for created contract to be consistent across threefold tooling.",
 				Default:     "Gateway",
 			},
 			"description": {
 				Type:     schema.TypeString,
 				Optional: true,
-				Default:  "Description for the gateway name workload.",
+				Default:  "Description of the gateway name workload.",
 			},
 			"node_id": {
 				Type:        schema.TypeInt,
@@ -50,7 +50,7 @@ func resourceGatewayNameProxy() *schema.Resource {
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Default:     false,
-				Description: "True to pass the tls as is to the backends.",
+				Description: "TLS passthrough controls the TLS termination, if false, the gateway will terminate the TLS, if True, it will only be terminated by the backend service.",
 			},
 			"backends": {
 				Type:     schema.TypeList,

@@ -10,7 +10,7 @@ locals {
   names       = concat([for w in var.workers : w.name], [var.master.name])
   disks_map   = { for d in var.disks : d.node_id=> d... }
   master_disk = lookup(local.disks_map, "${var.master.node}", {})[0]
-  vms_list    = flatten([for node_idin grid_deployment.workers : node.vms])
+  vms_list    = flatten([for node_id in grid_deployment.workers : node.vms])
 }
 
 module "validator" {

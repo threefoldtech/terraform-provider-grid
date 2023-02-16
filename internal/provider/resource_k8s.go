@@ -39,13 +39,13 @@ func resourceKubernetes() *schema.Resource {
 			"name": {
 				Type:        schema.TypeString,
 				Optional:    true,
-				Description: "Solution name for the created contracts, displayed [here](https://play.dev.grid.tf/#/contractslist).",
+				Description: "Solution name for the created contracts to be consistent across threefold tooling.",
 			},
 			"solution_type": {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Default:     "",
-				Description: "Solution type for the created contracts, displayed [here](https://play.dev.grid.tf/#/contractslist).",
+				Description: "Solution type for the created contracts to be consistent across threefold tooling.",
 			},
 			"node_deployment_id": {
 				Type:        schema.TypeMap,
@@ -85,7 +85,7 @@ func resourceKubernetes() *schema.Resource {
 						"name": {
 							Type:        schema.TypeString,
 							Required:    true,
-							Description: "Master node Zmachine workload name.",
+							Description: "Master node ZMachine workload name.  This has to be unique within the node.",
 						},
 						"node_id": {
 							Type:        schema.TypeInt,
@@ -147,7 +147,7 @@ func resourceKubernetes() *schema.Resource {
 							Type:        schema.TypeBool,
 							Optional:    true,
 							Default:     false,
-							Description: "Flag to enable Yggdrasil ip allocation.",
+							Description: "Flag to enable Yggdrasil IP allocation.",
 						},
 						"ygg_ip": {
 							Type:        schema.TypeString,
@@ -166,7 +166,7 @@ func resourceKubernetes() *schema.Resource {
 						"name": {
 							Type:        schema.TypeString,
 							Required:    true,
-							Description: "Worker node Zmachine workload name.",
+							Description: "Worker node ZMachine workload name. This has to be unique within the node.",
 						},
 						"flist": {
 							Type:        schema.TypeString,
@@ -228,7 +228,7 @@ func resourceKubernetes() *schema.Resource {
 							Type:        schema.TypeBool,
 							Optional:    true,
 							Default:     false,
-							Description: "Flag to enable Yggdrasil ip allocation.",
+							Description: "Flag to enable Yggdrasil IP allocation.",
 						},
 						"ygg_ip": {
 							Type:        schema.TypeString,
