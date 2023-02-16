@@ -19,7 +19,7 @@ provider "grid" {
 # - the fqdn can be computed from grid_gateway_domain for the vm
 # - the backend can reference the vm ip directly 
 data "grid_gateway_domain" "domain" {
-  node_id= 14 
+  node= 14 
   name = "examp123456"
 }
 
@@ -36,7 +36,7 @@ resource "grid_network" "net1" {
 }
 resource "grid_deployment" "d1" {
   name         = local.name
-  node_id        = 34
+  node        = 34
   network_name = grid_network.net1.name
   vms {
     name  = "vm1"
@@ -53,7 +53,7 @@ resource "grid_deployment" "d1" {
 }
 
 resource "grid_name_proxy" "p1" {
-  node_id= 14
+  node= 14
   name = "examp123456"
   backends = [format("http://[%s]:9000", grid_deployment.d1.vms[0].ygg_ip)]
   tls_passthrough = false

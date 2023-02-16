@@ -23,7 +23,7 @@ resource "grid_network" "net1" {
 }
 
 resource "grid_deployment" "d1" {
-  node_id= 2
+  node= 2
   network_name = grid_network.net1.name
   vms {
     name = "vm1"

@@ -25,7 +25,7 @@ resource "grid_network" "net2" {
 resource "grid_deployment" "node1" {
   solution_type = local.solution_type
   name          = local.name
-  node_id         = 1
+  node         = 1
   network_name  = grid_network.net2.name
   disks {
     name = "data0"
@@ -65,13 +65,13 @@ resource "grid_deployment" "node1" {
 }
 
 data "grid_gateway_domain" "domain" {
-  node_id= 7
+  node= 7
   name = "grid3taiga"
 }
 resource "grid_name_proxy" "p1" {
   solution_type   = local.solution_type
   name            = local.name
-  node_id           = 7
+  node           = 7
   backends        = [format("http://%s:9000", grid_deployment.node1.vms[0].ygg_ip)]
   tls_passthrough = false
 }

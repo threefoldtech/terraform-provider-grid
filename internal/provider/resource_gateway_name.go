@@ -36,7 +36,7 @@ func resourceGatewayNameProxy() *schema.Resource {
 				Optional: true,
 				Default:  "Description of the gateway name workload.",
 			},
-			"node_id": {
+			"node": {
 				Type:        schema.TypeInt,
 				Required:    true,
 				Description: "The gateway's node id.",

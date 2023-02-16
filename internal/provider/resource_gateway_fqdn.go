@@ -38,7 +38,7 @@ func resourceGatewayFQDNProxy() *schema.Resource {
 				Default:     "",
 				Description: "Description of the gateway fqdn workload.",
 			},
-			"node_id": {
+			"node": {
 				Type:        schema.TypeInt,
 				Required:    true,
 				Description: "The gateway's node id.",

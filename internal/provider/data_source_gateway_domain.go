@@ -21,7 +21,7 @@ func dataSourceGatewayDomain() *schema.Resource {
 		ReadContext: dataSourceGatewayRead,
 
 		Schema: map[string]*schema.Schema{
-			"node_id": {
+			"node": {
 				Type:        schema.TypeInt,
 				Required:    true,
 				Description: "Node ID of the gateway",
@@ -47,7 +47,7 @@ func dataSourceGatewayRead(ctx context.Context, d *schema.ResourceData, meta int
 		return diag.FromErr(fmt.Errorf("failed to cast meta into api client"))
 	}
 
-	nodeID := uint32(d.Get("node_id").(int))
+	nodeID := uint32(d.Get("node").(int))
 	name := d.Get("name").(string)
 	ncPool := client.NewNodeClientPool(apiClient.rmb)
 	nodeClient, err := ncPool.GetNodeClient(apiClient.substrateConn, nodeID)

@@ -42,14 +42,14 @@ Required:
 - `cpu` (Number) Number of virtual CPUs.
 - `disk_size` (Number) Disk size for master node in GBs.
 - `memory` (Number) Memory size in MB.
-- `name` (String) Master node Zmachine workload name.
-- `node_id` (Number) Node ID to deploy master node on.
+- `name` (String) Master node ZMachine workload name.  This has to be unique within the node.
+- `node` (Number) Node ID to deploy master node on.
 
 Optional:
 
 - `flist` (String) Flist used on master node, e.g. https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist. All flists could be found in `https://hub.grid.tf/`
 - `flist_checksum` (String) if present, the flist is rejected if it has a different hash.
-- `planetary` (Boolean) Flag to enable Yggdrasil ip allocation.
+- `planetary` (Boolean) Flag to enable Yggdrasil IP allocation.
 - `publicip` (Boolean) Flag to enable/disable public ipv4 reservation.
 - `publicip6` (Boolean) Flag to enable/disable public ipv6 reservation.
 
@@ -69,14 +69,14 @@ Required:
 - `cpu` (Number) Number of virtual CPUs.
 - `disk_size` (Number) Data disk size in GBs.
 - `memory` (Number) Memory size in MB.
-- `name` (String) Worker node Zmachine workload name.
-- `node_id` (Number) Node ID to deploy worker node on.
+- `name` (String) Worker node ZMachine workload name. This has to be unique within the node.
+- `node` (Number) Node ID to deploy worker node on.
 
 Optional:
 
 - `flist` (String) Flist used on worker node, e.g. https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist. All flists could be found in `https://hub.grid.tf/`.
 - `flist_checksum` (String) if present, the flist is rejected if it has a different hash.
-- `planetary` (Boolean) Flag to enable Yggdrasil ip allocation.
+- `planetary` (Boolean) Flag to enable Yggdrasil IP allocation.
 - `publicip` (Boolean) Flag to enable/disable public ipv4 reservation.
 - `publicip6` (Boolean) Flag to enable/disable public ipv6 reservation.
 

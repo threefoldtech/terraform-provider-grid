@@ -18,7 +18,7 @@ Data source for computing gateway name proxy fqdn.
 ### Required
 
 - `name` (String) Name of the gateway name workload
-- `node_id` (Number) Node ID of the gateway
+- `node` (Number) Node ID of the gateway
 
 ### Read-Only
 

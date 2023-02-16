@@ -20,7 +20,7 @@ resource "grid_network" "net1" {
   # add_wg_access = true
 }
 resource "grid_deployment" "d1" {
-  node_id        = 34
+  node        = 34
   network_name = grid_network.net1.name
   disks {
     name        = "store"

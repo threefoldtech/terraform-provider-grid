@@ -17,7 +17,7 @@ resource "grid_network" "net1" {
 }
 
 resource "grid_deployment" "d1" {
-  node_id = 1
+  node = 1
   network_name = grid_network.net1.name
   ip_range = grid_network.net1.deployment_info[0].ip_range
 
@@ -68,7 +68,7 @@ resource "grid_deployment" "d1" {
 }
 
 resource "grid_deployment" "d2" {
-  node_id = 2
+  node = 2
   network_name = grid_network.net1.name
   ip_range = grid_network.net1.deployment_info[2].ip_range
   disks {

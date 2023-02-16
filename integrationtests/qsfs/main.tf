@@ -26,7 +26,7 @@ resource "grid_network" "net1" {
 }
 
 resource "grid_deployment" "d1" {
-    node_id= 27
+    node= 27
     dynamic "zdbs" {
         for_each = local.metas
         content {
@@ -50,7 +50,7 @@ resource "grid_deployment" "d1" {
 }
 
 resource "grid_deployment" "qsfs" {
-  node_id= 27
+  node= 27
   network_name = grid_network.net1.name
   qsfs {
     name = "qsfs"

@@ -43,7 +43,7 @@ resource "grid_network" "net1" {
 }
 
 resource "grid_deployment" "server1" {
-  node_id= grid_scheduler.sched.nodes["server1"]
+  node= grid_scheduler.sched.nodes["server1"]
   network_name = grid_network.net1.name
   vms {
     name = "firstserver"
@@ -66,7 +66,7 @@ resource "grid_deployment" "server1" {
 }
 
 resource "grid_deployment" "server2" {
-  node_id= grid_scheduler.sched.nodes["server2"]
+  node= grid_scheduler.sched.nodes["server2"]
   network_name = grid_network.net1.name
   vms {
     name = "secondserver"
@@ -89,7 +89,7 @@ resource "grid_deployment" "server2" {
 }
 
 resource "grid_fqdn_proxy" "balancer" {
-  node_id= grid_scheduler.sched.nodes["gateway"]
+  node= grid_scheduler.sched.nodes["gateway"]
   name = "balancer"
   fqdn = "remote.omar.grid.tf"
   backends = [format("http://[%s]", grid_deployment.server1.vms[0].ygg_ip), format("http://[%s]", grid_deployment.server2.vms[0].ygg_ip)]

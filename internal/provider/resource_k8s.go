@@ -87,7 +87,7 @@ func resourceKubernetes() *schema.Resource {
 							Required:    true,
 							Description: "Master node ZMachine workload name.  This has to be unique within the node.",
 						},
-						"node_id": {
+						"node": {
 							Type:        schema.TypeInt,
 							Required:    true,
 							Description: "Node ID to deploy master node on.",
@@ -184,7 +184,7 @@ func resourceKubernetes() *schema.Resource {
 							Required:    true,
 							Description: "Data disk size in GBs.",
 						},
-						"node_id": {
+						"node": {
 							Type:        schema.TypeInt,
 							Required:    true,
 							Description: "Node ID to deploy worker node on.",
@@ -279,7 +279,7 @@ type K8sDeployer struct {
 func NewK8sNodeData(m map[string]interface{}) K8sNodeData {
 	return K8sNodeData{
 		Name:          m["name"].(string),
-		NodeID:        uint32(m["node_id"].(int)),
+		NodeID:        uint32(m["node"].(int)),
 		DiskSize:      m["disk_size"].(int),
 		PublicIP:      m["publicip"].(bool),
 		PublicIP6:     m["publicip6"].(bool),
@@ -399,7 +399,7 @@ func NewK8sDeployer(d *schema.ResourceData, apiClient *apiClient) (K8sDeployer, 
 func (k *K8sNodeData) Dictify() map[string]interface{} {
 	res := make(map[string]interface{})
 	res["name"] = k.Name
-	res["node_id"] = int(k.NodeID)
+	res["node"] = int(k.NodeID)
 	res["disk_size"] = k.DiskSize
 	res["publicip"] = k.PublicIP
 	res["publicip6"] = k.PublicIP6

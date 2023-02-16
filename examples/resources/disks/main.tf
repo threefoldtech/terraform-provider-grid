@@ -14,7 +14,7 @@ locals {
 
 resource "grid_deployment" "d1" {
   name = local.name
-  node_id = 4 
+  node = 4 
   
   zdbs{
     name = "zdb1"

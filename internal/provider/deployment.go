@@ -42,7 +42,7 @@ type DeploymentData struct {
 
 func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (DeploymentDeployer, error) {
 	networkName := d.Get("network_name").(string)
-	nodeID := uint32(d.Get("node_id").(int))
+	nodeID := uint32(d.Get("node").(int))
 	disks := make([]workloads.Disk, 0)
 	for _, disk := range d.Get("disks").([]interface{}) {
 		data := workloads.GetDiskData(disk.(map[string]interface{}))
@@ -203,7 +203,7 @@ func (d *DeploymentDeployer) Marshal(r *schema.ResourceData) (errors error) {
 		errors = multierror.Append(errors, err)
 	}
 
-	err = r.Set("node_id", d.NodeID)
+	err = r.Set("node", d.NodeID)
 	if err != nil {
 		errors = multierror.Append(errors, err)
 	}

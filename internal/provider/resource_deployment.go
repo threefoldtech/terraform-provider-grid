@@ -14,7 +14,7 @@ import (
 func resourceDeployment() *schema.Resource {
 	return &schema.Resource{
 		// This description is used by the documentation generator and the language server.
-		Description:   "Resource for deploying multiple workloads like vms (ZMachines), ZDBs, disks, Qsfss, and/or zlogs.\nA user should specify node id for this deployment, the (already) deployed network that this deployment should be a part of, and the desired workloads configurations.",
+		Description:   "Resource for deploying multiple workloads like vms (ZMachines), ZDBs, disks, Qsfss, and/or zlogs. A user should specify node id for this deployment, the (already) deployed network that this deployment should be a part of, and the desired workloads configurations.",
 		CreateContext: ResourceFunc(resourceDeploymentCreate),
 		ReadContext:   ResourceReadFunc(resourceDeploymentRead),
 		UpdateContext: ResourceFunc(resourceDeploymentUpdate),
@@ -25,7 +25,7 @@ func resourceDeployment() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
-			"node_id": {
+			"node": {
 				Type:        schema.TypeInt,
 				Required:    true,
 				Description: "Node id to place the deployment on.",
@@ -128,7 +128,7 @@ func resourceDeployment() *schema.Resource {
 								Type: schema.TypeString,
 							},
 							Computed:    true,
-							Description: "Computed IPs of the ZDB.",
+							Description: "Computed IPs of the ZDB. Two IPs are returned: a public IPv6, and a YggIP, in this order",
 						},
 						"namespace": {
 							Type:        schema.TypeString,
