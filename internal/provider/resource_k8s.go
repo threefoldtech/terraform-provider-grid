@@ -67,7 +67,7 @@ func resourceKubernetes() *schema.Resource {
 			"token": {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: "The cluster secret token. Each node has to have this token to be part of the cluster.",
+				Description: "The cluster secret token. Each node has to have this token to be part of the cluster. This token should be an alphanumeric non-empty string.",
 			},
 			"nodes_ip_range": {
 				Type:        schema.TypeMap,

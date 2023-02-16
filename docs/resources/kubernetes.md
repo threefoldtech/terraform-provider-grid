@@ -18,7 +18,7 @@ Resource to deploy a kubernetes cluster. A cluster should consist of one master 
 ### Required
 
 - `master` (Block List, Min: 1, Max: 1) Master holds the configuration of master node in the kubernetes cluster. (see [below for nested schema](#nestedblock--master))
-- `token` (String) The cluster secret token. Each node has to have this token to be part of the cluster.
+- `token` (String) The cluster secret token. Each node has to have this token to be part of the cluster. This token should be an alphanumeric non-empty string.
 
 ### Optional
 
