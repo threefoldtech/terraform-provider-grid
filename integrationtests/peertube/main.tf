@@ -14,14 +14,13 @@ terraform {
 provider "grid" {
 }
 resource "grid_scheduler" "sched" {
-  # a machine for the first server instance
   requests {
     name = "peertube_instance"
     cru  = 2
     sru  = 512
     mru  = 4096
   }
-  # a name workload
+
   requests {
     name   = "gateway"
     ipv4   = true

@@ -13,21 +13,20 @@ terraform {
 provider "grid" {
 }
 resource "grid_scheduler" "sched" {
-  # a machine for the first server instance
   requests {
     name = "node1"
     cru  = 2
     sru  = 512
     mru  = 2048
   }
-  # a machine for the second server instance
+
   requests {
     name = "node2"
     cru  = 2
     sru  = 512
     mru  = 2048
   }
-  # a machine for the second server instance
+
   requests {
     name = "node3"
     cru  = 2

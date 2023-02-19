@@ -13,7 +13,6 @@ terraform {
 provider "grid" {
 }
 resource "grid_scheduler" "sched" {
-  # a machine for the first server instance
   requests {
     name = "qsfs_instance"
     cru  = 2

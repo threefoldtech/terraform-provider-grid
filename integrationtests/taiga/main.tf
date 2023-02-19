@@ -15,14 +15,13 @@ terraform {
 provider "grid" {
 }
 resource "grid_scheduler" "sched" {
-  # a machine for the first server instance
   requests {
     name = "taiga_instance"
     cru  = 2
     sru  = 58 * 1024
     mru  = 8096
   }
-  # a name workload
+
   requests {
     name   = "gateway"
     ipv4   = true

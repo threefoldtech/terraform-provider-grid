@@ -122,9 +122,12 @@ func TestK8s(t *testing.T) {
 		if network == "" {
 			network = "dev"
 		}
-
+		url, ok := gridProxyURL[network]
+		if !ok {
+			t.Fatalf("invalid network name %s", network)
+		}
 		// girdproxy tries to find 3 different nodes with suitable resources for the cluster
-		cl := gridproxy.NewClient(gridProxyURL[network])
+		cl := gridproxy.NewClient(url)
 		status := "up"
 		freeMRU := uint64(1024)
 		freeSRU := uint64(2 * 1024)
