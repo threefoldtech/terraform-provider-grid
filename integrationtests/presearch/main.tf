@@ -17,9 +17,17 @@ terraform {
 
 provider "grid" {
 }
-
+resource "grid_scheduler" "sched" {
+  # a machine for the first server instance
+  requests {
+    name = "presearch_instance"
+    cru  = 1
+    sru  = 5*1024
+    mru  = 1024
+  }
+}
 resource "grid_network" "net1" {
-  nodes       = [33]
+  nodes       = distinct([grid_scheduler.sched.nodes["presearch_instance"]])
   ip_range    = "10.1.0.0/16"
   name        = "network"
   description = "newer network"
@@ -27,7 +35,7 @@ resource "grid_network" "net1" {
 
 # Deployment specs
 resource "grid_deployment" "d1" {
-  node         = 33
+  node         = grid_scheduler.sched.nodes["presearch_instance"]
   network_name = grid_network.net1.name
 
   disks {

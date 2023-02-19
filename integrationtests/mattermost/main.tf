@@ -17,24 +17,40 @@ terraform {
 provider "grid" {
 }
 
+resource "grid_scheduler" "sched" {
+  # a machine for the first server instance
+  requests {
+    name = "mattermost_instance"
+    cru  = 2
+    sru  = 512
+    mru  = 4096
+  }
+  # a name workload
+  requests {
+    name   = "gateway"
+    ipv4   = true
+    domain = true
+  }
+}
+
 # this data source is used to break circular dependency in cases similar to the following:
 # vm: needs to know the domain in its init script
 # gateway_name: needs the ip of the vm to use as backend.
 # - the fqdn can be computed from grid_gateway_domain for the vm
 # - the backend can reference the vm ip directly 
 data "grid_gateway_domain" "domain" {
-  node = 14
+  node = grid_scheduler.sched.nodes["gateway"]
   name = "khaledmatter"
 }
 resource "grid_network" "net1" {
-  nodes         = [33]
+  nodes         = distinct([grid_scheduler.sched.nodes["mattermost_instance"]])
   ip_range      = "10.1.0.0/16"
   name          = "networkk"
   description   = "newer network"
   add_wg_access = true
 }
 resource "grid_deployment" "d1" {
-  node         = 33
+  node         = grid_scheduler.sched.nodes["mattermost_instance"]
   network_name = grid_network.net1.name
   vms {
     name       = "vm1"
@@ -55,7 +71,7 @@ resource "grid_deployment" "d1" {
   }
 }
 resource "grid_name_proxy" "p1" {
-  node            = 14
+  node            = grid_scheduler.sched.nodes["gateway"]
   name            = "khaledmatter"
   backends        = [format("http://[%s]:8000", grid_deployment.d1.vms[0].ygg_ip)]
   tls_passthrough = false
