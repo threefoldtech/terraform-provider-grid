@@ -41,6 +41,7 @@ checks: verifiers
 fmt:
 	@echo "Running $@"
 	@gofmt -d .
+	@terraform fmt -recursive
 
 lint:
 	@echo "Running $@"

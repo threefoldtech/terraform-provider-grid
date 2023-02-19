@@ -14,16 +14,34 @@ terraform {
 provider "grid" {
 }
 
+resource "grid_scheduler" "scheduler" {
+  requests {
+    name = "node1"
+    cru  = 2
+    sru  = 512
+    mru  = 1024
+  }
+
+  requests {
+    name = "node2"
+    cru  = 1
+    sru  = 512
+    mru  = 1024
+  }
+}
 
 resource "grid_network" "net1" {
-  nodes       = [33, 34]
+  nodes = distinct([
+    grid_scheduler.scheduler.nodes["node1"],
+    grid_scheduler.scheduler.nodes["node2"]
+  ])
   ip_range    = "172.20.0.0/16"
   name        = "net1"
   description = "new network"
 }
 
 resource "grid_deployment" "d1" {
-  node         = 33
+  node         = grid_scheduler.scheduler.nodes["node1"]
   network_name = grid_network.net1.name
   vms {
     name       = "vm1"
@@ -41,7 +59,7 @@ resource "grid_deployment" "d1" {
 }
 
 resource "grid_deployment" "d2" {
-  node         = 34
+  node         = grid_scheduler.scheduler.nodes["node2"]
   network_name = grid_network.net1.name
   vms {
     name       = "vm2"

@@ -21,14 +21,23 @@ terraform {
 provider "grid" {
 }
 
+resource "grid_scheduler" "scheduler" {
+  requests {
+    name = "node1"
+    cru  = 1
+    sru  = var.disk_size * 1024
+    mru  = 1024
+  }
+}
+
 resource "grid_network" "net1" {
-  nodes       = [33]
+  nodes       = [grid_scheduler.scheduler.nodes["node1"]]
   ip_range    = "10.1.0.0/16"
   name        = "network"
   description = "newer network"
 }
 resource "grid_deployment" "d1" {
-  node         = 33
+  node         = grid_scheduler.scheduler.nodes["node1"]
   network_name = grid_network.net1.name
   disks {
     name        = "data"
