@@ -19,7 +19,7 @@ resource "grid_scheduler" "sched" {
   requests {
     name = "taiga_instance"
     cru  = 2
-    sru  = 58*1024
+    sru  = 58 * 1024
     mru  = 8096
   }
   # a name workload
@@ -31,7 +31,7 @@ resource "grid_scheduler" "sched" {
 }
 
 resource "grid_network" "net2" {
-  nodes       = distinct([grid_scheduler.sched.nodes["taiga_instance"]])
+  nodes       = [grid_scheduler.sched.nodes["taiga_instance"]]
   ip_range    = "10.1.0.0/16"
   name        = "network1"
   description = "newer network"

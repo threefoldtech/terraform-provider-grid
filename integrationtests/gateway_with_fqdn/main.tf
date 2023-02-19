@@ -38,7 +38,7 @@ locals {
 
 
 resource "grid_network" "net1" {
-  nodes       = distinct([grid_scheduler.sched.nodes["node1"]])
+  nodes       = [grid_scheduler.sched.nodes["node1"]]
   ip_range    = "10.1.0.0/16"
   name        = local.name
   description = "newer network"

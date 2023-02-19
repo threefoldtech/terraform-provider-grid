@@ -38,7 +38,11 @@ resource "grid_scheduler" "sched" {
 
 
 resource "grid_network" "net1" {
-  nodes       = distinct([grid_scheduler.sched.nodes["node1"], grid_scheduler.sched.nodes["node2"], grid_scheduler.sched.nodes["node3"]])
+  nodes = distinct([
+    grid_scheduler.sched.nodes["node1"],
+    grid_scheduler.sched.nodes["node2"],
+    grid_scheduler.sched.nodes["node3"]
+  ])
   ip_range    = "10.1.0.0/16"
   name        = "network12346"
   description = "newer network"

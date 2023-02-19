@@ -43,7 +43,7 @@ data "grid_gateway_domain" "domain" {
   name = "khaledmatter"
 }
 resource "grid_network" "net1" {
-  nodes         = distinct([grid_scheduler.sched.nodes["mattermost_instance"]])
+  nodes         = [grid_scheduler.sched.nodes["mattermost_instance"]]
   ip_range      = "10.1.0.0/16"
   name          = "networkk"
   description   = "newer network"

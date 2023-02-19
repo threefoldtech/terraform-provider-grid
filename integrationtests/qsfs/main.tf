@@ -19,7 +19,7 @@ resource "grid_scheduler" "sched" {
     cru  = 2
     sru  = 2048
     mru  = 1024
-    hru  = 12*1024
+    hru  = 12 * 1024
   }
 }
 locals {
@@ -28,14 +28,14 @@ locals {
 }
 
 resource "grid_network" "net1" {
-  nodes       = distinct([grid_scheduler.sched.nodes["qsfs_instance"]])
+  nodes       = [grid_scheduler.sched.nodes["qsfs_instance"]]
   ip_range    = "10.1.0.0/16"
   name        = "net1"
   description = "newer network"
 }
 
 resource "grid_deployment" "d1" {
-  node         = grid_scheduler.sched.nodes["qsfs_instance"]
+  node = grid_scheduler.sched.nodes["qsfs_instance"]
   dynamic "zdbs" {
     for_each = local.metas
     content {
