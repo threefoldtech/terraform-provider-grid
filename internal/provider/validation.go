@@ -5,10 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math/big"
-	"net/url"
-	"time"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/substrate-client"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
@@ -39,20 +36,6 @@ func validateAccount(apiClient *apiClient, sub subi.SubstrateExt) error {
 	return nil
 }
 
-func validateRedis(apiClient *apiClient) error {
-	errMsg := fmt.Sprintf("redis error. make sure rmb_redis_url is correct and there's a redis server listening there. rmb_redis_url: %s", apiClient.rmb_redis_url)
-	cl, err := newRedisPool(apiClient.rmb_redis_url)
-	if err != nil {
-		return errors.Wrap(err, errMsg)
-	}
-	c, err := cl.Dial()
-	if err != nil {
-		return errors.Wrap(err, errMsg)
-	}
-	c.Close()
-	return nil
-}
-
 func validateRMBProxyServer(apiClient *apiClient) error {
 	return apiClient.grid_client.Ping()
 }
@@ -78,47 +61,4 @@ func validateAccountMoneyForExtrinsics(sub subi.SubstrateExt, identity substrate
 		return fmt.Errorf("account contains %s, min fee is 20000", acc.Data.Free)
 	}
 	return nil
-}
-
-func newRedisPool(address string) (*redis.Pool, error) {
-	u, err := url.Parse(address)
-	if err != nil {
-		return nil, err
-	}
-	var host string
-	switch u.Scheme {
-	case "tcp":
-		host = u.Host
-	case "unix":
-		host = u.Path
-	default:
-		return nil, fmt.Errorf("unknown scheme '%s' expecting tcp or unix", u.Scheme)
-	}
-	var opts []redis.DialOption
-
-	if u.User != nil {
-		opts = append(
-			opts,
-			redis.DialPassword(u.User.Username()),
-		)
-	}
-
-	return &redis.Pool{
-		Dial: func() (redis.Conn, error) {
-			return redis.Dial(u.Scheme, host, opts...)
-		},
-		TestOnBorrow: func(c redis.Conn, t time.Time) error {
-			if time.Since(t) > 10*time.Second {
-				//only check connection if more than 10 second of inactivity
-				_, err := c.Do("PING")
-				return err
-			}
-
-			return nil
-		},
-		MaxActive:   5,
-		MaxIdle:     3,
-		IdleTimeout: 1 * time.Minute,
-		Wait:        true,
-	}, nil
 }
