@@ -30,7 +30,7 @@ func (nm NetworkState) GetNetwork(networkName string) Network {
 		nm[networkName] = NewNetwork()
 	}
 	net := nm[networkName]
-	return &net
+	return net
 }
 
 // DeleteNetwork deletes a network using its name

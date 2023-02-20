@@ -34,7 +34,7 @@ func NewLocalFileState() LocalFileState {
 // Load loads state from state.json file
 func (f *LocalFileState) Load(FileName string) error {
 	// os.OpenFile(FileName, os.O_CREATE, 0644)
-	f.st = &State{}
+	f.st = State{}
 	_, err := os.Stat(FileName)
 	if err != nil && os.IsNotExist(err) {
 		_, err = os.OpenFile(FileName, os.O_CREATE, 0644)

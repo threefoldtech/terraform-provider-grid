@@ -19,7 +19,7 @@ var ErrDuplicateName = errors.New("node names are not unique")
 // K8sNodeData kubernetes data
 type K8sNodeData struct {
 	Name          string
-	Node          uint32
+	NodeID        uint32
 	DiskSize      int
 	PublicIP      bool
 	PublicIP6     bool
@@ -47,7 +47,7 @@ type K8sCluster struct {
 func NewK8sNodeData(m map[string]interface{}) K8sNodeData {
 	return K8sNodeData{
 		Name:          m["name"].(string),
-		Node:          uint32(m["node"].(int)),
+		NodeID:        uint32(m["node"].(int)),
 		DiskSize:      m["disk_size"].(int),
 		PublicIP:      m["publicip"].(bool),
 		PublicIP6:     m["publicip6"].(bool),
@@ -87,7 +87,7 @@ func NewK8sNodeDataFromWorkload(w gridtypes.Workload, nodeID uint32, diskSize in
 
 	k = K8sNodeData{
 		Name:          string(w.Name),
-		Node:          nodeID,
+		NodeID:        nodeID,
 		DiskSize:      diskSize,
 		PublicIP:      computedIP != "",
 		PublicIP6:     computedIP6 != "",
@@ -108,7 +108,7 @@ func NewK8sNodeDataFromWorkload(w gridtypes.Workload, nodeID uint32, diskSize in
 func (k *K8sNodeData) Dictify() map[string]interface{} {
 	res := make(map[string]interface{})
 	res["name"] = k.Name
-	res["node"] = int(k.Node)
+	res["node"] = int(k.NodeID)
 	res["disk_size"] = k.DiskSize
 	res["publicip"] = k.PublicIP
 	res["publicip6"] = k.PublicIP6

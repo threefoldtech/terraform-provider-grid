@@ -16,7 +16,7 @@ import (
 // validateAccount checks the mnemonics is associated with an account with key type ed25519
 func validateAccount(threefoldPluginClient *threefoldPluginClient, sub subi.SubstrateExt) error {
 	_, err := sub.GetAccount(threefoldPluginClient.identity)
-	if err != nil && !errors.Is(err, subi.ErrAccountNotFound) {
+	if err != nil && !errors.Is(err, substrate.ErrAccountNotFound) {
 		return errors.Wrap(err, "failed to get account with the given mnemonics")
 	}
 	if err != nil { // Account not found
@@ -152,7 +152,7 @@ func validateClientRMB(threefoldPluginClient *threefoldPluginClient, sub subi.Su
 	}
 }
 
-func validateAccountBalanceForExtrinsics(sub subi.SubstrateExt, identity subi.Identity) error {
+func validateAccountBalanceForExtrinsics(sub subi.SubstrateExt, identity substrate.Identity) error {
 	acc, err := sub.GetAccount(identity)
 	if err != nil && !errors.Is(err, substrate.ErrAccountNotFound) {
 		return errors.Wrap(err, "failed to get account with the given mnemonics")

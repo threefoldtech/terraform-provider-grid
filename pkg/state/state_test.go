@@ -10,7 +10,7 @@ import (
 func TestState(t *testing.T) {
 	var localFileState LocalFileState
 
-	var localState StateI
+	var localState State
 	var newState State
 
 	var marshalLocalState []byte

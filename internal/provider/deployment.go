@@ -24,7 +24,7 @@ import (
 
 type DeploymentDeployer struct {
 	ID                    string
-	Node                  uint32
+	NodeID                uint32
 	Disks                 []workloads.Disk
 	ZDBs                  []workloads.ZDB
 	VMs                   []workloads.VM
@@ -91,7 +91,7 @@ func newDeploymentDeployer(d *schema.ResourceData, threefoldPluginClient *threef
 
 	deploymentDeployer := DeploymentDeployer{
 		ID:                    d.Id(),
-		Node:                  nodeID,
+		NodeID:                nodeID,
 		Disks:                 disks,
 		VMs:                   vms,
 		QSFSs:                 qsfs,
@@ -108,7 +108,7 @@ func newDeploymentDeployer(d *schema.ResourceData, threefoldPluginClient *threef
 func (d *DeploymentDeployer) assignNodesIPs() error {
 	networkingState := d.ThreefoldPluginClient.state.GetState().Networks
 	network := networkingState.GetNetwork(d.NetworkName)
-	usedHosts := network.GetUsedNetworkHostIDs(d.Node)
+	usedHosts := network.GetUsedNetworkHostIDs(d.NodeID)
 	if len(d.VMs) == 0 {
 		return nil
 	}
@@ -281,7 +281,7 @@ func (d *DeploymentDeployer) Sync(ctx context.Context, sub subi.SubstrateExt, cl
 		d.Nullify()
 		return nil
 	}
-	currentDeployments, err := d.deployer.GetDeployments(ctx, sub, map[uint32]uint64{d.Node: d.parseID()})
+	currentDeployments, err := d.deployer.GetDeployments(ctx, sub, map[uint32]uint64{d.NodeID: d.parseID()})
 	if err != nil {
 		return errors.Wrap(err, "failed to get deployments to update local state")
 	}
@@ -293,7 +293,7 @@ func (d *DeploymentDeployer) Sync(ctx context.Context, sub subi.SubstrateExt, cl
 
 	ns := cl.state.GetState().Networks
 	network := ns.GetNetwork(d.NetworkName)
-	network.DeleteDeploymentHostIDs(d.Node, d.ID)
+	network.DeleteDeploymentHostIDs(d.NodeID, d.ID)
 
 	usedIPs := []byte{}
 	for _, w := range dl.Workloads {
@@ -335,7 +335,7 @@ func (d *DeploymentDeployer) Sync(ctx context.Context, sub subi.SubstrateExt, cl
 
 		}
 	}
-	network.SetDeploymentHostIDs(d.Node, d.ID, usedIPs)
+	network.SetDeploymentHostIDs(d.NodeID, d.ID, usedIPs)
 	d.Match(disks, qsfs, zdbs, vms)
 	log.Printf("vms: %+v\n", len(vms))
 	d.Disks = disks
@@ -419,8 +419,8 @@ func (d *DeploymentDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt) 
 		return errors.Wrap(err, "couldn't get old deployments data")
 	}
 	currentDeployments, err := d.deployer.Deploy(ctx, sub, oldDeployments, newDeployments)
-	if currentDeployments[d.Node] != 0 {
-		d.ID = fmt.Sprintf("%d", currentDeployments[d.Node])
+	if currentDeployments[d.NodeID] != 0 {
+		d.ID = fmt.Sprintf("%d", currentDeployments[d.NodeID])
 	}
 	return err
 }

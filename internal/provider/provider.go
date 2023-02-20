@@ -142,7 +142,7 @@ type threefoldPluginClient struct {
 	rmb             rmb.Client
 	substrateConn   subi.SubstrateExt
 	manager         subi.Manager
-	identity        subi.Identity
+	identity        substrate.Identity
 	state           state.StateGetter
 }
 
@@ -157,13 +157,13 @@ func providerConfigure(st state.StateGetter) (func(ctx context.Context, d *schem
 		}
 
 		keyType := d.Get("key_type").(string)
-		var identity subi.Identity
+		var identity substrate.Identity
 
 		switch keyType {
 		case "ed25519":
-			identity, err = subi.NewIdentityFromEd25519Phrase(string(threefoldPluginClient.mnemonics))
+			identity, err = substrate.NewIdentityFromEd25519Phrase(string(threefoldPluginClient.mnemonics))
 		case "sr25519":
-			identity, err = subi.NewIdentityFromSr25519Phrase(string(threefoldPluginClient.mnemonics))
+			identity, err = substrate.NewIdentityFromSr25519Phrase(string(threefoldPluginClient.mnemonics))
 		default:
 			err = errors.New("key_type must be one of ed25519 and sr25519")
 		}

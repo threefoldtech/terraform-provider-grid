@@ -34,7 +34,7 @@ func constructTestDeployer(ctrl *gomock.Controller) DeploymentDeployer {
 		ncPool:   pool,
 		deployer: deployer,
 		ID:       "100",
-		Node:     10,
+		NodeID:   10,
 		Disks: []workloads.Disk{
 			{
 				Name:        "disk1",
@@ -312,7 +312,7 @@ func TestDeploymentGenerateDeployment(t *testing.T) {
 	netState.EXPECT().GetNetwork(d.NetworkName).Return(testNetwork).AnyTimes()
 
 	network := mock.NewMockNetwork(ctrl)
-	network.EXPECT().GetUsedNetworkHostIDs(d.Node).Return([]byte{}).AnyTimes()
+	network.EXPECT().GetUsedNetworkHostIDs(d.NodeID).Return([]byte{}).AnyTimes()
 
 	dl, err := d.GenerateVersionlessDeployments(context.Background())
 	assert.NoError(t, err)
@@ -338,8 +338,8 @@ func TestDeploymentGenerateDeployment(t *testing.T) {
 		return names[wls[i].Name.String()] < names[wls[j].Name.String()]
 	})
 
-	assert.Equal(t, len(wls), len(dl[d.Node].Workloads))
-	assert.Equal(t, wls, dl[d.Node].Workloads)
+	assert.Equal(t, len(wls), len(dl[d.NodeID].Workloads))
+	assert.Equal(t, wls, dl[d.NodeID].Workloads)
 }
 
 func TestDeploymentSync(t *testing.T) {
@@ -365,11 +365,11 @@ func TestDeploymentSync(t *testing.T) {
 	netState.EXPECT().GetNetwork(d.NetworkName).AnyTimes().Return(testNetwork)
 
 	network := mock.NewMockNetwork(ctrl)
-	network.EXPECT().GetUsedNetworkHostIDs(d.Node).Return([]byte{}).AnyTimes()
+	network.EXPECT().GetUsedNetworkHostIDs(d.NodeID).Return([]byte{}).AnyTimes()
 	dls, err := d.GenerateVersionlessDeployments(context.Background())
 	assert.NoError(t, err)
 
-	dl := dls[d.Node]
+	dl := dls[d.NodeID]
 	err = json.NewEncoder(log.Writer()).Encode(dl.Workloads)
 	assert.NoError(t, err)
 
@@ -485,17 +485,17 @@ func TestDeploymentSync(t *testing.T) {
 
 	var cp DeploymentDeployer
 	musUnmarshal(mustMarshal(d), &cp)
-	network.EXPECT().DeleteDeploymentHostIDs(d.Node, d.ID).AnyTimes()
+	network.EXPECT().DeleteDeploymentHostIDs(d.NodeID, d.ID).AnyTimes()
 
 	usedIPs := getUsedIPs(dl)
-	network.EXPECT().SetDeploymentHostIDs(d.Node, d.ID, usedIPs).AnyTimes()
+	network.EXPECT().SetDeploymentHostIDs(d.NodeID, d.ID, usedIPs).AnyTimes()
 	assert.NoError(t, d.Sync(context.Background(), sub, d.ThreefoldPluginClient))
 	assert.Equal(t, d.VMs, cp.VMs)
 	assert.Equal(t, d.Disks, cp.Disks)
 	assert.Equal(t, d.QSFSs, cp.QSFSs)
 	assert.Equal(t, d.ZDBs, cp.ZDBs)
 	assert.Equal(t, d.ID, cp.ID)
-	assert.Equal(t, d.Node, cp.Node)
+	assert.Equal(t, d.NodeID, cp.NodeID)
 }
 
 func getUsedIPs(dl gridtypes.Deployment) []byte {

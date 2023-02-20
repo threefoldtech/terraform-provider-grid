@@ -266,13 +266,13 @@ func NewK8sDeployer(d *schema.ResourceData, threefoldPluginClient *threefoldPlug
 	if master.IP != "" {
 		usedIPs[master.NodeID] = append(usedIPs[master.NodeID], net.ParseIP(master.IP)[3])
 	}
-	usedIPs[master.Node] = append(usedIPs[master.Node], network.GetUsedNetworkHostIDs(master.Node)...)
+	usedIPs[master.NodeID] = append(usedIPs[master.NodeID], network.GetUsedNetworkHostIDs(master.NodeID)...)
 	for _, w := range d.Get("workers").([]interface{}) {
 		data := workloads.NewK8sNodeData(w.(map[string]interface{}))
 		workers = append(workers, data)
 		if data.IP != "" {
-			usedIPs[data.Node] = append(usedIPs[data.Node], net.ParseIP(data.IP)[3])
-			usedIPs[data.Node] = append(usedIPs[data.Node], network.GetUsedNetworkHostIDs(data.Node)...)
+			usedIPs[data.NodeID] = append(usedIPs[data.NodeID], net.ParseIP(data.IP)[3])
+			usedIPs[data.NodeID] = append(usedIPs[data.NodeID], network.GetUsedNetworkHostIDs(data.NodeID)...)
 		}
 	}
 	nodesIPRange := make(map[uint32]gridtypes.IPNet)
@@ -343,11 +343,11 @@ func (k *K8sDeployer) invalidateBrokenAttributes(sub subi.SubstrateExt) error {
 		}
 
 	}
-	if _, ok := validNodes[k.K8sCluster.Master.Node]; !ok {
+	if _, ok := validNodes[k.K8sCluster.Master.NodeID]; !ok {
 		k.K8sCluster.Master = &workloads.K8sNodeData{}
 	}
 	for _, worker := range k.K8sCluster.Workers {
-		if _, ok := validNodes[worker.Node]; ok {
+		if _, ok := validNodes[worker.NodeID]; ok {
 			newWorkers = append(newWorkers, worker)
 		}
 	}
@@ -434,44 +434,44 @@ func (k *K8sDeployer) updateNetworkState(d *schema.ResourceData, state state.Sta
 		network.DeleteDeploymentHostIDs(uint32(nodeID), deploymentIDStr)
 	}
 	// remove old ips
-	network.DeleteDeploymentHostIDs(k.K8sCluster.Master.Node, fmt.Sprint(k.NodeDeploymentID[k.K8sCluster.Master.Node]))
+	network.DeleteDeploymentHostIDs(k.K8sCluster.Master.NodeID, fmt.Sprint(k.NodeDeploymentID[k.K8sCluster.Master.NodeID]))
 	for _, worker := range k.K8sCluster.Workers {
-		network.DeleteDeploymentHostIDs(worker.Node, fmt.Sprint(k.NodeDeploymentID[worker.Node]))
+		network.DeleteDeploymentHostIDs(worker.NodeID, fmt.Sprint(k.NodeDeploymentID[worker.NodeID]))
 	}
 
 	// append new ips
-	masterNodeDeploymentHostIDs := network.GetDeploymentHostIDs(k.K8sCluster.Master.Node, fmt.Sprint(k.NodeDeploymentID[k.K8sCluster.Master.Node]))
+	masterNodeDeploymentHostIDs := network.GetDeploymentHostIDs(k.K8sCluster.Master.NodeID, fmt.Sprint(k.NodeDeploymentID[k.K8sCluster.Master.NodeID]))
 	masterIP := net.ParseIP(k.K8sCluster.Master.IP)
 	if masterIP == nil {
 		log.Printf("couldn't parse master ip")
 	} else {
 		masterNodeDeploymentHostIDs = append(masterNodeDeploymentHostIDs, masterIP.To4()[3])
 	}
-	network.SetDeploymentHostIDs(k.K8sCluster.Master.Node, fmt.Sprint(k.NodeDeploymentID[k.K8sCluster.Master.Node]), masterNodeDeploymentHostIDs)
+	network.SetDeploymentHostIDs(k.K8sCluster.Master.NodeID, fmt.Sprint(k.NodeDeploymentID[k.K8sCluster.Master.NodeID]), masterNodeDeploymentHostIDs)
 	for _, worker := range k.K8sCluster.Workers {
-		workerNodeDeploymentHostIDs := network.GetDeploymentHostIDs(worker.Node, fmt.Sprint(k.NodeDeploymentID[worker.Node]))
+		workerNodeDeploymentHostIDs := network.GetDeploymentHostIDs(worker.NodeID, fmt.Sprint(k.NodeDeploymentID[worker.NodeID]))
 		workerIP := net.ParseIP(worker.IP)
 		if workerIP == nil {
 			log.Printf("couldn't parse worker ip at node (%d)", worker.NodeID)
 		} else {
 			workerNodeDeploymentHostIDs = append(workerNodeDeploymentHostIDs, workerIP.To4()[3])
 		}
-		network.SetDeploymentHostIDs(worker.Node, fmt.Sprint(k.NodeDeploymentID[worker.Node]), workerNodeDeploymentHostIDs)
+		network.SetDeploymentHostIDs(worker.NodeID, fmt.Sprint(k.NodeDeploymentID[worker.NodeID]), workerNodeDeploymentHostIDs)
 	}
 }
 
 func (k *K8sDeployer) assignNodesIPs() error {
 	// TODO: when a k8s node changes its zos node, remove its ip from the used ones. better at the beginning
-	masterNodeRange := k.NodesIPRange[k.K8sCluster.Master.Node]
+	masterNodeRange := k.NodesIPRange[k.K8sCluster.Master.NodeID]
 	if k.K8sCluster.Master.IP == "" || !masterNodeRange.Contains(net.ParseIP(k.K8sCluster.Master.IP)) {
-		ip, err := k.getK8sFreeIP(masterNodeRange, k.K8sCluster.Master.Node)
+		ip, err := k.getK8sFreeIP(masterNodeRange, k.K8sCluster.Master.NodeID)
 		if err != nil {
 			return errors.Wrap(err, "failed to find free ip for master")
 		}
 		k.K8sCluster.Master.IP = ip
 	}
 	for idx, w := range k.K8sCluster.Workers {
-		workerNodeRange := k.NodesIPRange[w.Node]
+		workerNodeRange := k.NodesIPRange[w.NodeID]
 		if w.IP != "" && workerNodeRange.Contains(net.ParseIP(w.IP)) {
 			continue
 		}
@@ -491,10 +491,10 @@ func (k *K8sDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[u
 	deployments := make(map[uint32]gridtypes.Deployment)
 	nodeWorkloads := make(map[uint32][]gridtypes.Workload)
 	masterWorkloads := k.K8sCluster.Master.GenerateK8sWorkload(&k.K8sCluster, "")
-	nodeWorkloads[k.K8sCluster.Master.Node] = append(nodeWorkloads[k.K8sCluster.Master.Node], masterWorkloads...)
+	nodeWorkloads[k.K8sCluster.Master.NodeID] = append(nodeWorkloads[k.K8sCluster.Master.NodeID], masterWorkloads...)
 	for _, w := range k.K8sCluster.Workers {
 		workerWorkloads := w.GenerateK8sWorkload(&k.K8sCluster, k.K8sCluster.Master.IP)
-		nodeWorkloads[w.Node] = append(nodeWorkloads[w.Node], workerWorkloads...)
+		nodeWorkloads[w.NodeID] = append(nodeWorkloads[w.NodeID], workerWorkloads...)
 	}
 
 	for node, ws := range nodeWorkloads {
@@ -542,12 +542,12 @@ func (d *K8sDeployer) validateChecksums() error {
 
 func (k *K8sDeployer) ValidateIPranges(ctx context.Context) error {
 
-	if _, ok := k.NodesIPRange[k.K8sCluster.Master.Node]; !ok {
-		return fmt.Errorf("the master node %d doesn't exist in the network's ip ranges", k.K8sCluster.Master.Node)
+	if _, ok := k.NodesIPRange[k.K8sCluster.Master.NodeID]; !ok {
+		return fmt.Errorf("the master node %d doesn't exist in the network's ip ranges", k.K8sCluster.Master.NodeID)
 	}
 	for _, w := range k.K8sCluster.Workers {
-		if _, ok := k.NodesIPRange[w.Node]; !ok {
-			return fmt.Errorf("the node with id %d in worker %s doesn't exist in the network's ip ranges", w.Node, w.Name)
+		if _, ok := k.NodesIPRange[w.NodeID]; !ok {
+			return fmt.Errorf("the node with id %d in worker %s doesn't exist in the network's ip ranges", w.NodeID, w.Name)
 		}
 	}
 	return nil
@@ -567,9 +567,9 @@ func (k *K8sDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error
 		return err
 	}
 	nodes := make([]uint32, 0)
-	nodes = append(nodes, k.K8sCluster.Master.Node)
+	nodes = append(nodes, k.K8sCluster.Master.NodeID)
 	for _, w := range k.K8sCluster.Workers {
-		nodes = append(nodes, w.Node)
+		nodes = append(nodes, w.NodeID)
 
 	}
 	return client.AreNodesUp(ctx, sub, nodes, k.ncPool)
@@ -624,9 +624,9 @@ func (k *K8sDeployer) removeUsedIPsFromLocalState(cl *threefoldPluginClient) {
 	ns := cl.state.GetState().Networks
 	network := ns.GetNetwork(k.K8sCluster.NetworkName)
 
-	network.DeleteDeploymentHostIDs(k.K8sCluster.Master.Node, fmt.Sprint(k.NodeDeploymentID[k.K8sCluster.Master.Node]))
+	network.DeleteDeploymentHostIDs(k.K8sCluster.Master.NodeID, fmt.Sprint(k.NodeDeploymentID[k.K8sCluster.Master.NodeID]))
 	for _, worker := range k.K8sCluster.Workers {
-		network.DeleteDeploymentHostIDs(worker.Node, fmt.Sprint(k.NodeDeploymentID[worker.Node]))
+		network.DeleteDeploymentHostIDs(worker.NodeID, fmt.Sprint(k.NodeDeploymentID[worker.NodeID]))
 	}
 }
 
