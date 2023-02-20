@@ -14,16 +14,30 @@ terraform {
 
 provider "grid" {
 }
+resource "grid_scheduler" "sched" {
+  requests {
+    name = "taiga_instance"
+    cru  = 2
+    sru  = 58 * 1024
+    mru  = 8096
+  }
+
+  requests {
+    name   = "gateway"
+    ipv4   = true
+    domain = true
+  }
+}
 
 resource "grid_network" "net2" {
-  nodes       = [33]
+  nodes       = [grid_scheduler.sched.nodes["taiga_instance"]]
   ip_range    = "10.1.0.0/16"
   name        = "network1"
   description = "newer network"
 }
 
 resource "grid_deployment" "node1" {
-  node         = 33
+  node         = grid_scheduler.sched.nodes["taiga_instance"]
   network_name = grid_network.net2.name
   disks {
     name = "data0"
@@ -59,16 +73,15 @@ resource "grid_deployment" "node1" {
       EMAIL_HOST_PASSWORD = "",
     }
     planetary = true
-    publicip  = false
   }
 }
 
 data "grid_gateway_domain" "domain" {
-  node = 14
+  node = grid_scheduler.sched.nodes["gateway"]
   name = "grid3taiga"
 }
 resource "grid_name_proxy" "p1" {
-  node            = 14
+  node            = grid_scheduler.sched.nodes["gateway"]
   name            = "grid3taiga"
   backends        = [format("http://[%s]:9000", grid_deployment.node1.vms[0].ygg_ip)]
   tls_passthrough = false

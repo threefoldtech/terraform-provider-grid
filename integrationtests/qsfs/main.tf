@@ -12,21 +12,29 @@ terraform {
 
 provider "grid" {
 }
-
+resource "grid_scheduler" "sched" {
+  requests {
+    name = "qsfs_instance"
+    cru  = 2
+    sru  = 2048
+    mru  = 1024
+    hru  = 12 * 1024
+  }
+}
 locals {
   metas = ["meta1", "meta2", "meta3", "meta4"]
   datas = ["data1", "data2", "data3", "data4", "data5", "data6", "data7", "data8"]
 }
 
 resource "grid_network" "net1" {
-  nodes       = [27]
+  nodes       = [grid_scheduler.sched.nodes["qsfs_instance"]]
   ip_range    = "10.1.0.0/16"
   name        = "net1"
   description = "newer network"
 }
 
 resource "grid_deployment" "d1" {
-  node = 27
+  node = grid_scheduler.sched.nodes["qsfs_instance"]
   dynamic "zdbs" {
     for_each = local.metas
     content {
@@ -50,7 +58,7 @@ resource "grid_deployment" "d1" {
 }
 
 resource "grid_deployment" "qsfs" {
-  node         = 27
+  node         = grid_scheduler.sched.nodes["qsfs_instance"]
   network_name = grid_network.net1.name
   qsfs {
     name                  = "qsfs"

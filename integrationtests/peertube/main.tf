@@ -13,24 +13,37 @@ terraform {
 
 provider "grid" {
 }
+resource "grid_scheduler" "sched" {
+  requests {
+    name = "peertube_instance"
+    cru  = 2
+    sru  = 512
+    mru  = 4096
+  }
 
+  requests {
+    name   = "gateway"
+    ipv4   = true
+    domain = true
+  }
+}
 # this data source is used to break circular dependency in cases similar to the following:
 # vm: needs to know the domain in its init script
 # gateway_name: needs the ip of the vm to use as backend.
 # - the fqdn can be computed from grid_gateway_domain for the vm
 # - the backend can reference the vm ip directly 
 data "grid_gateway_domain" "domain" {
-  node = 14
-  name = "ashrafpeertube"
+  node = grid_scheduler.sched.nodes["gateway"]
+  name = "peertube"
 }
 resource "grid_network" "net1" {
-  nodes       = [33]
+  nodes       = [grid_scheduler.sched.nodes["peertube_instance"]]
   ip_range    = "10.1.0.0/16"
   name        = "network"
   description = "newer network"
 }
 resource "grid_deployment" "d1" {
-  node         = 33
+  node         = grid_scheduler.sched.nodes["peertube_instance"]
   network_name = grid_network.net1.name
   vms {
     name       = "vm1"
@@ -55,8 +68,8 @@ resource "grid_deployment" "d1" {
   }
 }
 resource "grid_name_proxy" "p1" {
-  node            = 14
-  name            = "ashrafpeertube"
+  node            = grid_scheduler.sched.nodes["gateway"]
+  name            = "peertube"
   backends        = [format("http://[%s]:9000", grid_deployment.d1.vms[0].ygg_ip)]
   tls_passthrough = false
 }

@@ -48,17 +48,6 @@ locals {
     description   = "new network for testing"
     add_wg_access = true
   }
-
-  master = {
-    name        = "mr"
-    node        = 12
-    cpu         = 2
-    memory      = 1024
-    disk_name   = "mrdisk"
-    mount_point = "/mydisk"
-    publicip    = false
-    planetary   = true
-  }
 }
 
 output "master_yggip" {

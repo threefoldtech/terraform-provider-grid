@@ -13,8 +13,15 @@ terraform {
 provider "grid" {
 }
 
+resource "grid_scheduler" "scheduler" {
+  requests {
+    name = "node1"
+    hru  = 10240
+  }
+}
+
 resource "grid_deployment" "d1" {
-  node = 14
+  node = grid_scheduler.scheduler.nodes["node1"]
 
   zdbs {
     name        = "zdb123"

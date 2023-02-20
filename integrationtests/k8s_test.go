@@ -1,6 +1,7 @@
 package integrationtests
 
 import (
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -8,6 +9,8 @@ import (
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
+	gridproxy "github.com/threefoldtech/grid_proxy_server/pkg/client"
+	"github.com/threefoldtech/grid_proxy_server/pkg/types"
 )
 
 // AssertNodesAreReady runs `kubectl get node` on the master node and asserts that all nodes are ready
@@ -108,16 +111,68 @@ func TestK8s(t *testing.T) {
 		   - Make sure that worker is added and ready.
 
 		*/
+
+		gridProxyURL := map[string]string{
+			"dev":  "https://gridproxy.dev.grid.tf/",
+			"test": "https://gridproxy.test.grid.tf/",
+			"qa":   "https://gridproxy.qa.grid.tf/",
+			"main": "https://gridproxy.grid.tf/",
+		}
+		network := os.Getenv("NETWORK")
+		if network == "" {
+			network = "dev"
+		}
+		url, ok := gridProxyURL[network]
+		if !ok {
+			t.Fatalf("invalid network name %s", network)
+		}
+		// girdproxy tries to find 3 different nodes with suitable resources for the cluster
+		cl := gridproxy.NewClient(url)
+		status := "up"
+		freeMRU := uint64(1024)
+		freeSRU := uint64(2 * 1024)
+		freeCRU := uint64(1)
+		f := types.NodeFilter{
+			Status:   &status,
+			FreeMRU:  &freeMRU,
+			FreeSRU:  &freeSRU,
+			TotalCRU: &freeCRU,
+		}
+		l := types.Limit{
+			Page: 1,
+			Size: 3,
+		}
+		res, _, err := cl.Nodes(f, l)
+		if err != nil || len(res) != 3 {
+			t.Fatal("gridproxy could not find nodes with suitable resources")
+		}
+
+		masterNode := res[0].NodeID
+		worker0Node := res[1].NodeID
+		worker1Node := res[2].NodeID
+
 		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 			TerraformDir: "./k8s_using_module",
 			Parallelism:  1,
 			Vars: map[string]interface{}{
 				"ssh":           publicKey,
-				"network_nodes": []int{12, 219},
+				"network_nodes": []int{12, masterNode},
+				"master": []map[string]interface{}{
+					{
+						"name":        "mr",
+						"node":        masterNode,
+						"cpu":         1,
+						"memory":      1024,
+						"disk_name":   "mrdisk",
+						"mount_point": "/mydisk",
+						"publicip":    false,
+						"planetary":   true,
+					},
+				},
 				"workers": []map[string]interface{}{
 					{
 						"name":        "w0",
-						"node":        219,
+						"node":        worker0Node,
 						"cpu":         1,
 						"memory":      1024,
 						"disk_name":   "w0disk",
@@ -129,13 +184,13 @@ func TestK8s(t *testing.T) {
 				"disks": []map[string]interface{}{
 					{
 						"name":        "mrdisk",
-						"node":        12,
-						"size":        5,
+						"node":        masterNode,
+						"size":        2,
 						"description": "",
 					},
 					{
 						"name":        "w0disk",
-						"node":        219,
+						"node":        worker0Node,
 						"size":        2,
 						"description": "",
 					},
@@ -152,7 +207,7 @@ func TestK8s(t *testing.T) {
 		terraformOptions.Vars["workers"] = []map[string]interface{}{
 			{
 				"name":        "w0",
-				"node":        219,
+				"node":        worker0Node,
 				"cpu":         1,
 				"memory":      1024,
 				"disk_name":   "w0disk",
@@ -162,7 +217,7 @@ func TestK8s(t *testing.T) {
 			},
 			{
 				"name":        "w1",
-				"node":        12,
+				"node":        worker1Node,
 				"cpu":         1,
 				"memory":      1024,
 				"disk_name":   "w1disk",
@@ -174,19 +229,19 @@ func TestK8s(t *testing.T) {
 		terraformOptions.Vars["disks"] = []map[string]interface{}{
 			{
 				"name":        "mrdisk",
-				"node":        12,
-				"size":        5,
+				"node":        masterNode,
+				"size":        2,
 				"description": "",
 			},
 			{
 				"name":        "w0disk",
-				"node":        219,
+				"node":        worker0Node,
 				"size":        2,
 				"description": "",
 			},
 			{
 				"name":        "w1disk",
-				"node":        12,
+				"node":        worker1Node,
 				"size":        2,
 				"description": "",
 			},
