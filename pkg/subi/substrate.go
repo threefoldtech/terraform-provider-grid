@@ -4,7 +4,6 @@ package subi
 import (
 	"context"
 
-	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/substrate-client"
 )
@@ -30,12 +29,17 @@ type SubstrateExt interface {
 	GetContract(id uint64) (*substrate.Contract, error)
 	GetNodeTwin(id uint32) (uint32, error)
 	CreateNameContract(identity substrate.Identity, name string) (uint64, error)
-	GetAccount(identity substrate.Identity) (types.AccountInfo, error)
+	GetAccount(identity substrate.Identity) (substrate.AccountInfo, error)
 	GetContractIDByNameRegistration(name string) (uint64, error)
 	GetTwinPK(twinID uint32) ([]byte, error)
+	GetTwin(twinID uint32) (*substrate.Twin, error)
 }
 type SubstrateImpl struct {
 	*substrate.Substrate
+}
+
+func (s *SubstrateImpl) GetTwin(twinID uint32) (*substrate.Twin, error) {
+	return s.Substrate.GetTwin(twinID)
 }
 
 func (s *SubstrateImpl) GetContractIDByNameRegistration(name string) (uint64, error) {
@@ -43,7 +47,7 @@ func (s *SubstrateImpl) GetContractIDByNameRegistration(name string) (uint64, er
 	return res, err
 }
 
-func (s *SubstrateImpl) GetAccount(identity substrate.Identity) (types.AccountInfo, error) {
+func (s *SubstrateImpl) GetAccount(identity substrate.Identity) (substrate.AccountInfo, error) {
 	res, err := s.Substrate.GetAccount(identity)
 	return res, err
 }
