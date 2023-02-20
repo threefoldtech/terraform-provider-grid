@@ -53,6 +53,7 @@ func init() {
 	// }
 }
 
+// New returns a new schema.Provider instance, and an open substrate connection
 func New(version string, st state.StateGetter) (func() *schema.Provider, subi.SubstrateExt) {
 	var substrateConnection subi.SubstrateExt
 	return func() *schema.Provider {

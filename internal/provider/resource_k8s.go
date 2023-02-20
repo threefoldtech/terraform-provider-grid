@@ -254,6 +254,7 @@ type K8sDeployer struct {
 	deployer    deployer.Deployer
 }
 
+// NewK8sDeployer reads the k8s resource configuration data from the schema.ResourceData, converts them into a new K8sDeployer instance, and returns this instance.
 func NewK8sDeployer(d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (K8sDeployer, error) {
 	networkName := d.Get("network_name").(string)
 	ns := threefoldPluginClient.state.GetState().Networks
@@ -575,6 +576,7 @@ func (k *K8sDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error
 	return client.AreNodesUp(ctx, sub, nodes, k.ncPool)
 }
 
+// Deploy generates the gridtypes.Deployments according to the K8sDeployer, tries to deploy these deployments, then updates the terraform local state with the latest updates.
 func (k *K8sDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, cl *threefoldPluginClient) error {
 	if err := k.validateChecksums(); err != nil {
 		return err
@@ -590,6 +592,7 @@ func (k *K8sDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt, d *sche
 	return err
 }
 
+// Cancel cancels the contracts of the K8sDeployer, and updates the local state with the latest updates.
 func (k *K8sDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, cl *threefoldPluginClient) error {
 	newDeployments := make(map[uint32]gridtypes.Deployment)
 

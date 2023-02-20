@@ -127,6 +127,7 @@ type NetworkDeployer struct {
 	deployer              deployer.Deployer
 }
 
+// NewNetworkDeployer reads the network resource configuration data from schema.ResourceData, converts them into a NetworkDeployer instance, and returns this instance.
 func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (NetworkDeployer, error) {
 	var err error
 	nodesIf := d.Get("nodes").([]interface{})

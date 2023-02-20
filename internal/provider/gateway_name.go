@@ -34,6 +34,7 @@ type GatewayNameDeployer struct {
 	deployer              deployer.Deployer
 }
 
+// NewGatewayNameDeployer reads the gateway_name_proxy resource configuration data from schema.ResourceData, converts them into a GatewayNameDeployer instance, then returns this instance.
 func NewGatewayNameDeployer(d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (GatewayNameDeployer, error) {
 	backendsIf := d.Get("backends").([]interface{})
 	backends := make([]zos.Backend, len(backendsIf))
@@ -84,6 +85,7 @@ func (k *GatewayNameDeployer) Validate(ctx context.Context, sub subi.SubstrateEx
 	return client.AreNodesUp(ctx, sub, []uint32{k.Node}, k.ncPool)
 }
 
+// SyncContractsDeployments updates the terraform local state with the resource's latest changes.
 func (k *GatewayNameDeployer) SyncContractsDeployments(d *schema.ResourceData) (errors error) {
 
 	nodeDeploymentID := make(map[string]interface{})

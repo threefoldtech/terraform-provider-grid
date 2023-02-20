@@ -173,6 +173,7 @@ func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context)
 	return map[uint32]gridtypes.Deployment{d.NodeID: dl}, nil
 }
 
+// SyncContractsDeployments updates the terraform local state with the latest changes to workloads
 func (d *DeploymentDeployer) SyncContractsDeployments(r *schema.ResourceData) (errors error) {
 	vms := make([]interface{}, 0)
 	disks := make([]interface{}, 0)
