@@ -54,7 +54,7 @@ func init() {
 }
 
 // New returns a new schema.Provider instance, and an open substrate connection
-func New(version string, st state.StateGetter) (func() *schema.Provider, subi.SubstrateExt) {
+func New(version string, st state.Getter) (func() *schema.Provider, subi.SubstrateExt) {
 	var substrateConnection subi.SubstrateExt
 	return func() *schema.Provider {
 		p := &schema.Provider{
@@ -144,10 +144,10 @@ type threefoldPluginClient struct {
 	substrateConn   subi.SubstrateExt
 	manager         subi.Manager
 	identity        substrate.Identity
-	state           state.StateGetter
+	state           state.Getter
 }
 
-func providerConfigure(st state.StateGetter) (func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics), subi.SubstrateExt) {
+func providerConfigure(st state.Getter) (func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics), subi.SubstrateExt) {
 	var substrateConn subi.SubstrateExt
 	return func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 		var err error

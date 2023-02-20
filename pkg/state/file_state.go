@@ -9,8 +9,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-// StateGetter interface for local state
-type StateGetter interface {
+// Getter interface for local state
+type Getter interface {
 	// GetState
 	GetState() State
 }

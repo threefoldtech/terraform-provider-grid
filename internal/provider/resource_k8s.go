@@ -421,7 +421,7 @@ func (k *K8sDeployer) storeState(d *schema.ResourceData, cl *threefoldPluginClie
 	return
 }
 
-func (k *K8sDeployer) updateNetworkState(d *schema.ResourceData, state state.StateGetter) {
+func (k *K8sDeployer) updateNetworkState(d *schema.ResourceData, state state.Getter) {
 	ns := state.GetState().Networks
 	network := ns.GetNetwork(k.K8sCluster.NetworkName)
 	before, _ := d.GetChange("node_deployment_id")

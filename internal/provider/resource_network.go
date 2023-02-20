@@ -278,7 +278,7 @@ func (k *NetworkDeployer) ValidateDelete(ctx context.Context) error {
 	return nil
 }
 
-func (k *NetworkDeployer) storeState(d *schema.ResourceData, state state.StateGetter) (errors error) {
+func (k *NetworkDeployer) storeState(d *schema.ResourceData, state state.Getter) (errors error) {
 
 	nodeDeploymentID := make(map[string]interface{})
 	for node, id := range k.NodeDeploymentID {
@@ -362,7 +362,7 @@ func (k *NetworkDeployer) storeState(d *schema.ResourceData, state state.StateGe
 	return
 }
 
-func (k *NetworkDeployer) updateNetworkLocalState(state state.StateGetter) {
+func (k *NetworkDeployer) updateNetworkLocalState(state state.Getter) {
 	ns := state.GetState().Networks
 	ns.DeleteNetwork(k.ZNet.Name)
 	network := ns.GetNetwork(k.ZNet.Name)
