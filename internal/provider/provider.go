@@ -217,15 +217,20 @@ func providerConfigure(st state.StateI) (func(ctx context.Context, d *schema.Res
 		sessionID := generateSessionID(twin)
 		db := client.NewTwinDB(sub)
 
+		secureKey, err := direct.GenerateSecureKey(apiClient.mnemonics)
+		if err != nil {
+			return nil, diag.FromErr(errors.Wrap(err, "failed to generate secure key"))
+		}
+
 		relayURL := d.Get("relay_url").(string)
 		if relayURL != "" {
-			cl, err = direct.NewClient(context.Background(), identity, relayURL, sessionID, db)
+			cl, err = direct.NewClient(context.Background(), identity, relayURL, sessionID, db, secureKey)
 		} else {
 			relayURL, ok := RELAYS_URLS[network]
 			if !ok {
 				return nil, diag.Errorf("error getting relay url for network %s", network)
 			}
-			cl, err = direct.NewClient(context.Background(), identity, relayURL, sessionID, db)
+			cl, err = direct.NewClient(context.Background(), identity, relayURL, sessionID, db, secureKey)
 		}
 
 		if err != nil {

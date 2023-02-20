@@ -14,7 +14,7 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.1
-	github.com/threefoldtech/substrate-client v0.0.0-20230203145052-45be626d311b
+	github.com/threefoldtech/substrate-client v0.1.3-0.20230216094636-bd2b5ac3bada
 	github.com/threefoldtech/zos v0.5.6-0.20230103093557-d9c7fe2b92e7
 	golang.org/x/net v0.5.0 // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20210803171230-4253848d036c
@@ -23,15 +23,17 @@ require (
 require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/threefoldtech/grid_proxy_server v1.6.6
-	github.com/threefoldtech/rmb-sdk-go v0.0.0-20230210171200-e696cc5e9cad
+	github.com/threefoldtech/rmb-sdk-go v0.0.0-20230220124306-adb7f363ff1b
 	github.com/vedhavyas/go-subkey v1.0.3
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 	golang.org/x/sync v0.1.0
 )
 
 require (
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0 // indirect
 	github.com/onsi/ginkgo v1.16.5 // indirect
 	github.com/onsi/gomega v1.25.0 // indirect
+	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 )
 
 require (
