@@ -28,15 +28,23 @@ func (t *twinDB) Get(id uint32) (direct.Twin, error) {
 	if ok {
 		return cachedValue.(direct.Twin), nil
 	}
-
-	publikKey, err := t.sub.GetTwinPK(id)
+	substrateTwin, err := t.sub.GetTwin(id)
 	if err != nil {
-		return direct.Twin{}, errors.Wrapf(err, "could not get public key of twin with id %d", id)
+		return direct.Twin{}, errors.Wrapf(err, "could net get twin with id %d", id)
 	}
 
+	var relay *string
+
+	if substrateTwin.Relay.HasValue {
+		relay = &substrateTwin.Relay.AsValue
+	}
+
+	_, PK := substrateTwin.Pk.Unwrap()
 	twin := direct.Twin{
 		ID:        id,
-		PublicKey: publikKey,
+		PublicKey: substrateTwin.Account.PublicKey(),
+		Relay:     relay,
+		E2EKey:    PK,
 	}
 
 	err = t.cache.Add(fmt.Sprint(id), twin, cache.DefaultExpiration)
