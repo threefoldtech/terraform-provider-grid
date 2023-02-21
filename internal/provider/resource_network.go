@@ -239,21 +239,24 @@ func (k *NetworkDeployer) invalidateBrokenAttributes(sub subi.SubstrateExt) erro
 			delete(k.NodesIPRange, node)
 		}
 	}
+
+	if !k.AddWGAccess {
+		k.ExternalIP = nil
+	}
+
 	if k.PublicNodeID != 0 {
 		// TODO: add a check that the node is still public
 		cl, err := k.ncPool.GetNodeClient(sub, k.PublicNodeID)
 		if err != nil {
 			// whatever the error, delete it and it will get reassigned later
 			k.PublicNodeID = 0
+			return nil
 		}
 		if err := cl.IsNodeUp(context.Background()); err != nil {
 			k.PublicNodeID = 0
 		}
 	}
 
-	if !k.AddWGAccess {
-		k.ExternalIP = nil
-	}
 	return nil
 }
 func (k *NetworkDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error {
