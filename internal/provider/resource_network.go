@@ -253,9 +253,11 @@ func (k *NetworkDeployer) invalidateBrokenAttributes(sub subi.SubstrateExt) erro
 			k.PublicNodeID = 0
 			return nil
 		}
+
 		if err := cl.IsNodeUp(context.Background()); err != nil {
 			k.PublicNodeID = 0
 		}
+
 	}
 
 	return nil

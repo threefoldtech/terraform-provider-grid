@@ -11,7 +11,7 @@ require (
 	github.com/gruntwork-io/terratest v0.41.7
 	github.com/hashicorp/terraform-plugin-docs v0.13.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.24.1
-	github.com/patrickmn/go-cache v2.1.0+incompatible
+	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.1
 	github.com/threefoldtech/substrate-client v0.1.3-0.20230216094636-bd2b5ac3bada
@@ -23,7 +23,7 @@ require (
 require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/threefoldtech/grid_proxy_server v1.6.6
-	github.com/threefoldtech/rmb-sdk-go v0.0.0-20230220124306-adb7f363ff1b
+	github.com/threefoldtech/rmb-sdk-go v0.0.0-20230222091305-4c05c096b592
 	github.com/vedhavyas/go-subkey v1.0.3
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 	golang.org/x/sync v0.1.0

@@ -35,7 +35,7 @@ A terraform provider for the [threefold grid](https://threefold.io) to manage yo
   }
   ```
 
-- for devnet, qanet use <VERSION>-dev and <VERSION>-qa respectivly
+- for devnet, qanet use `<VERSION>-dev` and `<VERSION>-qa` respectivly
 
 ## Generating the docs
 
@@ -88,7 +88,5 @@ export NETWORK="network" # dev, qa, test, main
 
 ## Latest Releases
 
-Releasing for each environment is done using the methods in this [Wiki](wiki/release.md#releasing-for-each-environment)
-
-- `mainnet`: v1.7.0
-- `test`: v1.7.0-rc1
+- Releasing for each environment is done using the methods in this [Wiki](wiki/release.md#releasing-for-each-environment)
+- For latest releases [terraform-provider-grid](https://registry.terraform.io/providers/threefoldtech/grid/latest)
