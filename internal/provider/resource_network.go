@@ -28,7 +28,7 @@ const ExternalNodeID = -1
 func resourceNetwork() *schema.Resource {
 	return &schema.Resource{
 		// This description is used by the documentation generator and the language server.
-		Description: "Resource to deploy a network on the grid. This is a private wireguard network. A user could specify that they want to have a user access endpoint to this network through the `add_wireguard_access` flag. A separate workload is deployed on each of the specified nodes, with the peers for each workload configured in a way making any pair of nodes in the network accessible to each other.",
+		Description: "Resource to deploy a network on the grid. This is a private wireguard network. A user could specify that they want to have a user access endpoint to this network through the `add_wg_access` flag. A separate workload is deployed on each of the specified nodes, with the peers for each workload configured in a way making any pair of nodes in the network accessible to each other.",
 
 		CreateContext: resourceNetworkCreate,
 		ReadContext:   resourceNetworkRead,
@@ -66,13 +66,13 @@ func resourceNetwork() *schema.Resource {
 				Required:    true,
 				Description: "Network IP range (e.g. 10.1.2.0/16). Has to have a subnet mask of 16.",
 			},
-			"add_wireguard_access": {
+			"add_wg_access": {
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Default:     false,
 				Description: "Flag to generate wireguard configuration for external user access to the network.",
 			},
-			"wireguard_config": {
+			"access_wg_config": {
 				Type:        schema.TypeString,
 				Computed:    true,
 				Description: "Generated wireguard configuration for external user access to the network.",
@@ -162,7 +162,7 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 	}
 
 	// external node related data
-	addWGAccess := d.Get("add_wireguard_access").(bool)
+	addWGAccess := d.Get("add_wg_access").(bool)
 
 	var externalIP *gridtypes.IPNet
 	externalIPStr := d.Get("external_ip").(string)
@@ -203,7 +203,7 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 		Nodes:            nodes,
 		IPRange:          ipRange,
 		AddWGAccess:      addWGAccess,
-		AccessWGConfig:   d.Get("wireguard_config").(string),
+		AccessWGConfig:   d.Get("access_wg_config").(string),
 		ExternalIP:       externalIP,
 		ExternalSK:       externalSK,
 		PublicNodeID:     uint32(d.Get("public_node_id").(int)),
@@ -321,7 +321,7 @@ func (k *NetworkDeployer) storeState(d *schema.ResourceData, state state.StateI)
 		errors = multierror.Append(errors, err)
 	}
 
-	err = d.Set("wireguard_config", k.AccessWGConfig)
+	err = d.Set("access_wg_config", k.AccessWGConfig)
 	if err != nil {
 		errors = multierror.Append(errors, err)
 	}
