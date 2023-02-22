@@ -20,7 +20,7 @@ testacc:
 	TF_ACC=1 go test ./... -v $(TESTARGS) -timeout 120m
 
 unittests:
-	go test -v ./...
+	go test -v `go list ./... | grep -v integrationtests`
 
 integrationtests: 
 	go test -v ./tests/... -p 1 --tags=integration
