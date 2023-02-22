@@ -90,3 +90,9 @@ export NETWORK="network" # dev, qa, test, main
 
 - Releasing for each environment is done using the methods in this [Wiki](wiki/release.md#releasing-for-each-environment)
 - For latest releases [terraform-provider-grid](https://registry.terraform.io/providers/threefoldtech/grid/latest)
+
+## Using example directory
+
+- the examples directory contains some examples to show user how to use the provider so kindly note that
+  - User should change the nodes to match the node that wants to deploy on
+  - In examples that uses`SSH_KEY` default location is `file("~/.ssh/id_rsa.pub")` the path should be changed to match your public key location
