@@ -16,7 +16,6 @@ import (
 	"github.com/threefoldtech/rmb-sdk-go"
 	"github.com/threefoldtech/rmb-sdk-go/direct"
 	"github.com/threefoldtech/substrate-client"
-	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/state"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 )
@@ -189,13 +188,13 @@ func providerConfigure(st state.StateI) (func(ctx context.Context, d *schema.Res
 		}
 		log.Printf("substrate url: %s %s\n", apiClient.substrate_url, substrate_url)
 		apiClient.manager = subi.NewManager(apiClient.substrate_url)
-		sub, err := apiClient.manager.SubstrateExt()
+		subx, err := apiClient.manager.SubstrateExt()
 		if err != nil {
 			return nil, diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
 		}
 		// substrate connection will be returned and closed in main.go
-		substrateConn = sub
-		apiClient.substrateConn = sub
+		substrateConn = subx
+		apiClient.substrateConn = subx
 		apiClient.use_rmb_proxy = d.Get("use_rmb_proxy").(bool)
 
 		apiClient.rmb_redis_url = d.Get("rmb_redis_url").(string)
@@ -204,7 +203,7 @@ func providerConfigure(st state.StateI) (func(ctx context.Context, d *schema.Res
 			return nil, diag.FromErr(err)
 		}
 		pub := sk.Public()
-		twin, err := sub.GetTwinByPubKey(pub)
+		twin, err := subx.GetTwinByPubKey(pub)
 		if err != nil && errors.Is(err, substrate.ErrNotFound) {
 			return nil, diag.Errorf("no twin associated with the accound with the given mnemonics")
 		}
@@ -215,22 +214,21 @@ func providerConfigure(st state.StateI) (func(ctx context.Context, d *schema.Res
 		var cl rmb.Client
 
 		sessionID := generateSessionID(twin)
-		db := client.NewTwinDB(sub)
 
-		secureKey, err := direct.GenerateSecureKey(apiClient.mnemonics)
+		sub, err := apiClient.manager.Substrate()
 		if err != nil {
-			return nil, diag.FromErr(errors.Wrap(err, "failed to generate secure key"))
+			return nil, diag.FromErr(errors.Wrap(err, "failed to get substrate client"))
 		}
-
 		relayURL := d.Get("relay_url").(string)
 		if relayURL != "" {
-			cl, err = direct.NewClient(context.Background(), identity, relayURL, sessionID, db, secureKey)
+			cl, err = direct.NewClient(key_type, apiClient.mnemonics, relayURL, sessionID, sub)
 		} else {
 			relayURL, ok := RELAYS_URLS[network]
 			if !ok {
 				return nil, diag.Errorf("error getting relay url for network %s", network)
 			}
-			cl, err = direct.NewClient(context.Background(), identity, relayURL, sessionID, db, secureKey)
+
+			cl, err = direct.NewClient(key_type, apiClient.mnemonics, relayURL, sessionID, sub)
 		}
 
 		if err != nil {
@@ -240,7 +238,7 @@ func providerConfigure(st state.StateI) (func(ctx context.Context, d *schema.Res
 
 		grid_client := proxy.NewClient(rmb_proxy_url)
 		apiClient.grid_client = proxy.NewRetryingClient(grid_client)
-		if err := preValidate(&apiClient, sub); err != nil {
+		if err := preValidate(&apiClient, subx); err != nil {
 			return nil, diag.FromErr(err)
 		}
 		apiClient.state = st
