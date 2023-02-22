@@ -15,14 +15,14 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.1
 	github.com/threefoldtech/substrate-client v0.1.3-0.20230216094636-bd2b5ac3bada
-	github.com/threefoldtech/zos v0.5.6-0.20230103093557-d9c7fe2b92e7
+	github.com/threefoldtech/zos v0.5.6-0.20230222125149-23cfd55435b0
 	golang.org/x/net v0.5.0 // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20210803171230-4253848d036c
 )
 
 require (
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/threefoldtech/grid_proxy_server v1.6.6
+	github.com/threefoldtech/grid_proxy_server v1.6.12
 	github.com/threefoldtech/rmb-sdk-go v0.0.0-20230222091305-4c05c096b592
 	github.com/vedhavyas/go-subkey v1.0.3
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
