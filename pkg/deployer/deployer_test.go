@@ -23,12 +23,16 @@ const twinID = 11
 var identity, _ = substrate.NewIdentityFromEd25519Phrase(Words)
 
 func deployment1(identity substrate.Identity, TLSPassthrough bool, version uint32) gridtypes.Deployment {
+	backend := "http://1.1.1.1"
+	if TLSPassthrough {
+		backend = "1.1.1.1:10"
+	}
 	dl := workloads.NewDeployment(uint32(twinID))
 	dl.Version = version
 	gw := workloads.GatewayNameProxy{
 		Name:           "name",
 		TLSPassthrough: TLSPassthrough,
-		Backends:       []zos.Backend{"http://1.1.1.1"},
+		Backends:       []zos.Backend{zos.Backend(backend)},
 	}
 	dl.Workloads = append(dl.Workloads, gw.ZosWorkload())
 	dl.Workloads[0].Version = version
