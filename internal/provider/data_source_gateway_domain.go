@@ -56,9 +56,6 @@ func dataSourceGatewayRead(ctx context.Context, d *schema.ResourceData, meta int
 		return diag.FromErr(errors.Wrapf(err, "failed to get node client with ID %d", nodeID))
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, time.Minute)
-	defer cancel()
-
 	cfg, err := nodeClient.NetworkGetPublicConfig(ctx)
 	if err != nil {
 		return diag.FromErr(errors.Wrapf(err, "couldn't get node %d public config", nodeID))
