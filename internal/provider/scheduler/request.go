@@ -25,8 +25,8 @@ type Request struct {
 func (r *Request) constructFilter(twinID uint64) (f proxyTypes.NodeFilter) {
 	f.Status = &statusUP
 	f.AvailableFor = &twinID
-	if r.FarmId != "" {
-		f.FarmName = &r.Farm
+	if r.FarmId != 0 {
+		f.FarmIDs = []uint64{uint64(r.FarmId)}
 	}
 	if r.Capacity.HRU != 0 {
 		f.FreeHRU = &r.Capacity.HRU
@@ -37,11 +37,15 @@ func (r *Request) constructFilter(twinID uint64) (f proxyTypes.NodeFilter) {
 	if r.Capacity.MRU != 0 {
 		f.FreeMRU = &r.Capacity.MRU
 	}
-	if r.HasDomain {
+	if r.PublicConfig {
 		f.Domain = &trueVal
 	}
-	if r.HasIPv4 {
-		f.IPv4 = &trueVal
+	if r.PublicIpsCount != 0 {
+		count := uint64(r.PublicIpsCount)
+		f.FreeIPs = &count
+	}
+	if r.Dedicated {
+		f.Rentable = &trueVal
 	}
 	return f
 }

@@ -103,7 +103,7 @@ func parseAssignment(d *schema.ResourceData) map[string]uint32 {
 	assignmentIfs := d.Get("nodes").(map[string]interface{})
 	assignment := make(map[string]uint32)
 	for k, v := range assignmentIfs {
-		assignment[k] = v.(uint32)
+		assignment[k] = uint32(v.(int))
 	}
 	return assignment
 }
@@ -117,6 +117,11 @@ func parseRequests(d *schema.ResourceData, assignment map[string]uint32) []sched
 			// skip already assigned ones
 			continue
 		}
+		nodesToExcludeIF := mp["node_exclude"].([]interface{})
+		nodesToExclude := make([]uint32, len(nodesToExcludeIF))
+		for idx, n := range nodesToExcludeIF {
+			nodesToExclude[idx] = uint32(n.(int))
+		}
 
 		reqs = append(reqs, scheduler.Request{
 			Name:           mp["name"].(string),
@@ -125,7 +130,7 @@ func parseRequests(d *schema.ResourceData, assignment map[string]uint32) []sched
 			PublicIpsCount: uint32(mp["public_ips_count"].(int)),
 			Certified:      mp["certified"].(bool),
 			Dedicated:      mp["dedicated"].(bool),
-			NodeExclude:    mp["node_exclude"].([]uint32),
+			NodeExclude:    nodesToExclude,
 			Capacity: scheduler.Capacity{
 				MRU: uint64(mp["mru"].(int)) * uint64(gridtypes.Megabyte),
 				HRU: uint64(mp["hru"].(int)) * uint64(gridtypes.Megabyte),
