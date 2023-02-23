@@ -143,10 +143,8 @@ func (d *DeployerImpl) deploy(
 			}
 
 			dl.ContractID = contractID
-			ctx2, cancel := context.WithTimeout(ctx, 4*time.Minute)
-			defer cancel()
-			err = client.DeploymentDeploy(ctx2, dl)
 
+			err = client.DeploymentDeploy(ctx, dl)
 			if err != nil {
 				rerr := sub.EnsureContractCanceled(d.identity, contractID)
 				log.Printf("failed to send deployment deploy request to node %s", err)
@@ -238,9 +236,8 @@ func (d *DeployerImpl) deploy(
 				return currentDeployments, errors.Wrap(err, "failed to update deployment")
 			}
 			dl.ContractID = contractID
-			sub, cancel := context.WithTimeout(ctx, 4*time.Minute)
-			defer cancel()
-			err = client.DeploymentUpdate(sub, dl)
+
+			err = client.DeploymentUpdate(ctx, dl)
 			if err != nil {
 				// cancel previous contract
 				log.Printf("failed to send deployment update request to node %s", err)
@@ -278,10 +275,7 @@ func (d *DeployerImpl) GetDeployments(ctx context.Context, sub subi.SubstrateExt
 				return
 			}
 
-			sub, cancel := context.WithTimeout(ctx, 10*time.Second)
-			defer cancel()
-
-			dl, err := nc.DeploymentGet(sub, dlID)
+			dl, err := nc.DeploymentGet(ctx, dlID)
 			if err != nil {
 				resErrors = multierror.Append(resErrors, errors.Wrapf(err, "failed to get deployment %d of node %d", dlID, nodeID))
 				return
@@ -328,10 +322,8 @@ func (d *DeployerImpl) Wait(
 
 	deploymentError := backoff.Retry(func() error {
 		stateOk := 0
-		sub, cancel := context.WithTimeout(ctx, 10*time.Second)
-		defer cancel()
 
-		deploymentChanges, err := nodeClient.DeploymentChanges(sub, deploymentID)
+		deploymentChanges, err := nodeClient.DeploymentChanges(ctx, deploymentID)
 		if err != nil {
 			return backoff.Permanent(err)
 		}

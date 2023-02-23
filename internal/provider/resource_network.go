@@ -219,7 +219,7 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, threefoldPl
 }
 
 // invalidateBrokenAttributes removes outdated attrs and deleted contracts
-func (k *NetworkDeployer) invalidateBrokenAttributes(sub subi.SubstrateExt) error {
+func (k *NetworkDeployer) invalidateBrokenAttributes(ctx context.Context, sub subi.SubstrateExt) error {
 
 	for node, contractID := range k.NodeDeploymentID {
 		contract, err := sub.GetContract(contractID)
@@ -254,7 +254,7 @@ func (k *NetworkDeployer) invalidateBrokenAttributes(sub subi.SubstrateExt) erro
 			return nil
 		}
 
-		if err := cl.IsNodeUp(context.Background()); err != nil {
+		if err := cl.IsNodeUp(ctx); err != nil {
 			k.PublicNodeID = 0
 		}
 
@@ -797,7 +797,7 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 	if err := deployer.Validate(ctx, threefoldPluginClient.substrateConn); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := deployer.invalidateBrokenAttributes(threefoldPluginClient.substrateConn); err != nil {
+	if err := deployer.invalidateBrokenAttributes(ctx, threefoldPluginClient.substrateConn); err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't invalidate broken attributes"))
 	}
 
@@ -825,7 +825,7 @@ func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta inter
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	if err := deployer.invalidateBrokenAttributes(threefoldPluginClient.substrateConn); err != nil {
+	if err := deployer.invalidateBrokenAttributes(ctx, threefoldPluginClient.substrateConn); err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't invalidate broken attributes"))
 	}
 

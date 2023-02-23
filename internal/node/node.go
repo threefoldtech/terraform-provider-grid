@@ -117,6 +117,11 @@ type NodeClient struct {
 
 type args map[string]interface{}
 
+const (
+	defaultTimeout  = 10 * time.Second
+	extendedTimeout = 4 * time.Minute
+)
+
 // NewNodeClient creates a new node RMB client. This client then can be used to
 // communicate with the node over RMB.
 func NewNodeClient(nodeTwin uint32, bus rmb.Client) *NodeClient {
@@ -125,6 +130,12 @@ func NewNodeClient(nodeTwin uint32, bus rmb.Client) *NodeClient {
 
 // DeploymentDeploy sends the deployment to the node for processing.
 func (n *NodeClient) DeploymentDeploy(ctx context.Context, dl gridtypes.Deployment) error {
+	subCtx, cancel := context.WithTimeout(ctx, extendedTimeout)
+	defer cancel()
+	return n.deploymentDeploy(subCtx, dl)
+}
+
+func (n *NodeClient) deploymentDeploy(ctx context.Context, dl gridtypes.Deployment) error {
 	const cmd = "zos.deployment.deploy"
 	return n.bus.Call(ctx, n.nodeTwin, cmd, dl, nil)
 }
@@ -132,12 +143,24 @@ func (n *NodeClient) DeploymentDeploy(ctx context.Context, dl gridtypes.Deployme
 // DeploymentUpdate update the given deployment. deployment must be a valid update for
 // a deployment that has been already created via DeploymentDeploy
 func (n *NodeClient) DeploymentUpdate(ctx context.Context, dl gridtypes.Deployment) error {
+	subCtx, cancel := context.WithTimeout(ctx, extendedTimeout)
+	defer cancel()
+	return n.deploymentUpdate(subCtx, dl)
+}
+
+func (n *NodeClient) deploymentUpdate(ctx context.Context, dl gridtypes.Deployment) error {
 	const cmd = "zos.deployment.update"
 	return n.bus.Call(ctx, n.nodeTwin, cmd, dl, nil)
 }
 
 // DeploymentGet gets a deployment via contract ID
 func (n *NodeClient) DeploymentGet(ctx context.Context, contractID uint64) (dl gridtypes.Deployment, err error) {
+	subCtx, cancel := context.WithTimeout(ctx, defaultTimeout)
+	defer cancel()
+	return n.deploymentGet(subCtx, contractID)
+}
+
+func (n *NodeClient) deploymentGet(ctx context.Context, contractID uint64) (dl gridtypes.Deployment, err error) {
 	const cmd = "zos.deployment.get"
 	in := args{
 		"contract_id": contractID,
@@ -153,6 +176,12 @@ func (n *NodeClient) DeploymentGet(ctx context.Context, contractID uint64) (dl g
 // DeploymentDelete deletes a deployment, the node will make sure to decomission all deployments
 // and set all workloads to deleted. A call to Get after delete is valid
 func (n *NodeClient) DeploymentDelete(ctx context.Context, contractID uint64) error {
+	subCtx, cancel := context.WithTimeout(ctx, extendedTimeout)
+	defer cancel()
+	return n.deploymentDelete(subCtx, contractID)
+}
+
+func (n *NodeClient) deploymentDelete(ctx context.Context, contractID uint64) error {
 	const cmd = "zos.deployment.delete"
 	in := args{
 		"contract_id": contractID,
@@ -163,6 +192,12 @@ func (n *NodeClient) DeploymentDelete(ctx context.Context, contractID uint64) er
 
 // Statistics returns some node statistics. Including total and available cpu, memory, storage, etc...
 func (n *NodeClient) Statistics(ctx context.Context) (total gridtypes.Capacity, used gridtypes.Capacity, err error) {
+	subCtx, cancel := context.WithTimeout(ctx, defaultTimeout)
+	defer cancel()
+	return n.statistics(subCtx)
+}
+
+func (n *NodeClient) statistics(ctx context.Context) (total gridtypes.Capacity, used gridtypes.Capacity, err error) {
 	const cmd = "zos.statistics.get"
 	var result struct {
 		Total gridtypes.Capacity `json:"total"`
@@ -178,6 +213,12 @@ func (n *NodeClient) Statistics(ctx context.Context) (total gridtypes.Capacity, 
 // NetworkListWGPorts return a list of all "taken" ports on the node. A new deployment
 // should be careful to use a free port for its network setup.
 func (n *NodeClient) NetworkListWGPorts(ctx context.Context) ([]uint16, error) {
+	subCtx, cancel := context.WithTimeout(ctx, defaultTimeout)
+	defer cancel()
+	return n.networkListWGPorts(subCtx)
+}
+
+func (n *NodeClient) networkListWGPorts(ctx context.Context) ([]uint16, error) {
 	const cmd = "zos.network.list_wg_ports"
 	var result []uint16
 
@@ -190,6 +231,12 @@ func (n *NodeClient) NetworkListWGPorts(ctx context.Context) ([]uint16, error) {
 
 // NetworkListInterfaces return a map of all interfaces and their ips
 func (n *NodeClient) NetworkListInterfaces(ctx context.Context) (map[string][]net.IP, error) {
+	subCtx, cancel := context.WithTimeout(ctx, defaultTimeout)
+	defer cancel()
+	return n.networkListInterfaces(subCtx)
+}
+
+func (n *NodeClient) networkListInterfaces(ctx context.Context) (map[string][]net.IP, error) {
 	const cmd = "zos.network.interfaces"
 	var result map[string][]net.IP
 
@@ -202,6 +249,12 @@ func (n *NodeClient) NetworkListInterfaces(ctx context.Context) (map[string][]ne
 
 // DeploymentChanges return changes of a deployment via contract ID
 func (n *NodeClient) DeploymentChanges(ctx context.Context, contractID uint64) (changes []gridtypes.Workload, err error) {
+	subCtx, cancel := context.WithTimeout(ctx, defaultTimeout)
+	defer cancel()
+	return n.deploymentChanges(subCtx, contractID)
+}
+
+func (n *NodeClient) deploymentChanges(ctx context.Context, contractID uint64) (changes []gridtypes.Workload, err error) {
 	const cmd = "zos.deployment.changes"
 	in := args{
 		"contract_id": contractID,
@@ -227,6 +280,12 @@ func (n *NodeClient) DeploymentChanges(ctx context.Context, contractID uint64) (
 
 // NetworkListIPs list taken public IPs on the node
 func (n *NodeClient) NetworkListIPs(ctx context.Context) ([]string, error) {
+	subCtx, cancel := context.WithTimeout(ctx, defaultTimeout)
+	defer cancel()
+	return n.networkListIPs(subCtx)
+}
+
+func (n *NodeClient) networkListIPs(ctx context.Context) ([]string, error) {
 	const cmd = "zos.network.list_public_ips"
 	var result []string
 
@@ -240,6 +299,12 @@ func (n *NodeClient) NetworkListIPs(ctx context.Context) ([]string, error) {
 // NetworkGetPublicConfig returns the current public node network configuration. A node with a
 // public config can be used as an access node for wireguard.
 func (n *NodeClient) NetworkGetPublicConfig(ctx context.Context) (cfg PublicConfig, err error) {
+	subCtx, cancel := context.WithTimeout(ctx, defaultTimeout)
+	defer cancel()
+	return n.networkGetPublicConfig(subCtx)
+}
+
+func (n *NodeClient) networkGetPublicConfig(ctx context.Context) (cfg PublicConfig, err error) {
 	const cmd = "zos.network.public_config_get"
 
 	if err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &cfg); err != nil {
@@ -252,6 +317,12 @@ func (n *NodeClient) NetworkGetPublicConfig(ctx context.Context) (cfg PublicConf
 // NetworkSetPublicConfig returns the current public node network configuration. A node with a
 // public config can be used as an access node for wireguard.
 func (n *NodeClient) NetworkSetPublicConfig(ctx context.Context, cfg PublicConfig) error {
+	subCtx, cancel := context.WithTimeout(ctx, defaultTimeout)
+	defer cancel()
+	return n.networkSetPublicConfig(subCtx, cfg)
+}
+
+func (n *NodeClient) networkSetPublicConfig(ctx context.Context, cfg PublicConfig) error {
 	const cmd = "zos.network.public_config_set"
 
 	if err := n.bus.Call(ctx, n.nodeTwin, cmd, cfg, nil); err != nil {
@@ -263,6 +334,12 @@ func (n *NodeClient) NetworkSetPublicConfig(ctx context.Context, cfg PublicConfi
 
 // SystemDMI executes dmidecode to get dmidecode output
 func (n *NodeClient) SystemDMI(ctx context.Context) (result dmi.DMI, err error) {
+	subCtx, cancel := context.WithTimeout(ctx, defaultTimeout)
+	defer cancel()
+	return n.systemDMI(subCtx)
+}
+
+func (n *NodeClient) systemDMI(ctx context.Context) (result dmi.DMI, err error) {
 	const cmd = "zos.system.dmi"
 
 	if err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &result); err != nil {
@@ -274,6 +351,12 @@ func (n *NodeClient) SystemDMI(ctx context.Context) (result dmi.DMI, err error) 
 
 // SystemHypervisor executes hypervisor cmd
 func (n *NodeClient) SystemHypervisor(ctx context.Context) (result string, err error) {
+	subCtx, cancel := context.WithTimeout(ctx, defaultTimeout)
+	defer cancel()
+	return n.systemHypervisor(subCtx)
+}
+
+func (n *NodeClient) systemHypervisor(ctx context.Context) (result string, err error) {
 	const cmd = "zos.system.hypervisor"
 
 	if err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &result); err != nil {
@@ -291,6 +374,12 @@ type Version struct {
 
 // SystemVersion executes system version cmd
 func (n *NodeClient) SystemVersion(ctx context.Context) (ver Version, err error) {
+	subCtx, cancel := context.WithTimeout(ctx, defaultTimeout)
+	defer cancel()
+	return n.systemVersion(subCtx)
+}
+
+func (n *NodeClient) systemVersion(ctx context.Context) (ver Version, err error) {
 	const cmd = "zos.system.version"
 
 	if err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &ver); err != nil {
@@ -302,15 +391,8 @@ func (n *NodeClient) SystemVersion(ctx context.Context) (ver Version, err error)
 
 // IsNodeUp checks if the node is up
 func (n *NodeClient) IsNodeUp(ctx context.Context) error {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
 	_, err := n.SystemVersion(ctx)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // AreNodesUp checks if nodes are up
