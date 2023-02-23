@@ -12,6 +12,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	mock "github.com/threefoldtech/terraform-provider-grid/internal/provider/mocks"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/state"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -21,15 +22,18 @@ func constructTestDeployer(ctrl *gomock.Controller) DeploymentDeployer {
 	pool := mock.NewMockNodeClientGetter(ctrl)
 	deployer := mock.NewMockDeployer(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
+	state := mock.NewMockStateGetter(ctrl)
+
 	manager := mock.NewMockManager(ctrl)
-	state := mock.NewMockStateI(ctrl)
 	manager.EXPECT().SubstrateExt().Return(sub, nil).AnyTimes()
+
 	identity := mock.NewMockIdentity(ctrl)
 	identity.EXPECT().PublicKey().Return([]byte("")).AnyTimes()
+
 	return DeploymentDeployer{
 		ncPool:   pool,
 		deployer: deployer,
-		Id:       "100",
+		ID:       "100",
 		NodeID:   10,
 		Disks: []workloads.Disk{
 			{
@@ -229,8 +233,8 @@ func constructTestDeployer(ctrl *gomock.Controller) DeploymentDeployer {
 		},
 		IPRange:     "10.10.0.0/16",
 		NetworkName: "network",
-		APIClient: &apiClient{
-			twin_id: 20,
+		ThreefoldPluginClient: &threefoldPluginClient{
+			twinID:  20,
 			manager: manager,
 			state:   state,
 		},
@@ -244,6 +248,7 @@ func mustMarshal(v interface{}) json.RawMessage {
 	}
 	return r
 }
+
 func musUnmarshal(bs json.RawMessage, v interface{}) {
 	err := json.Unmarshal(bs, v)
 	if err != nil {
@@ -255,11 +260,14 @@ func TestValidate(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	d := constructTestDeployer(ctrl)
+
 	network := d.NetworkName
 	checksum := d.VMs[0].FlistChecksum
 	d.NetworkName = network
+
 	d.VMs[0].FlistChecksum += " "
 	assert.Error(t, d.validate())
+
 	d.VMs[0].FlistChecksum = checksum
 	assert.NoError(t, d.validate())
 }
@@ -268,15 +276,18 @@ func TestDeploymentSyncDeletedContract(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	d := constructTestDeployer(ctrl)
-	id := d.Id
-	subI, _ := d.APIClient.manager.SubstrateExt()
+
+	id := d.ID
+	subI, _ := d.ThreefoldPluginClient.manager.SubstrateExt()
 	sub := subI.(*mock.MockSubstrateExt)
-	sub.EXPECT().IsValidContract(uint64(d.ID())).Return(false, nil).AnyTimes()
+
+	sub.EXPECT().IsValidContract(uint64(d.parseID())).Return(false, nil).AnyTimes()
 	assert.NoError(t, d.syncContract(sub))
-	assert.Empty(t, d.Id)
-	d.Id = id
-	assert.NoError(t, d.sync(context.Background(), sub, d.APIClient))
-	assert.Empty(t, d.Id)
+	assert.Empty(t, d.ID)
+
+	d.ID = id
+	assert.NoError(t, d.Sync(context.Background(), sub, d.ThreefoldPluginClient))
+	assert.Empty(t, d.ID)
 	assert.Empty(t, d.VMs)
 	assert.Empty(t, d.Disks)
 	assert.Empty(t, d.QSFSs)
@@ -286,31 +297,47 @@ func TestDeploymentGenerateDeployment(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	d := constructTestDeployer(ctrl)
-	state := d.APIClient.state.(*mock.MockStateI)
+
+	testState := state.NewState()
+	testNetworkState := state.NetworkState{}
+	testNetwork := state.NewNetwork()
+
+	state := d.ThreefoldPluginClient.state.(*mock.MockStateGetter)
+	state.EXPECT().GetState().Return(testState)
+
+	stateI := mock.NewMockStateI(ctrl)
+	stateI.EXPECT().GetNetworkState().Return(testNetworkState).AnyTimes()
+
 	netState := mock.NewMockNetworkState(ctrl)
-	state.EXPECT().GetNetworkState().Return(netState)
+	netState.EXPECT().GetNetwork(d.NetworkName).Return(testNetwork).AnyTimes()
+
 	network := mock.NewMockNetwork(ctrl)
-	netState.EXPECT().GetNetwork(d.NetworkName).Return(network)
-	network.EXPECT().GetNodeIPsList(d.NodeID).Return([]byte{})
+	network.EXPECT().GetUsedNetworkHostIDs(d.NodeID).Return([]byte{}).AnyTimes()
+
 	dl, err := d.GenerateVersionlessDeployments(context.Background())
 	assert.NoError(t, err)
+
 	var wls []gridtypes.Workload
 	wls = append(wls, d.VMs[0].GenerateVMWorkload()...)
 	wls = append(wls, d.VMs[1].GenerateVMWorkload()...)
 	wl, err := d.QSFSs[0].ZosWorkload()
 	assert.NoError(t, err)
+
 	wls = append(wls, wl)
 	wls = append(wls, d.Disks[0].GenerateDiskWorkload())
 	wls = append(wls, d.Disks[1].GenerateDiskWorkload())
 	wls = append(wls, d.ZDBs[0].GenerateZDBWorkload())
 	wls = append(wls, d.ZDBs[1].GenerateZDBWorkload())
+
 	names := make(map[string]int)
 	for idx, wl := range dl[d.NodeID].Workloads {
 		names[wl.Name.String()] = idx
 	}
+
 	sort.Slice(wls, func(i, j int) bool {
 		return names[wls[i].Name.String()] < names[wls[j].Name.String()]
 	})
+
 	assert.Equal(t, len(wls), len(dl[d.NodeID].Workloads))
 	assert.Equal(t, wls, dl[d.NodeID].Workloads)
 }
@@ -319,32 +346,48 @@ func TestDeploymentSync(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	d := constructTestDeployer(ctrl)
-	subI, err := d.APIClient.manager.SubstrateExt()
+
+	subI, err := d.ThreefoldPluginClient.manager.SubstrateExt()
 	assert.NoError(t, err)
+
+	testState := state.NewState()
+	testNetworkState := state.NetworkState{}
+	testNetwork := state.NewNetwork()
+
 	sub := subI.(*mock.MockSubstrateExt)
-	state := d.APIClient.state.(*mock.MockStateI)
+	state := d.ThreefoldPluginClient.state.(*mock.MockStateGetter)
+	state.EXPECT().GetState().AnyTimes().Return(testState)
+
+	stateI := mock.NewMockStateI(ctrl)
+	stateI.EXPECT().GetNetworkState().AnyTimes().Return(testNetworkState)
+
 	netState := mock.NewMockNetworkState(ctrl)
-	state.EXPECT().GetNetworkState().AnyTimes().Return(netState)
+	netState.EXPECT().GetNetwork(d.NetworkName).AnyTimes().Return(testNetwork)
+
 	network := mock.NewMockNetwork(ctrl)
-	netState.EXPECT().GetNetwork(d.NetworkName).AnyTimes().Return(network)
-	network.EXPECT().GetNodeIPsList(d.NodeID).Return([]byte{})
+	network.EXPECT().GetUsedNetworkHostIDs(d.NodeID).Return([]byte{}).AnyTimes()
 	dls, err := d.GenerateVersionlessDeployments(context.Background())
 	assert.NoError(t, err)
+
 	dl := dls[d.NodeID]
 	err = json.NewEncoder(log.Writer()).Encode(dl.Workloads)
 	assert.NoError(t, err)
+
 	for _, zlog := range dl.ByType(zos.ZLogsType) {
 		*zlog.Workload = zlog.WithResults(gridtypes.Result{
 			State: gridtypes.StateOk,
 		})
 	}
+
 	for _, disk := range dl.ByType(zos.ZMountType) {
 		*disk.Workload = disk.WithResults(gridtypes.Result{
 			State: gridtypes.StateOk,
 		})
 	}
+
 	wl, err := dl.Get(gridtypes.Name(d.VMs[0].Name))
 	assert.NoError(t, err)
+
 	*wl.Workload = wl.WithResults(gridtypes.Result{
 		State: gridtypes.StateOk,
 		Data: mustMarshal(zos.ZMachineResult{
@@ -352,11 +395,14 @@ func TestDeploymentSync(t *testing.T) {
 			YggIP: d.VMs[0].YggIP,
 		}),
 	})
+
 	dataI, err := wl.WorkloadData()
 	assert.NoError(t, err)
+
 	data := dataI.(*zos.ZMachine)
 	pubip, err := dl.Get(data.Network.PublicIP)
 	assert.NoError(t, err)
+
 	*pubip.Workload = pubip.WithResults(gridtypes.Result{
 		State: gridtypes.StateOk,
 		Data: mustMarshal(zos.PublicIPResult{
@@ -364,19 +410,24 @@ func TestDeploymentSync(t *testing.T) {
 			IPv6: gridtypes.MustParseIPNet(d.VMs[0].ComputedIP6),
 		}),
 	})
+
 	wl, err = dl.Get(gridtypes.Name(d.VMs[1].Name))
 	assert.NoError(t, err)
+
 	dataI, err = wl.WorkloadData()
 	assert.NoError(t, err)
+
 	data = dataI.(*zos.ZMachine)
 	pubip, err = dl.Get(data.Network.PublicIP)
 	assert.NoError(t, err)
+
 	*pubip.Workload = pubip.WithResults(gridtypes.Result{
 		State: gridtypes.StateOk,
 		Data: mustMarshal(zos.PublicIPResult{
 			IPv6: gridtypes.MustParseIPNet(d.VMs[1].ComputedIP6),
 		}),
 	})
+
 	*wl.Workload = wl.WithResults(gridtypes.Result{
 		State: gridtypes.StateOk,
 		Data: mustMarshal(zos.ZMachineResult{
@@ -384,16 +435,20 @@ func TestDeploymentSync(t *testing.T) {
 			YggIP: d.VMs[1].YggIP,
 		}),
 	})
+
 	wl, err = dl.Get(gridtypes.Name(d.QSFSs[0].Name))
 	assert.NoError(t, err)
+
 	*wl.Workload = wl.WithResults(gridtypes.Result{
 		State: gridtypes.StateOk,
 		Data: mustMarshal(zos.QuatumSafeFSResult{
 			MetricsEndpoint: d.QSFSs[0].MetricsEndpoint,
 		}),
 	})
+
 	wl, err = dl.Get(gridtypes.Name(d.ZDBs[0].Name))
 	assert.NoError(t, err)
+
 	*wl.Workload = wl.WithResults(gridtypes.Result{
 		State: gridtypes.StateOk,
 		Data: mustMarshal(zos.ZDBResult{
@@ -402,8 +457,10 @@ func TestDeploymentSync(t *testing.T) {
 			Port:      uint(d.ZDBs[0].Port),
 		}),
 	})
+
 	wl, err = dl.Get(gridtypes.Name(d.ZDBs[1].Name))
 	assert.NoError(t, err)
+
 	*wl.Workload = wl.WithResults(gridtypes.Result{
 		State: gridtypes.StateOk,
 		Data: mustMarshal(zos.ZDBResult{
@@ -412,27 +469,32 @@ func TestDeploymentSync(t *testing.T) {
 			Port:      uint(d.ZDBs[1].Port),
 		}),
 	})
+
 	for i := 0; 2*i < len(dl.Workloads); i++ {
 		dl.Workloads[i], dl.Workloads[len(dl.Workloads)-1-i] =
 			dl.Workloads[len(dl.Workloads)-1-i], dl.Workloads[i]
 	}
+
 	sub.EXPECT().IsValidContract(uint64(100)).Return(true, nil)
+
 	d.deployer.(*mock.MockDeployer).EXPECT().
 		GetDeployments(gomock.Any(), sub, map[uint32]uint64{10: 100}).
 		Return(map[uint32]gridtypes.Deployment{
 			10: dl,
 		}, nil)
+
 	var cp DeploymentDeployer
 	musUnmarshal(mustMarshal(d), &cp)
-	network.EXPECT().DeleteDeployment(d.NodeID, d.Id)
+	network.EXPECT().DeleteDeploymentHostIDs(d.NodeID, d.ID).AnyTimes()
+
 	usedIPs := getUsedIPs(dl)
-	network.EXPECT().SetDeploymentIPs(d.NodeID, d.Id, usedIPs)
-	assert.NoError(t, d.sync(context.Background(), sub, d.APIClient))
+	network.EXPECT().SetDeploymentHostIDs(d.NodeID, d.ID, usedIPs).AnyTimes()
+	assert.NoError(t, d.Sync(context.Background(), sub, d.ThreefoldPluginClient))
 	assert.Equal(t, d.VMs, cp.VMs)
 	assert.Equal(t, d.Disks, cp.Disks)
 	assert.Equal(t, d.QSFSs, cp.QSFSs)
 	assert.Equal(t, d.ZDBs, cp.ZDBs)
-	assert.Equal(t, d.Id, cp.Id)
+	assert.Equal(t, d.ID, cp.ID)
 	assert.Equal(t, d.NodeID, cp.NodeID)
 }
 

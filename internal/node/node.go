@@ -161,8 +161,8 @@ func (n *NodeClient) DeploymentDelete(ctx context.Context, contractID uint64) er
 	return n.bus.Call(ctx, n.nodeTwin, cmd, in, nil)
 }
 
-// Counters returns some node statistics. Including total and available cpu, memory, storage, etc...
-func (n *NodeClient) Counters(ctx context.Context) (total gridtypes.Capacity, used gridtypes.Capacity, err error) {
+// Statistics returns some node statistics. Including total and available cpu, memory, storage, etc...
+func (n *NodeClient) Statistics(ctx context.Context) (total gridtypes.Capacity, used gridtypes.Capacity, err error) {
 	const cmd = "zos.statistics.get"
 	var result struct {
 		Total gridtypes.Capacity `json:"total"`
@@ -249,7 +249,7 @@ func (n *NodeClient) NetworkGetPublicConfig(ctx context.Context) (cfg PublicConf
 	return
 }
 
-// NetworkGetPublicConfig returns the current public node network configuration. A node with a
+// NetworkSetPublicConfig returns the current public node network configuration. A node with a
 // public config can be used as an access node for wireguard.
 func (n *NodeClient) NetworkSetPublicConfig(ctx context.Context, cfg PublicConfig) error {
 	const cmd = "zos.network.public_config_set"

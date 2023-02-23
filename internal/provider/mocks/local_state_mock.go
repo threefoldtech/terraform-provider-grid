@@ -11,83 +11,41 @@ import (
 	state "github.com/threefoldtech/terraform-provider-grid/pkg/state"
 )
 
-// MockDB is a mock of DB interface.
-type MockDB struct {
+// MockStateGetter is a mock of StateGetter interface.
+type MockStateGetter struct {
 	ctrl     *gomock.Controller
-	recorder *MockDBMockRecorder
+	recorder *MockStateGetterMockRecorder
 }
 
-// MockDBMockRecorder is the mock recorder for MockDB.
-type MockDBMockRecorder struct {
-	mock *MockDB
+// MockStateGetterMockRecorder is the mock recorder for StateGetter.
+type MockStateGetterMockRecorder struct {
+	mock *MockStateGetter
 }
 
-// NewMockDB creates a new mock instance.
-func NewMockDB(ctrl *gomock.Controller) *MockDB {
-	mock := &MockDB{ctrl: ctrl}
-	mock.recorder = &MockDBMockRecorder{mock}
+// NewMockStateGetter creates a new mock instance.
+func NewMockStateGetter(ctrl *gomock.Controller) *MockStateGetter {
+	mock := &MockStateGetter{ctrl: ctrl}
+	mock.recorder = &MockStateGetterMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockDB) EXPECT() *MockDBMockRecorder {
+func (m *MockStateGetter) EXPECT() *MockStateGetterMockRecorder {
 	return m.recorder
 }
 
-// Delete mocks base method.
-func (m *MockDB) Delete() error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Delete")
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Delete indicates an expected call of Delete.
-func (mr *MockDBMockRecorder) Delete() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockDB)(nil).Delete))
-}
-
 // GetState mocks base method.
-func (m *MockDB) GetState() state.StateI {
+func (m *MockStateGetter) GetState() state.State {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetState")
-	ret0, _ := ret[0].(state.StateI)
+	ret0, _ := ret[0].(state.State)
 	return ret0
 }
 
 // GetState indicates an expected call of GetState.
-func (mr *MockDBMockRecorder) GetState() *gomock.Call {
+func (mr *MockStateGetterMockRecorder) GetState() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetState", reflect.TypeOf((*MockDB)(nil).GetState))
-}
-
-// Load mocks base method.
-func (m *MockDB) Load() error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Load")
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Load indicates an expected call of Load.
-func (mr *MockDBMockRecorder) Load() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Load", reflect.TypeOf((*MockDB)(nil).Load))
-}
-
-// Save mocks base method.
-func (m *MockDB) Save() error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Save")
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Save indicates an expected call of Save.
-func (mr *MockDBMockRecorder) Save() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockDB)(nil).Save))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetState", reflect.TypeOf((*MockStateGetter)(nil).GetState))
 }
 
 // MockStateI is a mock of StateI interface.
@@ -127,36 +85,7 @@ func (mr *MockStateIMockRecorder) GetNetworkState() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNetworkState", reflect.TypeOf((*MockStateI)(nil).GetNetworkState))
 }
 
-// Marshal mocks base method.
-func (m *MockStateI) Marshal() ([]byte, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Marshal")
-	ret0, _ := ret[0].([]byte)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Marshal indicates an expected call of Marshal.
-func (mr *MockStateIMockRecorder) Marshal() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Marshal", reflect.TypeOf((*MockStateI)(nil).Marshal))
-}
-
-// Unmarshal mocks base method.
-func (m *MockStateI) Unmarshal(data []byte) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Unmarshal", data)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Unmarshal indicates an expected call of Unmarshal.
-func (mr *MockStateIMockRecorder) Unmarshal(data interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Unmarshal", reflect.TypeOf((*MockStateI)(nil).Unmarshal), data)
-}
-
-// MockNetworkState is a mock of NetworkState interface.
+// MockNetworkState is a mock of NetworkState.
 type MockNetworkState struct {
 	ctrl     *gomock.Controller
 	recorder *MockNetworkStateMockRecorder
@@ -228,16 +157,16 @@ func (m *MockNetwork) EXPECT() *MockNetworkMockRecorder {
 	return m.recorder
 }
 
-// DeleteDeployment mocks base method.
-func (m *MockNetwork) DeleteDeployment(nodeID uint32, deploymentID string) {
+// DeleteDeploymentHostIDs mocks base method.
+func (m *MockNetwork) DeleteDeploymentHostIDs(nodeID uint32, deploymentID string) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "DeleteDeployment", nodeID, deploymentID)
+	m.ctrl.Call(m, "DeleteDeploymentHostIDs", nodeID, deploymentID)
 }
 
-// DeleteDeployment indicates an expected call of DeleteDeployment.
-func (mr *MockNetworkMockRecorder) DeleteDeployment(nodeID, deploymentID interface{}) *gomock.Call {
+// DeleteDeploymentHostIDs indicates an expected call of DeleteDeploymentHostIDs.
+func (mr *MockNetworkMockRecorder) DeleteDeploymentHostIDs(nodeID, deploymentID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteDeployment", reflect.TypeOf((*MockNetwork)(nil).DeleteDeployment), nodeID, deploymentID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteDeploymentHostIDs", reflect.TypeOf((*MockNetwork)(nil).DeleteDeploymentHostIDs), nodeID, deploymentID)
 }
 
 // DeleteNodeSubnet mocks base method.
@@ -252,46 +181,46 @@ func (mr *MockNetworkMockRecorder) DeleteNodeSubnet(nodeID interface{}) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteNodeSubnet", reflect.TypeOf((*MockNetwork)(nil).DeleteNodeSubnet), nodeID)
 }
 
-// GetDeploymentIPs mocks base method.
-func (m *MockNetwork) GetDeploymentIPs(nodeID uint32, deploymentID string) []byte {
+// GetDeploymentHostIDs mocks base method.
+func (m *MockNetwork) GetDeploymentHostIDs(nodeID uint32, deploymentID string) []byte {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetDeploymentIPs", nodeID, deploymentID)
+	ret := m.ctrl.Call(m, "GetDeploymentHostIDs", nodeID, deploymentID)
 	ret0, _ := ret[0].([]byte)
 	return ret0
 }
 
-// GetDeploymentIPs indicates an expected call of GetDeploymentIPs.
-func (mr *MockNetworkMockRecorder) GetDeploymentIPs(nodeID, deploymentID interface{}) *gomock.Call {
+// GetDeploymentHostIDs indicates an expected call of GetDeploymentHostIDs.
+func (mr *MockNetworkMockRecorder) GetDeploymentHostIDs(nodeID, deploymentID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDeploymentIPs", reflect.TypeOf((*MockNetwork)(nil).GetDeploymentIPs), nodeID, deploymentID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDeploymentHostIDs", reflect.TypeOf((*MockNetwork)(nil).GetDeploymentHostIDs), nodeID, deploymentID)
 }
 
-// GetNodeIPs mocks base method.
-func (m *MockNetwork) GetNodeIPs() state.NodeIPs {
+// GetNodeDeploymentHostIDs mocks base method.
+func (m *MockNetwork) GetNodeDeploymentHostIDs() state.NodeDeploymentHostIDs {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetNodeIPs")
-	ret0, _ := ret[0].(state.NodeIPs)
+	ret := m.ctrl.Call(m, "GetNodeDeploymentHostIDs")
+	ret0, _ := ret[0].(state.NodeDeploymentHostIDs)
 	return ret0
 }
 
-// GetNodeIPs indicates an expected call of GetNodeIPs.
-func (mr *MockNetworkMockRecorder) GetNodeIPs() *gomock.Call {
+// GetNodeDeploymentHostIDs indicates an expected call of GetNodeDeploymentHostIDs.
+func (mr *MockNetworkMockRecorder) GetNodeDeploymentHostIDs() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNodeIPs", reflect.TypeOf((*MockNetwork)(nil).GetNodeIPs))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNodeDeploymentHostIDs", reflect.TypeOf((*MockNetwork)(nil).GetNodeDeploymentHostIDs))
 }
 
-// GetNodeIPsList mocks base method.
-func (m *MockNetwork) GetNodeIPsList(nodeID uint32) []byte {
+// GetUsedNetworkHostIDs mocks base method.
+func (m *MockNetwork) GetUsedNetworkHostIDs(nodeID uint32) []byte {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetNodeIPsList", nodeID)
+	ret := m.ctrl.Call(m, "GetUsedNetworkHostIDs", nodeID)
 	ret0, _ := ret[0].([]byte)
 	return ret0
 }
 
-// GetNodeIPsList indicates an expected call of GetNodeIPsList.
-func (mr *MockNetworkMockRecorder) GetNodeIPsList(nodeID interface{}) *gomock.Call {
+// GetUsedNetworkHostIDs indicates an expected call of GetUsedNetworkHostIDs.
+func (mr *MockNetworkMockRecorder) GetUsedNetworkHostIDs(nodeID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNodeIPsList", reflect.TypeOf((*MockNetwork)(nil).GetNodeIPsList), nodeID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUsedNetworkHostIDs", reflect.TypeOf((*MockNetwork)(nil).GetUsedNetworkHostIDs), nodeID)
 }
 
 // GetNodeSubnet mocks base method.
@@ -322,16 +251,16 @@ func (mr *MockNetworkMockRecorder) GetSubnets() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSubnets", reflect.TypeOf((*MockNetwork)(nil).GetSubnets))
 }
 
-// SetDeploymentIPs mocks base method.
-func (m *MockNetwork) SetDeploymentIPs(nodeID uint32, deploymentID string, ips []byte) {
+// SetDeploymentHostIDs mocks base method.
+func (m *MockNetwork) SetDeploymentHostIDs(nodeID uint32, deploymentID string, ips []byte) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetDeploymentIPs", nodeID, deploymentID, ips)
+	m.ctrl.Call(m, "SetDeploymentHostIDs", nodeID, deploymentID, ips)
 }
 
-// SetDeploymentIPs indicates an expected call of SetDeploymentIPs.
-func (mr *MockNetworkMockRecorder) SetDeploymentIPs(nodeID, deploymentID, ips interface{}) *gomock.Call {
+// SetDeploymentHostIDs indicates an expected call of SetDeploymentHostIDs.
+func (mr *MockNetworkMockRecorder) SetDeploymentHostIDs(nodeID, deploymentID, ips interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDeploymentIPs", reflect.TypeOf((*MockNetwork)(nil).SetDeploymentIPs), nodeID, deploymentID, ips)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDeploymentHostIDs", reflect.TypeOf((*MockNetwork)(nil).SetDeploymentHostIDs), nodeID, deploymentID, ips)
 }
 
 // SetNodeSubnet mocks base method.

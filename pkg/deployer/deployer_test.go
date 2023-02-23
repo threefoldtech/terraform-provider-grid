@@ -22,17 +22,16 @@ const twinID = 11
 
 var identity, _ = substrate.NewIdentityFromEd25519Phrase(Words)
 
-func deployment1(identity substrate.Identity, TLSPassthrough bool, version uint32) gridtypes.Deployment {
-	backend := "http://1.1.1.1"
-	if TLSPassthrough {
-		backend = "1.1.1.1:10"
-	}
+var backendURLWithTLSPassthrough = "1.1.1.1:10"
+var backendURLWithoutTLSPassthrough = "http://1.1.1.1"
+
+func deployment1(identity substrate.Identity, TLSPassthrough bool, version uint32, backendURL string) gridtypes.Deployment {
 	dl := workloads.NewDeployment(uint32(twinID))
 	dl.Version = version
 	gw := workloads.GatewayNameProxy{
 		Name:           "name",
 		TLSPassthrough: TLSPassthrough,
-		Backends:       []zos.Backend{zos.Backend(backend)},
+		Backends:       []zos.Backend{zos.Backend(backendURL)},
 	}
 	dl.Workloads = append(dl.Workloads, gw.ZosWorkload())
 	dl.Workloads[0].Version = version
@@ -48,7 +47,7 @@ func deployment2(identity substrate.Identity) gridtypes.Deployment {
 	gw := workloads.GatewayFQDNProxy{
 		Name:     "fqdn",
 		FQDN:     "a.b.com",
-		Backends: []zos.Backend{"http://1.1.1.1"},
+		Backends: []zos.Backend{zos.Backend(backendURLWithoutTLSPassthrough)},
 	}
 	dl.Workloads = append(dl.Workloads, gw.ZosWorkload())
 	err := dl.Sign(twinID, identity)
@@ -88,7 +87,7 @@ func TestCreate(t *testing.T) {
 		nil,
 		"",
 	)
-	dl1, dl2 := deployment1(identity, true, 0), deployment2(identity)
+	dl1, dl2 := deployment1(identity, true, 0, backendURLWithTLSPassthrough), deployment2(identity)
 	newDls := map[uint32]gridtypes.Deployment{
 		10: dl1,
 		20: dl2,
@@ -169,7 +168,7 @@ func TestUpdate(t *testing.T) {
 		nil,
 		"",
 	)
-	dl1, dl2 := deployment1(identity, false, 0), deployment1(identity, true, 1)
+	dl1, dl2 := deployment1(identity, false, 0, backendURLWithoutTLSPassthrough), deployment1(identity, true, 1, backendURLWithTLSPassthrough)
 	newDls := map[uint32]gridtypes.Deployment{
 		10: dl2,
 	}
@@ -233,7 +232,7 @@ func TestCancel(t *testing.T) {
 		nil,
 		"",
 	)
-	dl1 := deployment1(identity, false, 0)
+	dl1 := deployment1(identity, false, 0, backendURLWithoutTLSPassthrough)
 	dl1.ContractID = 100
 	sub.EXPECT().
 		EnsureContractCanceled(
@@ -272,15 +271,16 @@ func TestCocktail(t *testing.T) {
 		nil,
 		"",
 	)
-	g := workloads.GatewayFQDNProxy{Name: "f", FQDN: "test.com", Backends: []zos.Backend{"http://1.1.1.1:10"}}
-	dl1 := deployment1(identity, false, 0)
-	dl2, dl3 := deployment1(identity, false, 0), deployment1(identity, true, 1)
-	dl5, dl6 := deployment1(identity, true, 0), deployment1(identity, true, 0)
+	backendURL := backendURLWithoutTLSPassthrough
+	g := workloads.GatewayFQDNProxy{Name: "f", FQDN: "test.com", Backends: []zos.Backend{zos.Backend(backendURL)}}
+	dl1 := deployment1(identity, false, 0, backendURL)
+	dl2, dl3 := deployment1(identity, false, 0, backendURL), deployment1(identity, true, 1, backendURLWithTLSPassthrough)
+	dl5, dl6 := deployment1(identity, true, 0, backendURLWithTLSPassthrough), deployment1(identity, true, 0, backendURLWithTLSPassthrough)
 	dl2.Workloads = append(dl2.Workloads, g.ZosWorkload())
 	dl3.Workloads = append(dl3.Workloads, g.ZosWorkload())
 	assert.NoError(t, dl2.Sign(twinID, identity))
 	assert.NoError(t, dl3.Sign(twinID, identity))
-	dl4 := deployment1(identity, false, 0)
+	dl4 := deployment1(identity, false, 0, backendURL)
 	dl1.ContractID = 100
 	dl2.ContractID = 200
 	dl3.ContractID = 200

@@ -5,9 +5,8 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"math/rand"
 	"os"
-	"time"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -54,7 +53,8 @@ func init() {
 	// }
 }
 
-func New(version string, st state.StateI) (func() *schema.Provider, subi.SubstrateExt) {
+// New returns a new schema.Provider instance, and an open substrate connection
+func New(version string, st state.Getter) (func() *schema.Provider, subi.SubstrateExt) {
 	var substrateConnection subi.SubstrateExt
 	return func() *schema.Provider {
 		p := &schema.Provider{
@@ -133,116 +133,133 @@ func New(version string, st state.StateI) (func() *schema.Provider, subi.Substra
 	}, substrateConnection
 }
 
-type apiClient struct {
-	twin_id       uint32
-	mnemonics     string
-	substrate_url string
-	rmb_redis_url string
-	use_rmb_proxy bool
-	grid_client   proxy.Client
-	rmb           rmb.Client
-	substrateConn subi.SubstrateExt
-	manager       subi.Manager
-	identity      substrate.Identity
-	state         state.StateI
+type threefoldPluginClient struct {
+	twinID          uint32
+	mnemonics       string
+	substrateURL    string
+	rmbRedisURL     string
+	useRmbProxy     bool
+	gridProxyClient proxy.Client
+	rmb             rmb.Client
+	substrateConn   subi.SubstrateExt
+	manager         subi.Manager
+	identity        substrate.Identity
+	state           state.Getter
 }
 
-func providerConfigure(st state.StateI) (func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics), subi.SubstrateExt) {
+func providerConfigure(st state.Getter) (func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics), subi.SubstrateExt) {
 	var substrateConn subi.SubstrateExt
 	return func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
-		rand.Seed(time.Now().UnixNano())
 		var err error
-		apiClient := apiClient{}
-		apiClient.mnemonics = d.Get("mnemonics").(string)
-		key_type := d.Get("key_type").(string)
+		threefoldPluginClient := threefoldPluginClient{}
+		threefoldPluginClient.mnemonics = d.Get("mnemonics").(string)
+
+		if !validateMnemonics(threefoldPluginClient.mnemonics) {
+			return nil, diag.Errorf("provided mnemonics are invalid")
+		}
+
+		keyType := d.Get("key_type").(string)
 		var identity substrate.Identity
-		if key_type == "ed25519" {
-			identity, err = substrate.NewIdentityFromEd25519Phrase(string(apiClient.mnemonics))
-		} else if key_type == "sr25519" {
-			identity, err = substrate.NewIdentityFromSr25519Phrase(string(apiClient.mnemonics))
-		} else {
+
+		switch keyType {
+		case "ed25519":
+			identity, err = substrate.NewIdentityFromEd25519Phrase(string(threefoldPluginClient.mnemonics))
+		case "sr25519":
+			identity, err = substrate.NewIdentityFromSr25519Phrase(string(threefoldPluginClient.mnemonics))
+		default:
 			err = errors.New("key_type must be one of ed25519 and sr25519")
 		}
+
 		if err != nil {
 			return nil, diag.FromErr(errors.Wrap(err, "error getting identity"))
 		}
-		sk, err := identity.KeyPair()
+
+		keyPair, err := identity.KeyPair()
 		if err != nil {
 			return nil, diag.FromErr(errors.Wrap(err, "error getting user secret"))
 		}
-		apiClient.identity = identity
+
+		threefoldPluginClient.identity = identity
 		network := d.Get("network").(string)
 		if network != "dev" && network != "qa" && network != "test" && network != "main" {
 			return nil, diag.Errorf("network must be one of dev, qa, test, and main")
 		}
-		apiClient.substrate_url = SUBSTRATE_URL[network]
-		rmb_proxy_url := RMB_PROXY_URL[network]
-		substrate_url := d.Get("substrate_url").(string)
-		passed_rmb_proxy_url := d.Get("rmb_proxy_url").(string)
-		if substrate_url != "" {
-			log.Printf("substrate url is not null %s", substrate_url)
-			apiClient.substrate_url = substrate_url
+		threefoldPluginClient.substrateURL = SUBSTRATE_URL[network]
+		rmbProxyURL := RMB_PROXY_URL[network]
+		substrateURL := d.Get("substrate_url").(string)
+		passedRmbProxyURL := d.Get("rmb_proxy_url").(string)
+		if len(strings.TrimSpace(substrateURL)) != 0 {
+			log.Printf("using a custom substrate url %s", substrateURL)
+			threefoldPluginClient.substrateURL = substrateURL
+			if err := validateSubstrateURL(threefoldPluginClient.substrateURL); err != nil {
+				return nil, diag.FromErr(err)
+			}
 		}
-		if passed_rmb_proxy_url != "" {
-			rmb_proxy_url = passed_rmb_proxy_url
+		if len(strings.TrimSpace(passedRmbProxyURL)) != 0 {
+			rmbProxyURL = passedRmbProxyURL
+			if err := validateProxyURL(rmbProxyURL); err != nil {
+				return nil, diag.FromErr(err)
+			}
 		}
-		log.Printf("substrate url: %s %s\n", apiClient.substrate_url, substrate_url)
-		apiClient.manager = subi.NewManager(apiClient.substrate_url)
-		subx, err := apiClient.manager.SubstrateExt()
+
+		log.Printf("substrate url: %s %s\n", threefoldPluginClient.substrateURL, substrateURL)
+		threefoldPluginClient.manager = subi.NewManager(threefoldPluginClient.substrateURL)
+		subx, err := threefoldPluginClient.manager.SubstrateExt()
 		if err != nil {
 			return nil, diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
 		}
 		// substrate connection will be returned and closed in main.go
 		substrateConn = subx
-		apiClient.substrateConn = subx
-		apiClient.use_rmb_proxy = d.Get("use_rmb_proxy").(bool)
+		threefoldPluginClient.substrateConn = subx
+		threefoldPluginClient.useRmbProxy = d.Get("use_rmb_proxy").(bool)
 
-		apiClient.rmb_redis_url = d.Get("rmb_redis_url").(string)
+		threefoldPluginClient.rmbRedisURL = d.Get("rmb_redis_url").(string)
 
-		if err := validateAccount(&apiClient, apiClient.substrateConn); err != nil {
+		if err := validateAccount(&threefoldPluginClient, threefoldPluginClient.substrateConn); err != nil {
 			return nil, diag.FromErr(err)
 		}
-		pub := sk.Public()
-		twin, err := subx.GetTwinByPubKey(pub)
+		pk := keyPair.Public()
+		twin, err := subx.GetTwinByPubKey(pk)
 		if err != nil && errors.Is(err, substrate.ErrNotFound) {
-			return nil, diag.Errorf("no twin associated with the accound with the given mnemonics")
+			return nil, diag.Errorf("no twin associated with the account with the given mnemonics")
 		}
 		if err != nil {
 			return nil, diag.FromErr(errors.Wrap(err, "failed to get twin for the given mnemonics"))
 		}
-		apiClient.twin_id = twin
+
+		threefoldPluginClient.twinID = twin
 		var cl rmb.Client
 
 		sessionID := generateSessionID()
 
-		sub, err := apiClient.manager.Substrate()
+		sub, err := threefoldPluginClient.manager.Substrate()
 		if err != nil {
 			return nil, diag.FromErr(errors.Wrap(err, "failed to get substrate client"))
 		}
 		relayURL := d.Get("relay_url").(string)
 		if relayURL != "" {
-			cl, err = direct.NewClient(context.Background(), key_type, apiClient.mnemonics, relayURL, sessionID, sub, false)
+			cl, err = direct.NewClient(context.Background(), keyType, threefoldPluginClient.mnemonics, relayURL, sessionID, sub, false)
 		} else {
 			relayURL, ok := RelayURLs[network]
 			if !ok {
 				return nil, diag.Errorf("error getting relay url for network %s", network)
 			}
 
-			cl, err = direct.NewClient(context.Background(), key_type, apiClient.mnemonics, relayURL, sessionID, sub, false)
+			cl, err = direct.NewClient(context.Background(), keyType, threefoldPluginClient.mnemonics, relayURL, sessionID, sub, false)
 		}
 
 		if err != nil {
 			return nil, diag.FromErr(errors.Wrap(err, "couldn't create rmb client"))
 		}
-		apiClient.rmb = cl
+		threefoldPluginClient.rmb = cl
 
-		grid_client := proxy.NewClient(rmb_proxy_url)
-		apiClient.grid_client = proxy.NewRetryingClient(grid_client)
-		if err := preValidate(&apiClient, subx); err != nil {
+		gridProxyClient := proxy.NewClient(rmbProxyURL)
+		threefoldPluginClient.gridProxyClient = proxy.NewRetryingClient(gridProxyClient)
+		if err := validateRMBProxyServer(&threefoldPluginClient); err != nil {
 			return nil, diag.FromErr(err)
 		}
-		apiClient.state = st
-		return &apiClient, nil
+		threefoldPluginClient.state = st
+		return &threefoldPluginClient, nil
 	}, substrateConn
 }
 
