@@ -16,27 +16,24 @@ type NodeClientGetter interface {
 
 // NodeClientPool is a pool for node clients and rmb
 type NodeClientPool struct {
-	clients map[uint32]*NodeClient
+	clients sync.Map
 	rmb     rmb.Client
-	mux     sync.RWMutex
 }
 
 // NewNodeClientPool generates a new client pool
 func NewNodeClientPool(rmb rmb.Client) *NodeClientPool {
 	return &NodeClientPool{
-		clients: make(map[uint32]*NodeClient),
+		clients: sync.Map{},
 		rmb:     rmb,
 	}
 }
 
 // GetNodeClient gets the node client according to node ID
 func (p *NodeClientPool) GetNodeClient(sub subi.SubstrateExt, nodeID uint32) (*NodeClient, error) {
-	p.mux.RLock()
-	cl, ok := p.clients[nodeID]
-	p.mux.RUnlock()
+	cl, ok := p.clients.Load(nodeID)
 
 	if ok {
-		return cl, nil
+		return cl.(*NodeClient), nil
 	}
 
 	twinID, err := sub.GetNodeTwin(nodeID)
@@ -46,9 +43,7 @@ func (p *NodeClientPool) GetNodeClient(sub subi.SubstrateExt, nodeID uint32) (*N
 
 	cl = NewNodeClient(uint32(twinID), p.rmb)
 
-	p.mux.Lock()
-	p.clients[nodeID] = cl
-	p.mux.Unlock()
+	p.clients.Store(nodeID, cl)
 
-	return cl, nil
+	return cl.(*NodeClient), nil
 }

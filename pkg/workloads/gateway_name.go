@@ -28,9 +28,12 @@ type GatewayNameProxy struct {
 func GatewayNameProxyFromZosWorkload(wl gridtypes.Workload) (GatewayNameProxy, error) {
 	var result zos.GatewayProxyResult
 
-	if err := json.Unmarshal(wl.Result.Data, &result); err != nil {
-		return GatewayNameProxy{}, errors.Wrap(err, "error unmarshalling json")
+	if len(wl.Result.Data) > 0 {
+		if err := json.Unmarshal(wl.Result.Data, &result); err != nil {
+			return GatewayNameProxy{}, errors.Wrap(err, "error unmarshalling json")
+		}
 	}
+
 	dataI, err := wl.WorkloadData()
 	if err != nil {
 		return GatewayNameProxy{}, errors.Wrap(err, "failed to get workload data")

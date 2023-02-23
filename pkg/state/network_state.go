@@ -1,72 +1,84 @@
+// Package state provides a state to save the user work in a database.
 package state
 
-type networkingState map[string]network
+// NetworkState is a map of of names and their networks
+type NetworkState map[string]Network
 
-type network struct {
-	Subnets map[uint32]string `json:"subnets"`
-	NodeIPs NodeIPs           `json:"node_ips"`
+// Network struct includes subnets and node IPs
+type Network struct {
+	Subnets               map[uint32]string     `json:"subnets"`
+	NodeDeploymentHostIDs NodeDeploymentHostIDs `json:"node_ips"`
 }
 
-type NodeIPs map[uint32]deploymentIPs
+// NodeDeploymentHostIDs is a map for nodes ID and its deployments' IPs
+type NodeDeploymentHostIDs map[uint32]DeploymentHostIDs
 
-type deploymentIPs map[string][]byte
+// DeploymentHostIDs is a map for deployment and its IPs
+type DeploymentHostIDs map[string][]byte
 
-func NewNetwork() network {
-	return network{
-		Subnets: map[uint32]string{},
-		NodeIPs: NodeIPs{},
+// NewNetwork creates a new Network
+func NewNetwork() Network {
+	return Network{
+		Subnets:               map[uint32]string{},
+		NodeDeploymentHostIDs: NodeDeploymentHostIDs{},
 	}
 }
 
-func (ns networkingState) GetNetwork(networkName string) Network {
-	if _, ok := ns[networkName]; !ok {
-		ns[networkName] = NewNetwork()
+// GetNetwork get a network using its name
+func (nm NetworkState) GetNetwork(networkName string) Network {
+	if _, ok := nm[networkName]; !ok {
+		nm[networkName] = NewNetwork()
 	}
-	net := ns[networkName]
-	return &net
+	net := nm[networkName]
+	return net
 }
 
-func (ns networkingState) DeleteNetwork(networkName string) {
-	delete(ns, networkName)
+// DeleteNetwork deletes a network using its name
+func (nm NetworkState) DeleteNetwork(networkName string) {
+	delete(nm, networkName)
 }
 
-func (n *network) GetNodeSubnet(nodeID uint32) string {
+// GetNodeSubnet gets a node subnet using its ID
+func (n *Network) GetNodeSubnet(nodeID uint32) string {
 	return n.Subnets[nodeID]
 }
 
-func (n *network) SetNodeSubnet(nodeID uint32, subnet string) {
+// SetNodeSubnet sets a node subnet with its ID and subnet
+func (n *Network) SetNodeSubnet(nodeID uint32, subnet string) {
 	n.Subnets[nodeID] = subnet
 }
 
-func (n *network) DeleteNodeSubnet(nodeID uint32) {
+// DeleteNodeSubnet deletes a node subnet using its ID
+func (n *Network) DeleteNodeSubnet(nodeID uint32) {
 	delete(n.Subnets, nodeID)
 }
 
-func (n *network) GetNodeIPsList(nodeID uint32) []byte {
+// GetUsedNetworkHostIDs gets the used host IDs on the overlay network
+func (n *Network) GetUsedNetworkHostIDs(nodeID uint32) []byte {
 	ips := []byte{}
-	for _, v := range n.NodeIPs[nodeID] {
+	for _, v := range n.NodeDeploymentHostIDs[nodeID] {
 		ips = append(ips, v...)
 	}
 	return ips
 }
 
-func (n *network) GetDeploymentIPs(nodeID uint32, deploymentID string) []byte {
-	if n.NodeIPs[nodeID] == nil {
+// GetDeploymentHostIDs gets the private network host IDs relevant to the deployment
+func (n *Network) GetDeploymentHostIDs(nodeID uint32, deploymentID string) []byte {
+	if n.NodeDeploymentHostIDs[nodeID] == nil {
 		return []byte{}
 	}
-	return n.NodeIPs[nodeID][deploymentID]
+	return n.NodeDeploymentHostIDs[nodeID][deploymentID]
 }
 
-func (n *network) SetDeploymentIPs(nodeID uint32, deploymentID string, ips []byte) {
-	if n.NodeIPs[nodeID] == nil {
-		n.NodeIPs[nodeID] = deploymentIPs{}
+// SetDeploymentHostIDs sets the relevant deployment host IDs
+func (n *Network) SetDeploymentHostIDs(nodeID uint32, deploymentID string, ips []byte) {
+	if n.NodeDeploymentHostIDs[nodeID] == nil {
+		n.NodeDeploymentHostIDs[nodeID] = DeploymentHostIDs{}
 	}
-	n.NodeIPs[nodeID][deploymentID] = ips
+	n.NodeDeploymentHostIDs[nodeID][deploymentID] = ips
 }
 
-func (n *network) DeleteDeployment(nodeID uint32, deploymentID string) {
-	if n.NodeIPs[nodeID] == nil {
-		return
-	}
-	delete(n.NodeIPs[nodeID], deploymentID)
+// DeleteDeploymentHostIDs deletes a deployment host IDs
+func (n *Network) DeleteDeploymentHostIDs(nodeID uint32, deploymentID string) {
+	delete(n.NodeDeploymentHostIDs[nodeID], deploymentID)
 }

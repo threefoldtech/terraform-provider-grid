@@ -8,8 +8,8 @@ import (
 )
 
 func TestProvider(t *testing.T) {
-	st := state.NewState()
-	f, sub := New("dev", &st)
+	stateDB := state.NewLocalFileState()
+	f, sub := New("dev", &stateDB)
 	if sub != nil {
 		defer sub.Close()
 	}
