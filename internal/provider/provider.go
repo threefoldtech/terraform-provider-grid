@@ -33,7 +33,7 @@ var (
 		"qa":   "https://gridproxy.qa.grid.tf/",
 		"main": "https://gridproxy.grid.tf/",
 	}
-	RELAYS_URLS = map[string]string{
+	RelayURLs = map[string]string{
 		"dev": "wss://relay.dev.grid.tf",
 	}
 )
@@ -213,7 +213,7 @@ func providerConfigure(st state.StateI) (func(ctx context.Context, d *schema.Res
 		apiClient.twin_id = twin
 		var cl rmb.Client
 
-		sessionID := generateSessionID(twin)
+		sessionID := generateSessionID()
 
 		sub, err := apiClient.manager.Substrate()
 		if err != nil {
@@ -223,7 +223,7 @@ func providerConfigure(st state.StateI) (func(ctx context.Context, d *schema.Res
 		if relayURL != "" {
 			cl, err = direct.NewClient(key_type, apiClient.mnemonics, relayURL, sessionID, sub)
 		} else {
-			relayURL, ok := RELAYS_URLS[network]
+			relayURL, ok := RelayURLs[network]
 			if !ok {
 				return nil, diag.Errorf("error getting relay url for network %s", network)
 			}
@@ -246,6 +246,6 @@ func providerConfigure(st state.StateI) (func(ctx context.Context, d *schema.Res
 	}, substrateConn
 }
 
-func generateSessionID(twinID uint32) string {
+func generateSessionID() string {
 	return fmt.Sprintf("tf-%d", os.Getpid())
 }
