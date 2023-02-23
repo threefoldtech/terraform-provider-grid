@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"log"
 	"math/big"
-	"net"
 	"regexp"
 
+	"github.com/cosmos/go-bip39"
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/substrate-client"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
@@ -38,84 +38,12 @@ func validateAccount(threefoldPluginClient *threefoldPluginClient, sub subi.Subs
 	return nil
 }
 
-func validateRedis(threefoldPluginClient *threefoldPluginClient) error {
-	errMsg := fmt.Sprintf("redis error. make sure rmb_redis_url is correct and there's a redis server listening there. rmb_redis_url: %s", threefoldPluginClient.rmbRedisURL)
-	cl, err := newRedisPool(threefoldPluginClient.rmbRedisURL)
-	if err != nil {
-		return errors.Wrap(err, errMsg)
-	}
-	c, err := cl.Dial()
-	if err != nil {
-		return errors.Wrap(err, errMsg)
-	}
-	c.Close()
-	return nil
-}
-
-func validateYggdrasil(threefoldPluginClient *threefoldPluginClient, sub subi.SubstrateExt) error {
-	yggIP, err := sub.GetTwinIP(threefoldPluginClient.twinID)
-	if err != nil {
-		return errors.Wrapf(err, "could not get twin %d from substrate", threefoldPluginClient.twinID)
-	}
-	ip := net.ParseIP(yggIP)
-	listenIP := yggIP
-	if ip != nil && ip.To4() == nil {
-		// if it's ipv6 surround it with brackets
-		// otherwise, keep as is (can be ipv4 or a domain (probably will fail later but we don't care))
-		listenIP = fmt.Sprintf("[%s]", listenIP)
-	}
-	s, err := net.Listen("tcp", fmt.Sprintf("%s:0", listenIP))
-	if err != nil {
-		return errors.Wrapf(err, "couldn't listen on port. make sure the twin id is associated with a valid yggdrasil ip, twin id: %d, ygg ip: %s, err", threefoldPluginClient.twinID, yggIP)
-	}
-	defer s.Close()
-	port := s.Addr().(*net.TCPAddr).Port
-	arrived := false
-	go func() {
-		c, err := s.Accept()
-		if errors.Is(err, net.ErrClosed) {
-			return
-		}
-		if err != nil {
-			return
-		}
-		arrived = true
-		c.Close()
-	}()
-	c, err := net.Dial("tcp", fmt.Sprintf("%s:%d", listenIP, port))
-	if err != nil {
-		return errors.Wrapf(err, "failed to connect to ip. make sure the twin id is associated with a valid yggdrasil ip, twin id: %d, ygg ip: %s, err", threefoldPluginClient.twinID, yggIP)
-	}
-	c.Close()
-	if !arrived {
-		return errors.Wrapf(err, "sent request but didn't arrive to me. make sure the twin id is associated with a valid yggdrasil ip, twin id: %d, ygg ip: %s, err", threefoldPluginClient.twinID, yggIP)
-	}
-	return nil
-}
-
-func validateRMB(threefoldPluginClient *threefoldPluginClient, sub subi.SubstrateExt) error {
-	if err := validateRedis(threefoldPluginClient); err != nil {
-		return err
-	}
-
-	return validateYggdrasil(threefoldPluginClient, sub)
-}
-
 func validateRMBProxyServer(threefoldPluginClient *threefoldPluginClient) error {
 	return threefoldPluginClient.gridProxyClient.Ping()
 }
 
-func validateMnemonics(mnemonics string) error {
-	if len(mnemonics) == 0 {
-		return errors.New("mnemonics required")
-	}
-
-	alphaOnly := regexp.MustCompile(`^[a-zA-Z\s]+$`)
-	if !alphaOnly.MatchString(mnemonics) {
-		return errors.New("mnemonics can only be composed of a non-alphanumeric character or a whitespace")
-	}
-
-	return nil
+func validateMnemonics(mnemonics string) bool {
+	return bip39.IsMnemonicValid(mnemonics)
 }
 
 func validateSubstrateURL(url string) error {
@@ -142,14 +70,6 @@ func validateProxyURL(url string) error {
 	}
 
 	return nil
-}
-
-func validateClientRMB(threefoldPluginClient *threefoldPluginClient, sub subi.SubstrateExt) error {
-	if threefoldPluginClient.useRmbProxy {
-		return validateRMBProxyServer(threefoldPluginClient)
-	} else {
-		return validateRMB(threefoldPluginClient, sub)
-	}
 }
 
 func validateAccountBalanceForExtrinsics(sub subi.SubstrateExt, identity substrate.Identity) error {

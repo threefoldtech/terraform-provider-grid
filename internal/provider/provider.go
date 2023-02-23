@@ -153,8 +153,9 @@ func providerConfigure(st state.Getter) (func(ctx context.Context, d *schema.Res
 		var err error
 		threefoldPluginClient := threefoldPluginClient{}
 		threefoldPluginClient.mnemonics = d.Get("mnemonics").(string)
-		if err := validateMnemonics(threefoldPluginClient.mnemonics); err != nil {
-			return nil, diag.FromErr(err)
+
+		if !validateMnemonics(threefoldPluginClient.mnemonics) {
+			return nil, diag.Errorf("provided mnemonics are invalid")
 		}
 
 		keyType := d.Get("key_type").(string)
@@ -254,7 +255,7 @@ func providerConfigure(st state.Getter) (func(ctx context.Context, d *schema.Res
 
 		gridProxyClient := proxy.NewClient(rmbProxyURL)
 		threefoldPluginClient.gridProxyClient = proxy.NewRetryingClient(gridProxyClient)
-		if err := validateClientRMB(&threefoldPluginClient, subx); err != nil {
+		if err := validateRMBProxyServer(&threefoldPluginClient); err != nil {
 			return nil, diag.FromErr(err)
 		}
 		threefoldPluginClient.state = st
