@@ -102,13 +102,20 @@ func (n *Scheduler) addNodes(nodes []proxyTypes.Node) {
 
 // Schedule makes sure there's at least one node that satisfies the given request
 func (n *Scheduler) Schedule(r *Request) (uint32, error) {
+	if true {
+		return n.farmerBotSchedule(r)
+	}
+	return n.gridProxySchedule(r)
+}
+
+func (n *Scheduler) gridProxySchedule(r *Request) (uint32, error) {
 	f := r.constructFilter(n.twinID)
 	l := proxyTypes.Limit{
 		Size:     10,
 		Page:     1,
 		RetCount: false,
 	}
-	if r.Farm != "" {
+	if r.FarmId != "" {
 		id, err := n.getFarmID(r.Farm)
 		if err != nil {
 			return 0, errors.Wrapf(err, "couldn't get farm %s id", r.Farm)
@@ -134,4 +141,9 @@ func (n *Scheduler) Schedule(r *Request) (uint32, error) {
 	}
 	n.nodes[node].FreeCapacity.consume(r)
 	return node, nil
+}
+
+func (n *Scheduler) farmerBotSchedule(r *Request) (uint32, error) {
+
+	return 0, nil
 }

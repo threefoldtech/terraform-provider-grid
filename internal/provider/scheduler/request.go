@@ -12,21 +12,20 @@ var (
 
 // Request struct for requesting a capacity
 type Request struct {
-	Capacity  Capacity
-	Name      string
-	Farm      string
-	HasIPv4   bool
-	HasDomain bool
-	Certified bool
-
-	// It is used if the Farm name is unknown ahead of time in tests and used in validation
-	farmID int
+	Capacity       Capacity
+	Name           string
+	FarmId         uint32
+	PublicConfig   bool
+	PublicIpsCount uint32
+	Certified      bool
+	Dedicated      bool
+	NodeExclude    []uint32
 }
 
 func (r *Request) constructFilter(twinID uint64) (f proxyTypes.NodeFilter) {
 	f.Status = &statusUP
 	f.AvailableFor = &twinID
-	if r.Farm != "" {
+	if r.FarmId != "" {
 		f.FarmName = &r.Farm
 	}
 	if r.Capacity.HRU != 0 {

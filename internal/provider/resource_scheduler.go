@@ -53,25 +53,38 @@ func ReourceScheduler() *schema.Resource {
 							Optional:    true,
 							Description: "Disk HDD size in MBs.",
 						},
-						"farm": {
-							Type:        schema.TypeString,
+						"farm_id": {
+							Type:        schema.TypeInt,
 							Optional:    true,
-							Description: "Farm name to search for eligible nodes.",
+							Description: "Farm id to search for eligible nodes.",
 						},
-						"ipv4": {
-							Type:        schema.TypeBool,
-							Optional:    true,
-							Description: "Flag to pick only nodes with public ipv4 configuration.",
-						},
-						"domain": {
+						"public_config": {
 							Type:        schema.TypeBool,
 							Optional:    true,
 							Description: "Flag to pick only nodes with public config containing domain.",
+						},
+						"public_ips_count": {
+							Type:        schema.TypeInt,
+							Optional:    true,
+							Description: "Required count of public ips.",
 						},
 						"certified": {
 							Type:        schema.TypeBool,
 							Optional:    true,
 							Description: "Flag to pick only certified nodes (Not implemented).",
+						},
+						"dedicated": {
+							Type:        schema.TypeBool,
+							Optional:    true,
+							Description: "Flag to pick a rentable node",
+						},
+						"node_exclude": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeInt,
+							},
+							Description: "List of node ids you want to exclude from the search.",
 						},
 					},
 				},
@@ -104,12 +117,15 @@ func parseRequests(d *schema.ResourceData, assignment map[string]uint32) []sched
 			// skip already assigned ones
 			continue
 		}
+
 		reqs = append(reqs, scheduler.Request{
-			Name:      mp["name"].(string),
-			Farm:      mp["farm"].(string),
-			HasIPv4:   mp["ipv4"].(bool),
-			HasDomain: mp["domain"].(bool),
-			Certified: mp["certified"].(bool),
+			Name:           mp["name"].(string),
+			FarmId:         uint32(mp["farm_id"].(int)),
+			PublicConfig:   mp["public_config"].(bool),
+			PublicIpsCount: uint32(mp["public_ips_count"].(int)),
+			Certified:      mp["certified"].(bool),
+			Dedicated:      mp["dedicated"].(bool),
+			NodeExclude:    mp["node_exclude"].([]uint32),
 			Capacity: scheduler.Capacity{
 				MRU: uint64(mp["mru"].(int)) * uint64(gridtypes.Megabyte),
 				HRU: uint64(mp["hru"].(int)) * uint64(gridtypes.Megabyte),
@@ -125,7 +141,7 @@ func schedule(ctx context.Context, d *schema.ResourceData, meta interface{}) dia
 	if !ok {
 		return diag.FromErr(fmt.Errorf("failed to cast meta into api client"))
 	}
-
+	// read previously assigned nodes
 	assignment := parseAssignment(d)
 	reqs := parseRequests(d, assignment)
 	scheduler := scheduler.NewScheduler(threefoldPluginClient.gridProxyClient, uint64(threefoldPluginClient.twinID))
