@@ -86,11 +86,13 @@ func TestSchedulerEmpty(t *testing.T) {
 			SRU: 2,
 			HRU: 3,
 		},
-		HasIPv4:   true,
-		Name:      "req",
-		Farm:      "freefarm",
-		HasDomain: true,
-		Certified: false,
+		PublicIpsCount: 1,
+		Name:           "req",
+		FarmId:         10,
+		PublicConfig:   true,
+		Certified:      false,
+		Dedicated:      false,
+		NodeExclude:    []uint32{1, 2},
 	})
 	assert.Error(t, err, "where did you find the node?")
 }
@@ -119,6 +121,11 @@ func TestSchedulerSuccess(t *testing.T) {
 	proxy.AddFarm(proxyTypes.Farm{
 		Name:   "freefarm",
 		FarmID: 1,
+		PublicIps: []proxyTypes.PublicIP{
+			{
+				IP: "asdf",
+			},
+		},
 	})
 	scheduler := NewScheduler(proxy, 1)
 	nodeID, err := scheduler.Schedule(&Request{
@@ -127,11 +134,11 @@ func TestSchedulerSuccess(t *testing.T) {
 			SRU: 7,
 			MRU: 11,
 		},
-		HasIPv4:   true,
-		Name:      "req",
-		Farm:      "freefarm",
-		HasDomain: true,
-		Certified: false,
+		Name:           "req",
+		FarmId:         1,
+		PublicConfig:   true,
+		PublicIpsCount: 1,
+		Certified:      false,
 	})
 	assert.NoError(t, err, "there's a satisfying node")
 	assert.Equal(t, nodeID, uint32(1), "the node id should be 1")
@@ -164,6 +171,11 @@ func TestSchedulerSuccessOn4thPage(t *testing.T) {
 	proxy.AddFarm(proxyTypes.Farm{
 		Name:   "freefarm",
 		FarmID: 1,
+		PublicIps: []proxyTypes.PublicIP{
+			{
+				IP: "a",
+			},
+		},
 	})
 	scheduler := NewScheduler(proxy, 1)
 	nodeID, err := scheduler.Schedule(&Request{
@@ -172,11 +184,11 @@ func TestSchedulerSuccessOn4thPage(t *testing.T) {
 			SRU: 7,
 			MRU: 11,
 		},
-		HasIPv4:   true,
-		Name:      "req",
-		Farm:      "freefarm",
-		HasDomain: true,
-		Certified: false,
+		PublicConfig:   true,
+		Name:           "req",
+		FarmId:         1,
+		PublicIpsCount: 1,
+		Certified:      false,
 	})
 	assert.NoError(t, err, "there's a satisfying node")
 	assert.Equal(t, nodeID, uint32(1), "the node id should be 1")
@@ -214,18 +226,18 @@ func TestSchedulerFailure(t *testing.T) {
 			SRU: 7,
 			MRU: 11,
 		},
-		HasIPv4:   false,
-		Name:      "req",
-		Farm:      "freefarm",
-		HasDomain: false,
-		Certified: false,
+		PublicIpsCount: 0,
+		Name:           "req",
+		FarmId:         1,
+		PublicConfig:   false,
+		Certified:      false,
 	}
 	violations := map[string]func(r *Request){
 		"mru":    func(r *Request) { r.Capacity.MRU = 12 },
 		"sru":    func(r *Request) { r.Capacity.SRU = 18 },
 		"hru":    func(r *Request) { r.Capacity.HRU = 4 },
-		"ipv4":   func(r *Request) { r.HasIPv4 = true },
-		"domain": func(r *Request) { r.HasDomain = true },
+		"ipv4":   func(r *Request) { r.PublicIpsCount = 15 },
+		"domain": func(r *Request) { r.PublicConfig = true },
 	}
 	for key, fn := range violations {
 		scheduler := NewScheduler(proxy, 1)
@@ -259,6 +271,11 @@ func TestSchedulerFailureAfterSuccess(t *testing.T) {
 	proxy.AddFarm(proxyTypes.Farm{
 		Name:   "freefarm",
 		FarmID: 1,
+		PublicIps: []proxyTypes.PublicIP{
+			{
+				IP: "a",
+			},
+		},
 	})
 	scheduler := NewScheduler(proxy, 1)
 	nodeID, err := scheduler.Schedule(&Request{
@@ -267,11 +284,11 @@ func TestSchedulerFailureAfterSuccess(t *testing.T) {
 			SRU: 6,
 			MRU: 10,
 		},
-		HasIPv4:   true,
-		Name:      "req",
-		Farm:      "freefarm",
-		HasDomain: true,
-		Certified: false,
+		PublicIpsCount: 1,
+		Name:           "req",
+		FarmId:         1,
+		PublicConfig:   true,
+		Certified:      false,
 	})
 	assert.NoError(t, err, "there's a satisfying node")
 	assert.Equal(t, nodeID, uint32(1), "the node id should be 1")
@@ -282,11 +299,11 @@ func TestSchedulerFailureAfterSuccess(t *testing.T) {
 			SRU: 1,
 			MRU: 2, // this violates
 		},
-		HasIPv4:   true,
-		Name:      "req",
-		Farm:      "freefarm",
-		HasDomain: true,
-		Certified: false,
+		PublicIpsCount: 1,
+		Name:           "req",
+		FarmId:         1,
+		PublicConfig:   true,
+		Certified:      false,
 	})
 	assert.Error(t, err, "node would be overloaded")
 }
@@ -315,6 +332,11 @@ func TestSchedulerSuccessAfterSuccess(t *testing.T) {
 	proxy.AddFarm(proxyTypes.Farm{
 		Name:   "freefarm",
 		FarmID: 1,
+		PublicIps: []proxyTypes.PublicIP{
+			{
+				IP: "a",
+			},
+		},
 	})
 	scheduler := NewScheduler(proxy, 1)
 	nodeID, err := scheduler.Schedule(&Request{
@@ -323,11 +345,11 @@ func TestSchedulerSuccessAfterSuccess(t *testing.T) {
 			SRU: 6,
 			MRU: 10,
 		},
-		HasIPv4:   true,
-		Name:      "req",
-		Farm:      "freefarm",
-		HasDomain: true,
-		Certified: false,
+		PublicIpsCount: 1,
+		Name:           "req",
+		FarmId:         1,
+		PublicConfig:   true,
+		Certified:      false,
 	})
 	assert.NoError(t, err, "there's a satisfying node")
 	assert.Equal(t, nodeID, uint32(1), "the node id should be 1")
@@ -338,11 +360,11 @@ func TestSchedulerSuccessAfterSuccess(t *testing.T) {
 			SRU: 1,
 			MRU: 1,
 		},
-		HasIPv4:   true,
-		Name:      "req",
-		Farm:      "freefarm",
-		HasDomain: true,
-		Certified: false,
+		PublicIpsCount: 1,
+		Name:           "req",
+		FarmId:         1,
+		PublicConfig:   true,
+		Certified:      false,
 	})
 	assert.NoError(t, err, "there's a satisfying node")
 	assert.Equal(t, nodeID, uint32(1), "the node id should be 1")

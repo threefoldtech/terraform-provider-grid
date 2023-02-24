@@ -3,6 +3,7 @@ package scheduler
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 
 	"github.com/pkg/errors"
@@ -25,16 +26,17 @@ func (s *Scheduler) consumePublicIPs(farmID uint32, IPs uint32) {
 	farm.freeIPs -= uint64(IPs)
 }
 
-func (s *Scheduler) fulfils(node nodeInfo, r *Request) bool {
+func (node *nodeInfo) fulfils(r *Request, farm farmInfo) bool {
+	log.Printf("request: %+v\nfarminfo: %+v", r, farm)
 	if r.Capacity.MRU > node.FreeCapacity.MRU ||
 		r.Capacity.HRU > node.FreeCapacity.HRU ||
 		r.Capacity.SRU > node.FreeCapacity.SRU ||
 		(r.FarmId != 0 && node.Node.FarmID != int(r.FarmId)) ||
-		(r.PublicConfig && node.Node.PublicConfig.Domain != "") ||
-		(r.PublicIpsCount > uint32(s.farms[uint32(node.Node.FarmID)].freeIPs)) ||
+		(r.PublicConfig && node.Node.PublicConfig.Domain == "") ||
+		(r.PublicIpsCount > uint32(farm.freeIPs)) ||
 		(r.Dedicated && !node.Node.Dedicated) ||
+		(r.Certified && node.Node.CertificationType != "Certified") ||
 		contains(r.NodeExclude, uint32(node.Node.NodeID)) {
-
 		return false
 	}
 	return true
@@ -62,7 +64,7 @@ func NewScheduler(gridProxyClient proxy.Client, twinID uint64) Scheduler {
 	}
 }
 
-func (n *Scheduler) getFarm(farmID uint32) (farmInfo, error) {
+func (n *Scheduler) getFarmInfo(farmID uint32) (farmInfo, error) {
 	if f, ok := n.farms[farmID]; ok {
 		return f, nil
 	}
@@ -102,8 +104,13 @@ func (n *Scheduler) getNode(r *Request) uint32 {
 	rand.Shuffle(len(nodes), func(i, j int) { nodes[i], nodes[j] = nodes[j], nodes[i] })
 	for _, node := range nodes {
 		nodeInfo := n.nodes[node]
+		info, err := n.getFarmInfo(uint32(nodeInfo.Node.FarmID))
+		if err != nil {
+			fmt.Printf("could not get farm %d info. %s", nodeInfo.Node.FarmID, err.Error())
+			continue
+		}
 		// TODO: later add free ips check when specifying the number of ips is supported
-		if n.fulfils(nodeInfo, r) {
+		if nodeInfo.fulfils(r, info) {
 			return node
 		}
 	}
@@ -136,10 +143,6 @@ func (n *Scheduler) gridProxySchedule(r *Request) (uint32, error) {
 		Size:     10,
 		Page:     1,
 		RetCount: false,
-	}
-	_, err := n.getFarm(r.FarmId)
-	if err != nil {
-		return 0, errors.Wrapf(err, "could not get farm %d", r.FarmId)
 	}
 
 	node := n.getNode(r)
