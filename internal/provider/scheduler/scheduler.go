@@ -2,13 +2,15 @@
 package scheduler
 
 import (
-	"fmt"
+	"context"
 	"log"
 	"math/rand"
+	"time"
 
 	"github.com/pkg/errors"
 	proxy "github.com/threefoldtech/grid_proxy_server/pkg/client"
 	proxyTypes "github.com/threefoldtech/grid_proxy_server/pkg/types"
+	"github.com/threefoldtech/rmb-sdk-go"
 )
 
 // nodeInfo related to scheduling
@@ -18,7 +20,8 @@ type nodeInfo struct {
 }
 
 type farmInfo struct {
-	freeIPs uint64
+	freeIPs           uint64
+	certificationType string
 }
 
 func (s *Scheduler) consumePublicIPs(farmID uint32, IPs uint32) {
@@ -50,41 +53,43 @@ type Scheduler struct {
 	// mapping from farm name to its id
 	farmIDS         map[uint32]int
 	gridProxyClient proxy.Client
+	rmbClient       rmb.Client
 }
 
 // NewScheduler generates a new scheduler
-func NewScheduler(gridProxyClient proxy.Client, twinID uint64) Scheduler {
+func NewScheduler(gridProxyClient proxy.Client, twinID uint64, rmbClient rmb.Client) Scheduler {
 	return Scheduler{
 		nodes:           map[uint32]nodeInfo{},
 		gridProxyClient: gridProxyClient,
 
-		twinID:  twinID,
-		farmIDS: make(map[uint32]int),
-		farms:   make(map[uint32]farmInfo),
+		twinID:    twinID,
+		farmIDS:   make(map[uint32]int),
+		farms:     make(map[uint32]farmInfo),
+		rmbClient: rmbClient,
 	}
 }
 
-func (n *Scheduler) getFarmInfo(farmID uint32) (farmInfo, error) {
-	if f, ok := n.farms[farmID]; ok {
-		return f, nil
-	}
-	id := uint64(farmID)
-	farm, _, err := n.gridProxyClient.Farms(proxyTypes.FarmFilter{
-		FarmID: &id,
-	}, proxyTypes.Limit{
-		Size: 1,
-		Page: 1,
-	})
-	if err != nil {
-		return farmInfo{}, err
-	}
-	if len(farm) == 0 {
-		return farmInfo{}, fmt.Errorf("farm not found")
-	}
+// func (n *Scheduler) getFarmInfo(farmID uint32) (farmInfo, error) {
+// 	if f, ok := n.farms[farmID]; ok {
+// 		return f, nil
+// 	}
+// 	id := uint64(farmID)
+// 	farm, _, err := n.gridProxyClient.Farms(proxyTypes.FarmFilter{
+// 		FarmID: &id,
+// 	}, proxyTypes.Limit{
+// 		Size: 1,
+// 		Page: 1,
+// 	})
+// 	if err != nil {
+// 		return farmInfo{}, err
+// 	}
+// 	if len(farm) == 0 {
+// 		return farmInfo{}, fmt.Errorf("farm not found")
+// 	}
 
-	n.farms[farmID] = farmInfo{freeIPs: getPublicIPsCount(farm[0].PublicIps)}
-	return n.farms[farmID], nil
-}
+// 	n.farms[farmID] = farmInfo{freeIPs: getPublicIPsCount(farm[0].PublicIps)}
+// 	return n.farms[farmID], nil
+// }
 
 func getPublicIPsCount(publicIPs []proxyTypes.PublicIP) uint64 {
 	freeIPs := 0
@@ -104,13 +109,8 @@ func (n *Scheduler) getNode(r *Request) uint32 {
 	rand.Shuffle(len(nodes), func(i, j int) { nodes[i], nodes[j] = nodes[j], nodes[i] })
 	for _, node := range nodes {
 		nodeInfo := n.nodes[node]
-		info, err := n.getFarmInfo(uint32(nodeInfo.Node.FarmID))
-		if err != nil {
-			fmt.Printf("could not get farm %d info. %s", nodeInfo.Node.FarmID, err.Error())
-			continue
-		}
 		// TODO: later add free ips check when specifying the number of ips is supported
-		if nodeInfo.fulfils(r, info) {
+		if nodeInfo.fulfils(r, n.farms[r.FarmId]) {
 			return node
 		}
 	}
@@ -131,10 +131,62 @@ func (n *Scheduler) addNodes(nodes []proxyTypes.Node) {
 
 // Schedule makes sure there's at least one node that satisfies the given request
 func (n *Scheduler) Schedule(r *Request) (uint32, error) {
-	if true {
-		return n.gridProxySchedule(r)
+	// check if farm id is set
+	// if not, send a request to gridproxy for eligible farms
+	// process returned farms in batches
+
+	farmFilter := r.constructFarmFilter()
+	limit := proxyTypes.Limit{
+		Size:     10,
+		Page:     1,
+		RetCount: false,
 	}
-	return n.farmerBotSchedule(r)
+
+	for r.FarmId == 0 {
+		farms, _, err := n.gridProxyClient.Farms(farmFilter, limit)
+		if err != nil {
+			return 0, errors.Wrap(err, "could not list available farms from grid proxy")
+		}
+
+		if len(farms) == 0 {
+			return 0, errors.Wrap(err, "could not find an eligible farm from grid proxy")
+		}
+		n.addFarms(farms)
+		for _, farm := range farms {
+			r.FarmId = uint32(farm.FarmID)
+			var node uint32
+			var err error
+			if n.hasFarmerBot(r.FarmId) {
+				node, err = n.gridProxySchedule(r)
+			} else {
+				node, err = n.farmerBotSchedule(r)
+			}
+
+			if node != 0 && err == nil {
+				return node, nil
+			}
+		}
+		r.FarmId = 0
+	}
+	return 0, errors.New("could not find an eligible node")
+
+}
+
+func (s *Scheduler) addFarms(farms []proxyTypes.Farm) {
+	for _, farm := range farms {
+		if _, ok := s.farms[uint32(farm.FarmID)]; ok {
+			continue
+		}
+
+		s.farms[uint32(farm.FarmID)] = farmInfo{
+			freeIPs:           getPublicIPsCount(farm.PublicIps),
+			certificationType: farm.CertificationType,
+		}
+	}
+}
+
+func (s *Scheduler) hasFarmerBot(farmID uint32) bool {
+	return false
 }
 
 func (n *Scheduler) gridProxySchedule(r *Request) (uint32, error) {
@@ -168,9 +220,46 @@ func (n *Scheduler) gridProxySchedule(r *Request) (uint32, error) {
 }
 
 func (n *Scheduler) farmerBotSchedule(r *Request) (uint32, error) {
-
-	return 0, nil
+	// we need to check if farm id is specified or not
+	// if specified, then only this farm will receive a call
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	data := generateFarmerBotAction(r)
+	var res uint32
+	err := n.rmbClient.Call(ctx, uint32(n.twinID), "farmerbot.nodemanager.find", data, &res)
+	if err != nil {
+		return 0, err
+	}
+	return res, nil
 }
+
+func generateFarmerBotAction(r *Request) interface{} {
+	return struct {
+		Guid   string `json:"guid"`
+		TwinID uint32 `json:"twinid"`
+		Action string `json:"action"`
+	}{}
+}
+
+/*
+pub struct ActionJobPublic {
+pub mut:
+	guid         string
+	twinid		 u32    	//twinid of the farmerbot
+	action   	 string 	//farmerbot.*
+	args       	 params.Params
+	result       params.Params
+	state        string
+	start        i64		//epoch
+	end          i64		//epoch
+	grace_period u32 		//wait till next run, in seconds
+	error        string		//string description of what went wrong
+	timeout      u32 		//time in seconds, 2h is maximum
+	src_twinid	 u32    	//which twin was sending the job, 0 if local
+	src_action   string		//unique actor path, runs on top of twin
+	dependencies []string	//list of guids we need to wait on
+}
+*/
 
 func contains[T comparable](elements []T, element T) bool {
 	for _, e := range elements {
