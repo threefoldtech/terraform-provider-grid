@@ -118,8 +118,7 @@ type NodeClient struct {
 type args map[string]interface{}
 
 const (
-	defaultTimeout  = 10 * time.Second
-	extendedTimeout = 4 * time.Minute
+	defaultTimeout = 10 * time.Second
 )
 
 // NewNodeClient creates a new node RMB client. This client then can be used to
@@ -130,9 +129,9 @@ func NewNodeClient(nodeTwin uint32, bus rmb.Client) *NodeClient {
 
 // DeploymentDeploy sends the deployment to the node for processing.
 func (n *NodeClient) DeploymentDeploy(ctx context.Context, dl gridtypes.Deployment) error {
-	subCtx, cancel := context.WithTimeout(ctx, extendedTimeout)
+	ctx, cancel := context.WithTimeout(ctx, defaultTimeout)
 	defer cancel()
-	return n.deploymentDeploy(subCtx, dl)
+	return n.deploymentDeploy(ctx, dl)
 }
 
 func (n *NodeClient) deploymentDeploy(ctx context.Context, dl gridtypes.Deployment) error {
@@ -143,9 +142,9 @@ func (n *NodeClient) deploymentDeploy(ctx context.Context, dl gridtypes.Deployme
 // DeploymentUpdate update the given deployment. deployment must be a valid update for
 // a deployment that has been already created via DeploymentDeploy
 func (n *NodeClient) DeploymentUpdate(ctx context.Context, dl gridtypes.Deployment) error {
-	subCtx, cancel := context.WithTimeout(ctx, extendedTimeout)
+	ctx, cancel := context.WithTimeout(ctx, defaultTimeout)
 	defer cancel()
-	return n.deploymentUpdate(subCtx, dl)
+	return n.deploymentUpdate(ctx, dl)
 }
 
 func (n *NodeClient) deploymentUpdate(ctx context.Context, dl gridtypes.Deployment) error {
@@ -155,9 +154,9 @@ func (n *NodeClient) deploymentUpdate(ctx context.Context, dl gridtypes.Deployme
 
 // DeploymentGet gets a deployment via contract ID
 func (n *NodeClient) DeploymentGet(ctx context.Context, contractID uint64) (dl gridtypes.Deployment, err error) {
-	subCtx, cancel := context.WithTimeout(ctx, defaultTimeout)
+	ctx, cancel := context.WithTimeout(ctx, defaultTimeout)
 	defer cancel()
-	return n.deploymentGet(subCtx, contractID)
+	return n.deploymentGet(ctx, contractID)
 }
 
 func (n *NodeClient) deploymentGet(ctx context.Context, contractID uint64) (dl gridtypes.Deployment, err error) {
@@ -176,9 +175,9 @@ func (n *NodeClient) deploymentGet(ctx context.Context, contractID uint64) (dl g
 // DeploymentDelete deletes a deployment, the node will make sure to decomission all deployments
 // and set all workloads to deleted. A call to Get after delete is valid
 func (n *NodeClient) DeploymentDelete(ctx context.Context, contractID uint64) error {
-	subCtx, cancel := context.WithTimeout(ctx, extendedTimeout)
+	ctx, cancel := context.WithTimeout(ctx, defaultTimeout)
 	defer cancel()
-	return n.deploymentDelete(subCtx, contractID)
+	return n.deploymentDelete(ctx, contractID)
 }
 
 func (n *NodeClient) deploymentDelete(ctx context.Context, contractID uint64) error {
@@ -192,9 +191,9 @@ func (n *NodeClient) deploymentDelete(ctx context.Context, contractID uint64) er
 
 // Statistics returns some node statistics. Including total and available cpu, memory, storage, etc...
 func (n *NodeClient) Statistics(ctx context.Context) (total gridtypes.Capacity, used gridtypes.Capacity, err error) {
-	subCtx, cancel := context.WithTimeout(ctx, defaultTimeout)
+	ctx, cancel := context.WithTimeout(ctx, defaultTimeout)
 	defer cancel()
-	return n.statistics(subCtx)
+	return n.statistics(ctx)
 }
 
 func (n *NodeClient) statistics(ctx context.Context) (total gridtypes.Capacity, used gridtypes.Capacity, err error) {
@@ -213,9 +212,9 @@ func (n *NodeClient) statistics(ctx context.Context) (total gridtypes.Capacity, 
 // NetworkListWGPorts return a list of all "taken" ports on the node. A new deployment
 // should be careful to use a free port for its network setup.
 func (n *NodeClient) NetworkListWGPorts(ctx context.Context) ([]uint16, error) {
-	subCtx, cancel := context.WithTimeout(ctx, defaultTimeout)
+	ctx, cancel := context.WithTimeout(ctx, defaultTimeout)
 	defer cancel()
-	return n.networkListWGPorts(subCtx)
+	return n.networkListWGPorts(ctx)
 }
 
 func (n *NodeClient) networkListWGPorts(ctx context.Context) ([]uint16, error) {
@@ -231,9 +230,9 @@ func (n *NodeClient) networkListWGPorts(ctx context.Context) ([]uint16, error) {
 
 // NetworkListInterfaces return a map of all interfaces and their ips
 func (n *NodeClient) NetworkListInterfaces(ctx context.Context) (map[string][]net.IP, error) {
-	subCtx, cancel := context.WithTimeout(ctx, defaultTimeout)
+	ctx, cancel := context.WithTimeout(ctx, defaultTimeout)
 	defer cancel()
-	return n.networkListInterfaces(subCtx)
+	return n.networkListInterfaces(ctx)
 }
 
 func (n *NodeClient) networkListInterfaces(ctx context.Context) (map[string][]net.IP, error) {
@@ -249,9 +248,9 @@ func (n *NodeClient) networkListInterfaces(ctx context.Context) (map[string][]ne
 
 // DeploymentChanges return changes of a deployment via contract ID
 func (n *NodeClient) DeploymentChanges(ctx context.Context, contractID uint64) (changes []gridtypes.Workload, err error) {
-	subCtx, cancel := context.WithTimeout(ctx, defaultTimeout)
+	ctx, cancel := context.WithTimeout(ctx, defaultTimeout)
 	defer cancel()
-	return n.deploymentChanges(subCtx, contractID)
+	return n.deploymentChanges(ctx, contractID)
 }
 
 func (n *NodeClient) deploymentChanges(ctx context.Context, contractID uint64) (changes []gridtypes.Workload, err error) {
@@ -280,9 +279,9 @@ func (n *NodeClient) deploymentChanges(ctx context.Context, contractID uint64) (
 
 // NetworkListIPs list taken public IPs on the node
 func (n *NodeClient) NetworkListIPs(ctx context.Context) ([]string, error) {
-	subCtx, cancel := context.WithTimeout(ctx, defaultTimeout)
+	ctx, cancel := context.WithTimeout(ctx, defaultTimeout)
 	defer cancel()
-	return n.networkListIPs(subCtx)
+	return n.networkListIPs(ctx)
 }
 
 func (n *NodeClient) networkListIPs(ctx context.Context) ([]string, error) {
@@ -299,9 +298,9 @@ func (n *NodeClient) networkListIPs(ctx context.Context) ([]string, error) {
 // NetworkGetPublicConfig returns the current public node network configuration. A node with a
 // public config can be used as an access node for wireguard.
 func (n *NodeClient) NetworkGetPublicConfig(ctx context.Context) (cfg PublicConfig, err error) {
-	subCtx, cancel := context.WithTimeout(ctx, defaultTimeout)
+	ctx, cancel := context.WithTimeout(ctx, defaultTimeout)
 	defer cancel()
-	return n.networkGetPublicConfig(subCtx)
+	return n.networkGetPublicConfig(ctx)
 }
 
 func (n *NodeClient) networkGetPublicConfig(ctx context.Context) (cfg PublicConfig, err error) {
@@ -317,9 +316,9 @@ func (n *NodeClient) networkGetPublicConfig(ctx context.Context) (cfg PublicConf
 // NetworkSetPublicConfig returns the current public node network configuration. A node with a
 // public config can be used as an access node for wireguard.
 func (n *NodeClient) NetworkSetPublicConfig(ctx context.Context, cfg PublicConfig) error {
-	subCtx, cancel := context.WithTimeout(ctx, defaultTimeout)
+	ctx, cancel := context.WithTimeout(ctx, defaultTimeout)
 	defer cancel()
-	return n.networkSetPublicConfig(subCtx, cfg)
+	return n.networkSetPublicConfig(ctx, cfg)
 }
 
 func (n *NodeClient) networkSetPublicConfig(ctx context.Context, cfg PublicConfig) error {
@@ -334,9 +333,9 @@ func (n *NodeClient) networkSetPublicConfig(ctx context.Context, cfg PublicConfi
 
 // SystemDMI executes dmidecode to get dmidecode output
 func (n *NodeClient) SystemDMI(ctx context.Context) (result dmi.DMI, err error) {
-	subCtx, cancel := context.WithTimeout(ctx, defaultTimeout)
+	ctx, cancel := context.WithTimeout(ctx, defaultTimeout)
 	defer cancel()
-	return n.systemDMI(subCtx)
+	return n.systemDMI(ctx)
 }
 
 func (n *NodeClient) systemDMI(ctx context.Context) (result dmi.DMI, err error) {
@@ -351,9 +350,9 @@ func (n *NodeClient) systemDMI(ctx context.Context) (result dmi.DMI, err error) 
 
 // SystemHypervisor executes hypervisor cmd
 func (n *NodeClient) SystemHypervisor(ctx context.Context) (result string, err error) {
-	subCtx, cancel := context.WithTimeout(ctx, defaultTimeout)
+	ctx, cancel := context.WithTimeout(ctx, defaultTimeout)
 	defer cancel()
-	return n.systemHypervisor(subCtx)
+	return n.systemHypervisor(ctx)
 }
 
 func (n *NodeClient) systemHypervisor(ctx context.Context) (result string, err error) {
@@ -374,9 +373,9 @@ type Version struct {
 
 // SystemVersion executes system version cmd
 func (n *NodeClient) SystemVersion(ctx context.Context) (ver Version, err error) {
-	subCtx, cancel := context.WithTimeout(ctx, defaultTimeout)
+	ctx, cancel := context.WithTimeout(ctx, defaultTimeout)
 	defer cancel()
-	return n.systemVersion(subCtx)
+	return n.systemVersion(ctx)
 }
 
 func (n *NodeClient) systemVersion(ctx context.Context) (ver Version, err error) {
