@@ -3,10 +3,12 @@ package scheduler
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"math/rand"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	proxy "github.com/threefoldtech/grid_proxy_server/pkg/client"
 	proxyTypes "github.com/threefoldtech/grid_proxy_server/pkg/types"
@@ -22,6 +24,7 @@ type nodeInfo struct {
 type farmInfo struct {
 	freeIPs           uint64
 	certificationType string
+	farmerTwinID      uint32
 }
 
 func (s *Scheduler) consumePublicIPs(farmID uint32, IPs uint32) {
@@ -69,27 +72,31 @@ func NewScheduler(gridProxyClient proxy.Client, twinID uint64, rmbClient rmb.Cli
 	}
 }
 
-// func (n *Scheduler) getFarmInfo(farmID uint32) (farmInfo, error) {
-// 	if f, ok := n.farms[farmID]; ok {
-// 		return f, nil
-// 	}
-// 	id := uint64(farmID)
-// 	farm, _, err := n.gridProxyClient.Farms(proxyTypes.FarmFilter{
-// 		FarmID: &id,
-// 	}, proxyTypes.Limit{
-// 		Size: 1,
-// 		Page: 1,
-// 	})
-// 	if err != nil {
-// 		return farmInfo{}, err
-// 	}
-// 	if len(farm) == 0 {
-// 		return farmInfo{}, fmt.Errorf("farm not found")
-// 	}
+func (n *Scheduler) getFarmInfo(farmID uint32) (farmInfo, error) {
+	if f, ok := n.farms[farmID]; ok {
+		return f, nil
+	}
+	id := uint64(farmID)
+	farm, _, err := n.gridProxyClient.Farms(proxyTypes.FarmFilter{
+		FarmID: &id,
+	}, proxyTypes.Limit{
+		Size: 1,
+		Page: 1,
+	})
+	if err != nil {
+		return farmInfo{}, err
+	}
+	if len(farm) == 0 {
+		return farmInfo{}, fmt.Errorf("farm not found")
+	}
 
-// 	n.farms[farmID] = farmInfo{freeIPs: getPublicIPsCount(farm[0].PublicIps)}
-// 	return n.farms[farmID], nil
-// }
+	n.farms[farmID] = farmInfo{
+		freeIPs:           getPublicIPsCount(farm[0].PublicIps),
+		certificationType: farm[0].CertificationType,
+		farmerTwinID:      uint32(farm[0].TwinID),
+	}
+	return n.farms[farmID], nil
+}
 
 func getPublicIPsCount(publicIPs []proxyTypes.PublicIP) uint64 {
 	freeIPs := 0
@@ -108,9 +115,13 @@ func (n *Scheduler) getNode(r *Request) uint32 {
 	}
 	rand.Shuffle(len(nodes), func(i, j int) { nodes[i], nodes[j] = nodes[j], nodes[i] })
 	for _, node := range nodes {
+		farm, err := n.getFarmInfo(r.FarmId)
+		if err != nil {
+			continue
+		}
 		nodeInfo := n.nodes[node]
 		// TODO: later add free ips check when specifying the number of ips is supported
-		if nodeInfo.fulfils(r, n.farms[r.FarmId]) {
+		if nodeInfo.fulfils(r, farm) {
 			return node
 		}
 	}
@@ -132,61 +143,29 @@ func (n *Scheduler) addNodes(nodes []proxyTypes.Node) {
 // Schedule makes sure there's at least one node that satisfies the given request
 func (n *Scheduler) Schedule(r *Request) (uint32, error) {
 	// check if farm id is set
-	// if not, send a request to gridproxy for eligible farms
-	// process returned farms in batches
+	// if farm id is set, try farmerbot fist, then gridproxy
+	// if not, use gridproxy without specifying farm id
 
-	farmFilter := r.constructFarmFilter()
-	limit := proxyTypes.Limit{
-		Size:     10,
-		Page:     1,
-		RetCount: false,
-	}
-
-	for r.FarmId == 0 {
-		farms, _, err := n.gridProxyClient.Farms(farmFilter, limit)
-		if err != nil {
-			return 0, errors.Wrap(err, "could not list available farms from grid proxy")
-		}
-
-		if len(farms) == 0 {
-			return 0, errors.Wrap(err, "could not find an eligible farm from grid proxy")
-		}
-		n.addFarms(farms)
-		for _, farm := range farms {
-			r.FarmId = uint32(farm.FarmID)
-			var node uint32
-			var err error
-			if n.hasFarmerBot(r.FarmId) {
-				node, err = n.gridProxySchedule(r)
-			} else {
-				node, err = n.farmerBotSchedule(r)
-			}
-
-			if node != 0 && err == nil {
-				return node, nil
-			}
-		}
-		r.FarmId = 0
-	}
-	return 0, errors.New("could not find an eligible node")
-
-}
-
-func (s *Scheduler) addFarms(farms []proxyTypes.Farm) {
-	for _, farm := range farms {
-		if _, ok := s.farms[uint32(farm.FarmID)]; ok {
-			continue
-		}
-
-		s.farms[uint32(farm.FarmID)] = farmInfo{
-			freeIPs:           getPublicIPsCount(farm.PublicIps),
-			certificationType: farm.CertificationType,
+	if r.FarmId != 0 {
+		if n.hasFarmerBot(r.FarmId) {
+			return n.farmerBotSchedule(r)
 		}
 	}
+	return n.gridProxySchedule(r)
+
 }
 
 func (s *Scheduler) hasFarmerBot(farmID uint32) bool {
-	return false
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	_, err := s.getFarmInfo(farmID)
+	if err != nil {
+		return false
+	}
+	args := Args{}
+	data := s.generateFarmerBotAction(farmID, args)
+	err = s.rmbClient.Call(ctx, uint32(s.twinID), "farmerbot.farmmanager.version", &data, nil)
+	return err == nil
 }
 
 func (n *Scheduler) gridProxySchedule(r *Request) (uint32, error) {
@@ -224,42 +203,93 @@ func (n *Scheduler) farmerBotSchedule(r *Request) (uint32, error) {
 	// if specified, then only this farm will receive a call
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	data := generateFarmerBotAction(r)
-	var res uint32
-	err := n.rmbClient.Call(ctx, uint32(n.twinID), "farmerbot.nodemanager.find", data, &res)
+	_, err := n.getFarmInfo(r.FarmId)
+	if err != nil {
+		return 0, errors.Wrap(err, "error getting farm info")
+	}
+	args := generateFarmerBotArgs(r)
+	data := n.generateFarmerBotAction(r.FarmId, args)
+
+	err = n.rmbClient.Call(ctx, uint32(n.twinID), "farmerbot.nodemanager.findnode", &data, nil)
 	if err != nil {
 		return 0, err
 	}
-	return res, nil
+
+	return data.Result.Params.Value, nil
 }
 
-func generateFarmerBotAction(r *Request) interface{} {
-	return struct {
-		Guid   string `json:"guid"`
-		TwinID uint32 `json:"twinid"`
-		Action string `json:"action"`
-	}{}
+func generateFarmerBotArgs(r *Request) Args {
+	return Args{
+		RequiredHRU:  &r.Capacity.HRU,
+		RequiredSRU:  &r.Capacity.SRU,
+		RequiredMRU:  &r.Capacity.MRU,
+		RequiredCRU:  &r.Capacity.CRU,
+		NodeExclude:  r.NodeExclude,
+		Dedicated:    &r.Dedicated,
+		PublicConfig: &r.PublicConfig,
+		PublicIPs:    &r.PublicIpsCount,
+		Certified:    &r.Certified,
+	}
 }
 
-/*
-pub struct ActionJobPublic {
-pub mut:
-	guid         string
-	twinid		 u32    	//twinid of the farmerbot
-	action   	 string 	//farmerbot.*
-	args       	 params.Params
-	result       params.Params
-	state        string
-	start        i64		//epoch
-	end          i64		//epoch
-	grace_period u32 		//wait till next run, in seconds
-	error        string		//string description of what went wrong
-	timeout      u32 		//time in seconds, 2h is maximum
-	src_twinid	 u32    	//which twin was sending the job, 0 if local
-	src_action   string		//unique actor path, runs on top of twin
-	dependencies []string	//list of guids we need to wait on
+type FarmerBotAction struct {
+	Guid         string        `json:"guid"`
+	TwinID       uint32        `json:"twinid"`
+	Action       string        `json:"action"`
+	Args         FarmerBotArgs `json:"args"`
+	Result       FarmerBotArgs `json:"result"`
+	State        string        `json:"state"`
+	Start        uint64        `json:"start"`
+	End          uint64        `json:"end"`
+	GracePeriod  uint32        `json:"grace_period"`
+	Error        string        `json:"error"`
+	Timeout      uint32        `json:"timeout"`
+	SourceTwinID uint32        `json:"src_twinid"`
+	SourceAction string        `json:"src_action"`
+	Dependencies []string      `json:"dependencies"`
 }
-*/
+
+type FarmerBotArgs struct {
+	Args   Args
+	Params Params
+}
+
+type Args struct {
+	RequiredHRU  *uint64  `json:"required_hru,omitempty"`
+	RequiredSRU  *uint64  `json:"required_sru,omitempty"`
+	RequiredCRU  *uint64  `json:"required_cru,omitempty"`
+	RequiredMRU  *uint64  `json:"required_mru,omitempty"`
+	NodeExclude  []uint32 `json:"node_exlude,omitempty"`
+	Dedicated    *bool    `json:"dedicated,omitempty"`
+	PublicConfig *bool    `json:"public_config,omitempty"`
+	PublicIPs    *uint32  `json:"public_ips"`
+	Certified    *bool    `json:"certified,omitempty"`
+}
+
+type Params struct {
+	Key   string `json:"key"`
+	Value uint32 `json:"value"`
+}
+
+func (s *Scheduler) generateFarmerBotAction(farmID uint32, args Args) FarmerBotAction {
+	return FarmerBotAction{
+		Guid:   uuid.NewString(),
+		TwinID: s.farms[farmID].farmerTwinID,
+		Action: "farmerbot.nodemanager.findnode",
+		Args: FarmerBotArgs{
+			Args:   args,
+			Params: Params{},
+		},
+		Result:       FarmerBotArgs{},
+		State:        "init",
+		Start:        uint64(time.Now().Second()),
+		End:          0,
+		GracePeriod:  0,
+		Error:        "",
+		Timeout:      6000,
+		SourceTwinID: uint32(s.twinID),
+	}
+}
 
 func contains[T comparable](elements []T, element T) bool {
 	for _, e := range elements {
@@ -269,3 +299,9 @@ func contains[T comparable](elements []T, element T) bool {
 	}
 	return false
 }
+
+/*
+	- implement ping farmerbot
+	- action should be base64 encoded
+	-
+*/

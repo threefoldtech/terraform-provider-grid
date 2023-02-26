@@ -52,17 +52,17 @@ func (r *Request) constructFilter(twinID uint64) (f proxyTypes.NodeFilter) {
 	return f
 }
 
-func (r *Request) constructFarmFilter() proxyTypes.FarmFilter {
-	freeIPs := uint64(r.PublicIpsCount)
-	certified := "Certified"
-	var certificationType *string
-	if r.Certified {
-		certificationType = &certified
-	} else {
-		certificationType = nil
-	}
-	return proxyTypes.FarmFilter{
-		FreeIPs:           &freeIPs,
-		CertificationType: certificationType,
-	}
-}
+// func (r *Request) constructFarmFilter() proxyTypes.FarmFilter {
+// 	freeIPs := uint64(r.PublicIpsCount)
+// 	certified := "Certified"
+// 	var certificationType *string
+// 	if r.Certified {
+// 		certificationType = &certified
+// 	} else {
+// 		certificationType = nil
+// 	}
+// 	return proxyTypes.FarmFilter{
+// 		FreeIPs:           &freeIPs,
+// 		CertificationType: certificationType,
+// 	}
+// }

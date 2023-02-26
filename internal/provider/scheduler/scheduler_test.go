@@ -1,9 +1,11 @@
 package scheduler
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	proxyTypes "github.com/threefoldtech/grid_proxy_server/pkg/types"
 )
@@ -11,6 +13,29 @@ import (
 type GridProxyClientMock struct {
 	farms []proxyTypes.Farm
 	nodes []proxyTypes.Node
+}
+
+type RMBClientMock struct {
+	nodeID       uint32
+	hasFarmerBot bool
+}
+
+func (r *RMBClientMock) Call(ctx context.Context, twin uint32, fn string, data interface{}, result interface{}) error {
+	if fn == "farmerbot.farmmanager.version" {
+		if r.hasFarmerBot {
+			return nil
+		}
+		return errors.New("this farm does not have a farmer bot")
+	}
+
+	d := data.(*FarmerBotAction)
+	if r.nodeID == 0 {
+		d.Error = "could not find node"
+		return nil
+	}
+	d.Result.Params.Key = "nodeid"
+	d.Result.Params.Value = r.nodeID
+	return nil
 }
 
 func (m *GridProxyClientMock) Ping() error {
@@ -79,7 +104,10 @@ func (m *GridProxyClientMock) Counters(filter proxyTypes.StatsFilter) (res proxy
 }
 func TestSchedulerEmpty(t *testing.T) {
 	proxy := &GridProxyClientMock{}
-	scheduler := NewScheduler(proxy, 1)
+	rmbClient := &RMBClientMock{
+		hasFarmerBot: false,
+	}
+	scheduler := NewScheduler(proxy, 1, rmbClient)
 	_, err := scheduler.Schedule(&Request{
 		Capacity: Capacity{
 			MRU: 1,
@@ -99,6 +127,10 @@ func TestSchedulerEmpty(t *testing.T) {
 
 func TestSchedulerSuccess(t *testing.T) {
 	proxy := &GridProxyClientMock{}
+	rmbClient := &RMBClientMock{
+		nodeID:       1,
+		hasFarmerBot: true,
+	}
 	proxy.AddNode(1, proxyTypes.Node{
 		NodeID: 1,
 		TotalResources: proxyTypes.Capacity{
@@ -127,7 +159,7 @@ func TestSchedulerSuccess(t *testing.T) {
 			},
 		},
 	})
-	scheduler := NewScheduler(proxy, 1)
+	scheduler := NewScheduler(proxy, 1, rmbClient)
 	nodeID, err := scheduler.Schedule(&Request{
 		Capacity: Capacity{
 			HRU: 3,
@@ -146,6 +178,10 @@ func TestSchedulerSuccess(t *testing.T) {
 
 func TestSchedulerSuccessOn4thPage(t *testing.T) {
 	proxy := &GridProxyClientMock{}
+	rmbClient := &RMBClientMock{
+		hasFarmerBot: true,
+		nodeID:       1,
+	}
 	for i := uint32(2); i <= 30; i++ {
 		proxy.AddNode(i, proxyTypes.Node{})
 	}
@@ -177,7 +213,7 @@ func TestSchedulerSuccessOn4thPage(t *testing.T) {
 			},
 		},
 	})
-	scheduler := NewScheduler(proxy, 1)
+	scheduler := NewScheduler(proxy, 1, rmbClient)
 	nodeID, err := scheduler.Schedule(&Request{
 		Capacity: Capacity{
 			HRU: 3,
@@ -196,6 +232,7 @@ func TestSchedulerSuccessOn4thPage(t *testing.T) {
 
 func TestSchedulerFailure(t *testing.T) {
 	proxy := &GridProxyClientMock{}
+	rmbClient := &RMBClientMock{}
 	proxy.AddNode(1, proxyTypes.Node{
 		NodeID: 1,
 		TotalResources: proxyTypes.Capacity{
@@ -228,7 +265,6 @@ func TestSchedulerFailure(t *testing.T) {
 		},
 		PublicIpsCount: 0,
 		Name:           "req",
-		FarmId:         1,
 		PublicConfig:   false,
 		Certified:      false,
 	}
@@ -240,7 +276,7 @@ func TestSchedulerFailure(t *testing.T) {
 		"domain": func(r *Request) { r.PublicConfig = true },
 	}
 	for key, fn := range violations {
-		scheduler := NewScheduler(proxy, 1)
+		scheduler := NewScheduler(proxy, 1, rmbClient)
 		cp := req
 		fn(&cp)
 		_, err := scheduler.Schedule(&cp)
@@ -249,6 +285,9 @@ func TestSchedulerFailure(t *testing.T) {
 }
 func TestSchedulerFailureAfterSuccess(t *testing.T) {
 	proxy := &GridProxyClientMock{}
+	rmbClient := &RMBClientMock{
+		hasFarmerBot: false,
+	}
 	proxy.AddNode(1, proxyTypes.Node{
 		NodeID: 1,
 		TotalResources: proxyTypes.Capacity{
@@ -277,7 +316,7 @@ func TestSchedulerFailureAfterSuccess(t *testing.T) {
 			},
 		},
 	})
-	scheduler := NewScheduler(proxy, 1)
+	scheduler := NewScheduler(proxy, 1, rmbClient)
 	nodeID, err := scheduler.Schedule(&Request{
 		Capacity: Capacity{
 			HRU: 2,
@@ -310,6 +349,10 @@ func TestSchedulerFailureAfterSuccess(t *testing.T) {
 
 func TestSchedulerSuccessAfterSuccess(t *testing.T) {
 	proxy := &GridProxyClientMock{}
+	rmbClient := &RMBClientMock{
+		hasFarmerBot: true,
+		nodeID:       1,
+	}
 	proxy.AddNode(1, proxyTypes.Node{
 		NodeID: 1,
 		TotalResources: proxyTypes.Capacity{
@@ -338,7 +381,7 @@ func TestSchedulerSuccessAfterSuccess(t *testing.T) {
 			},
 		},
 	})
-	scheduler := NewScheduler(proxy, 1)
+	scheduler := NewScheduler(proxy, 1, rmbClient)
 	nodeID, err := scheduler.Schedule(&Request{
 		Capacity: Capacity{
 			HRU: 2,
