@@ -23,7 +23,7 @@ require (
 require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/threefoldtech/grid_proxy_server v1.6.12
-	github.com/threefoldtech/rmb-sdk-go v0.0.0-20230222091305-4c05c096b592
+	github.com/threefoldtech/rmb-sdk-go v0.0.0-20230227125029-d7b0cd218b6b
 	github.com/vedhavyas/go-subkey v1.0.3
 	golang.org/x/crypto v0.6.0
 	golang.org/x/sync v0.1.0
