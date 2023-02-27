@@ -3,6 +3,8 @@ package scheduler
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
@@ -148,9 +150,11 @@ func (n *Scheduler) Schedule(r *Request) (uint32, error) {
 
 	if r.FarmId != 0 {
 		if n.hasFarmerBot(r.FarmId) {
+			log.Printf("using farmerbot")
 			return n.farmerBotSchedule(r)
 		}
 	}
+	log.Printf("using gridproxy")
 	return n.gridProxySchedule(r)
 
 }
@@ -163,8 +167,17 @@ func (s *Scheduler) hasFarmerBot(farmID uint32) bool {
 		return false
 	}
 	args := Args{}
-	data := s.generateFarmerBotAction(farmID, args)
-	err = s.rmbClient.Call(ctx, uint32(s.twinID), "farmerbot.farmmanager.version", &data, nil)
+	data := s.generateFarmerBotAction(farmID, args, "farmerbot.farmmanager.version")
+	log.Printf("ping outgoing data: %+v", data)
+	b, err := json.Marshal(data)
+	if err != nil {
+		log.Printf("marshalling error: %+v", err)
+		return false
+	}
+	dataStr := base64.StdEncoding.EncodeToString(b)
+	err = s.rmbClient.Call(ctx, uint32(s.twinID), "farmerbot.farmmanager.version", &dataStr, nil)
+	log.Printf("ping error: %+v", err.Error())
+	log.Printf("ping incoming data: %+v", data)
 	return err == nil
 }
 
@@ -208,13 +221,13 @@ func (n *Scheduler) farmerBotSchedule(r *Request) (uint32, error) {
 		return 0, errors.Wrap(err, "error getting farm info")
 	}
 	args := generateFarmerBotArgs(r)
-	data := n.generateFarmerBotAction(r.FarmId, args)
-
+	data := n.generateFarmerBotAction(r.FarmId, args, "armerbot.nodemanager.findnode")
+	log.Printf("outgoing data: %+v", data)
 	err = n.rmbClient.Call(ctx, uint32(n.twinID), "farmerbot.nodemanager.findnode", &data, nil)
 	if err != nil {
 		return 0, err
 	}
-
+	log.Printf("incoming data: %+v", data)
 	return data.Result.Params.Value, nil
 }
 
@@ -271,11 +284,11 @@ type Params struct {
 	Value uint32 `json:"value"`
 }
 
-func (s *Scheduler) generateFarmerBotAction(farmID uint32, args Args) FarmerBotAction {
+func (s *Scheduler) generateFarmerBotAction(farmID uint32, args Args, action string) FarmerBotAction {
 	return FarmerBotAction{
 		Guid:   uuid.NewString(),
 		TwinID: s.farms[farmID].farmerTwinID,
-		Action: "farmerbot.nodemanager.findnode",
+		Action: action,
 		Args: FarmerBotArgs{
 			Args:   args,
 			Params: Params{},
