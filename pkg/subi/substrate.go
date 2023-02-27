@@ -3,6 +3,7 @@ package subi
 
 import (
 	"context"
+	"sync"
 
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/substrate-client"
@@ -36,6 +37,7 @@ type SubstrateExt interface {
 }
 type SubstrateImpl struct {
 	*substrate.Substrate
+	m sync.Mutex
 }
 
 func (s *SubstrateImpl) GetTwin(twinID uint32) (*substrate.Twin, error) {
@@ -59,6 +61,8 @@ func (s *SubstrateImpl) GetTwinPK(id uint32) ([]byte, error) {
 	return twin.Account.PublicKey(), nil
 }
 func (s *SubstrateImpl) CreateNameContract(identity substrate.Identity, name string) (uint64, error) {
+	s.m.Lock()
+	defer s.m.Unlock()
 	return s.Substrate.CreateNameContract(identity, name)
 }
 func (s *SubstrateImpl) GetNodeTwin(id uint32) (uint32, error) {
@@ -69,10 +73,14 @@ func (s *SubstrateImpl) GetNodeTwin(id uint32) (uint32, error) {
 	return uint32(node.TwinID), nil
 }
 func (s *SubstrateImpl) UpdateNodeContract(identity substrate.Identity, contract uint64, body string, hash string) (uint64, error) {
+	s.m.Lock()
+	defer s.m.Unlock()
 	res, err := s.Substrate.UpdateNodeContract(identity, contract, body, hash)
 	return res, err
 }
 func (s *SubstrateImpl) CreateNodeContract(identity substrate.Identity, node uint32, body string, hash string, publicIPs uint32, solutionProviderID *uint64) (uint64, error) {
+	s.m.Lock()
+	defer s.m.Unlock()
 	res, err := s.Substrate.CreateNodeContract(identity, node, body, hash, publicIPs, solutionProviderID)
 	return res, err
 }
@@ -82,12 +90,16 @@ func (s *SubstrateImpl) GetContract(contractID uint64) (*substrate.Contract, err
 }
 
 func (s *SubstrateImpl) CancelContract(identity substrate.Identity, contractID uint64) error {
+	s.m.Lock()
+	defer s.m.Unlock()
 	if contractID == 0 {
 		return nil
 	}
 	return s.Substrate.CancelContract(identity, contractID)
 }
 func (s *SubstrateImpl) EnsureContractCanceled(identity substrate.Identity, contractID uint64) error {
+	s.m.Lock()
+	defer s.m.Unlock()
 	if contractID == 0 {
 		return nil
 	}
@@ -95,6 +107,8 @@ func (s *SubstrateImpl) EnsureContractCanceled(identity substrate.Identity, cont
 }
 
 func (s *SubstrateImpl) DeleteInvalidContracts(contracts map[uint32]uint64) error {
+	s.m.Lock()
+	defer s.m.Unlock()
 	for node, contractID := range contracts {
 		valid, err := s.IsValidContract(contractID)
 		// TODO: handle pause
@@ -142,6 +156,8 @@ func (s *SubstrateImpl) InvalidateNameContract(
 	if !contract.State.IsCreated {
 		return 0, nil
 	}
+	s.m.Lock()
+	defer s.m.Unlock()
 	if contract.ContractType.NameContract.Name != name {
 		err := s.Substrate.CancelContract(identity, contractID)
 		if err != nil {
