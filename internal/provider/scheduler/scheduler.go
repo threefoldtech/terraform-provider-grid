@@ -166,8 +166,9 @@ func (s *Scheduler) hasFarmerBot(farmID uint32) bool {
 	if err != nil {
 		return false
 	}
-	args := Args{}
-	data := s.generateFarmerBotAction(farmID, args, "farmerbot.farmmanager.version")
+	args := []Args{}
+	params := []Params{}
+	data := s.generateFarmerBotAction(farmID, args, params, "farmerbot.farmmanager.version")
 	log.Printf("ping outgoing data: %+v", data)
 	b, err := json.Marshal(data)
 	if err != nil {
@@ -175,9 +176,9 @@ func (s *Scheduler) hasFarmerBot(farmID uint32) bool {
 		return false
 	}
 	dataStr := base64.StdEncoding.EncodeToString(b)
-	err = s.rmbClient.Call(ctx, uint32(s.twinID), "farmerbot.farmmanager.version", &dataStr, nil)
+	err = s.rmbClient.Call(ctx, uint32(s.twinID), "execute_job", &dataStr, nil)
 	log.Printf("ping error: %+v", err.Error())
-	log.Printf("ping incoming data: %+v", data)
+	log.Printf("ping incoming data: %+v", string(b))
 	return err == nil
 }
 
@@ -220,29 +221,51 @@ func (n *Scheduler) farmerBotSchedule(r *Request) (uint32, error) {
 	if err != nil {
 		return 0, errors.Wrap(err, "error getting farm info")
 	}
+	params := generateFarmerBotParams(r)
 	args := generateFarmerBotArgs(r)
-	data := n.generateFarmerBotAction(r.FarmId, args, "armerbot.nodemanager.findnode")
+	data := n.generateFarmerBotAction(r.FarmId, args, params, "armerbot.nodemanager.findnode")
 	log.Printf("outgoing data: %+v", data)
 	err = n.rmbClient.Call(ctx, uint32(n.twinID), "farmerbot.nodemanager.findnode", &data, nil)
 	if err != nil {
 		return 0, err
 	}
 	log.Printf("incoming data: %+v", data)
-	return data.Result.Params.Value, nil
+	return 1, nil
 }
 
-func generateFarmerBotArgs(r *Request) Args {
-	return Args{
-		RequiredHRU:  &r.Capacity.HRU,
-		RequiredSRU:  &r.Capacity.SRU,
-		RequiredMRU:  &r.Capacity.MRU,
-		RequiredCRU:  &r.Capacity.CRU,
-		NodeExclude:  r.NodeExclude,
-		Dedicated:    &r.Dedicated,
-		PublicConfig: &r.PublicConfig,
-		PublicIPs:    &r.PublicIpsCount,
-		Certified:    &r.Certified,
+func generateFarmerBotArgs(r *Request) []Args {
+	return []Args{}
+}
+func generateFarmerBotParams(r *Request) []Params {
+	params := []Params{}
+	if r.Capacity.HRU != 0 {
+		params = append(params, Params{Key: "required_hru", Value: r.Capacity.HRU})
 	}
+	if r.Capacity.SRU != 0 {
+		params = append(params, Params{Key: "required_sru", Value: r.Capacity.SRU})
+	}
+	if r.Capacity.MRU != 0 {
+		params = append(params, Params{Key: "required_mru", Value: r.Capacity.MRU})
+	}
+	if r.Capacity.CRU != 0 {
+		params = append(params, Params{Key: "required_cru", Value: r.Capacity.CRU})
+	}
+	if len(r.NodeExclude) != 0 {
+		params = append(params, Params{Key: "node_exclude", Value: r.NodeExclude})
+	}
+	if r.Dedicated {
+		params = append(params, Params{Key: "dedicated", Value: r.Dedicated})
+	}
+	if r.PublicConfig {
+		params = append(params, Params{Key: "public_config", Value: r.PublicConfig})
+	}
+	if r.PublicIpsCount > 0 {
+		params = append(params, Params{Key: "public_ips", Value: r.PublicIpsCount})
+	}
+	if r.Certified {
+		params = append(params, Params{Key: "certified", Value: r.Certified})
+	}
+	return params
 }
 
 type FarmerBotAction struct {
@@ -263,8 +286,8 @@ type FarmerBotAction struct {
 }
 
 type FarmerBotArgs struct {
-	Args   Args
-	Params Params
+	Args   []Args   `json:"args"`
+	Params []Params `json:"params"`
 }
 
 type Args struct {
@@ -272,7 +295,7 @@ type Args struct {
 	RequiredSRU  *uint64  `json:"required_sru,omitempty"`
 	RequiredCRU  *uint64  `json:"required_cru,omitempty"`
 	RequiredMRU  *uint64  `json:"required_mru,omitempty"`
-	NodeExclude  []uint32 `json:"node_exlude,omitempty"`
+	NodeExclude  []uint32 `json:"node_exclude,omitempty"`
 	Dedicated    *bool    `json:"dedicated,omitempty"`
 	PublicConfig *bool    `json:"public_config,omitempty"`
 	PublicIPs    *uint32  `json:"public_ips"`
@@ -280,22 +303,25 @@ type Args struct {
 }
 
 type Params struct {
-	Key   string `json:"key"`
-	Value uint32 `json:"value"`
+	Key   string      `json:"key"`
+	Value interface{} `json:"value"`
 }
 
-func (s *Scheduler) generateFarmerBotAction(farmID uint32, args Args, action string) FarmerBotAction {
+func (s *Scheduler) generateFarmerBotAction(farmID uint32, args []Args, params []Params, action string) FarmerBotAction {
 	return FarmerBotAction{
 		Guid:   uuid.NewString(),
 		TwinID: s.farms[farmID].farmerTwinID,
 		Action: action,
 		Args: FarmerBotArgs{
 			Args:   args,
-			Params: Params{},
+			Params: params,
 		},
-		Result:       FarmerBotArgs{},
+		Result: FarmerBotArgs{
+			Args:   []Args{},
+			Params: []Params{},
+		},
 		State:        "init",
-		Start:        uint64(time.Now().Second()),
+		Start:        uint64(time.Now().Unix()),
 		End:          0,
 		GracePeriod:  0,
 		Error:        "",
