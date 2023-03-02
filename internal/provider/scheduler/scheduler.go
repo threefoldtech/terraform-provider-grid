@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
-	"os"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -147,15 +147,13 @@ func (n *Scheduler) Schedule(r *Request) (uint32, error) {
 	// check if farm id is set
 	// if farm id is set, try farmerbot fist, then gridproxy
 	// if not, use gridproxy without specifying farm id
-	log.Printf("FarmID is %d", r.FarmId)
 	if r.FarmId != 0 {
-		log.Printf("Got Farm id")
 		if n.hasFarmerBot(r.FarmId) {
-			log.Printf("using farmerbot")
+			log.Printf("using farmerbot ...")
 			return n.farmerBotSchedule(r)
 		}
 	}
-	log.Printf("using gridproxy")
+	log.Printf("using gridproxy ...")
 	return n.gridProxySchedule(r)
 
 }
@@ -170,20 +168,9 @@ func (s *Scheduler) hasFarmerBot(farmID uint32) bool {
 	args := []Args{}
 	params := []Params{}
 	data := s.generateFarmerBotAction(farmID, args, params, "farmerbot.farmmanager.version")
-	b, err := json.Marshal(data)
-	if err != nil {
-		log.Printf("marshalling error: %+v", err)
-		return false
-	}
-
-	var output map[string]interface{}
-	log.Printf("ping data: %+v", string(b))
-	dstTwin := s.farms[farmID].farmerTwinID
-	// input := json.RawMessage(`{"guid":"9e31e950-fab1-4ac9-8f0e-5071805f48a7","twinid":164,"action":"farmerbot.farmmanager.version","args":{"args":[],"params":[]},"result":{"args":[],"params":[]},"state":"init","start":1677764705,"end":0,"grace_period":0,"error":"","timeout":6000,"src_twinid":58,"src_action":"","dependencies":[]}`)
-	err = s.rmbClient.Call(ctx, dstTwin, "execute_job", b, &output)
-	enc := json.NewEncoder(os.Stdout)
-	enc.SetIndent("", "  ")
-	enc.Encode(output)
+	var output FarmerBotAction
+	dst := s.farms[farmID].farmerTwinID
+	err = s.rmbClient.Call(ctx, dst, "execute_job", data, &output)
 	return err == nil
 }
 
@@ -228,14 +215,26 @@ func (n *Scheduler) farmerBotSchedule(r *Request) (uint32, error) {
 	}
 	params := generateFarmerBotParams(r)
 	args := generateFarmerBotArgs(r)
-	data := n.generateFarmerBotAction(r.FarmId, args, params, "armerbot.nodemanager.findnode")
-	log.Printf("outgoing data: %+v", data)
-	err = n.rmbClient.Call(ctx, uint32(n.twinID), "farmerbot.nodemanager.findnode", &data, nil)
+	data := n.generateFarmerBotAction(r.FarmId, args, params, "farmerbot.nodemanager.findnode")
+	output := FarmerBotAction{}
+
+	b, err := json.Marshal(data)
+	log.Printf("outgoing data: %+v", string(b))
+
+	err = n.rmbClient.Call(ctx, n.farms[r.FarmId].farmerTwinID, "execute_job", data, &output)
 	if err != nil {
 		return 0, err
 	}
-	log.Printf("incoming data: %+v", data)
-	return 1, nil
+	log.Printf("incoming data: %+v", output)
+	if len(output.Result.Params) < 1 {
+		return 0, errors.New("can not find a node to deploy on")
+	}
+	nodeId, err := strconv.ParseUint(output.Result.Params[0].Value.(string), 10, 32)
+	if err != nil {
+		return 0, err
+	}
+	log.Printf("got a node with id %d", nodeId)
+	return uint32(nodeId), nil
 }
 
 func generateFarmerBotArgs(r *Request) []Args {
