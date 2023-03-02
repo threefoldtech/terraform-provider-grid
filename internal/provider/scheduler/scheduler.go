@@ -3,11 +3,11 @@ package scheduler
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
+	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -147,8 +147,9 @@ func (n *Scheduler) Schedule(r *Request) (uint32, error) {
 	// check if farm id is set
 	// if farm id is set, try farmerbot fist, then gridproxy
 	// if not, use gridproxy without specifying farm id
-
+	log.Printf("FarmID is %d", r.FarmId)
 	if r.FarmId != 0 {
+		log.Printf("Got Farm id")
 		if n.hasFarmerBot(r.FarmId) {
 			log.Printf("using farmerbot")
 			return n.farmerBotSchedule(r)
@@ -160,7 +161,7 @@ func (n *Scheduler) Schedule(r *Request) (uint32, error) {
 }
 
 func (s *Scheduler) hasFarmerBot(farmID uint32) bool {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	_, err := s.getFarmInfo(farmID)
 	if err != nil {
@@ -169,16 +170,20 @@ func (s *Scheduler) hasFarmerBot(farmID uint32) bool {
 	args := []Args{}
 	params := []Params{}
 	data := s.generateFarmerBotAction(farmID, args, params, "farmerbot.farmmanager.version")
-	log.Printf("ping outgoing data: %+v", data)
 	b, err := json.Marshal(data)
 	if err != nil {
 		log.Printf("marshalling error: %+v", err)
 		return false
 	}
-	dataStr := base64.StdEncoding.EncodeToString(b)
-	err = s.rmbClient.Call(ctx, uint32(s.twinID), "execute_job", &dataStr, nil)
-	log.Printf("ping error: %+v", err.Error())
-	log.Printf("ping incoming data: %+v", string(b))
+
+	var output map[string]interface{}
+	log.Printf("ping data: %+v", string(b))
+	dstTwin := s.farms[farmID].farmerTwinID
+	// input := json.RawMessage(`{"guid":"9e31e950-fab1-4ac9-8f0e-5071805f48a7","twinid":164,"action":"farmerbot.farmmanager.version","args":{"args":[],"params":[]},"result":{"args":[],"params":[]},"state":"init","start":1677764705,"end":0,"grace_period":0,"error":"","timeout":6000,"src_twinid":58,"src_action":"","dependencies":[]}`)
+	err = s.rmbClient.Call(ctx, dstTwin, "execute_job", b, &output)
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	enc.Encode(output)
 	return err == nil
 }
 
@@ -327,6 +332,7 @@ func (s *Scheduler) generateFarmerBotAction(farmID uint32, args []Args, params [
 		Error:        "",
 		Timeout:      6000,
 		SourceTwinID: uint32(s.twinID),
+		Dependencies: []string{},
 	}
 }
 
