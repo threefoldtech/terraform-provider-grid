@@ -86,6 +86,12 @@ func ReourceScheduler() *schema.Resource {
 							},
 							Description: "List of node ids you want to exclude from the search.",
 						},
+						"distinct": {
+							Type:        schema.TypeBool,
+							Optional:    true,
+							Default:     false,
+							Description: "True to ensure this request returns a distinct node relative to this scheduler resource.",
+						},
 					},
 				},
 			},
@@ -136,6 +142,7 @@ func parseRequests(d *schema.ResourceData, assignment map[string]uint32) []sched
 				HRU: uint64(mp["hru"].(int)) * uint64(gridtypes.Megabyte),
 				SRU: uint64(mp["sru"].(int)) * uint64(gridtypes.Megabyte),
 			},
+			Distinct: mp["distinct"].(bool),
 		})
 	}
 	return reqs
@@ -151,11 +158,17 @@ func schedule(ctx context.Context, d *schema.ResourceData, meta interface{}) dia
 	reqs := parseRequests(d, assignment)
 	scheduler := scheduler.NewScheduler(threefoldPluginClient.gridProxyClient, uint64(threefoldPluginClient.twinID))
 	for _, r := range reqs {
+		if r.Distinct {
+			r.NodeExclude = append(r.NodeExclude, assignedNodes...)
+		}
 		node, err := scheduler.Schedule(&r)
 		if err != nil {
 			return diag.FromErr(errors.Wrapf(err, "couldn't schedule request %s", r.Name))
 		}
 		assignment[r.Name] = node
+		if !Contains(assignedNodes, node) {
+			assignedNodes = append(assignedNodes, node)
+		}
 	}
 	err := d.Set("nodes", assignment)
 	if err != nil {

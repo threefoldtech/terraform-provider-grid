@@ -8,38 +8,52 @@ terraform {
 provider "grid" {
 }
 
+resource "grid_scheduler" "sched" {
+  requests {
+    name = "peertube"
+    cru  = 2
+    sru  = 512
+    mru  = 4096
+  }
+
+  requests {
+    name          = "domain"
+    public_config = true
+  }
+}
+
+locals {
+  solution_type = "Peertube"
+  name          = "ashraftube"
+  node          = grid_scheduler.sched.nodes["peertube"]
+}
+
 # this data source is used to break circular dependency in cases similar to the following:
 # vm: needs to know the domain in its init script
 # gateway_name: needs the ip of the vm to use as backend.
 # - the fqdn can be computed from grid_gateway_domain for the vm
 # - the backend can reference the vm ip directly  
-locals {
-  solution_type = "Peertube"
-  name          = "ashraftube"
-  node          = 34
-}
 data "grid_gateway_domain" "domain" {
-  node = 45
+  node = grid_scheduler.sched.nodes["domain"]
   name = local.name
 }
 
 resource "grid_network" "net1" {
   solution_type = local.solution_type
   name          = local.name
-  nodes         = [local.node]
+  nodes         = [grid_scheduler.sched.nodes["peertube"]]
   ip_range      = "10.1.0.0/16"
   description   = "newer network"
 }
 resource "grid_deployment" "d1" {
-  node          = local.node
+  node          = grid_scheduler.sched.nodes["peertube"]
   solution_type = local.solution_type
   name          = local.name
   network_name  = grid_network.net1.name
   vms {
-    name  = "vm1"
-    flist = "https://hub.grid.tf/tf-official-apps/peertube-v3.1.1.flist"
-    cpu   = 2
-    # publicip = true
+    name       = "vm1"
+    flist      = "https://hub.grid.tf/tf-official-apps/peertube-v3.1.1.flist"
+    cpu        = 2
     entrypoint = "/sbin/zinit init"
     memory     = 4096
     env_vars = {
@@ -59,7 +73,7 @@ resource "grid_deployment" "d1" {
   }
 }
 resource "grid_name_proxy" "p1" {
-  node            = 45
+  node            = grid_scheduler.sched.nodes["domain"]
   solution_type   = local.solution_type
   name            = local.name
   backends        = [format("http://[%s]:9000", grid_deployment.d1.vms[0].ygg_ip)]

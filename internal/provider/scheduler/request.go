@@ -20,6 +20,7 @@ type Request struct {
 	Certified      bool
 	Dedicated      bool
 	NodeExclude    []uint32
+	Distinct       bool
 }
 
 func (r *Request) constructFilter(twinID uint64) (f proxyTypes.NodeFilter) {
