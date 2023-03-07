@@ -156,20 +156,12 @@ func schedule(ctx context.Context, d *schema.ResourceData, meta interface{}) dia
 	// read previously assigned nodes
 	assignment := parseAssignment(d)
 	reqs := parseRequests(d, assignment)
-	scheduler := scheduler.NewScheduler(threefoldPluginClient.gridProxyClient, uint64(threefoldPluginClient.twinID))
-	for _, r := range reqs {
-		if r.Distinct {
-			r.NodeExclude = append(r.NodeExclude, assignedNodes...)
-		}
-		node, err := scheduler.Schedule(&r)
-		if err != nil {
-			return diag.FromErr(errors.Wrapf(err, "couldn't schedule request %s", r.Name))
-		}
-		assignment[r.Name] = node
-		if !Contains(assignedNodes, node) {
-			assignedNodes = append(assignedNodes, node)
-		}
+
+	scheduler := scheduler.NewScheduler(threefoldPluginClient.gridProxyClient, uint64(threefoldPluginClient.twinID), threefoldPluginClient.rmb)
+	if err := scheduler.ProcessRequests(ctx, reqs, assignment); err != nil {
+		return diag.FromErr(err)
 	}
+
 	err := d.Set("nodes", assignment)
 	if err != nil {
 		return diag.FromErr(errors.Wrapf(err, "couldn't set nodes with %v", assignment))

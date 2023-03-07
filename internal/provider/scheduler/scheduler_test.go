@@ -23,14 +23,13 @@ type RMBClientMock struct {
 
 func (r *RMBClientMock) Call(ctx context.Context, twin uint32, fn string, data interface{}, result interface{}) error {
 	d := data.(FarmerBotAction)
-	if d.Action == "farmerbot.farmmanager.version" {
+	if d.Action == FarmerBotVersionAction {
 		if r.hasFarmerBot {
 			return nil
 		} else {
-
 			return errors.New("this farm does not have a farmer bot")
 		}
-	} else if d.Action == "farmerbot.nodemanager.findnode" {
+	} else if d.Action == FarmerBotFindNodeAction {
 
 		if r.nodeID == 0 {
 			d.Error = "could not find node"
@@ -116,7 +115,7 @@ func TestSchedulerEmpty(t *testing.T) {
 		hasFarmerBot: false,
 	}
 	scheduler := NewScheduler(proxy, 1, rmbClient)
-	_, err := scheduler.Schedule(&Request{
+	_, err := scheduler.Schedule(context.Background(), &Request{
 		Capacity: Capacity{
 			MRU: 1,
 			SRU: 2,
@@ -168,7 +167,7 @@ func TestSchedulerSuccess(t *testing.T) {
 		},
 	})
 	scheduler := NewScheduler(proxy, 1, rmbClient)
-	nodeID, err := scheduler.Schedule(&Request{
+	nodeID, err := scheduler.Schedule(context.Background(), &Request{
 		Capacity: Capacity{
 			HRU: 3,
 			SRU: 7,
@@ -222,7 +221,7 @@ func TestSchedulerSuccessOn4thPage(t *testing.T) {
 		},
 	})
 	scheduler := NewScheduler(proxy, 1, rmbClient)
-	nodeID, err := scheduler.Schedule(&Request{
+	nodeID, err := scheduler.Schedule(context.Background(), &Request{
 		Capacity: Capacity{
 			HRU: 3,
 			SRU: 7,
@@ -287,7 +286,7 @@ func TestSchedulerFailure(t *testing.T) {
 		scheduler := NewScheduler(proxy, 1, rmbClient)
 		cp := req
 		fn(&cp)
-		_, err := scheduler.Schedule(&cp)
+		_, err := scheduler.Schedule(context.Background(), &cp)
 		assert.Error(t, err, fmt.Sprintf("scheduler-failure-%s", key))
 	}
 }
@@ -325,7 +324,7 @@ func TestSchedulerFailureAfterSuccess(t *testing.T) {
 		},
 	})
 	scheduler := NewScheduler(proxy, 1, rmbClient)
-	nodeID, err := scheduler.Schedule(&Request{
+	nodeID, err := scheduler.Schedule(context.Background(), &Request{
 		Capacity: Capacity{
 			HRU: 2,
 			SRU: 6,
@@ -340,7 +339,7 @@ func TestSchedulerFailureAfterSuccess(t *testing.T) {
 	assert.NoError(t, err, "there's a satisfying node")
 	assert.Equal(t, nodeID, uint32(1), "the node id should be 1")
 
-	_, err = scheduler.Schedule(&Request{
+	_, err = scheduler.Schedule(context.Background(), &Request{
 		Capacity: Capacity{
 			HRU: 1,
 			SRU: 1,
@@ -390,7 +389,7 @@ func TestSchedulerSuccessAfterSuccess(t *testing.T) {
 		},
 	})
 	scheduler := NewScheduler(proxy, 1, rmbClient)
-	nodeID, err := scheduler.Schedule(&Request{
+	nodeID, err := scheduler.Schedule(context.Background(), &Request{
 		Capacity: Capacity{
 			HRU: 2,
 			SRU: 6,
@@ -405,7 +404,7 @@ func TestSchedulerSuccessAfterSuccess(t *testing.T) {
 	assert.NoError(t, err, "there's a satisfying node")
 	assert.Equal(t, nodeID, uint32(1), "the node id should be 1")
 
-	_, err = scheduler.Schedule(&Request{
+	_, err = scheduler.Schedule(context.Background(), &Request{
 		Capacity: Capacity{
 			HRU: 1,
 			SRU: 1,
@@ -420,4 +419,77 @@ func TestSchedulerSuccessAfterSuccess(t *testing.T) {
 	assert.NoError(t, err, "there's a satisfying node")
 	assert.Equal(t, nodeID, uint32(1), "the node id should be 1")
 
+}
+
+func TestExcludingNodes(t *testing.T) {
+	proxy := &GridProxyClientMock{}
+	rmbClient := &RMBClientMock{
+		hasFarmerBot: false,
+	}
+	proxy.AddNode(1, proxyTypes.Node{
+		NodeID: 1,
+		FarmID: 1,
+	})
+	proxy.AddNode(2, proxyTypes.Node{
+		NodeID: 2,
+		FarmID: 1,
+	})
+	proxy.AddFarm(proxyTypes.Farm{
+		FarmID: 1,
+	})
+	scheduler := NewScheduler(proxy, 1, rmbClient)
+	node, err := scheduler.Schedule(context.Background(), &Request{
+		NodeExclude: []uint32{1},
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, node, uint32(2))
+
+	node, err = scheduler.Schedule(context.Background(), &Request{
+		NodeExclude: []uint32{2},
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, node, uint32(1))
+}
+
+func TestDistinctNodes(t *testing.T) {
+	proxy := &GridProxyClientMock{}
+	rmbClient := &RMBClientMock{
+		hasFarmerBot: false,
+	}
+	proxy.AddNode(1, proxyTypes.Node{
+		NodeID: 1,
+		FarmID: 1,
+	})
+	proxy.AddNode(2, proxyTypes.Node{
+		NodeID: 2,
+		FarmID: 1,
+	})
+	proxy.AddNode(3, proxyTypes.Node{
+		NodeID: 3,
+		FarmID: 1,
+	})
+	proxy.AddFarm(proxyTypes.Farm{
+		FarmID: 1,
+	})
+	requests := []Request{
+		{
+			Name:     "r1",
+			Distinct: true,
+		},
+		{
+			Name:     "r2",
+			Distinct: true,
+		},
+		{
+			Name:     "r3",
+			Distinct: true,
+		},
+	}
+	scheduler := NewScheduler(proxy, 1, rmbClient)
+	assignment := map[string]uint32{}
+	err := scheduler.ProcessRequests(context.Background(), requests, assignment)
+	assert.NoError(t, err)
+	assert.NotEqual(t, assignment["r1"], assignment["r2"])
+	assert.NotEqual(t, assignment["r1"], assignment["r3"])
+	assert.NotEqual(t, assignment["r2"], assignment["r3"])
 }

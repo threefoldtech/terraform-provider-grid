@@ -4,18 +4,22 @@ package scheduler
 import (
 	"context"
 	"fmt"
-	"log"
 	"math/rand"
-	"strconv"
-	"strings"
-	"time"
 
-	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	proxy "github.com/threefoldtech/grid_proxy_server/pkg/client"
 	proxyTypes "github.com/threefoldtech/grid_proxy_server/pkg/types"
 	"github.com/threefoldtech/rmb-sdk-go"
 )
+
+// Scheduler struct for scheduling
+type Scheduler struct {
+	nodes           map[uint32]nodeInfo
+	farms           map[uint32]farmInfo
+	twinID          uint64
+	gridProxyClient proxy.Client
+	rmbClient       rmb.Client
+}
 
 // nodeInfo related to scheduling
 type nodeInfo struct {
@@ -35,7 +39,6 @@ func (s *Scheduler) consumePublicIPs(farmID uint32, IPs uint32) {
 }
 
 func (node *nodeInfo) fulfils(r *Request, farm farmInfo) bool {
-	log.Printf("request: %+v\nfarminfo: %+v", r, farm)
 	if r.Capacity.MRU > node.FreeCapacity.MRU ||
 		r.Capacity.HRU > node.FreeCapacity.HRU ||
 		r.Capacity.SRU > node.FreeCapacity.SRU ||
@@ -50,17 +53,6 @@ func (node *nodeInfo) fulfils(r *Request, farm farmInfo) bool {
 	return true
 }
 
-// Scheduler struct for scheduling
-type Scheduler struct {
-	nodes  map[uint32]nodeInfo
-	farms  map[uint32]farmInfo
-	twinID uint64
-	// mapping from farm name to its id
-	farmIDS         map[uint32]int
-	gridProxyClient proxy.Client
-	rmbClient       rmb.Client
-}
-
 // NewScheduler generates a new scheduler
 func NewScheduler(gridProxyClient proxy.Client, twinID uint64, rmbClient rmb.Client) Scheduler {
 	return Scheduler{
@@ -68,7 +60,6 @@ func NewScheduler(gridProxyClient proxy.Client, twinID uint64, rmbClient rmb.Cli
 		gridProxyClient: gridProxyClient,
 
 		twinID:    twinID,
-		farmIDS:   make(map[uint32]int),
 		farms:     make(map[uint32]farmInfo),
 		rmbClient: rmbClient,
 	}
@@ -143,39 +134,13 @@ func (n *Scheduler) addNodes(nodes []proxyTypes.Node) {
 }
 
 // Schedule makes sure there's at least one node that satisfies the given request
-func (n *Scheduler) Schedule(r *Request) (uint32, error) {
-	// check if farm id is set
-	// if farm id is set, try farmerbot fist, then gridproxy
-	// if not, use gridproxy without specifying farm id
+func (n *Scheduler) Schedule(ctx context.Context, r *Request) (uint32, error) {
 	if r.FarmId != 0 {
-		if n.hasFarmerBot(r.FarmId) {
-			log.Printf("using farmerbot ...")
-			return n.farmerBotSchedule(r)
+		if n.hasFarmerBot(ctx, r.FarmId) {
+			return n.farmerBotSchedule(ctx, r)
 		}
 	}
-	log.Printf("using gridproxy ...")
 	return n.gridProxySchedule(r)
-
-}
-
-func (s *Scheduler) hasFarmerBot(farmID uint32) bool {
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
-	_, err := s.getFarmInfo(farmID)
-	if err != nil {
-		return false
-	}
-	args := []Args{}
-	params := []Params{}
-	data := s.generateFarmerBotAction(farmID, args, params, "farmerbot.farmmanager.version")
-	var output FarmerBotAction
-	dst := s.farms[farmID].farmerTwinID
-	err = s.rmbClient.Call(ctx, dst, "execute_job", data, &output)
-	if err != nil {
-		log.Printf("error pinging farmerbot %+v", err)
-	}
-
-	return err == nil
 }
 
 func (n *Scheduler) gridProxySchedule(r *Request) (uint32, error) {
@@ -208,140 +173,28 @@ func (n *Scheduler) gridProxySchedule(r *Request) (uint32, error) {
 	return node, nil
 }
 
-func (n *Scheduler) farmerBotSchedule(r *Request) (uint32, error) {
-	// we need to check if farm id is specified or not
-	// if specified, then only this farm will receive a call
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	info, err := n.getFarmInfo(r.FarmId)
-	if err != nil {
-		return 0, errors.Wrap(err, "error getting farm info")
-	}
-	params := generateFarmerBotParams(r)
-	args := generateFarmerBotArgs(r)
-	data := n.generateFarmerBotAction(info.farmerTwinID, args, params, "farmerbot.nodemanager.findnode")
-	output := FarmerBotAction{}
-
-	err = n.rmbClient.Call(ctx, info.farmerTwinID, "execute_job", data, &output)
-	if err != nil {
-		return 0, err
-	}
-	if len(output.Result.Params) < 1 {
-		return 0, errors.New("can not find a node to deploy on")
-	}
-	nodeId, err := strconv.ParseUint(output.Result.Params[0].Value.(string), 10, 32)
-	if err != nil {
-		return 0, err
-	}
-	log.Printf("got a node with id %d", nodeId)
-	return uint32(nodeId), nil
-}
-
-func generateFarmerBotArgs(r *Request) []Args {
-	return []Args{}
-}
-func generateFarmerBotParams(r *Request) []Params {
-	params := []Params{}
-	if r.Capacity.HRU != 0 {
-		params = append(params, Params{Key: "required_hru", Value: r.Capacity.HRU})
+func (s *Scheduler) ProcessRequests(ctx context.Context, reqs []Request, assignment map[string]uint32) error {
+	assignedNodes := []uint32{}
+	for _, node := range assignment {
+		if !contains(assignedNodes, node) {
+			assignedNodes = append(assignedNodes, node)
+		}
 	}
 
-	if r.Capacity.SRU != 0 {
-		params = append(params, Params{Key: "required_sru", Value: r.Capacity.SRU})
+	for _, r := range reqs {
+		if r.Distinct {
+			r.NodeExclude = append(r.NodeExclude, assignedNodes...)
+		}
+		node, err := s.Schedule(ctx, &r)
+		if err != nil {
+			return errors.Wrapf(err, "couldn't schedule request %s", r.Name)
+		}
+		assignment[r.Name] = node
+		if !contains(assignedNodes, node) {
+			assignedNodes = append(assignedNodes, node)
+		}
 	}
-
-	if r.Capacity.MRU != 0 {
-		params = append(params, Params{Key: "required_mru", Value: r.Capacity.MRU})
-	}
-
-	if r.Capacity.CRU != 0 {
-		params = append(params, Params{Key: "required_cru", Value: r.Capacity.CRU})
-	}
-
-	if len(r.NodeExclude) != 0 {
-		value := strings.Trim(strings.Join(strings.Fields(fmt.Sprint(r.NodeExclude)), ","), "")
-		params = append(params, Params{Key: "node_exclude", Value: value})
-	}
-
-	if r.Dedicated {
-		params = append(params, Params{Key: "dedicated", Value: r.Dedicated})
-	}
-
-	if r.PublicConfig {
-		params = append(params, Params{Key: "public_config", Value: r.PublicConfig})
-	}
-
-	if r.PublicIpsCount > 0 {
-		params = append(params, Params{Key: "public_ips", Value: r.PublicIpsCount})
-	}
-
-	if r.Certified {
-		params = append(params, Params{Key: "certified", Value: r.Certified})
-	}
-	return params
-}
-
-type FarmerBotAction struct {
-	Guid         string        `json:"guid"`
-	TwinID       uint32        `json:"twinid"`
-	Action       string        `json:"action"`
-	Args         FarmerBotArgs `json:"args"`
-	Result       FarmerBotArgs `json:"result"`
-	State        string        `json:"state"`
-	Start        uint64        `json:"start"`
-	End          uint64        `json:"end"`
-	GracePeriod  uint32        `json:"grace_period"`
-	Error        string        `json:"error"`
-	Timeout      uint32        `json:"timeout"`
-	SourceTwinID uint32        `json:"src_twinid"`
-	SourceAction string        `json:"src_action"`
-	Dependencies []string      `json:"dependencies"`
-}
-
-type FarmerBotArgs struct {
-	Args   []Args   `json:"args"`
-	Params []Params `json:"params"`
-}
-
-type Args struct {
-	RequiredHRU  *uint64  `json:"required_hru,omitempty"`
-	RequiredSRU  *uint64  `json:"required_sru,omitempty"`
-	RequiredCRU  *uint64  `json:"required_cru,omitempty"`
-	RequiredMRU  *uint64  `json:"required_mru,omitempty"`
-	NodeExclude  []uint32 `json:"node_exclude,omitempty"`
-	Dedicated    *bool    `json:"dedicated,omitempty"`
-	PublicConfig *bool    `json:"public_config,omitempty"`
-	PublicIPs    *uint32  `json:"public_ips"`
-	Certified    *bool    `json:"certified,omitempty"`
-}
-
-type Params struct {
-	Key   string      `json:"key"`
-	Value interface{} `json:"value"`
-}
-
-func (s *Scheduler) generateFarmerBotAction(farmerTwinID uint32, args []Args, params []Params, action string) FarmerBotAction {
-	return FarmerBotAction{
-		Guid:   uuid.NewString(),
-		TwinID: farmerTwinID,
-		Action: action,
-		Args: FarmerBotArgs{
-			Args:   args,
-			Params: params,
-		},
-		Result: FarmerBotArgs{
-			Args:   []Args{},
-			Params: []Params{},
-		},
-		State:        "init",
-		Start:        uint64(time.Now().Unix()),
-		End:          0,
-		GracePeriod:  0,
-		Error:        "",
-		Timeout:      6000,
-		SourceTwinID: uint32(s.twinID),
-		Dependencies: []string{},
-	}
+	return nil
 }
 
 func contains[T comparable](elements []T, element T) bool {
@@ -352,9 +205,3 @@ func contains[T comparable](elements []T, element T) bool {
 	}
 	return false
 }
-
-/*
-	- implement ping farmerbot
-	- action should be base64 encoded
-	-
-*/
