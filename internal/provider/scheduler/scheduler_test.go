@@ -3,6 +3,7 @@ package scheduler
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -21,21 +22,28 @@ type RMBClientMock struct {
 }
 
 func (r *RMBClientMock) Call(ctx context.Context, twin uint32, fn string, data interface{}, result interface{}) error {
-	if fn == "farmerbot.farmmanager.version" {
+	d := data.(FarmerBotAction)
+	if d.Action == "farmerbot.farmmanager.version" {
 		if r.hasFarmerBot {
 			return nil
-		}
-		return errors.New("this farm does not have a farmer bot")
-	}
+		} else {
 
-	d := data.(*FarmerBotAction)
-	if r.nodeID == 0 {
-		d.Error = "could not find node"
+			return errors.New("this farm does not have a farmer bot")
+		}
+	} else if d.Action == "farmerbot.nodemanager.findnode" {
+
+		if r.nodeID == 0 {
+			d.Error = "could not find node"
+			return nil
+		}
+		output := result.(*FarmerBotAction)
+
+		output.Result.Params = append(output.Args.Params, Params{Key: "nodeid", Value: strconv.FormatUint(uint64(r.nodeID), 10)})
 		return nil
+
+	} else {
+		return fmt.Errorf("fn: %s not supported", d.Action)
 	}
-	d.Result.Params.Key = "nodeid"
-	d.Result.Params.Value = r.nodeID
-	return nil
 }
 
 func (m *GridProxyClientMock) Ping() error {

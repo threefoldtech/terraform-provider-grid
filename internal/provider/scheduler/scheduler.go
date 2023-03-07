@@ -3,11 +3,11 @@ package scheduler
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -171,6 +171,10 @@ func (s *Scheduler) hasFarmerBot(farmID uint32) bool {
 	var output FarmerBotAction
 	dst := s.farms[farmID].farmerTwinID
 	err = s.rmbClient.Call(ctx, dst, "execute_job", data, &output)
+	if err != nil {
+		log.Printf("error pinging farmerbot %+v", err)
+	}
+
 	return err == nil
 }
 
@@ -209,23 +213,19 @@ func (n *Scheduler) farmerBotSchedule(r *Request) (uint32, error) {
 	// if specified, then only this farm will receive a call
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	_, err := n.getFarmInfo(r.FarmId)
+	info, err := n.getFarmInfo(r.FarmId)
 	if err != nil {
 		return 0, errors.Wrap(err, "error getting farm info")
 	}
 	params := generateFarmerBotParams(r)
 	args := generateFarmerBotArgs(r)
-	data := n.generateFarmerBotAction(r.FarmId, args, params, "farmerbot.nodemanager.findnode")
+	data := n.generateFarmerBotAction(info.farmerTwinID, args, params, "farmerbot.nodemanager.findnode")
 	output := FarmerBotAction{}
 
-	b, err := json.Marshal(data)
-	log.Printf("outgoing data: %+v", string(b))
-
-	err = n.rmbClient.Call(ctx, n.farms[r.FarmId].farmerTwinID, "execute_job", data, &output)
+	err = n.rmbClient.Call(ctx, info.farmerTwinID, "execute_job", data, &output)
 	if err != nil {
 		return 0, err
 	}
-	log.Printf("incoming data: %+v", output)
 	if len(output.Result.Params) < 1 {
 		return 0, errors.New("can not find a node to deploy on")
 	}
@@ -245,27 +245,36 @@ func generateFarmerBotParams(r *Request) []Params {
 	if r.Capacity.HRU != 0 {
 		params = append(params, Params{Key: "required_hru", Value: r.Capacity.HRU})
 	}
+
 	if r.Capacity.SRU != 0 {
 		params = append(params, Params{Key: "required_sru", Value: r.Capacity.SRU})
 	}
+
 	if r.Capacity.MRU != 0 {
 		params = append(params, Params{Key: "required_mru", Value: r.Capacity.MRU})
 	}
+
 	if r.Capacity.CRU != 0 {
 		params = append(params, Params{Key: "required_cru", Value: r.Capacity.CRU})
 	}
+
 	if len(r.NodeExclude) != 0 {
-		params = append(params, Params{Key: "node_exclude", Value: r.NodeExclude})
+		value := strings.Trim(strings.Join(strings.Fields(fmt.Sprint(r.NodeExclude)), ","), "")
+		params = append(params, Params{Key: "node_exclude", Value: value})
 	}
+
 	if r.Dedicated {
 		params = append(params, Params{Key: "dedicated", Value: r.Dedicated})
 	}
+
 	if r.PublicConfig {
 		params = append(params, Params{Key: "public_config", Value: r.PublicConfig})
 	}
+
 	if r.PublicIpsCount > 0 {
 		params = append(params, Params{Key: "public_ips", Value: r.PublicIpsCount})
 	}
+
 	if r.Certified {
 		params = append(params, Params{Key: "certified", Value: r.Certified})
 	}
@@ -311,10 +320,10 @@ type Params struct {
 	Value interface{} `json:"value"`
 }
 
-func (s *Scheduler) generateFarmerBotAction(farmID uint32, args []Args, params []Params, action string) FarmerBotAction {
+func (s *Scheduler) generateFarmerBotAction(farmerTwinID uint32, args []Args, params []Params, action string) FarmerBotAction {
 	return FarmerBotAction{
 		Guid:   uuid.NewString(),
-		TwinID: s.farms[farmID].farmerTwinID,
+		TwinID: farmerTwinID,
 		Action: action,
 		Args: FarmerBotArgs{
 			Args:   args,
