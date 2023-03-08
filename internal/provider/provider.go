@@ -221,14 +221,14 @@ func providerConfigure(st state.StateI) (func(ctx context.Context, d *schema.Res
 		}
 		relayURL := d.Get("relay_url").(string)
 		if relayURL != "" {
-			cl, err = direct.NewClient(key_type, apiClient.mnemonics, relayURL, sessionID, sub)
+			cl, err = direct.NewClient(context.Background(), key_type, apiClient.mnemonics, relayURL, sessionID, sub, false)
 		} else {
 			relayURL, ok := RelayURLs[network]
 			if !ok {
 				return nil, diag.Errorf("error getting relay url for network %s", network)
 			}
 
-			cl, err = direct.NewClient(key_type, apiClient.mnemonics, relayURL, sessionID, sub)
+			cl, err = direct.NewClient(context.Background(), key_type, apiClient.mnemonics, relayURL, sessionID, sub, false)
 		}
 
 		if err != nil {
