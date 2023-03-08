@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     grid = {
-      source  = "threefoldtechdev.com/providers/grid"
+      source = "threefoldtech/grid"
       version = "0.2"
     }
   }
