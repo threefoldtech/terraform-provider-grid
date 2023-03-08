@@ -23,14 +23,13 @@ type RMBClientMock struct {
 
 func (r *RMBClientMock) Call(ctx context.Context, twin uint32, fn string, data interface{}, result interface{}) error {
 	d := data.(FarmerBotAction)
-	if d.Action == FarmerBotVersionAction {
+	switch d.Action {
+	case FarmerBotVersionAction:
 		if r.hasFarmerBot {
 			return nil
-		} else {
-			return errors.New("this farm does not have a farmer bot")
 		}
-	} else if d.Action == FarmerBotFindNodeAction {
-
+		return errors.New("this farm does not have a farmer bot")
+	case FarmerBotFindNodeAction:
 		if r.nodeID == 0 {
 			d.Error = "could not find node"
 			return nil
@@ -39,8 +38,7 @@ func (r *RMBClientMock) Call(ctx context.Context, twin uint32, fn string, data i
 
 		output.Result.Params = append(output.Args.Params, Params{Key: "nodeid", Value: strconv.FormatUint(uint64(r.nodeID), 10)})
 		return nil
-
-	} else {
+	default:
 		return fmt.Errorf("fn: %s not supported", d.Action)
 	}
 }
