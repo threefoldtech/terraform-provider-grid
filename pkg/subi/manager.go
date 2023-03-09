@@ -22,5 +22,7 @@ func NewManager(url ...string) Manager {
 
 func (m *manager) SubstrateExt() (SubstrateExt, error) {
 	sub, err := m.Substrate()
-	return &SubstrateImpl{sub}, err
+	return &SubstrateImpl{
+		Substrate: sub,
+	}, err
 }

@@ -8,28 +8,64 @@ import (
 )
 
 func TestState(t *testing.T) {
-	f, err := NewLocalStateDB(TypeFile)
-	assert.NoError(t, err)
-	err = f.Load()
-	assert.NoError(t, err)
-	st := f.GetState()
-	ns := st.GetNetworkState()
-	network := ns.GetNetwork("abc")
-	network.SetNodeSubnet(32, "10.1.1.0/24")
-	network.SetNodeSubnet(15, "10.1.1.0/24")
-	network.SetDeploymentIPs(32, "12345", []byte{1, 2, 3})
-	network.DeleteDeployment(32, "12345")
-	network.DeleteNodeSubnet(32)
-	err = f.Save()
-	assert.NoError(t, err)
-	state := NewState()
-	state.Networks["abc"] = NewNetwork()
-	state.Networks["abc"].Subnets[15] = "10.1.1.0/24"
-	state.Networks["abc"].NodeIPs[32] = make(deploymentIPs)
-	bt1, err := st.Marshal()
-	assert.NoError(t, err)
-	bt2, err := json.Marshal(state)
-	assert.NoError(t, err)
-	assert.Equal(t, bt1, bt2)
+	var localFileState LocalFileState
+
+	var localState State
+	var newState State
+
+	var marshalLocalState []byte
+	var marshalNewState []byte
+
+	var err error
+
+	t.Run("test_local_file_state", func(t *testing.T) {
+		localFileState = NewLocalFileState()
+
+		err = localFileState.Load(FileName)
+		assert.NoError(t, err)
+	})
+
+	t.Run("test_get_local_state", func(t *testing.T) {
+		localState = localFileState.GetState()
+
+		networkState := localState.GetNetworkState()
+		network := networkState.GetNetwork("abc")
+		network.SetNodeSubnet(32, "10.1.1.0/24")
+		network.SetNodeSubnet(15, "10.1.1.0/24")
+		network.SetDeploymentHostIDs(32, "12345", []byte{1, 2, 3})
+		network.DeleteDeploymentHostIDs(32, "12345")
+		network.DeleteNodeSubnet(32)
+
+		err = localFileState.Save(FileName)
+		assert.NoError(t, err)
+	})
+
+	t.Run("test_marshal_local_state", func(t *testing.T) {
+		marshalLocalState, err = json.Marshal(localState)
+		assert.NoError(t, err)
+	})
+
+	t.Run("test_new_state", func(t *testing.T) {
+		newState = NewState()
+
+		newState.Networks["abc"] = NewNetwork()
+		newState.Networks["abc"].Subnets[15] = "10.1.1.0/24"
+		newState.Networks["abc"].NodeDeploymentHostIDs[32] = make(DeploymentHostIDs)
+	})
+
+	t.Run("test_marshal_local_state", func(t *testing.T) {
+		marshalNewState, err = json.Marshal(newState)
+		assert.NoError(t, err)
+	})
+
+	t.Run("test_equal_local_and_created_state", func(t *testing.T) {
+		assert.Equal(t, marshalLocalState, marshalNewState)
+	})
+
+	t.Run("test_delete_state", func(t *testing.T) {
+		err = localFileState.Delete(FileName)
+		assert.NoError(t, err)
+	})
+
 	assert.NoError(t, err)
 }

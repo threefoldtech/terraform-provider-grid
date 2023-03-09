@@ -18,6 +18,7 @@ import (
 	"github.com/threefoldtech/terraform-provider-grid/pkg/deployer"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/state"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
+	"github.com/threefoldtech/terraform-provider-grid/pkg/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
@@ -110,11 +111,7 @@ func resourceNetwork() *schema.Resource {
 }
 
 type NetworkDeployer struct {
-	Name        string
-	Description string
-	Nodes       []uint32
-	IPRange     gridtypes.IPNet
-	AddWGAccess bool
+	ZNet workloads.ZNet
 
 	AccessWGConfig   string
 	ExternalIP       *gridtypes.IPNet
@@ -123,14 +120,15 @@ type NetworkDeployer struct {
 	NodeDeploymentID map[uint32]uint64
 	NodesIPRange     map[uint32]gridtypes.IPNet
 
-	WGPort    map[uint32]int
-	Keys      map[uint32]wgtypes.Key
-	APIClient *apiClient
-	ncPool    *client.NodeClientPool
-	deployer  deployer.Deployer
+	WGPort                map[uint32]int
+	Keys                  map[uint32]wgtypes.Key
+	ThreefoldPluginClient *threefoldPluginClient
+	ncPool                *client.NodeClientPool
+	deployer              deployer.Deployer
 }
 
-func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *apiClient) (NetworkDeployer, error) {
+// NewNetworkDeployer reads the network resource configuration data from schema.ResourceData, converts them into a NetworkDeployer instance, and returns this instance.
+func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (NetworkDeployer, error) {
 	var err error
 	nodesIf := d.Get("nodes").([]interface{})
 	nodes := make([]uint32, len(nodesIf))
@@ -187,7 +185,7 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 	if err != nil {
 		return NetworkDeployer{}, errors.Wrap(err, "couldn't parse network ip range")
 	}
-	pool := client.NewNodeClientPool(apiClient.rmb)
+	pool := client.NewNodeClientPool(threefoldPluginClient.rmb, threefoldPluginClient.rmbTimeout)
 	deploymentData := DeploymentData{
 		Name:        d.Get("name").(string),
 		Type:        "network",
@@ -198,28 +196,30 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, apiClient *
 		log.Printf("error parsing deploymentdata: %s", err.Error())
 	}
 	deployer := NetworkDeployer{
-		Name:             d.Get("name").(string),
-		Description:      d.Get("description").(string),
-		Nodes:            nodes,
-		IPRange:          ipRange,
-		AddWGAccess:      addWGAccess,
-		AccessWGConfig:   d.Get("access_wg_config").(string),
-		ExternalIP:       externalIP,
-		ExternalSK:       externalSK,
-		PublicNodeID:     uint32(d.Get("public_node_id").(int)),
-		NodesIPRange:     nodesIPRange,
-		NodeDeploymentID: nodeDeploymentID,
-		Keys:             make(map[uint32]wgtypes.Key),
-		WGPort:           make(map[uint32]int),
-		APIClient:        apiClient,
-		ncPool:           pool,
-		deployer:         deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true, nil, string(deploymentDataStr)),
+		ZNet: workloads.ZNet{
+			Name:        d.Get("name").(string),
+			Description: d.Get("description").(string),
+			Nodes:       nodes,
+			IPRange:     ipRange,
+			AddWGAccess: addWGAccess,
+		},
+		AccessWGConfig:        d.Get("access_wg_config").(string),
+		ExternalIP:            externalIP,
+		ExternalSK:            externalSK,
+		PublicNodeID:          uint32(d.Get("public_node_id").(int)),
+		NodesIPRange:          nodesIPRange,
+		NodeDeploymentID:      nodeDeploymentID,
+		Keys:                  make(map[uint32]wgtypes.Key),
+		WGPort:                make(map[uint32]int),
+		ThreefoldPluginClient: threefoldPluginClient,
+		ncPool:                pool,
+		deployer:              deployer.NewDeployer(threefoldPluginClient.identity, threefoldPluginClient.twinID, threefoldPluginClient.gridProxyClient, pool, true, nil, string(deploymentDataStr)),
 	}
 	return deployer, nil
 }
 
 // invalidateBrokenAttributes removes outdated attrs and deleted contracts
-func (k *NetworkDeployer) invalidateBrokenAttributes(sub subi.SubstrateExt) error {
+func (k *NetworkDeployer) invalidateBrokenAttributes(ctx context.Context, sub subi.SubstrateExt) error {
 
 	for node, contractID := range k.NodeDeploymentID {
 		contract, err := sub.GetContract(contractID)
@@ -232,16 +232,16 @@ func (k *NetworkDeployer) invalidateBrokenAttributes(sub subi.SubstrateExt) erro
 			return errors.Wrapf(err, "couldn't get node %d contract %d", node, contractID)
 		}
 	}
-	if k.ExternalIP != nil && !k.IPRange.Contains(k.ExternalIP.IP) {
+	if k.ExternalIP != nil && !k.ZNet.IPRange.Contains(k.ExternalIP.IP) {
 		k.ExternalIP = nil
 	}
 	for node, ip := range k.NodesIPRange {
-		if !k.IPRange.Contains(ip.IP) {
+		if !k.ZNet.IPRange.Contains(ip.IP) {
 			delete(k.NodesIPRange, node)
 		}
 	}
 
-	if !k.AddWGAccess {
+	if !k.ZNet.AddWGAccess {
 		k.ExternalIP = nil
 	}
 
@@ -254,7 +254,7 @@ func (k *NetworkDeployer) invalidateBrokenAttributes(sub subi.SubstrateExt) erro
 			return nil
 		}
 
-		if err := cl.IsNodeUp(context.Background()); err != nil {
+		if err := cl.IsNodeUp(ctx); err != nil {
 			k.PublicNodeID = 0
 		}
 
@@ -263,22 +263,22 @@ func (k *NetworkDeployer) invalidateBrokenAttributes(sub subi.SubstrateExt) erro
 	return nil
 }
 func (k *NetworkDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error {
-	if err := validateAccountMoneyForExtrinsics(sub, k.APIClient.identity); err != nil {
+	if err := validateAccountBalanceForExtrinsics(sub, k.ThreefoldPluginClient.identity); err != nil {
 		return err
 	}
-	mask := k.IPRange.Mask
+	mask := k.ZNet.IPRange.Mask
 	if ones, _ := mask.Size(); ones != 16 {
-		return fmt.Errorf("subnet in iprange %s should be 16", k.IPRange.String())
+		return fmt.Errorf("subnet in ip range %s should be 16", k.ZNet.IPRange.String())
 	}
 
-	return client.AreNodesUp(ctx, sub, k.Nodes, k.ncPool)
+	return client.AreNodesUp(ctx, sub, k.ZNet.Nodes, k.ncPool)
 }
 
 func (k *NetworkDeployer) ValidateDelete(ctx context.Context) error {
 	return nil
 }
 
-func (k *NetworkDeployer) storeState(d *schema.ResourceData, state state.StateI) (errors error) {
+func (k *NetworkDeployer) storeState(d *schema.ResourceData, state state.Getter) (errors error) {
 
 	nodeDeploymentID := make(map[string]interface{})
 	for node, id := range k.NodeDeploymentID {
@@ -291,7 +291,7 @@ func (k *NetworkDeployer) storeState(d *schema.ResourceData, state state.StateI)
 	}
 
 	nodes := make([]uint32, 0)
-	for _, node := range k.Nodes {
+	for _, node := range k.ZNet.Nodes {
 		if _, ok := k.NodeDeploymentID[node]; ok {
 			nodes = append(nodes, node)
 		}
@@ -308,7 +308,7 @@ func (k *NetworkDeployer) storeState(d *schema.ResourceData, state state.StateI)
 	// update network local status
 	k.updateNetworkLocalState(state)
 
-	k.Nodes = nodes
+	k.ZNet.Nodes = nodes
 
 	log.Printf("storing nodes: %v\n", nodes)
 	err := d.Set("nodes", nodes)
@@ -316,7 +316,7 @@ func (k *NetworkDeployer) storeState(d *schema.ResourceData, state state.StateI)
 		errors = multierror.Append(errors, err)
 	}
 
-	err = d.Set("ip_range", k.IPRange.String())
+	err = d.Set("ip_range", k.ZNet.IPRange.String())
 	if err != nil {
 		errors = multierror.Append(errors, err)
 	}
@@ -362,10 +362,10 @@ func (k *NetworkDeployer) storeState(d *schema.ResourceData, state state.StateI)
 	return
 }
 
-func (k *NetworkDeployer) updateNetworkLocalState(state state.StateI) {
-	ns := state.GetNetworkState()
-	ns.DeleteNetwork(k.Name)
-	network := ns.GetNetwork(k.Name)
+func (k *NetworkDeployer) updateNetworkLocalState(state state.Getter) {
+	ns := state.GetState().Networks
+	ns.DeleteNetwork(k.ZNet.Name)
+	network := ns.GetNetwork(k.ZNet.Name)
 	for nodeID, subnet := range k.NodesIPRange {
 		network.SetNodeSubnet(nodeID, subnet.String())
 	}
@@ -383,7 +383,7 @@ func nextFreeOctet(used []byte, start *byte) error {
 
 func (k *NetworkDeployer) assignNodesIPs(nodes []uint32) error {
 	ips := make(map[uint32]gridtypes.IPNet)
-	l := len(k.IPRange.IP)
+	l := len(k.ZNet.IPRange.IP)
 	usedIPs := make([]byte, 0) // the third octet
 	for node, ip := range k.NodesIPRange {
 		if Contains(nodes, node) {
@@ -392,7 +392,7 @@ func (k *NetworkDeployer) assignNodesIPs(nodes []uint32) error {
 		}
 	}
 	var cur byte = 2
-	if k.AddWGAccess {
+	if k.ZNet.AddWGAccess {
 		if k.ExternalIP != nil {
 			usedIPs = append(usedIPs, k.ExternalIP.IP[l-2])
 		} else {
@@ -401,7 +401,7 @@ func (k *NetworkDeployer) assignNodesIPs(nodes []uint32) error {
 				return err
 			}
 			usedIPs = append(usedIPs, cur)
-			ip := ipNet(k.IPRange.IP[l-4], k.IPRange.IP[l-3], cur, k.IPRange.IP[l-1], 24)
+			ip := workloads.IPNet(k.ZNet.IPRange.IP[l-4], k.ZNet.IPRange.IP[l-3], cur, k.ZNet.IPRange.IP[l-1], 24)
 			k.ExternalIP = &ip
 		}
 	}
@@ -412,7 +412,7 @@ func (k *NetworkDeployer) assignNodesIPs(nodes []uint32) error {
 				return err
 			}
 			usedIPs = append(usedIPs, cur)
-			ips[node] = ipNet(k.IPRange.IP[l-4], k.IPRange.IP[l-3], cur, k.IPRange.IP[l-2], 24)
+			ips[node] = workloads.IPNet(k.ZNet.IPRange.IP[l-4], k.ZNet.IPRange.IP[l-3], cur, k.ZNet.IPRange.IP[l-2], 24)
 		}
 	}
 	k.NodesIPRange = ips
@@ -425,7 +425,7 @@ func (k *NetworkDeployer) assignNodesWGPort(ctx context.Context, sub subi.Substr
 			if err != nil {
 				return errors.Wrap(err, "could not get node client")
 			}
-			port, err := getNodeFreeWGPort(ctx, cl, node)
+			port, err := workloads.GetNodeFreeWGPort(ctx, cl, node)
 			if err != nil {
 				return errors.Wrap(err, "failed to get node free wg ports")
 			}
@@ -492,7 +492,7 @@ func (k *NetworkDeployer) readNodesConfig(ctx context.Context, sub subi.Substrat
 	k.Keys = keys
 	k.WGPort = WGPort
 	k.NodesIPRange = nodesIPRange
-	k.AddWGAccess = WGAccess
+	k.ZNet.AddWGAccess = WGAccess
 	if !WGAccess {
 		k.AccessWGConfig = ""
 	}
@@ -500,19 +500,19 @@ func (k *NetworkDeployer) readNodesConfig(ctx context.Context, sub subi.Substrat
 }
 
 func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, sub subi.SubstrateExt) (map[uint32]gridtypes.Deployment, error) {
-	log.Printf("nodes: %v\n", k.Nodes)
+	log.Printf("nodes: %v\n", k.ZNet.Nodes)
 	deployments := make(map[uint32]gridtypes.Deployment)
 	endpoints := make(map[uint32]string)
 	hiddenNodes := make([]uint32, 0)
 	var ipv4Node uint32
 	accessibleNodes := make([]uint32, 0)
-	for _, node := range k.Nodes {
+	for _, node := range k.ZNet.Nodes {
 		cl, err := k.ncPool.GetNodeClient(sub, node)
 		if err != nil {
 			return nil, errors.Wrapf(err, "couldn't get node %d client", node)
 		}
-		endpoint, err := getNodeEndpoint(ctx, cl)
-		if errors.Is(err, ErrNoAccessibleInterfaceFound) {
+		endpoint, err := workloads.GetNodeEndpoint(ctx, cl)
+		if errors.Is(err, workloads.ErrNoAccessibleInterfaceFound) {
 			hiddenNodes = append(hiddenNodes, node)
 		} else if err != nil {
 			return nil, errors.Wrapf(err, "failed to get node %d endpoint", node)
@@ -525,7 +525,7 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 			endpoints[node] = fmt.Sprintf("[%s]", endpoint.String())
 		}
 	}
-	needsIPv4Access := k.AddWGAccess || (len(hiddenNodes) != 0 && len(hiddenNodes)+len(accessibleNodes) > 1)
+	needsIPv4Access := k.ZNet.AddWGAccess || (len(hiddenNodes) != 0 && len(hiddenNodes)+len(accessibleNodes) > 1)
 	if needsIPv4Access {
 		if k.PublicNodeID != 0 { // it's set
 			// if public node id is already set, it should be added to accessible nodes
@@ -535,7 +535,7 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 		} else if ipv4Node != 0 { // there's one in the network original nodes
 			k.PublicNodeID = ipv4Node
 		} else {
-			publicNode, err := getPublicNode(ctx, k.APIClient.grid_client, []uint32{})
+			publicNode, err := workloads.GetPublicNode(ctx, k.ThreefoldPluginClient.gridProxyClient, []uint32{})
 			if err != nil {
 				return nil, errors.Wrap(err, "public node needed because you requested adding wg access or a hidden node is added to the network")
 			}
@@ -547,7 +547,7 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 			if err != nil {
 				return nil, errors.Wrapf(err, "couldn't get node %d client", k.PublicNodeID)
 			}
-			endpoint, err := getNodeEndpoint(ctx, cl)
+			endpoint, err := workloads.GetNodeEndpoint(ctx, cl)
 			if err != nil {
 				return nil, errors.Wrapf(err, "failed to get node %d endpoint", k.PublicNodeID)
 			}
@@ -568,30 +568,30 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 	for _, node := range hiddenNodes {
 		r := k.NodesIPRange[node]
 		nonAccessibleIPRanges = append(nonAccessibleIPRanges, r)
-		nonAccessibleIPRanges = append(nonAccessibleIPRanges, wgIP(r))
+		nonAccessibleIPRanges = append(nonAccessibleIPRanges, workloads.WgIP(r))
 	}
-	if k.AddWGAccess {
+	if k.ZNet.AddWGAccess {
 		r := k.ExternalIP
 		nonAccessibleIPRanges = append(nonAccessibleIPRanges, *r)
-		nonAccessibleIPRanges = append(nonAccessibleIPRanges, wgIP(*r))
+		nonAccessibleIPRanges = append(nonAccessibleIPRanges, workloads.WgIP(*r))
 	}
 	log.Printf("hidden nodes: %v\n", hiddenNodes)
 	log.Printf("public node: %v\n", k.PublicNodeID)
 	log.Printf("accessible nodes: %v\n", accessibleNodes)
 	log.Printf("non accessible ip ranges: %v\n", nonAccessibleIPRanges)
 
-	if k.AddWGAccess {
-		k.AccessWGConfig = generateWGConfig(
-			wgIP(*k.ExternalIP).IP.String(),
+	if k.ZNet.AddWGAccess {
+		k.AccessWGConfig = workloads.GenerateWGConfig(
+			workloads.WgIP(*k.ExternalIP).IP.String(),
 			k.ExternalSK.String(),
 			k.Keys[k.PublicNodeID].PublicKey().String(),
 			fmt.Sprintf("%s:%d", endpoints[k.PublicNodeID], k.WGPort[k.PublicNodeID]),
-			k.IPRange.String(),
+			k.ZNet.IPRange.String(),
 		)
 	}
 
 	for _, node := range accessibleNodes {
-		peers := make([]zos.Peer, 0, len(k.Nodes))
+		peers := make([]zos.Peer, 0, len(k.ZNet.Nodes))
 		for _, neigh := range accessibleNodes {
 			if neigh == node {
 				continue
@@ -599,7 +599,7 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 			neighIPRange := k.NodesIPRange[neigh]
 			allowed_ips := []gridtypes.IPNet{
 				neighIPRange,
-				wgIP(neighIPRange),
+				workloads.WgIP(neighIPRange),
 			}
 			if neigh == k.PublicNodeID {
 				allowed_ips = append(allowed_ips, nonAccessibleIPRanges...)
@@ -613,11 +613,11 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 		}
 		if node == k.PublicNodeID {
 			// external node
-			if k.AddWGAccess {
+			if k.ZNet.AddWGAccess {
 				peers = append(peers, zos.Peer{
 					Subnet:      *k.ExternalIP,
 					WGPublicKey: k.ExternalSK.PublicKey().String(),
-					AllowedIPs:  []gridtypes.IPNet{*k.ExternalIP, wgIP(*k.ExternalIP)},
+					AllowedIPs:  []gridtypes.IPNet{*k.ExternalIP, workloads.WgIP(*k.ExternalIP)},
 				})
 			}
 			// hidden nodes
@@ -628,7 +628,7 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 					WGPublicKey: k.Keys[neigh].PublicKey().String(),
 					AllowedIPs: []gridtypes.IPNet{
 						neighIPRange,
-						wgIP(neighIPRange),
+						workloads.WgIP(neighIPRange),
 					},
 				})
 			}
@@ -637,10 +637,10 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 		workload := gridtypes.Workload{
 			Version:     0,
 			Type:        zos.NetworkType,
-			Description: k.Description,
-			Name:        gridtypes.Name(k.Name),
+			Description: k.ZNet.Description,
+			Name:        gridtypes.Name(k.ZNet.Name),
 			Data: gridtypes.MustMarshal(zos.Network{
-				NetworkIPRange: gridtypes.MustParseIPNet(k.IPRange.String()),
+				NetworkIPRange: gridtypes.MustParseIPNet(k.ZNet.IPRange.String()),
 				Subnet:         k.NodesIPRange[node],
 				WGPrivateKey:   k.Keys[node].String(),
 				WGListenPort:   uint16(k.WGPort[node]),
@@ -649,7 +649,7 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 		}
 		deployment := gridtypes.Deployment{
 			Version: 0,
-			TwinID:  k.APIClient.twin_id, //LocalTwin,
+			TwinID:  k.ThreefoldPluginClient.twinID, //LocalTwin,
 			// this contract id must match the one on substrate
 			Workloads: []gridtypes.Workload{
 				workload,
@@ -658,7 +658,7 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 				WeightRequired: 1,
 				Requests: []gridtypes.SignatureRequest{
 					{
-						TwinID: k.APIClient.twin_id,
+						TwinID: k.ThreefoldPluginClient.twinID,
 						Weight: 1,
 					},
 				},
@@ -675,8 +675,8 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 				WGPublicKey: k.Keys[k.PublicNodeID].PublicKey().String(),
 				Subnet:      nodeIPRange,
 				AllowedIPs: []gridtypes.IPNet{
-					k.IPRange,
-					ipNet(100, 64, 0, 0, 16),
+					k.ZNet.IPRange,
+					workloads.IPNet(100, 64, 0, 0, 16),
 				},
 				Endpoint: fmt.Sprintf("%s:%d", endpoints[k.PublicNodeID], k.WGPort[k.PublicNodeID]),
 			})
@@ -684,10 +684,10 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 		workload := gridtypes.Workload{
 			Version:     0,
 			Type:        zos.NetworkType,
-			Description: k.Description,
-			Name:        gridtypes.Name(k.Name),
+			Description: k.ZNet.Description,
+			Name:        gridtypes.Name(k.ZNet.Name),
 			Data: gridtypes.MustMarshal(zos.Network{
-				NetworkIPRange: gridtypes.MustParseIPNet(k.IPRange.String()),
+				NetworkIPRange: gridtypes.MustParseIPNet(k.ZNet.IPRange.String()),
 				Subnet:         nodeIPRange,
 				WGPrivateKey:   k.Keys[node].String(),
 				WGListenPort:   uint16(k.WGPort[node]),
@@ -696,7 +696,7 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 		}
 		deployment := gridtypes.Deployment{
 			Version: 0,
-			TwinID:  k.APIClient.twin_id,
+			TwinID:  k.ThreefoldPluginClient.twinID,
 			Workloads: []gridtypes.Workload{
 				workload,
 			},
@@ -704,7 +704,7 @@ func (k *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, su
 				WeightRequired: 1,
 				Requests: []gridtypes.SignatureRequest{
 					{
-						TwinID: k.APIClient.twin_id,
+						TwinID: k.ThreefoldPluginClient.twinID,
 						Weight: 1,
 					},
 				},
@@ -752,19 +752,19 @@ func (k *NetworkDeployer) Cancel(ctx context.Context, sub subi.SubstrateExt) err
 
 func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	apiClient, ok := meta.(*apiClient)
+	threefoldPluginClient, ok := meta.(*threefoldPluginClient)
 	if !ok {
 		return diag.FromErr(fmt.Errorf("failed to cast meta into api client"))
 	}
 
-	deployer, err := NewNetworkDeployer(ctx, d, apiClient)
+	deployer, err := NewNetworkDeployer(ctx, d, threefoldPluginClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
-	if err := deployer.Validate(ctx, apiClient.substrateConn); err != nil {
+	if err := deployer.Validate(ctx, threefoldPluginClient.substrateConn); err != nil {
 		return diag.FromErr(err)
 	}
-	err = deployer.Deploy(ctx, apiClient.substrateConn)
+	err = deployer.Deploy(ctx, threefoldPluginClient.substrateConn)
 	if err != nil {
 		if len(deployer.NodeDeploymentID) != 0 {
 			// failed to deploy and failed to revert, store the current state locally
@@ -773,7 +773,7 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 			return diag.FromErr(err)
 		}
 	}
-	err = deployer.storeState(d, apiClient.state)
+	err = deployer.storeState(d, threefoldPluginClient.state)
 	if err != nil {
 		diags = diag.FromErr(err)
 	}
@@ -784,28 +784,28 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 
 func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	apiClient, ok := meta.(*apiClient)
+	threefoldPluginClient, ok := meta.(*threefoldPluginClient)
 	if !ok {
 		return diag.FromErr(fmt.Errorf("failed to cast meta into api client"))
 	}
 
-	deployer, err := NewNetworkDeployer(ctx, d, apiClient)
+	deployer, err := NewNetworkDeployer(ctx, d, threefoldPluginClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	if err := deployer.Validate(ctx, apiClient.substrateConn); err != nil {
+	if err := deployer.Validate(ctx, threefoldPluginClient.substrateConn); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := deployer.invalidateBrokenAttributes(apiClient.substrateConn); err != nil {
+	if err := deployer.invalidateBrokenAttributes(ctx, threefoldPluginClient.substrateConn); err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't invalidate broken attributes"))
 	}
 
-	err = deployer.Deploy(ctx, apiClient.substrateConn)
+	err = deployer.Deploy(ctx, threefoldPluginClient.substrateConn)
 	if err != nil {
 		diags = diag.FromErr(err)
 	}
-	err = deployer.storeState(d, apiClient.state)
+	err = deployer.storeState(d, threefoldPluginClient.state)
 	if err != nil {
 		diags = diag.FromErr(err)
 	}
@@ -815,30 +815,30 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 
 func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	apiClient, ok := meta.(*apiClient)
+	threefoldPluginClient, ok := meta.(*threefoldPluginClient)
 	if !ok {
 		return diag.FromErr(fmt.Errorf("failed to cast meta into api client"))
 	}
 
-	deployer, err := NewNetworkDeployer(ctx, d, apiClient)
+	deployer, err := NewNetworkDeployer(ctx, d, threefoldPluginClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
 
-	if err := deployer.invalidateBrokenAttributes(apiClient.substrateConn); err != nil {
+	if err := deployer.invalidateBrokenAttributes(ctx, threefoldPluginClient.substrateConn); err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't invalidate broken attributes"))
 	}
 
-	err = deployer.readNodesConfig(ctx, apiClient.substrateConn)
+	err = deployer.readNodesConfig(ctx, threefoldPluginClient.substrateConn)
 	if err != nil {
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Warning,
-			Summary:  "Error reading data from remote, terraform state might be out of sync with the remote state",
+			Summary:  errTerraformOutSync,
 			Detail:   err.Error(),
 		})
 		return diags
 	}
-	err = deployer.storeState(d, apiClient.state)
+	err = deployer.storeState(d, threefoldPluginClient.state)
 	if err != nil {
 		diags = diag.FromErr(err)
 	}
@@ -848,25 +848,25 @@ func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta inter
 
 func resourceNetworkDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	apiClient, ok := meta.(*apiClient)
+	threefoldPluginClient, ok := meta.(*threefoldPluginClient)
 	if !ok {
 		return diag.FromErr(fmt.Errorf("failed to cast meta into api client"))
 	}
 
-	deployer, err := NewNetworkDeployer(ctx, d, apiClient)
+	deployer, err := NewNetworkDeployer(ctx, d, threefoldPluginClient)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load deployer data"))
 	}
-	err = deployer.Cancel(ctx, apiClient.substrateConn)
+	err = deployer.Cancel(ctx, threefoldPluginClient.substrateConn)
 	if err != nil {
 		diags = diag.FromErr(err)
 	}
 	if err == nil {
 		d.SetId("")
-		ns := apiClient.state.GetNetworkState()
-		ns.DeleteNetwork(deployer.Name)
+		ns := threefoldPluginClient.state.GetState().Networks
+		ns.DeleteNetwork(deployer.ZNet.Name)
 	} else {
-		err = deployer.storeState(d, apiClient.state)
+		err = deployer.storeState(d, threefoldPluginClient.state)
 		if err != nil {
 			diags = diag.FromErr(err)
 		}

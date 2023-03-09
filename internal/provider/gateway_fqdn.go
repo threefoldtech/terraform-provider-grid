@@ -26,12 +26,13 @@ type GatewayFQDNDeployer struct {
 	Node             uint32
 	NodeDeploymentID map[uint32]uint64
 
-	APIClient *apiClient
-	ncPool    client.NodeClientGetter
-	deployer  deployer.Deployer
+	ThreefoldPluginClient *threefoldPluginClient
+	ncPool                client.NodeClientGetter
+	deployer              deployer.Deployer
 }
 
-func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClient *apiClient) (GatewayFQDNDeployer, error) {
+// NewGatewayFQDNDeployer reads the gateway_fqdn_proxy resource configuration data from schema.ResourceData, converts them into a GatewayFQDNDeployer instance, then returns this instance.
+func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (GatewayFQDNDeployer, error) {
 	backendsIf := d.Get("backends").([]interface{})
 	backends := make([]zos.Backend, len(backendsIf))
 	for idx, n := range backendsIf {
@@ -47,7 +48,7 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 		deploymentID := uint64(id.(int))
 		nodeDeploymentID[uint32(nodeInt)] = deploymentID
 	}
-	ncPool := client.NewNodeClientPool(apiClient.rmb)
+	ncPool := client.NewNodeClientPool(threefoldPluginClient.rmb, threefoldPluginClient.rmbTimeout)
 	deploymentData := DeploymentData{
 		Name:        d.Get("name").(string),
 		Type:        "gateway",
@@ -64,13 +65,13 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, apiClie
 			FQDN:           d.Get("fqdn").(string),
 			TLSPassthrough: d.Get("tls_passthrough").(bool),
 		},
-		ID:               d.Id(),
-		Description:      d.Get("description").(string),
-		Node:             uint32(d.Get("node").(int)),
-		NodeDeploymentID: nodeDeploymentID,
-		APIClient:        apiClient,
-		ncPool:           ncPool,
-		deployer:         deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, ncPool, true, nil, string(deploymentDataStr)),
+		ID:                    d.Id(),
+		Description:           d.Get("description").(string),
+		Node:                  uint32(d.Get("node").(int)),
+		NodeDeploymentID:      nodeDeploymentID,
+		ThreefoldPluginClient: threefoldPluginClient,
+		ncPool:                ncPool,
+		deployer:              deployer.NewDeployer(threefoldPluginClient.identity, threefoldPluginClient.twinID, threefoldPluginClient.gridProxyClient, ncPool, true, nil, string(deploymentDataStr)),
 	}
 	return deployer, nil
 }
@@ -79,7 +80,8 @@ func (k *GatewayFQDNDeployer) Validate(ctx context.Context, sub subi.SubstrateEx
 	return client.AreNodesUp(ctx, sub, []uint32{k.Node}, k.ncPool)
 }
 
-func (k *GatewayFQDNDeployer) Marshal(d *schema.ResourceData) (errors error) {
+// SyncContractsDeployments updates the terraform local state with the resource's latest changes.
+func (k *GatewayFQDNDeployer) SyncContractsDeployments(d *schema.ResourceData) (errors error) {
 
 	nodeDeploymentID := make(map[string]interface{})
 	for node, id := range k.NodeDeploymentID {
@@ -118,7 +120,7 @@ func (k *GatewayFQDNDeployer) Marshal(d *schema.ResourceData) (errors error) {
 
 func (k *GatewayFQDNDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
 	deployments := make(map[uint32]gridtypes.Deployment)
-	dl := workloads.NewDeployment(k.APIClient.twin_id)
+	dl := workloads.NewDeployment(k.ThreefoldPluginClient.twinID)
 	dl.Workloads = append(dl.Workloads, k.Gw.ZosWorkload())
 	deployments[k.Node] = dl
 	return deployments, nil
@@ -149,7 +151,9 @@ func (k *GatewayFQDNDeployer) syncContracts(ctx context.Context, sub subi.Substr
 	}
 	return nil
 }
-func (k *GatewayFQDNDeployer) sync(ctx context.Context, sub subi.SubstrateExt, cl *apiClient) error {
+
+// Sync syncs the deployments
+func (k *GatewayFQDNDeployer) Sync(ctx context.Context, sub subi.SubstrateExt, cl *threefoldPluginClient) error {
 	if err := k.syncContracts(ctx, sub); err != nil {
 		return errors.Wrap(err, "couldn't sync contracts")
 	}

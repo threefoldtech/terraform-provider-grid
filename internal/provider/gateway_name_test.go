@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/pkg/errors"
@@ -44,10 +45,10 @@ func TestNameValidateNodeNotReachable(t *testing.T) {
 			gomock.Any(),
 			uint32(11),
 		).
-		Return(client.NewNodeClient(10, cl), nil)
+		Return(client.NewNodeClient(10, cl, 10*time.Second), nil)
 
 	gw := GatewayNameDeployer{
-		APIClient: &apiClient{
+		ThreefoldPluginClient: &threefoldPluginClient{
 			identity: identity,
 		},
 		ncPool: pool,
@@ -83,10 +84,10 @@ func TestNameValidateNodeReachable(t *testing.T) {
 			gomock.Any(),
 			uint32(11),
 		).
-		Return(client.NewNodeClient(10, cl), nil)
+		Return(client.NewNodeClient(10, cl, 10*time.Second), nil)
 
 	gw := GatewayNameDeployer{
-		APIClient: &apiClient{
+		ThreefoldPluginClient: &threefoldPluginClient{
 			identity: identity,
 		},
 		ncPool: pool,
@@ -104,8 +105,8 @@ func TestNameGenerateDeployment(t *testing.T) {
 		FQDN:           "name.com",
 	}
 	gw := GatewayNameDeployer{
-		APIClient: &apiClient{
-			twin_id: 11,
+		ThreefoldPluginClient: &threefoldPluginClient{
+			twinID: 11,
 		},
 		Node: 10,
 		Gw:   g,
@@ -154,9 +155,9 @@ func TestNameDeploy(t *testing.T) {
 	pool := mock.NewMockNodeClientGetter(ctrl)
 
 	gw := GatewayNameDeployer{
-		APIClient: &apiClient{
+		ThreefoldPluginClient: &threefoldPluginClient{
 			identity: identity,
-			twin_id:  11,
+			twinID:   11,
 		},
 		Node: 10,
 		Gw: workloads.GatewayNameProxy{
@@ -181,7 +182,7 @@ func TestNameDeploy(t *testing.T) {
 		Return(uint64(100), nil)
 	pool.EXPECT().
 		GetNodeClient(sub, uint32(10)).
-		Return(client.NewNodeClient(12, cl), nil)
+		Return(client.NewNodeClient(12, cl, 10*time.Second), nil)
 	cl.EXPECT().Call(
 		gomock.Any(),
 		uint32(12),
@@ -206,9 +207,9 @@ func TestNameUpdate(t *testing.T) {
 	cl := mock.NewRMBMockClient(ctrl)
 	pool := mock.NewMockNodeClientGetter(ctrl)
 	gw := GatewayNameDeployer{
-		APIClient: &apiClient{
+		ThreefoldPluginClient: &threefoldPluginClient{
 			identity: identity,
-			twin_id:  11,
+			twinID:   11,
 		},
 		Node: 10,
 		Gw: workloads.GatewayNameProxy{
@@ -236,7 +237,7 @@ func TestNameUpdate(t *testing.T) {
 
 	pool.EXPECT().
 		GetNodeClient(sub, uint32(10)).
-		Return(client.NewNodeClient(12, cl), nil)
+		Return(client.NewNodeClient(12, cl, 10*time.Second), nil)
 	cl.EXPECT().Call(
 		gomock.Any(),
 		uint32(12),
@@ -261,9 +262,9 @@ func TestNameUpdateFailed(t *testing.T) {
 	cl := mock.NewRMBMockClient(ctrl)
 	pool := mock.NewMockNodeClientGetter(ctrl)
 	gw := GatewayNameDeployer{
-		APIClient: &apiClient{
+		ThreefoldPluginClient: &threefoldPluginClient{
 			identity: identity,
-			twin_id:  11,
+			twinID:   11,
 		},
 		Node: 10,
 		Gw: workloads.GatewayNameProxy{
@@ -290,7 +291,7 @@ func TestNameUpdateFailed(t *testing.T) {
 		Return(uint64(200), nil)
 	pool.EXPECT().
 		GetNodeClient(sub, uint32(10)).
-		Return(client.NewNodeClient(12, cl), nil)
+		Return(client.NewNodeClient(12, cl, 10*time.Second), nil)
 	cl.EXPECT().Call(
 		gomock.Any(),
 		uint32(12),
@@ -315,9 +316,9 @@ func TestNameCancel(t *testing.T) {
 	deployer := mock.NewMockDeployer(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayNameDeployer{
-		APIClient: &apiClient{
+		ThreefoldPluginClient: &threefoldPluginClient{
 			identity: identity,
-			twin_id:  11,
+			twinID:   11,
 		},
 		Node: 10,
 		Gw: workloads.GatewayNameProxy{
@@ -356,9 +357,9 @@ func TestNameCancelDeploymentsFailed(t *testing.T) {
 	deployer := mock.NewMockDeployer(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayNameDeployer{
-		APIClient: &apiClient{
+		ThreefoldPluginClient: &threefoldPluginClient{
 			identity: identity,
-			twin_id:  11,
+			twinID:   11,
 		},
 		Node: 10,
 		Gw: workloads.GatewayNameProxy{
@@ -391,9 +392,9 @@ func TestNameCancelContractsFailed(t *testing.T) {
 	deployer := mock.NewMockDeployer(ctrl)
 	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayNameDeployer{
-		APIClient: &apiClient{
+		ThreefoldPluginClient: &threefoldPluginClient{
 			identity: identity,
-			twin_id:  11,
+			twinID:   11,
 		},
 		Node: 10,
 		Gw: workloads.GatewayNameProxy{
@@ -432,9 +433,9 @@ func TestNameSyncContracts(t *testing.T) {
 	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayNameDeployer{
 		ID: "123",
-		APIClient: &apiClient{
+		ThreefoldPluginClient: &threefoldPluginClient{
 			identity: identity,
-			twin_id:  11,
+			twinID:   11,
 		},
 		Node: 10,
 		Gw: workloads.GatewayNameProxy{
@@ -469,9 +470,9 @@ func TestNameSyncDeletedContracts(t *testing.T) {
 	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayNameDeployer{
 		ID: "123",
-		APIClient: &apiClient{
+		ThreefoldPluginClient: &threefoldPluginClient{
 			identity: identity,
-			twin_id:  11,
+			twinID:   11,
 		},
 		Node: 10,
 		Gw: workloads.GatewayNameProxy{
@@ -509,9 +510,9 @@ func TestNameSyncContractsFailure(t *testing.T) {
 	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayNameDeployer{
 		ID: "123",
-		APIClient: &apiClient{
+		ThreefoldPluginClient: &threefoldPluginClient{
 			identity: identity,
-			twin_id:  11,
+			twinID:   11,
 		},
 		Node: 10,
 		Gw: workloads.GatewayNameProxy{
@@ -546,9 +547,9 @@ func TestNameSync(t *testing.T) {
 	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayNameDeployer{
 		ID: "123",
-		APIClient: &apiClient{
+		ThreefoldPluginClient: &threefoldPluginClient{
 			identity: identity,
-			twin_id:  11,
+			twinID:   11,
 		},
 		Node: 10,
 		Gw: workloads.GatewayNameProxy{
@@ -581,7 +582,7 @@ func TestNameSync(t *testing.T) {
 			return map[uint32]gridtypes.Deployment{10: dl}, nil
 		})
 	gw.Gw.FQDN = "123"
-	err = gw.sync(context.Background(), sub, gw.APIClient)
+	err = gw.Sync(context.Background(), sub, gw.ThreefoldPluginClient)
 	assert.NoError(t, err)
 	assert.Equal(t, gw.NodeDeploymentID, map[uint32]uint64{10: 100})
 	assert.Equal(t, gw.NameContractID, uint64(200))
@@ -601,9 +602,9 @@ func TestNameSyncDeletedWorkload(t *testing.T) {
 	sub := mock.NewMockSubstrateExt(ctrl)
 	gw := GatewayNameDeployer{
 		ID: "123",
-		APIClient: &apiClient{
+		ThreefoldPluginClient: &threefoldPluginClient{
 			identity: identity,
-			twin_id:  11,
+			twinID:   11,
 		},
 		Node: 10,
 		Gw: workloads.GatewayNameProxy{
@@ -634,7 +635,7 @@ func TestNameSyncDeletedWorkload(t *testing.T) {
 			return map[uint32]gridtypes.Deployment{10: dl}, nil
 		})
 	gw.Gw.FQDN = "123"
-	err = gw.sync(context.Background(), sub, gw.APIClient)
+	err = gw.Sync(context.Background(), sub, gw.ThreefoldPluginClient)
 	assert.NoError(t, err)
 	assert.Equal(t, gw.NodeDeploymentID, map[uint32]uint64{10: 100})
 	assert.Equal(t, gw.ID, "123")
