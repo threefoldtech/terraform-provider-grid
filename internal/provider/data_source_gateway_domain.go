@@ -50,7 +50,7 @@ func dataSourceGatewayRead(ctx context.Context, d *schema.ResourceData, meta int
 	nodeID := uint32(d.Get("node").(int))
 	name := d.Get("name").(string)
 
-	ncPool := client.NewNodeClientPool(threefoldPluginClient.rmb)
+	ncPool := client.NewNodeClientPool(threefoldPluginClient.rmb, threefoldPluginClient.rmbTimeout)
 	nodeClient, err := ncPool.GetNodeClient(threefoldPluginClient.substrateConn, nodeID)
 	if err != nil {
 		return diag.FromErr(errors.Wrapf(err, "failed to get node client with ID %d", nodeID))

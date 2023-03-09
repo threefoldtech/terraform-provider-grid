@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/pkg/errors"
@@ -44,7 +45,7 @@ func TestNameValidateNodeNotReachable(t *testing.T) {
 			gomock.Any(),
 			uint32(11),
 		).
-		Return(client.NewNodeClient(10, cl), nil)
+		Return(client.NewNodeClient(10, cl, 10*time.Second), nil)
 
 	gw := GatewayNameDeployer{
 		ThreefoldPluginClient: &threefoldPluginClient{
@@ -83,7 +84,7 @@ func TestNameValidateNodeReachable(t *testing.T) {
 			gomock.Any(),
 			uint32(11),
 		).
-		Return(client.NewNodeClient(10, cl), nil)
+		Return(client.NewNodeClient(10, cl, 10*time.Second), nil)
 
 	gw := GatewayNameDeployer{
 		ThreefoldPluginClient: &threefoldPluginClient{
@@ -181,7 +182,7 @@ func TestNameDeploy(t *testing.T) {
 		Return(uint64(100), nil)
 	pool.EXPECT().
 		GetNodeClient(sub, uint32(10)).
-		Return(client.NewNodeClient(12, cl), nil)
+		Return(client.NewNodeClient(12, cl, 10*time.Second), nil)
 	cl.EXPECT().Call(
 		gomock.Any(),
 		uint32(12),
@@ -236,7 +237,7 @@ func TestNameUpdate(t *testing.T) {
 
 	pool.EXPECT().
 		GetNodeClient(sub, uint32(10)).
-		Return(client.NewNodeClient(12, cl), nil)
+		Return(client.NewNodeClient(12, cl, 10*time.Second), nil)
 	cl.EXPECT().Call(
 		gomock.Any(),
 		uint32(12),
@@ -290,7 +291,7 @@ func TestNameUpdateFailed(t *testing.T) {
 		Return(uint64(200), nil)
 	pool.EXPECT().
 		GetNodeClient(sub, uint32(10)).
-		Return(client.NewNodeClient(12, cl), nil)
+		Return(client.NewNodeClient(12, cl, 10*time.Second), nil)
 	cl.EXPECT().Call(
 		gomock.Any(),
 		uint32(12),

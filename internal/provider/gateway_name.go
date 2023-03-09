@@ -51,7 +51,7 @@ func NewGatewayNameDeployer(d *schema.ResourceData, threefoldPluginClient *three
 		deploymentID := uint64(id.(int))
 		nodeDeploymentID[uint32(nodeInt)] = deploymentID
 	}
-	pool := client.NewNodeClientPool(threefoldPluginClient.rmb)
+	pool := client.NewNodeClientPool(threefoldPluginClient.rmb, threefoldPluginClient.rmbTimeout)
 	deploymentData := DeploymentData{
 		Name:        d.Get("name").(string),
 		Type:        "gateway",

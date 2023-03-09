@@ -2,6 +2,7 @@ package client
 
 import (
 	"sync"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
@@ -18,13 +19,15 @@ type NodeClientGetter interface {
 type NodeClientPool struct {
 	clients sync.Map
 	rmb     rmb.Client
+	timeout time.Duration
 }
 
 // NewNodeClientPool generates a new client pool
-func NewNodeClientPool(rmb rmb.Client) *NodeClientPool {
+func NewNodeClientPool(rmb rmb.Client, timeout time.Duration) *NodeClientPool {
 	return &NodeClientPool{
 		clients: sync.Map{},
 		rmb:     rmb,
+		timeout: timeout,
 	}
 }
 
@@ -41,7 +44,7 @@ func (p *NodeClientPool) GetNodeClient(sub subi.SubstrateExt, nodeID uint32) (*N
 		return nil, errors.Wrapf(err, "failed to get node %d", nodeID)
 	}
 
-	cl = NewNodeClient(uint32(twinID), p.rmb)
+	cl = NewNodeClient(uint32(twinID), p.rmb, p.timeout)
 
 	p.clients.Store(nodeID, cl)
 

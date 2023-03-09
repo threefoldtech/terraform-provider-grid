@@ -299,7 +299,7 @@ func NewK8sDeployer(d *schema.ResourceData, threefoldPluginClient *threefoldPlug
 		nodeDeploymentID[uint32(nodeInt)] = deploymentID
 	}
 
-	pool := client.NewNodeClientPool(threefoldPluginClient.rmb)
+	pool := client.NewNodeClientPool(threefoldPluginClient.rmb, threefoldPluginClient.rmbTimeout)
 	deploymentData := DeploymentData{
 		Name:        d.Get("name").(string),
 		Type:        "kubernetes",

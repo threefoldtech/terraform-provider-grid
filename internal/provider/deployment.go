@@ -67,7 +67,7 @@ func newDeploymentDeployer(d *schema.ResourceData, threefoldPluginClient *threef
 		q := workloads.NewQSFSFromSchema(qsfsdata.(map[string]interface{}))
 		qsfs = append(qsfs, q)
 	}
-	pool := client.NewNodeClientPool(threefoldPluginClient.rmb)
+	pool := client.NewNodeClientPool(threefoldPluginClient.rmb, threefoldPluginClient.rmbTimeout)
 	solutionProviderVal := uint64(d.Get("solution_provider").(int))
 	var solutionProvider *uint64
 	if solutionProviderVal == 0 {

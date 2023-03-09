@@ -48,7 +48,7 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, threefo
 		deploymentID := uint64(id.(int))
 		nodeDeploymentID[uint32(nodeInt)] = deploymentID
 	}
-	ncPool := client.NewNodeClientPool(threefoldPluginClient.rmb)
+	ncPool := client.NewNodeClientPool(threefoldPluginClient.rmb, threefoldPluginClient.rmbTimeout)
 	deploymentData := DeploymentData{
 		Name:        d.Get("name").(string),
 		Type:        "gateway",

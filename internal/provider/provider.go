@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -112,6 +113,12 @@ func New(version string, st state.Getter) (func() *schema.Provider, subi.Substra
 					Description: "whether to verify rmb replies (temporary for dev use only)",
 					DefaultFunc: schema.EnvDefaultFunc("VERIFY_REPLY", false),
 				},
+				"rmb_timeout": {
+					Type:        schema.TypeInt,
+					Optional:    true,
+					Description: "timeout duration in seconds for rmb calls",
+					DefaultFunc: schema.EnvDefaultFunc("RMB_TIMEOUT", 10),
+				},
 			},
 			DataSourcesMap: map[string]*schema.Resource{
 				"grid_gateway_domain": dataSourceGatewayDomain(),
@@ -145,6 +152,7 @@ type threefoldPluginClient struct {
 	manager         subi.Manager
 	identity        substrate.Identity
 	state           state.Getter
+	rmbTimeout      time.Duration
 }
 
 func providerConfigure(st state.Getter) (func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics), subi.SubstrateExt) {
@@ -259,6 +267,10 @@ func providerConfigure(st state.Getter) (func(ctx context.Context, d *schema.Res
 			return nil, diag.FromErr(err)
 		}
 		threefoldPluginClient.state = st
+
+		timeout := d.Get("rmb_timeout").(int)
+		threefoldPluginClient.rmbTimeout = time.Second * time.Duration(timeout)
+
 		return &threefoldPluginClient, nil
 	}, substrateConn
 }

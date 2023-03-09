@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -114,10 +115,10 @@ func TestCreate(t *testing.T) {
 		).Return(uint64(200), nil)
 	ncPool.EXPECT().
 		GetNodeClient(sub, uint32(10)).
-		Return(client.NewNodeClient(13, cl), nil)
+		Return(client.NewNodeClient(13, cl, 10*time.Second), nil)
 	ncPool.EXPECT().
 		GetNodeClient(sub, uint32(20)).
-		Return(client.NewNodeClient(23, cl), nil)
+		Return(client.NewNodeClient(23, cl, 10*time.Second), nil)
 	cl.EXPECT().
 		Call(gomock.Any(), uint32(13), "zos.deployment.deploy", dl1, gomock.Any()).
 		DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
@@ -184,7 +185,7 @@ func TestUpdate(t *testing.T) {
 		).Return(uint64(100), nil)
 	ncPool.EXPECT().
 		GetNodeClient(sub, uint32(10)).
-		Return(client.NewNodeClient(13, cl), nil).AnyTimes()
+		Return(client.NewNodeClient(13, cl, 10*time.Second), nil).AnyTimes()
 	cl.EXPECT().
 		Call(gomock.Any(), uint32(13), "zos.deployment.update", dl2, gomock.Any()).
 		DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
@@ -241,7 +242,7 @@ func TestCancel(t *testing.T) {
 		).Return(nil)
 	ncPool.EXPECT().
 		GetNodeClient(sub, uint32(10)).
-		Return(client.NewNodeClient(13, cl), nil).AnyTimes()
+		Return(client.NewNodeClient(13, cl, 10*time.Second), nil).AnyTimes()
 	cl.EXPECT().
 		Call(gomock.Any(), uint32(13), "zos.deployment.get", gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
@@ -320,16 +321,16 @@ func TestCocktail(t *testing.T) {
 		).Return(nil)
 	ncPool.EXPECT().
 		GetNodeClient(sub, uint32(10)).
-		Return(client.NewNodeClient(13, cl), nil).AnyTimes()
+		Return(client.NewNodeClient(13, cl, 10*time.Second), nil).AnyTimes()
 	ncPool.EXPECT().
 		GetNodeClient(sub, uint32(20)).
-		Return(client.NewNodeClient(23, cl), nil).AnyTimes()
+		Return(client.NewNodeClient(23, cl, 10*time.Second), nil).AnyTimes()
 	ncPool.EXPECT().
 		GetNodeClient(sub, uint32(30)).
-		Return(client.NewNodeClient(33, cl), nil).AnyTimes()
+		Return(client.NewNodeClient(33, cl, 10*time.Second), nil).AnyTimes()
 	ncPool.EXPECT().
 		GetNodeClient(sub, uint32(40)).
-		Return(client.NewNodeClient(43, cl), nil).AnyTimes()
+		Return(client.NewNodeClient(43, cl, 10*time.Second), nil).AnyTimes()
 	cl.EXPECT().
 		Call(gomock.Any(), uint32(13), "zos.deployment.changes", gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {

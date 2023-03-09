@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/pkg/errors"
@@ -46,7 +47,7 @@ func TestValidatNodeReachable(t *testing.T) {
 			gomock.Any(),
 			uint32(11),
 		).
-		Return(client.NewNodeClient(10, cl), nil)
+		Return(client.NewNodeClient(10, cl, 10*time.Second), nil)
 
 	gw := GatewayFQDNDeployer{
 		ThreefoldPluginClient: &threefoldPluginClient{
@@ -134,7 +135,7 @@ func TestDeploy(t *testing.T) {
 	assert.NoError(t, err)
 	pool.EXPECT().
 		GetNodeClient(sub, uint32(10)).
-		Return(client.NewNodeClient(12, cl), nil)
+		Return(client.NewNodeClient(12, cl, 10*time.Second), nil)
 	cl.EXPECT().Call(
 		gomock.Any(),
 		uint32(12),
@@ -191,7 +192,7 @@ func TestUpdate(t *testing.T) {
 	).Return(map[uint32]uint64{uint32(10): uint64(100)}, nil)
 	pool.EXPECT().
 		GetNodeClient(sub, uint32(10)).
-		Return(client.NewNodeClient(12, cl), nil)
+		Return(client.NewNodeClient(12, cl, 10*time.Second), nil)
 	cl.EXPECT().Call(
 		gomock.Any(),
 		uint32(12),
@@ -241,7 +242,7 @@ func TestUpdateFailed(t *testing.T) {
 	).Return(map[uint32]uint64{10: 100}, errors.New("error"))
 	pool.EXPECT().
 		GetNodeClient(sub, uint32(10)).
-		Return(client.NewNodeClient(12, cl), nil)
+		Return(client.NewNodeClient(12, cl, 10*time.Second), nil)
 	cl.EXPECT().Call(
 		gomock.Any(),
 		uint32(12),

@@ -185,7 +185,7 @@ func NewNetworkDeployer(ctx context.Context, d *schema.ResourceData, threefoldPl
 	if err != nil {
 		return NetworkDeployer{}, errors.Wrap(err, "couldn't parse network ip range")
 	}
-	pool := client.NewNodeClientPool(threefoldPluginClient.rmb)
+	pool := client.NewNodeClientPool(threefoldPluginClient.rmb, threefoldPluginClient.rmbTimeout)
 	deploymentData := DeploymentData{
 		Name:        d.Get("name").(string),
 		Type:        "network",
