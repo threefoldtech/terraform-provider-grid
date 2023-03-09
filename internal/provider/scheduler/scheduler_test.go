@@ -1,9 +1,12 @@
 package scheduler
 
 import (
+	"context"
 	"fmt"
+	"strconv"
 	"testing"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	proxyTypes "github.com/threefoldtech/grid_proxy_server/pkg/types"
 )
@@ -11,6 +14,33 @@ import (
 type GridProxyClientMock struct {
 	farms []proxyTypes.Farm
 	nodes []proxyTypes.Node
+}
+
+type RMBClientMock struct {
+	nodeID       uint32
+	hasFarmerBot bool
+}
+
+func (r *RMBClientMock) Call(ctx context.Context, twin uint32, fn string, data interface{}, result interface{}) error {
+	d := data.(FarmerBotAction)
+	switch d.Action {
+	case FarmerBotVersionAction:
+		if r.hasFarmerBot {
+			return nil
+		}
+		return errors.New("this farm does not have a farmer bot")
+	case FarmerBotFindNodeAction:
+		if r.nodeID == 0 {
+			d.Error = "could not find node"
+			return nil
+		}
+		output := result.(*FarmerBotAction)
+
+		output.Result.Params = append(output.Args.Params, Params{Key: "nodeid", Value: strconv.FormatUint(uint64(r.nodeID), 10)})
+		return nil
+	default:
+		return fmt.Errorf("fn: %s not supported", d.Action)
+	}
 }
 
 func (m *GridProxyClientMock) Ping() error {
@@ -79,24 +109,33 @@ func (m *GridProxyClientMock) Counters(filter proxyTypes.StatsFilter) (res proxy
 }
 func TestSchedulerEmpty(t *testing.T) {
 	proxy := &GridProxyClientMock{}
-	scheduler := NewScheduler(proxy, 1)
-	_, err := scheduler.Schedule(&Request{
+	rmbClient := &RMBClientMock{
+		hasFarmerBot: false,
+	}
+	scheduler := NewScheduler(proxy, 1, rmbClient)
+	_, err := scheduler.Schedule(context.Background(), &Request{
 		Capacity: Capacity{
 			MRU: 1,
 			SRU: 2,
 			HRU: 3,
 		},
-		HasIPv4:   true,
-		Name:      "req",
-		Farm:      "freefarm",
-		HasDomain: true,
-		Certified: false,
+		PublicIpsCount: 1,
+		Name:           "req",
+		FarmId:         10,
+		PublicConfig:   true,
+		Certified:      false,
+		Dedicated:      false,
+		NodeExclude:    []uint32{1, 2},
 	})
 	assert.Error(t, err, "where did you find the node?")
 }
 
 func TestSchedulerSuccess(t *testing.T) {
 	proxy := &GridProxyClientMock{}
+	rmbClient := &RMBClientMock{
+		nodeID:       1,
+		hasFarmerBot: true,
+	}
 	proxy.AddNode(1, proxyTypes.Node{
 		NodeID: 1,
 		TotalResources: proxyTypes.Capacity{
@@ -119,19 +158,24 @@ func TestSchedulerSuccess(t *testing.T) {
 	proxy.AddFarm(proxyTypes.Farm{
 		Name:   "freefarm",
 		FarmID: 1,
+		PublicIps: []proxyTypes.PublicIP{
+			{
+				IP: "asdf",
+			},
+		},
 	})
-	scheduler := NewScheduler(proxy, 1)
-	nodeID, err := scheduler.Schedule(&Request{
+	scheduler := NewScheduler(proxy, 1, rmbClient)
+	nodeID, err := scheduler.Schedule(context.Background(), &Request{
 		Capacity: Capacity{
 			HRU: 3,
 			SRU: 7,
 			MRU: 11,
 		},
-		HasIPv4:   true,
-		Name:      "req",
-		Farm:      "freefarm",
-		HasDomain: true,
-		Certified: false,
+		Name:           "req",
+		FarmId:         1,
+		PublicConfig:   true,
+		PublicIpsCount: 1,
+		Certified:      false,
 	})
 	assert.NoError(t, err, "there's a satisfying node")
 	assert.Equal(t, nodeID, uint32(1), "the node id should be 1")
@@ -139,6 +183,10 @@ func TestSchedulerSuccess(t *testing.T) {
 
 func TestSchedulerSuccessOn4thPage(t *testing.T) {
 	proxy := &GridProxyClientMock{}
+	rmbClient := &RMBClientMock{
+		hasFarmerBot: true,
+		nodeID:       1,
+	}
 	for i := uint32(2); i <= 30; i++ {
 		proxy.AddNode(i, proxyTypes.Node{})
 	}
@@ -164,19 +212,24 @@ func TestSchedulerSuccessOn4thPage(t *testing.T) {
 	proxy.AddFarm(proxyTypes.Farm{
 		Name:   "freefarm",
 		FarmID: 1,
+		PublicIps: []proxyTypes.PublicIP{
+			{
+				IP: "a",
+			},
+		},
 	})
-	scheduler := NewScheduler(proxy, 1)
-	nodeID, err := scheduler.Schedule(&Request{
+	scheduler := NewScheduler(proxy, 1, rmbClient)
+	nodeID, err := scheduler.Schedule(context.Background(), &Request{
 		Capacity: Capacity{
 			HRU: 3,
 			SRU: 7,
 			MRU: 11,
 		},
-		HasIPv4:   true,
-		Name:      "req",
-		Farm:      "freefarm",
-		HasDomain: true,
-		Certified: false,
+		PublicConfig:   true,
+		Name:           "req",
+		FarmId:         1,
+		PublicIpsCount: 1,
+		Certified:      false,
 	})
 	assert.NoError(t, err, "there's a satisfying node")
 	assert.Equal(t, nodeID, uint32(1), "the node id should be 1")
@@ -184,6 +237,7 @@ func TestSchedulerSuccessOn4thPage(t *testing.T) {
 
 func TestSchedulerFailure(t *testing.T) {
 	proxy := &GridProxyClientMock{}
+	rmbClient := &RMBClientMock{}
 	proxy.AddNode(1, proxyTypes.Node{
 		NodeID: 1,
 		TotalResources: proxyTypes.Capacity{
@@ -214,29 +268,31 @@ func TestSchedulerFailure(t *testing.T) {
 			SRU: 7,
 			MRU: 11,
 		},
-		HasIPv4:   false,
-		Name:      "req",
-		Farm:      "freefarm",
-		HasDomain: false,
-		Certified: false,
+		PublicIpsCount: 0,
+		Name:           "req",
+		PublicConfig:   false,
+		Certified:      false,
 	}
 	violations := map[string]func(r *Request){
 		"mru":    func(r *Request) { r.Capacity.MRU = 12 },
 		"sru":    func(r *Request) { r.Capacity.SRU = 18 },
 		"hru":    func(r *Request) { r.Capacity.HRU = 4 },
-		"ipv4":   func(r *Request) { r.HasIPv4 = true },
-		"domain": func(r *Request) { r.HasDomain = true },
+		"ipv4":   func(r *Request) { r.PublicIpsCount = 15 },
+		"domain": func(r *Request) { r.PublicConfig = true },
 	}
 	for key, fn := range violations {
-		scheduler := NewScheduler(proxy, 1)
+		scheduler := NewScheduler(proxy, 1, rmbClient)
 		cp := req
 		fn(&cp)
-		_, err := scheduler.Schedule(&cp)
+		_, err := scheduler.Schedule(context.Background(), &cp)
 		assert.Error(t, err, fmt.Sprintf("scheduler-failure-%s", key))
 	}
 }
 func TestSchedulerFailureAfterSuccess(t *testing.T) {
 	proxy := &GridProxyClientMock{}
+	rmbClient := &RMBClientMock{
+		hasFarmerBot: false,
+	}
 	proxy.AddNode(1, proxyTypes.Node{
 		NodeID: 1,
 		TotalResources: proxyTypes.Capacity{
@@ -259,40 +315,49 @@ func TestSchedulerFailureAfterSuccess(t *testing.T) {
 	proxy.AddFarm(proxyTypes.Farm{
 		Name:   "freefarm",
 		FarmID: 1,
+		PublicIps: []proxyTypes.PublicIP{
+			{
+				IP: "a",
+			},
+		},
 	})
-	scheduler := NewScheduler(proxy, 1)
-	nodeID, err := scheduler.Schedule(&Request{
+	scheduler := NewScheduler(proxy, 1, rmbClient)
+	nodeID, err := scheduler.Schedule(context.Background(), &Request{
 		Capacity: Capacity{
 			HRU: 2,
 			SRU: 6,
 			MRU: 10,
 		},
-		HasIPv4:   true,
-		Name:      "req",
-		Farm:      "freefarm",
-		HasDomain: true,
-		Certified: false,
+		PublicIpsCount: 1,
+		Name:           "req",
+		FarmId:         1,
+		PublicConfig:   true,
+		Certified:      false,
 	})
 	assert.NoError(t, err, "there's a satisfying node")
 	assert.Equal(t, nodeID, uint32(1), "the node id should be 1")
 
-	_, err = scheduler.Schedule(&Request{
+	_, err = scheduler.Schedule(context.Background(), &Request{
 		Capacity: Capacity{
 			HRU: 1,
 			SRU: 1,
 			MRU: 2, // this violates
 		},
-		HasIPv4:   true,
-		Name:      "req",
-		Farm:      "freefarm",
-		HasDomain: true,
-		Certified: false,
+		PublicIpsCount: 1,
+		Name:           "req",
+		FarmId:         1,
+		PublicConfig:   true,
+		Certified:      false,
 	})
 	assert.Error(t, err, "node would be overloaded")
 }
 
 func TestSchedulerSuccessAfterSuccess(t *testing.T) {
 	proxy := &GridProxyClientMock{}
+	rmbClient := &RMBClientMock{
+		hasFarmerBot: true,
+		nodeID:       1,
+	}
 	proxy.AddNode(1, proxyTypes.Node{
 		NodeID: 1,
 		TotalResources: proxyTypes.Capacity{
@@ -315,36 +380,114 @@ func TestSchedulerSuccessAfterSuccess(t *testing.T) {
 	proxy.AddFarm(proxyTypes.Farm{
 		Name:   "freefarm",
 		FarmID: 1,
+		PublicIps: []proxyTypes.PublicIP{
+			{
+				IP: "a",
+			},
+		},
 	})
-	scheduler := NewScheduler(proxy, 1)
-	nodeID, err := scheduler.Schedule(&Request{
+	scheduler := NewScheduler(proxy, 1, rmbClient)
+	nodeID, err := scheduler.Schedule(context.Background(), &Request{
 		Capacity: Capacity{
 			HRU: 2,
 			SRU: 6,
 			MRU: 10,
 		},
-		HasIPv4:   true,
-		Name:      "req",
-		Farm:      "freefarm",
-		HasDomain: true,
-		Certified: false,
+		PublicIpsCount: 1,
+		Name:           "req",
+		FarmId:         1,
+		PublicConfig:   true,
+		Certified:      false,
 	})
 	assert.NoError(t, err, "there's a satisfying node")
 	assert.Equal(t, nodeID, uint32(1), "the node id should be 1")
 
-	_, err = scheduler.Schedule(&Request{
+	_, err = scheduler.Schedule(context.Background(), &Request{
 		Capacity: Capacity{
 			HRU: 1,
 			SRU: 1,
 			MRU: 1,
 		},
-		HasIPv4:   true,
-		Name:      "req",
-		Farm:      "freefarm",
-		HasDomain: true,
-		Certified: false,
+		PublicIpsCount: 1,
+		Name:           "req",
+		FarmId:         1,
+		PublicConfig:   true,
+		Certified:      false,
 	})
 	assert.NoError(t, err, "there's a satisfying node")
 	assert.Equal(t, nodeID, uint32(1), "the node id should be 1")
 
+}
+
+func TestExcludingNodes(t *testing.T) {
+	proxy := &GridProxyClientMock{}
+	rmbClient := &RMBClientMock{
+		hasFarmerBot: false,
+	}
+	proxy.AddNode(1, proxyTypes.Node{
+		NodeID: 1,
+		FarmID: 1,
+	})
+	proxy.AddNode(2, proxyTypes.Node{
+		NodeID: 2,
+		FarmID: 1,
+	})
+	proxy.AddFarm(proxyTypes.Farm{
+		FarmID: 1,
+	})
+	scheduler := NewScheduler(proxy, 1, rmbClient)
+	node, err := scheduler.Schedule(context.Background(), &Request{
+		NodeExclude: []uint32{1},
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, node, uint32(2))
+
+	node, err = scheduler.Schedule(context.Background(), &Request{
+		NodeExclude: []uint32{2},
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, node, uint32(1))
+}
+
+func TestDistinctNodes(t *testing.T) {
+	proxy := &GridProxyClientMock{}
+	rmbClient := &RMBClientMock{
+		hasFarmerBot: false,
+	}
+	proxy.AddNode(1, proxyTypes.Node{
+		NodeID: 1,
+		FarmID: 1,
+	})
+	proxy.AddNode(2, proxyTypes.Node{
+		NodeID: 2,
+		FarmID: 1,
+	})
+	proxy.AddNode(3, proxyTypes.Node{
+		NodeID: 3,
+		FarmID: 1,
+	})
+	proxy.AddFarm(proxyTypes.Farm{
+		FarmID: 1,
+	})
+	requests := []Request{
+		{
+			Name:     "r1",
+			Distinct: true,
+		},
+		{
+			Name:     "r2",
+			Distinct: true,
+		},
+		{
+			Name:     "r3",
+			Distinct: true,
+		},
+	}
+	scheduler := NewScheduler(proxy, 1, rmbClient)
+	assignment := map[string]uint32{}
+	err := scheduler.ProcessRequests(context.Background(), requests, assignment)
+	assert.NoError(t, err)
+	assert.NotEqual(t, assignment["r1"], assignment["r2"])
+	assert.NotEqual(t, assignment["r1"], assignment["r3"])
+	assert.NotEqual(t, assignment["r2"], assignment["r3"])
 }

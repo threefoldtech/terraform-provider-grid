@@ -12,22 +12,24 @@ var (
 
 // Request struct for requesting a capacity
 type Request struct {
-	Capacity  Capacity
-	Name      string
-	Farm      string
-	HasIPv4   bool
-	HasDomain bool
-	Certified bool
-
-	// It is used if the Farm name is unknown ahead of time in tests and used in validation
-	farmID int
+	Capacity       Capacity
+	Name           string
+	FarmId         uint32
+	PublicConfig   bool
+	PublicIpsCount uint32
+	Certified      bool
+	Dedicated      bool
+	NodeExclude    []uint32
+	Distinct       bool
 }
 
 func (r *Request) constructFilter(twinID uint64) (f proxyTypes.NodeFilter) {
+	// this filter only lacks certification type, which is validated after.
+	// grid proxy should support filtering a node by certification type.
 	f.Status = &statusUP
 	f.AvailableFor = &twinID
-	if r.Farm != "" {
-		f.FarmName = &r.Farm
+	if r.FarmId != 0 {
+		f.FarmIDs = []uint64{uint64(r.FarmId)}
 	}
 	if r.Capacity.HRU != 0 {
 		f.FreeHRU = &r.Capacity.HRU
@@ -38,11 +40,15 @@ func (r *Request) constructFilter(twinID uint64) (f proxyTypes.NodeFilter) {
 	if r.Capacity.MRU != 0 {
 		f.FreeMRU = &r.Capacity.MRU
 	}
-	if r.HasDomain {
+	if r.PublicConfig {
 		f.Domain = &trueVal
 	}
-	if r.HasIPv4 {
-		f.IPv4 = &trueVal
+	if r.PublicIpsCount != 0 {
+		count := uint64(r.PublicIpsCount)
+		f.FreeIPs = &count
+	}
+	if r.Dedicated {
+		f.Rentable = &trueVal
 	}
 	return f
 }
