@@ -13,7 +13,7 @@ require (
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.25.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/pkg/errors v0.9.1
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.2
 	github.com/threefoldtech/substrate-client v0.1.3-0.20230216094636-bd2b5ac3bada
 	github.com/threefoldtech/zos v0.5.6-0.20230307094509-6dd66b42d490
 	golang.org/x/net v0.6.0 // indirect
