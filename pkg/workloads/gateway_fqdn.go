@@ -32,19 +32,25 @@ func GatewayFQDNProxyFromZosWorkload(wl gridtypes.Workload) (GatewayFQDNProxy, e
 		return GatewayFQDNProxy{}, errors.Wrap(err, "failed to get workload data")
 	}
 	data := dataI.(*zos.GatewayFQDNProxy)
-
+	network := ""
+	if data.Network != nil {
+		network = data.Network.String()
+	}
 	return GatewayFQDNProxy{
 		Name:           wl.Name.String(),
 		TLSPassthrough: data.TLSPassthrough,
 		Backends:       data.Backends,
 		FQDN:           data.FQDN,
-		Network:        data.Network.String(),
+		Network:        network,
 	}, nil
 }
 
 // ZosWorkload generates a zos workload from GatewayFQDNProxy
 func (g *GatewayFQDNProxy) ZosWorkload() gridtypes.Workload {
-	network := gridtypes.Name(g.Network)
+	network := (*gridtypes.Name)(&g.Network)
+	if g.Network == "" {
+		network = nil
+	}
 	return gridtypes.Workload{
 		Version: 0,
 		Type:    zos.GatewayFQDNProxyType,
@@ -54,7 +60,7 @@ func (g *GatewayFQDNProxy) ZosWorkload() gridtypes.Workload {
 			GatewayBase: zos.GatewayBase{
 				TLSPassthrough: g.TLSPassthrough,
 				Backends:       g.Backends,
-				Network:        &network,
+				Network:        network,
 			},
 			FQDN: g.FQDN,
 		}),

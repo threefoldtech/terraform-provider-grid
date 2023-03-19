@@ -43,18 +43,25 @@ func GatewayNameProxyFromZosWorkload(wl gridtypes.Workload) (GatewayNameProxy, e
 	}
 	data := dataI.(*zos.GatewayNameProxy)
 
+	network := ""
+	if data.Network != nil {
+		network = data.Network.String()
+	}
 	return GatewayNameProxy{
 		Name:           data.Name,
 		TLSPassthrough: data.TLSPassthrough,
 		Backends:       data.Backends,
 		FQDN:           result.FQDN,
-		Network:        data.Network.String(),
+		Network:        network,
 	}, nil
 }
 
 // ZosWorkload generates a zos workload from GatewayNameProxy
 func (g *GatewayNameProxy) ZosWorkload() gridtypes.Workload {
-	network := gridtypes.Name(g.Network)
+	network := (*gridtypes.Name)(&g.Network)
+	if g.Network == "" {
+		network = nil
+	}
 	return gridtypes.Workload{
 		Version: 0,
 		Type:    zos.GatewayNameProxyType,
@@ -64,7 +71,7 @@ func (g *GatewayNameProxy) ZosWorkload() gridtypes.Workload {
 			GatewayBase: zos.GatewayBase{
 				TLSPassthrough: g.TLSPassthrough,
 				Backends:       g.Backends,
-				Network:        &network,
+				Network:        network,
 			},
 			Name: g.Name,
 		}),
