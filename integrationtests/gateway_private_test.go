@@ -45,13 +45,13 @@ func TestGateWayPrivate(t *testing.T) {
 		fqdn := terraform.Output(t, terraformOptions, "fqdn")
 		assert.NotEmpty(t, fqdn)
 
-		ygg_ip := terraform.Output(t, terraformOptions, "ygg_ip")
-		assert.NotEmpty(t, ygg_ip)
+		yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
+		assert.NotEmpty(t, yggIP)
 
-		ok := TestConnection(ygg_ip, "22")
+		ok := TestConnection(yggIP, "22")
 		assert.True(t, ok)
 
-		_, err = RemoteRun("root", ygg_ip, "apk add python3; python3 -m http.server 9000 --bind :: &> /dev/null &", privateKey)
+		_, err = RemoteRun("root", yggIP, "apk add python3; python3 -m http.server 9000 --bind :: &> /dev/null &", privateKey)
 		assert.NoError(t, err)
 
 		time.Sleep(3 * time.Second)
@@ -100,13 +100,13 @@ func TestGateWayPrivate(t *testing.T) {
 		fqdn = terraform.Output(t, terraformOptions, "fqdn")
 		assert.NotEmpty(t, fqdn)
 
-		ygg_ip := terraform.Output(t, terraformOptions, "ygg_ip")
-		assert.NotEmpty(t, ygg_ip)
+		yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
+		assert.NotEmpty(t, yggIP)
 
-		ok := TestConnection(ygg_ip, "22")
+		ok := TestConnection(yggIP, "22")
 		assert.True(t, ok)
 
-		_, err = RemoteRun("root", ygg_ip, "apk add python3; python3 -m http.server 9000 --bind :: &> /dev/null &", privateKey)
+		_, err = RemoteRun("root", yggIP, "apk add python3; python3 -m http.server 9000 --bind :: &> /dev/null &", privateKey)
 		assert.NoError(t, err)
 
 		time.Sleep(3 * time.Second)
