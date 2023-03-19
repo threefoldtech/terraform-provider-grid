@@ -30,7 +30,6 @@ func TestVM(t *testing.T) {
 			Vars: map[string]interface{}{
 				"public_key": publicKey,
 			},
-			Parallelism: 1,
 		})
 		defer terraform.Destroy(t, terraformOptions)
 
@@ -63,7 +62,6 @@ func TestVM(t *testing.T) {
 			Vars: map[string]interface{}{
 				"public_key": publicKey,
 			},
-			Parallelism: 1,
 		})
 		defer terraform.Destroy(t, terraformOptions)
 
@@ -100,7 +98,6 @@ func TestVM(t *testing.T) {
 			Vars: map[string]interface{}{
 				"public_key": publicKey,
 			},
-			Parallelism: 1,
 		})
 		defer terraform.Destroy(t, terraformOptions)
 
@@ -126,7 +123,6 @@ func TestVM(t *testing.T) {
 			Vars: map[string]interface{}{
 				"public_key": publicKey,
 			},
-			Parallelism: 1,
 		})
 		defer terraform.Destroy(t, terraformOptions)
 
@@ -157,7 +153,6 @@ func TestVM(t *testing.T) {
 				"disk_size":   diskSize,
 				"mount_point": mountPoint,
 			},
-			Parallelism: 1,
 		})
 		defer terraform.Destroy(t, terraformOptions)
 
@@ -197,7 +192,6 @@ func TestVM(t *testing.T) {
 				"public_key": publicKey,
 				"disk_size":  diskSize,
 			},
-			Parallelism: 1,
 		})
 		defer terraform.Destroy(t, terraformOptions)
 
@@ -228,7 +222,6 @@ func TestVM(t *testing.T) {
 			Vars: map[string]interface{}{
 				"public_key": publicKey,
 			},
-			Parallelism: 1,
 		})
 		defer terraform.Destroy(t, terraformOptions)
 
