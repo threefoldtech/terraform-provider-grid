@@ -54,6 +54,12 @@ func resourceGatewayFQDNProxy() *schema.Resource {
 				Default:     false,
 				Description: "TLS passthrough controls the TLS termination, if false, the gateway will terminate the TLS, if True, it will only be terminated by the backend service.",
 			},
+			"network": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Default:     false,
+				Description: "Network name to join, if backend IP is private.",
+			},
 			"backends": {
 				Type:     schema.TypeList,
 				Required: true,

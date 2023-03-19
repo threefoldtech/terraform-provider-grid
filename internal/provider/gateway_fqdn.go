@@ -64,6 +64,7 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, threefo
 			Backends:       backends,
 			FQDN:           d.Get("fqdn").(string),
 			TLSPassthrough: d.Get("tls_passthrough").(bool),
+			Network:        d.Get("network").(string),
 		},
 		ID:                    d.Id(),
 		Description:           d.Get("description").(string),
@@ -104,6 +105,11 @@ func (k *GatewayFQDNDeployer) SyncContractsDeployments(d *schema.ResourceData) (
 	}
 
 	err = d.Set("fqdn", k.Gw.FQDN)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	err = d.Set("network", k.Gw.Network)
 	if err != nil {
 		errors = multierror.Append(errors, err)
 	}

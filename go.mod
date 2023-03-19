@@ -15,7 +15,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.1
 	github.com/threefoldtech/substrate-client v0.1.3-0.20230216094636-bd2b5ac3bada
-	github.com/threefoldtech/zos v0.5.6-0.20230307094509-6dd66b42d490
+	github.com/threefoldtech/zos v0.5.6-0.20230314144019-3f0b2eea7cf8
 	golang.org/x/net v0.6.0 // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20210803171230-4253848d036c
 )

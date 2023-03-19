@@ -22,6 +22,9 @@ type GatewayNameProxy struct {
 
 	// FQDN deployed on the node
 	FQDN string
+
+	// Network name to join
+	Network string
 }
 
 // GatewayNameProxyFromZosWorkload generates a gateway name proxy from a zos workload
@@ -45,20 +48,25 @@ func GatewayNameProxyFromZosWorkload(wl gridtypes.Workload) (GatewayNameProxy, e
 		TLSPassthrough: data.TLSPassthrough,
 		Backends:       data.Backends,
 		FQDN:           result.FQDN,
+		Network:        data.Network.String(),
 	}, nil
 }
 
 // ZosWorkload generates a zos workload from GatewayNameProxy
 func (g *GatewayNameProxy) ZosWorkload() gridtypes.Workload {
+	network := gridtypes.Name(g.Network)
 	return gridtypes.Workload{
 		Version: 0,
 		Type:    zos.GatewayNameProxyType,
 		Name:    gridtypes.Name(g.Name),
 		// REVISE: whether description should be set here
 		Data: gridtypes.MustMarshal(zos.GatewayNameProxy{
-			Name:           g.Name,
-			TLSPassthrough: g.TLSPassthrough,
-			Backends:       g.Backends,
+			GatewayBase: zos.GatewayBase{
+				TLSPassthrough: g.TLSPassthrough,
+				Backends:       g.Backends,
+				Network:        &network,
+			},
+			Name: g.Name,
 		}),
 	}
 }

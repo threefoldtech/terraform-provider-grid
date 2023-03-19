@@ -20,6 +20,9 @@ type GatewayFQDNProxy struct {
 
 	// FQDN deployed on the node
 	FQDN string
+
+	// Network name to join
+	Network string
 }
 
 // GatewayFQDNProxyFromZosWorkload generates a gateway FQDN proxy from a zos workload
@@ -35,20 +38,25 @@ func GatewayFQDNProxyFromZosWorkload(wl gridtypes.Workload) (GatewayFQDNProxy, e
 		TLSPassthrough: data.TLSPassthrough,
 		Backends:       data.Backends,
 		FQDN:           data.FQDN,
+		Network:        data.Network.String(),
 	}, nil
 }
 
 // ZosWorkload generates a zos workload from GatewayFQDNProxy
 func (g *GatewayFQDNProxy) ZosWorkload() gridtypes.Workload {
+	network := gridtypes.Name(g.Network)
 	return gridtypes.Workload{
 		Version: 0,
 		Type:    zos.GatewayFQDNProxyType,
 		Name:    gridtypes.Name(g.Name),
 		// REVISE: whether description should be set here
 		Data: gridtypes.MustMarshal(zos.GatewayFQDNProxy{
-			TLSPassthrough: g.TLSPassthrough,
-			Backends:       g.Backends,
-			FQDN:           g.FQDN,
+			GatewayBase: zos.GatewayBase{
+				TLSPassthrough: g.TLSPassthrough,
+				Backends:       g.Backends,
+				Network:        &network,
+			},
+			FQDN: g.FQDN,
 		}),
 	}
 }

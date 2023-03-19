@@ -86,9 +86,11 @@ func TestGenerateDeployment(t *testing.T) {
 					Type:    zos.GatewayFQDNProxyType,
 					Name:    gridtypes.Name(g.Name),
 					Data: gridtypes.MustMarshal(zos.GatewayFQDNProxy{
-						TLSPassthrough: g.TLSPassthrough,
-						Backends:       g.Backends,
-						FQDN:           gw.Gw.FQDN,
+						GatewayBase: zos.GatewayBase{
+							TLSPassthrough: g.TLSPassthrough,
+							Backends:       g.Backends,
+						},
+						FQDN: gw.Gw.FQDN,
 					}),
 				},
 			},

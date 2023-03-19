@@ -26,6 +26,7 @@ Resource for deploying a gateway name workload. A user should specify some uniqu
 - `description` (String)
 - `solution_type` (String) Solution type for created contract to be consistent across threefold tooling.
 - `tls_passthrough` (Boolean) TLS passthrough controls the TLS termination, if false, the gateway will terminate the TLS, if True, it will only be terminated by the backend service.
+- `network` (String) Network name to join, if backend URL used is a private IP.
 
 ### Read-Only
 
