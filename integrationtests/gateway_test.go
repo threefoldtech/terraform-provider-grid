@@ -35,7 +35,6 @@ func TestGateWay(t *testing.T) {
 			Vars: map[string]interface{}{
 				"public_key": publicKey,
 			},
-			Parallelism: 1,
 		})
 		defer terraform.Destroy(t, terraformOptions)
 
@@ -90,7 +89,6 @@ func TestGateWay(t *testing.T) {
 				"public_key": publicKey,
 				"fqdn":       fqdn,
 			},
-			Parallelism: 1,
 		})
 		defer terraform.Destroy(t, terraformOptions)
 

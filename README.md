@@ -49,8 +49,8 @@ make docs
 cd examples/resources/singlenode
 export MNEMONICS="mnemonics words"
 export NETWORK="network" # dev, qa, test, main
-terraform init && terraform apply -parallelism=1 # creates resources defined in main.tf
-terraform destroy -parallelism=1 # destroy the created resource
+terraform init && terraform apply # creates resources defined in main.tf
+terraform destroy # destroy the created resource
 ```
 
 - For a tutorials, please visit the [wiki](https://library.threefold.me/info/manual/#/manual3_iac/grid3_terraform/manual__grid3_terraform_home) page.
@@ -83,7 +83,6 @@ export NETWORK="network" # dev, qa, test, main
 
 ## Known Issues
 
-- [parallelism=1](https://github.com/threefoldtech/terraform-provider-grid/issues/12)
 - [increasing IPs in active deployment](https://github.com/threefoldtech/terraform-provider-grid/issues/15)
 
 ## Latest Releases
