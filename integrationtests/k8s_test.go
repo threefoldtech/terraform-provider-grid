@@ -151,7 +151,6 @@ func TestK8s(t *testing.T) {
 
 		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 			TerraformDir: "./k8s_using_module",
-			Parallelism:  1,
 			Vars: map[string]interface{}{
 				"ssh":           publicKey,
 				"network_nodes": []int{12, masterNode},
