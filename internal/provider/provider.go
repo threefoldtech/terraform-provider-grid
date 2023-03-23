@@ -34,8 +34,9 @@ var (
 		"main": "https://gridproxy.grid.tf/",
 	}
 	RelayURLs = map[string]string{
-		"dev": "wss://relay.dev.grid.tf",
-		"qa":  "wss://relay.qa.grid.tf",
+		"dev":  "wss://relay.dev.grid.tf",
+		"qa":   "wss://relay.qa.grid.tf",
+		"test": "wss://relay.test.grid.tf",
 	}
 )
 
