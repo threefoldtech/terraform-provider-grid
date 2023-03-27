@@ -25,7 +25,7 @@ func TestValidatNodeReachable(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	defer ctrl.Finish()
-
+	var nodeID uint32 = 11
 	sub := mock.NewMockSubstrateExt(ctrl)
 	cl := mock.NewRMBMockClient(ctrl)
 	pool := mock.NewMockNodeClientGetter(ctrl)
@@ -45,7 +45,7 @@ func TestValidatNodeReachable(t *testing.T) {
 		EXPECT().
 		GetNodeClient(
 			gomock.Any(),
-			uint32(11),
+			nodeID,
 		).
 		Return(client.NewNodeClient(10, cl, 10*time.Second), nil)
 
@@ -54,9 +54,9 @@ func TestValidatNodeReachable(t *testing.T) {
 			identity: identity,
 		},
 		ncPool: pool,
-		Node:   11,
+		Node:   nodeID,
 	}
-	err = gw.Validate(context.TODO(), sub)
+	err = gw.Validate(context.TODO(), sub, nodeID)
 	assert.NoError(t, err)
 }
 

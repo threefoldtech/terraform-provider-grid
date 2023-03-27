@@ -76,7 +76,22 @@ func NewGatewayFQDNDeployer(ctx context.Context, d *schema.ResourceData, threefo
 	return deployer, nil
 }
 
-func (k *GatewayFQDNDeployer) Validate(ctx context.Context, sub subi.SubstrateExt) error {
+func (k *GatewayFQDNDeployer) Validate(ctx context.Context, sub subi.SubstrateExt, nodeID uint32) error {
+
+	nodeClient, err := k.ncPool.GetNodeClient(sub, nodeID)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get node client with ID %d", nodeID)
+	}
+
+	cfg, err := nodeClient.NetworkGetPublicConfig(ctx)
+
+	if err != nil {
+		return errors.Wrapf(err, "couldn't get node %d public config", nodeID)
+	}
+
+	if cfg.IPv4.IP == nil {
+		return fmt.Errorf("node %d doesn't contain a public IP in its public config", nodeID)
+	}
 	return client.AreNodesUp(ctx, sub, []uint32{k.Node}, k.ncPool)
 }
 
@@ -127,7 +142,7 @@ func (k *GatewayFQDNDeployer) GenerateVersionlessDeployments(ctx context.Context
 }
 
 func (k *GatewayFQDNDeployer) Deploy(ctx context.Context, sub subi.SubstrateExt) error {
-	if err := k.Validate(ctx, sub); err != nil {
+	if err := k.Validate(ctx, sub, k.Node); err != nil {
 		return err
 	}
 	newDeployments, err := k.GenerateVersionlessDeployments(ctx)
