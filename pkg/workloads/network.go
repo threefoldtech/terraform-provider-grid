@@ -140,14 +140,14 @@ func GetPublicNode(ctx context.Context, gridClient proxy.Client, preferredNodes 
 // GetNodeFreeWGPort returns node free wireguard port
 func GetNodeFreeWGPort(ctx context.Context, nodeClient *client.NodeClient, nodeID uint32) (int, error) {
 	rand.Seed(time.Now().UnixNano())
-	freePorts, err := nodeClient.NetworkListWGPorts(ctx)
+	usedPorts, err := nodeClient.NetworkListWGPorts(ctx)
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to list wg ports")
 	}
-	log.Printf("reserved ports for node %d: %v\n", nodeID, freePorts)
+	log.Printf("reserved ports for node %d: %v\n", nodeID, usedPorts)
 	p := uint(rand.Intn(6000) + 2000)
 
-	for Contains(freePorts, uint16(p)) {
+	for Contains(usedPorts, uint16(p)) {
 		p = uint(rand.Intn(6000) + 2000)
 	}
 	log.Printf("Selected port for node %d is %d\n", nodeID, p)

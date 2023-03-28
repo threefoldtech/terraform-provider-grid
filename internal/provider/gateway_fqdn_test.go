@@ -4,6 +4,7 @@ package provider
 import (
 	"context"
 	"encoding/json"
+	"net"
 	"testing"
 	"time"
 
@@ -31,6 +32,19 @@ func TestValidatNodeReachable(t *testing.T) {
 	pool := mock.NewMockNodeClientGetter(ctrl)
 	identity, err := substrate.NewIdentityFromEd25519Phrase(Words)
 	assert.NoError(t, err)
+	cl.EXPECT().Call(
+		gomock.Any(),
+		uint32(10),
+		"zos.network.public_config_get",
+		gomock.Any(),
+		gomock.Any()).
+		DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
+			var res *client.PublicConfig = result.(*client.PublicConfig)
+			cfg := client.PublicConfig{IPv4: gridtypes.IPNet{IPNet: net.IPNet{IP: net.ParseIP("192.168.1.10")}}}
+			*res = cfg
+			return nil
+		}).AnyTimes()
+
 	cl.
 		EXPECT().
 		Call(
@@ -47,7 +61,7 @@ func TestValidatNodeReachable(t *testing.T) {
 			gomock.Any(),
 			nodeID,
 		).
-		Return(client.NewNodeClient(10, cl, 10*time.Second), nil)
+		Return(client.NewNodeClient(10, cl, 10*time.Second), nil).AnyTimes()
 
 	gw := GatewayFQDNDeployer{
 		ThreefoldPluginClient: &threefoldPluginClient{
@@ -56,7 +70,7 @@ func TestValidatNodeReachable(t *testing.T) {
 		ncPool: pool,
 		Node:   nodeID,
 	}
-	err = gw.Validate(context.TODO(), sub, nodeID)
+	err = gw.Validate(context.TODO(), sub)
 	assert.NoError(t, err)
 }
 
@@ -135,7 +149,21 @@ func TestDeploy(t *testing.T) {
 	assert.NoError(t, err)
 	pool.EXPECT().
 		GetNodeClient(sub, uint32(10)).
-		Return(client.NewNodeClient(12, cl, 10*time.Second), nil)
+		Return(client.NewNodeClient(12, cl, 10*time.Second), nil).AnyTimes()
+
+	cl.EXPECT().Call(
+		gomock.Any(),
+		uint32(12),
+		"zos.network.public_config_get",
+		gomock.Any(),
+		gomock.Any()).
+		DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
+			var res *client.PublicConfig = result.(*client.PublicConfig)
+			cfg := client.PublicConfig{IPv4: gridtypes.IPNet{IPNet: net.IPNet{IP: net.ParseIP("192.168.1.10")}}}
+			*res = cfg
+			return nil
+		}).AnyTimes()
+
 	cl.EXPECT().Call(
 		gomock.Any(),
 		uint32(12),
@@ -184,15 +212,31 @@ func TestUpdate(t *testing.T) {
 	}
 	dls, err := gw.GenerateVersionlessDeployments(context.Background())
 	assert.NoError(t, err)
+
 	deployer.EXPECT().Deploy(
 		gomock.Any(),
 		sub,
 		map[uint32]uint64{10: 100},
 		dls,
 	).Return(map[uint32]uint64{uint32(10): uint64(100)}, nil)
+
 	pool.EXPECT().
 		GetNodeClient(sub, uint32(10)).
-		Return(client.NewNodeClient(12, cl, 10*time.Second), nil)
+		Return(client.NewNodeClient(12, cl, 10*time.Second), nil).AnyTimes()
+
+	cl.EXPECT().Call(
+		gomock.Any(),
+		uint32(12),
+		"zos.network.public_config_get",
+		gomock.Any(),
+		gomock.Any()).
+		DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
+			var res *client.PublicConfig = result.(*client.PublicConfig)
+			cfg := client.PublicConfig{IPv4: gridtypes.IPNet{IPNet: net.IPNet{IP: net.ParseIP("192.168.1.10")}}}
+			*res = cfg
+			return nil
+		}).AnyTimes()
+
 	cl.EXPECT().Call(
 		gomock.Any(),
 		uint32(12),
@@ -242,7 +286,21 @@ func TestUpdateFailed(t *testing.T) {
 	).Return(map[uint32]uint64{10: 100}, errors.New("error"))
 	pool.EXPECT().
 		GetNodeClient(sub, uint32(10)).
-		Return(client.NewNodeClient(12, cl, 10*time.Second), nil)
+		Return(client.NewNodeClient(12, cl, 10*time.Second), nil).AnyTimes()
+
+	cl.EXPECT().Call(
+		gomock.Any(),
+		uint32(12),
+		"zos.network.public_config_get",
+		gomock.Any(),
+		gomock.Any()).
+		DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
+			var res *client.PublicConfig = result.(*client.PublicConfig)
+			cfg := client.PublicConfig{IPv4: gridtypes.IPNet{IPNet: net.IPNet{IP: net.ParseIP("192.168.1.10")}}}
+			*res = cfg
+			return nil
+		}).AnyTimes()
+
 	cl.EXPECT().Call(
 		gomock.Any(),
 		uint32(12),
