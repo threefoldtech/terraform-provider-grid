@@ -14,7 +14,7 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.2
-	github.com/threefoldtech/substrate-client v0.1.3
+	github.com/threefoldtech/substrate-client v0.1.5
 	github.com/threefoldtech/zos v0.5.6-0.20230307094509-6dd66b42d490
 	golang.org/x/net v0.8.0 // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20210803171230-4253848d036c
