@@ -23,7 +23,7 @@ unittests:
 	go test -v `go list ./... | grep -v integrationtests`
 
 integrationtests: 
-	go test -v ./tests/... -p 1 --tags=integration
+	go test -v ./integrationtests/... --tags=integration
 
 tests: unittests integrationtests
 

@@ -10,11 +10,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
+	"github.com/threefoldtech/grid3-go/deployer"
 	"github.com/threefoldtech/terraform-provider-grid/internal/provider/scheduler"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
-func ReourceScheduler() *schema.Resource {
+func ResourceScheduler() *schema.Resource {
 	return &schema.Resource{
 		Description:   "Resource to dynamically assign resource requests to nodes. A user could specify their desired node configurations, and the scheduler searches the grid for eligible nodes.",
 		CreateContext: ResourceSchedCreate,
@@ -149,7 +150,7 @@ func parseRequests(d *schema.ResourceData, assignment map[string]uint32) []sched
 }
 
 func schedule(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	threefoldPluginClient, ok := meta.(*threefoldPluginClient)
+	tfPluginClient, ok := meta.(*deployer.TFPluginClient)
 	if !ok {
 		return diag.FromErr(fmt.Errorf("failed to cast meta into api client"))
 	}
@@ -157,7 +158,7 @@ func schedule(ctx context.Context, d *schema.ResourceData, meta interface{}) dia
 	assignment := parseAssignment(d)
 	reqs := parseRequests(d, assignment)
 
-	scheduler := scheduler.NewScheduler(threefoldPluginClient.gridProxyClient, uint64(threefoldPluginClient.twinID), threefoldPluginClient.rmb)
+	scheduler := scheduler.NewScheduler(tfPluginClient.GridProxyClient, uint64(tfPluginClient.TwinID), tfPluginClient.RMB)
 	if err := scheduler.ProcessRequests(ctx, reqs, assignment); err != nil {
 		return diag.FromErr(err)
 	}
