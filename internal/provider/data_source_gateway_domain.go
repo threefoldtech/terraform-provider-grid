@@ -3,9 +3,15 @@ package provider
 
 import (
 	"context"
+	"fmt"
+	"strconv"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/pkg/errors"
+	"github.com/threefoldtech/grid3-go/deployer"
+	client "github.com/threefoldtech/grid3-go/node"
 )
 
 func dataSourceGatewayDomain() *schema.Resource {
@@ -37,7 +43,7 @@ func dataSourceGatewayDomain() *schema.Resource {
 
 // TODO: make this non failing
 func dataSourceGatewayRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	/*tfPluginClient, ok := meta.(*deployer.TFPluginClient)
+	tfPluginClient, ok := meta.(*deployer.TFPluginClient)
 	if !ok {
 		return diag.FromErr(fmt.Errorf("failed to cast meta into threefold plugin client"))
 	}
@@ -45,7 +51,7 @@ func dataSourceGatewayRead(ctx context.Context, d *schema.ResourceData, meta int
 	nodeID := uint32(d.Get("node").(int))
 	name := d.Get("name").(string)
 
-	ncPool := client.NewNodeClientPool(tfPluginClient.RMB, tfPluginClient.timeout)
+	ncPool := client.NewNodeClientPool(tfPluginClient.RMB, tfPluginClient.RMBTimeout)
 	nodeClient, err := ncPool.GetNodeClient(tfPluginClient.SubstrateConn, nodeID)
 	if err != nil {
 		return diag.FromErr(errors.Wrapf(err, "failed to get node client with ID %d", nodeID))
@@ -67,6 +73,5 @@ func dataSourceGatewayRead(ctx context.Context, d *schema.ResourceData, meta int
 	}
 
 	d.SetId(strconv.FormatInt(time.Now().Unix(), 10))
-	*/
 	return nil
 }
