@@ -121,7 +121,7 @@ func New(version string, st state.Getter) (func() *schema.Provider, subi.Substra
 				"grid_gateway_domain": dataSourceGatewayDomain(),
 			},
 			ResourcesMap: map[string]*schema.Resource{
-				"grid_scheduler":  ResourceScheduler(),
+				"grid_scheduler":  resourceScheduler(),
 				"grid_deployment": resourceDeployment(),
 				"grid_network":    resourceNetwork(),
 				"grid_kubernetes": resourceKubernetes(),

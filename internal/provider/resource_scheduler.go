@@ -15,7 +15,7 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
-func ResourceScheduler() *schema.Resource {
+func resourceScheduler() *schema.Resource {
 	return &schema.Resource{
 		Description:   "Resource to dynamically assign resource requests to nodes. A user could specify their desired node configurations, and the scheduler searches the grid for eligible nodes.",
 		CreateContext: ResourceSchedCreate,
