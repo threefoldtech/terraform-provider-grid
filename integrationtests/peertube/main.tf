@@ -23,8 +23,8 @@ resource "grid_scheduler" "sched" {
 
   requests {
     name   = "gateway"
-    ipv4   = true
-    domain = true
+    public_config   = true
+    public_ips_count = 1
   }
 }
 # this data source is used to break circular dependency in cases similar to the following:
@@ -67,10 +67,15 @@ resource "grid_deployment" "d1" {
     planetary = true
   }
 }
+
+locals {
+  ygg_ip = try(length(grid_deployment.d1.vms[0].ygg_ip), 0) > 0 ? grid_deployment.d1.vms[0].ygg_ip : ""
+}
+
 resource "grid_name_proxy" "p1" {
   node            = grid_scheduler.sched.nodes["gateway"]
   name            = "peertube"
-  backends        = [format("http://[%s]:9000", grid_deployment.d1.vms[0].ygg_ip)]
+  backends        = [format("http://[%s]:9000", local.ygg_ip)]
   tls_passthrough = false
 }
 output "fqdn" {

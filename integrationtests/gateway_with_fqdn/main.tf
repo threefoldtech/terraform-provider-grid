@@ -26,7 +26,7 @@ resource "grid_scheduler" "sched" {
   }
   requests {
     name = "gateway"
-    ipv4 = true
+    public_config   = true
   }
 }
 
@@ -58,11 +58,16 @@ resource "grid_deployment" "d1" {
   }
 }
 
+
+locals {
+  ygg_ip = try(length(grid_deployment.d1.vms[0].ygg_ip), 0) > 0 ? grid_deployment.d1.vms[0].ygg_ip : ""
+}
+
 resource "grid_fqdn_proxy" "p1" {
   node            = grid_scheduler.sched.nodes["gateway"]
   name            = "test"
   fqdn            = var.fqdn
-  backends        = [format("http://[%s]:9000", grid_deployment.d1.vms[0].ygg_ip)]
+  backends        = [format("http://[%s]:9000", local.ygg_ip)]
   tls_passthrough = false
 }
 

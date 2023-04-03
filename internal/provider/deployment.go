@@ -101,7 +101,7 @@ func syncContractsDeployments(r *schema.ResourceData, d *workloads.Deployment) (
 		zdbs = append(zdbs, zdb.ToMap())
 	}
 	for _, q := range d.QSFS {
-		qsfs = append(zdbs, q.ToMap())
+		qsfs = append(qsfs, q.ToMap())
 	}
 
 	err := r.Set("vms", vms)
