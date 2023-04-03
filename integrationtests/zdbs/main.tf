@@ -5,7 +5,7 @@ variable "password" {
 terraform {
   required_providers {
     grid = {
-      source = "threefoldtechdev.com/providers/grid"
+      source = "threefoldtech/grid"
     }
   }
 }
