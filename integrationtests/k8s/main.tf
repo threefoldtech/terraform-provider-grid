@@ -37,10 +37,6 @@ resource "grid_network" "net1" {
   add_wg_access = true
 }
 
-variable "workers" {
-  type = number
-}
-
 resource "grid_kubernetes" "k8s1" {
   network_name = grid_network.net1.name
   token        = "12345678910122"

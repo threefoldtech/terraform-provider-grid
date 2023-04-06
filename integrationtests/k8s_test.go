@@ -2,7 +2,6 @@ package integrationtests
 
 import (
 	"os"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -25,7 +24,7 @@ func AssertNodesAreReady(t *testing.T, terraformOptions *terraform.Options, priv
 	output = strings.TrimSpace(output)
 	assert.Empty(t, err)
 
-	nodesNumber := reflect.ValueOf(terraformOptions.Vars["workers"]).Int() + 1
+	nodesNumber := 2
 	numberOfReadyNodes := strings.Count(output, "Ready")
 	assert.True(t, numberOfReadyNodes == nodesNumber, "number of ready nodes is not equal to number of nodes only %s nodes are ready", numberOfReadyNodes)
 
@@ -50,7 +49,6 @@ func TestK8s(t *testing.T) {
 			TerraformDir: "./k8s",
 			Vars: map[string]interface{}{
 				"public_key": publicKey,
-				"workers":    2,
 			},
 		})
 		defer terraform.Destroy(t, terraformOptions)
