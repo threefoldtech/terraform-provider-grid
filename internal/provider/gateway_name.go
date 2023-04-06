@@ -31,7 +31,7 @@ func newNameGatewayFromSchema(d *schema.ResourceData) (*workloads.GatewayNamePro
 		nodeDeploymentID[uint32(nodeInt)] = deploymentID
 	}
 
-	var contractID uint64 = 0
+	var contractID uint64
 	var err error
 	if d.Id() != "" {
 		contractID, err = strconv.ParseUint(d.Id(), 10, 64)
