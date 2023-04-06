@@ -56,11 +56,9 @@ func newDeploymentFromSchema(d *schema.ResourceData) (*workloads.Deployment, err
 		solutionProvider = &solutionProviderVal
 	}
 
-	var contractID uint64
+	var contractID uint64 = 0
 	var err error
-	if d.Id() == "" {
-		contractID = 0
-	} else {
+	if d.Id() != "" {
 		contractID, err = strconv.ParseUint(d.Id(), 10, 64)
 		if err != nil {
 			return nil, err
