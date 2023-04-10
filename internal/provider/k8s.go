@@ -32,7 +32,7 @@ func newK8sFromSchema(d *schema.ResourceData) (*workloads.K8sCluster, error) {
 	for node, id := range nodeDeploymentIDIf {
 		nodeInt, err := strconv.ParseUint(node, 10, 32)
 		if err != nil {
-			return nil, errors.Wrapf(err, "couldn't parse node id '%d'", node)
+			return nil, errors.Wrapf(err, "couldn't parse node id %s'", node)
 		}
 		deploymentID := uint64(id.(int))
 		nodeDeploymentID[uint32(nodeInt)] = deploymentID
