@@ -32,7 +32,7 @@ func newK8sFromSchema(d *schema.ResourceData) (*workloads.K8sCluster, error) {
 	for node, id := range nodeDeploymentIDIf {
 		nodeInt, err := strconv.ParseUint(node, 10, 32)
 		if err != nil {
-			return nil, errors.Wrap(err, "couldn't parse node id")
+			return nil, errors.Wrapf(err, "couldn't parse node id '%d'", node)
 		}
 		deploymentID := uint64(id.(int))
 		nodeDeploymentID[uint32(nodeInt)] = deploymentID
@@ -115,6 +115,16 @@ func storeK8sState(d *schema.ResourceData, k8s *workloads.K8sCluster, state depl
 		errors = multierror.Append(errors, err)
 	}
 
+	err = d.Set("solution_type", k8s.SolutionType)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	err = d.Set("nodes_ip_range", k8s.NodesIPRange)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
 	return
 }
 
@@ -140,7 +150,7 @@ func updateNetworkState(d *schema.ResourceData, k8s *workloads.K8sCluster, state
 	}
 
 	// append new ips
-	masterNodeDeploymentHostIDs := network.GetDeploymentHostIDs(k8s.Master.Node, k8s.NodeDeploymentID[k8s.Master.Node])
+	var masterNodeDeploymentHostIDs []byte
 	masterIP := net.ParseIP(k8s.Master.IP)
 	if masterIP == nil {
 		log.Printf("couldn't parse master ip")

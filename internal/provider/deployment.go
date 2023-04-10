@@ -104,38 +104,48 @@ func syncContractsDeployments(r *schema.ResourceData, d *workloads.Deployment) (
 
 	err := r.Set("vms", vms)
 	if err != nil {
-		errors = multierror.Append(errors, fmt.Errorf("failed to set vms with error: %v", err))
+		errors = multierror.Append(errors, fmt.Errorf("failed to set vms with error: %w", err))
 	}
 
 	err = r.Set("zdbs", zdbs)
 	if err != nil {
-		errors = multierror.Append(errors, fmt.Errorf("failed to set zdbs with error: %v", err))
+		errors = multierror.Append(errors, fmt.Errorf("failed to set zdbs with error: %w", err))
 	}
 
 	err = r.Set("disks", disks)
 	if err != nil {
-		errors = multierror.Append(errors, fmt.Errorf("failed to set disks with error: %v", err))
+		errors = multierror.Append(errors, fmt.Errorf("failed to set disks with error: %w", err))
 	}
 
 	err = r.Set("qsfs", qsfs)
 	if err != nil {
-		errors = multierror.Append(errors, fmt.Errorf("failed to set qsfs with error: %v", err))
+		errors = multierror.Append(errors, fmt.Errorf("failed to set qsfs with error: %w", err))
 	}
 
 	err = r.Set("node", d.NodeID)
 	if err != nil {
-		errors = multierror.Append(errors, fmt.Errorf("failed to set node with error: %v", err))
+		errors = multierror.Append(errors, fmt.Errorf("failed to set node with error: %w", err))
 	}
 
 	err = r.Set("network_name", d.NetworkName)
 	if err != nil {
-		errors = multierror.Append(errors, fmt.Errorf("failed to set network name with error: %v", err))
+		errors = multierror.Append(errors, fmt.Errorf("failed to set network name with error: %w", err))
+	}
+
+	err = r.Set("solution_type", d.SolutionType)
+	if err != nil {
+		errors = multierror.Append(errors, fmt.Errorf("failed to set solution type with error: %w", err))
+	}
+
+	err = r.Set("solution_provider", int(*d.SolutionProvider))
+	if err != nil {
+		errors = multierror.Append(errors, fmt.Errorf("failed to set solution provider with error: %w", err))
 	}
 
 	/* TODO: iprange
 	err = r.Set("ip_range", d.IPRange)
 	if err != nil {
-		errors = multierror.Append(errors, fmt.Errorf("failed to set ip range with error: %v", err))
+		errors = multierror.Append(errors, fmt.Errorf("failed to set ip range with error: %w", err))
 	}
 	*/
 

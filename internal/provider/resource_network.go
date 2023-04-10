@@ -116,7 +116,7 @@ func newNetwork(d *schema.ResourceData) (*workloads.ZNet, error) {
 	for node, id := range nodeDeploymentIDIf {
 		nodeInt, err := strconv.ParseUint(node, 10, 32)
 		if err != nil {
-			return nil, errors.Wrap(err, "couldn't parse node id")
+			return nil, errors.Wrapf(err, "couldn't parse node id '%d'", node)
 		}
 		deploymentID := uint64(id.(int))
 		nodeDeploymentID[uint32(nodeInt)] = deploymentID
@@ -127,7 +127,7 @@ func newNetwork(d *schema.ResourceData) (*workloads.ZNet, error) {
 	for node, r := range nodesIPRangeIf {
 		nodeInt, err := strconv.ParseUint(node, 10, 32)
 		if err != nil {
-			return nil, errors.Wrap(err, "couldn't parse node id")
+			return nil, errors.Wrapf(err, "couldn't parse node id '%d'", node)
 		}
 		nodesIPRange[uint32(nodeInt)], err = gridtypes.ParseIPNet(r.(string))
 		if err != nil {
