@@ -2,7 +2,6 @@ package integrationtests
 
 import (
 	"os"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -17,17 +16,17 @@ import (
 func AssertNodesAreReady(t *testing.T, terraformOptions *terraform.Options, privateKey string) {
 	t.Helper()
 
-	masterYggIP := terraform.Output(t, terraformOptions, "master_yggip")
+	masterYggIP := terraform.Output(t, terraformOptions, "ygg_ip")
 	assert.NotEmpty(t, masterYggIP)
 
 	time.Sleep(5 * time.Second)
-	output, err := RemoteRun("root", masterYggIP, "kubectl get node", privateKey)
+	output, err := RemoteRun("root", masterYggIP, "export KUBECONFIG=/etc/rancher/k3s/k3s.yaml && kubectl get node", privateKey)
 	output = strings.TrimSpace(output)
 	assert.Empty(t, err)
 
-	nodesNumber := reflect.ValueOf(terraformOptions.Vars["workers"]).Len() + 1
-	numberOfReadynodes := strings.Count(output, "Ready")
-	assert.True(t, numberOfReadynodes == nodesNumber, "number of ready nodes is not equal to number of nodes only %s nodes are ready", numberOfReadynodes)
+	nodesNumber := 2
+	numberOfReadyNodes := strings.Count(output, "Ready")
+	assert.True(t, numberOfReadyNodes == nodesNumber, "number of ready nodes is not equal to number of nodes only %s nodes are ready", numberOfReadyNodes)
 
 }
 func TestK8s(t *testing.T) {
@@ -154,17 +153,15 @@ func TestK8s(t *testing.T) {
 			Vars: map[string]interface{}{
 				"ssh":           publicKey,
 				"network_nodes": []int{12, masterNode},
-				"master": []map[string]interface{}{
-					{
-						"name":        "mr",
-						"node":        masterNode,
-						"cpu":         1,
-						"memory":      1024,
-						"disk_name":   "mrdisk",
-						"mount_point": "/mydisk",
-						"publicip":    false,
-						"planetary":   true,
-					},
+				"master": map[string]interface{}{
+					"name":        "mr",
+					"node":        masterNode,
+					"cpu":         1,
+					"memory":      1024,
+					"disk_name":   "mrdisk",
+					"mount_point": "/mydisk",
+					"publicip":    false,
+					"planetary":   true,
 				},
 				"workers": []map[string]interface{}{
 					{

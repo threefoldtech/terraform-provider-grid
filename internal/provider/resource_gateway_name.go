@@ -3,21 +3,21 @@ package provider
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/pkg/errors"
-	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
+	"github.com/threefoldtech/grid3-go/deployer"
 )
 
 func resourceGatewayNameProxy() *schema.Resource {
 	return &schema.Resource{
 		// This description is used by the documentation generator and the language server.
-		Description: "Resource for deploying a gateway name workload. A user should specify some unique name, for example hamada, and a node working as a gateway that has the domain gent01.dev.grid.tf, and the grid generates a fully qualified domain name (fqdn) `hamada.getn01.dev.grid.tf`. Then, the user could connect this gateway workload to whichever backend services the user desires, making these backend services accessible through the computed fqdn.",
-
-		CreateContext: ResourceFunc(resourceGatewayNameCreate),
-		ReadContext:   ResourceReadFunc(resourceGatewayNameRead),
-		UpdateContext: ResourceFunc(resourceGatewayNameUpdate),
-		DeleteContext: ResourceFunc(resourceGatewayNameDelete),
+		Description:   "Resource for deploying a gateway name workload. A user should specify some unique name, for example hamada, and a node working as a gateway that has the domain gent01.dev.grid.tf, and the grid generates a fully qualified domain name (fqdn) `hamada.getn01.dev.grid.tf`. Then, the user could connect this gateway workload to whichever backend services the user desires, making these backend services accessible through the computed fqdn.",
+		CreateContext: resourceGatewayNameCreate,
+		ReadContext:   resourceGatewayNameRead,
+		UpdateContext: resourceGatewayNameUpdate,
+		DeleteContext: resourceGatewayNameDelete,
 
 		Schema: map[string]*schema.Schema{
 			"name": {
@@ -75,36 +75,111 @@ func resourceGatewayNameProxy() *schema.Resource {
 	}
 }
 
-func resourceGatewayNameCreate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Syncer, error) {
-	deployer, err := NewGatewayNameDeployer(d, threefoldPluginClient)
-	if err != nil {
-		return nil, errors.Wrap(err, "couldn't load deployer data")
+func resourceGatewayNameCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+	tfPluginClient, ok := meta.(*deployer.TFPluginClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into threefold plugin client"))
 	}
-	return &deployer, deployer.Deploy(ctx, sub)
+
+	gw, err := newNameGatewayFromSchema(d)
+	if err != nil {
+		return diag.Errorf("couldn't load name gateway data with error: %v", err)
+	}
+
+	if err := tfPluginClient.GatewayNameDeployer.Deploy(ctx, gw); err != nil {
+		return diag.Errorf("couldn't deploy name gateway with error: %v", err)
+	}
+
+	if err := tfPluginClient.GatewayNameDeployer.Sync(ctx, gw); err != nil {
+		return diag.Errorf("couldn't sync name gateway with error: %v", err)
+	}
+
+	if err := syncContractsNameGateways(d, gw); err != nil {
+		return diag.Errorf("couldn't set name gateway data to the resource with error: %v", err)
+	}
+
+	return diags
 }
 
-func resourceGatewayNameUpdate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Syncer, error) {
-	deployer, err := NewGatewayNameDeployer(d, threefoldPluginClient)
-	if err != nil {
-		return nil, errors.Wrap(err, "couldn't load deployer data")
+func resourceGatewayNameUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+	tfPluginClient, ok := meta.(*deployer.TFPluginClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into threefold plugin client"))
 	}
 
-	return &deployer, deployer.Deploy(ctx, sub)
+	gw, err := newNameGatewayFromSchema(d)
+	if err != nil {
+		return diag.Errorf("couldn't load name gateway data with error: %v", err)
+	}
+
+	if err := tfPluginClient.GatewayNameDeployer.Deploy(ctx, gw); err != nil {
+		return diag.Errorf("couldn't update name gateway with error: %v", err)
+	}
+
+	if err := tfPluginClient.GatewayNameDeployer.Sync(ctx, gw); err != nil {
+		return diag.Errorf("couldn't sync name gateway with error: %v", err)
+	}
+
+	if err := syncContractsNameGateways(d, gw); err != nil {
+		return diag.Errorf("couldn't set name gateway data to the resource with error: %v", err)
+	}
+
+	return diags
 }
 
-func resourceGatewayNameRead(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Syncer, error) {
-	deployer, err := NewGatewayNameDeployer(d, threefoldPluginClient)
-	if err != nil {
-		return nil, errors.Wrap(err, "couldn't load deployer data")
+func resourceGatewayNameRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+	tfPluginClient, ok := meta.(*deployer.TFPluginClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into threefold plugin client"))
 	}
 
-	return &deployer, nil
+	gw, err := newNameGatewayFromSchema(d)
+	if err != nil {
+		return diag.Errorf("couldn't load name gateway data with error: %v", err)
+	}
+
+	if err := tfPluginClient.GatewayNameDeployer.Sync(ctx, gw); err != nil {
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  "failed to read deployment data (terraform refresh might help)",
+			Detail:   err.Error(),
+		})
+		return diags
+	}
+
+	if err := syncContractsNameGateways(d, gw); err != nil {
+		return diag.Errorf("couldn't set name gateway data to the resource with error: %v", err)
+	}
+
+	return diags
 }
 
-func resourceGatewayNameDelete(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Syncer, error) {
-	deployer, err := NewGatewayNameDeployer(d, threefoldPluginClient)
-	if err != nil {
-		return nil, errors.Wrap(err, "couldn't load deployer data")
+func resourceGatewayNameDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+	tfPluginClient, ok := meta.(*deployer.TFPluginClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into threefold plugin client"))
 	}
-	return &deployer, deployer.Cancel(ctx, sub)
+
+	gw, err := newNameGatewayFromSchema(d)
+	if err != nil {
+		return diag.Errorf("couldn't load name gateway data with error: %v", err)
+	}
+
+	if err := tfPluginClient.GatewayNameDeployer.Cancel(ctx, gw); err != nil {
+		return diag.Errorf("couldn't cancel name gateway with error: %v", err)
+	}
+
+	if err := tfPluginClient.GatewayNameDeployer.Sync(ctx, gw); err != nil {
+		return diag.Errorf("couldn't sync name gateway with error: %v", err)
+	}
+
+	if err := syncContractsNameGateways(d, gw); err != nil {
+		return diag.Errorf("couldn't set name gateway data to the resource with error: %v", err)
+	}
+
+	return diags
 }

@@ -1,15 +1,17 @@
 // Package state provides a state to save the user work in a database.
 package state
 
+import "github.com/threefoldtech/grid3-go/deployer"
+
 // State struct
 type State struct {
-	Networks NetworkState `json:"networks"`
+	Networks deployer.NetworkState `json:"networks"`
 }
 
 // GetNetworkState gets network state (names and their networks)
-func (s *State) GetNetworkState() NetworkState {
+func (s *State) GetNetworkState() deployer.NetworkState {
 	if s.Networks == nil {
-		s.Networks = make(NetworkState)
+		s.Networks = make(deployer.NetworkState)
 	}
 	return s.Networks
 }
@@ -17,6 +19,6 @@ func (s *State) GetNetworkState() NetworkState {
 // NewState generates a new state
 func NewState() State {
 	return State{
-		Networks: make(NetworkState),
+		Networks: make(deployer.NetworkState),
 	}
 }

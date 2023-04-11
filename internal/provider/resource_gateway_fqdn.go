@@ -3,10 +3,11 @@ package provider
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/pkg/errors"
-	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
+	"github.com/threefoldtech/grid3-go/deployer"
 )
 
 func resourceGatewayFQDNProxy() *schema.Resource {
@@ -14,10 +15,10 @@ func resourceGatewayFQDNProxy() *schema.Resource {
 		// This description is used by the documentation generator and the language server.
 		Description: "Resource for deploying a gateway with a fully qualified domain name.\nA user should have some fully qualified domain name (fqdn) (e.g. example.com), pointing to the specified node working as a gateway, then connect this gateway to whichever backend services they desire, making these backend services accessible through the computed fqdn.",
 
-		CreateContext: ResourceFunc(resourceGatewayFQDNCreate),
-		ReadContext:   ResourceReadFunc(resourceGatewayFQDNRead),
-		UpdateContext: ResourceFunc(resourceGatewayFQDNUpdate),
-		DeleteContext: ResourceFunc(resourceGatewayFQDNDelete),
+		CreateContext: resourceGatewayFQDNCreate,
+		ReadContext:   resourceGatewayFQDNRead,
+		UpdateContext: resourceGatewayFQDNUpdate,
+		DeleteContext: resourceGatewayFQDNDelete,
 
 		Schema: map[string]*schema.Schema{
 			"name": {
@@ -46,7 +47,7 @@ func resourceGatewayFQDNProxy() *schema.Resource {
 			"fqdn": {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: "The fully quallified domain name of the deployed workload.",
+				Description: "The fully qualified domain name of the deployed workload.",
 			},
 			"tls_passthrough": {
 				Type:        schema.TypeBool,
@@ -72,35 +73,111 @@ func resourceGatewayFQDNProxy() *schema.Resource {
 	}
 }
 
-func resourceGatewayFQDNCreate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Syncer, error) {
-	deployer, err := NewGatewayFQDNDeployer(ctx, d, threefoldPluginClient)
-	if err != nil {
-		return nil, errors.Wrap(err, "couldn't load deployer data")
+func resourceGatewayFQDNCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+	tfPluginClient, ok := meta.(*deployer.TFPluginClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into threefold plugin client"))
 	}
-	return &deployer, deployer.Deploy(ctx, sub)
+
+	gw, err := newFQDNGatewayFromSchema(d)
+	if err != nil {
+		return diag.Errorf("couldn't load fqdn gateway data with error: %v", err)
+	}
+
+	if err := tfPluginClient.GatewayFQDNDeployer.Deploy(ctx, gw); err != nil {
+		return diag.Errorf("couldn't deploy fqdn gateway with error: %v", err)
+	}
+
+	if err := tfPluginClient.GatewayFQDNDeployer.Sync(ctx, gw); err != nil {
+		return diag.Errorf("couldn't sync fqdn gateway with error: %v", err)
+	}
+
+	if err := syncContractsFQDNGateways(d, gw); err != nil {
+		return diag.Errorf("couldn't set fqdn gateway data to the resource with error: %v", err)
+	}
+
+	return diags
 }
 
-func resourceGatewayFQDNUpdate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Syncer, error) {
-	deployer, err := NewGatewayFQDNDeployer(ctx, d, threefoldPluginClient)
-	if err != nil {
-		return nil, errors.Wrap(err, "couldn't load deployer data")
+func resourceGatewayFQDNUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+	tfPluginClient, ok := meta.(*deployer.TFPluginClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into threefold plugin client"))
 	}
 
-	return &deployer, deployer.Deploy(ctx, sub)
+	gw, err := newFQDNGatewayFromSchema(d)
+	if err != nil {
+		return diag.Errorf("couldn't load fqdn gateway data with error: %v", err)
+	}
+
+	if err := tfPluginClient.GatewayFQDNDeployer.Deploy(ctx, gw); err != nil {
+		return diag.Errorf("couldn't update fqdn gateway with error: %v", err)
+	}
+
+	if err := tfPluginClient.GatewayFQDNDeployer.Sync(ctx, gw); err != nil {
+		return diag.Errorf("couldn't sync fqdn gateway with error: %v", err)
+	}
+
+	if err := syncContractsFQDNGateways(d, gw); err != nil {
+		return diag.Errorf("couldn't set fqdn gateway data to the resource with error: %v", err)
+	}
+
+	return diags
 }
 
-func resourceGatewayFQDNRead(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Syncer, error) {
-	deployer, err := NewGatewayFQDNDeployer(ctx, d, threefoldPluginClient)
-	if err != nil {
-		return nil, errors.Wrap(err, "couldn't load deployer data")
+func resourceGatewayFQDNRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+	tfPluginClient, ok := meta.(*deployer.TFPluginClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into threefold plugin client"))
 	}
-	return &deployer, nil
+
+	gw, err := newFQDNGatewayFromSchema(d)
+	if err != nil {
+		return diag.Errorf("couldn't load fqdn gateway data with error: %v", err)
+	}
+
+	if err := tfPluginClient.GatewayFQDNDeployer.Sync(ctx, gw); err != nil {
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  "failed to read deployment data (terraform refresh might help)",
+			Detail:   err.Error(),
+		})
+		return diags
+	}
+
+	if err := syncContractsFQDNGateways(d, gw); err != nil {
+		return diag.Errorf("couldn't set fqdn gateway data to the resource with error: %v", err)
+	}
+
+	return diags
 }
 
-func resourceGatewayFQDNDelete(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Syncer, error) {
-	deployer, err := NewGatewayFQDNDeployer(ctx, d, threefoldPluginClient)
-	if err != nil {
-		return nil, errors.Wrap(err, "couldn't load deployer data")
+func resourceGatewayFQDNDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+	tfPluginClient, ok := meta.(*deployer.TFPluginClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into threefold plugin client"))
 	}
-	return &deployer, deployer.Cancel(ctx, sub)
+
+	gw, err := newFQDNGatewayFromSchema(d)
+	if err != nil {
+		return diag.Errorf("couldn't load fqdn gateway data with error: %v", err)
+	}
+
+	if err := tfPluginClient.GatewayFQDNDeployer.Cancel(ctx, gw); err != nil {
+		return diag.Errorf("couldn't update fqdn gateway with error: %v", err)
+	}
+
+	if err := tfPluginClient.GatewayFQDNDeployer.Sync(ctx, gw); err != nil {
+		return diag.Errorf("couldn't sync fqdn gateway with error: %v", err)
+	}
+
+	if err := syncContractsFQDNGateways(d, gw); err != nil {
+		return diag.Errorf("couldn't set fqdn gateway data to the resource with error: %v", err)
+	}
+
+	return diags
 }

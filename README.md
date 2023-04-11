@@ -1,5 +1,7 @@
 # Grid provider for terraform
 
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/cd6e18aac6be404ab89ec160b4b36671)](https://www.codacy.com/gh/threefoldtech/terraform-provider-grid/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=threefoldtech/terraform-provider-grid&amp;utm_campaign=Badge_Grade) [![Testing](https://github.com/threefoldtech/terraform-provider-grid/actions/workflows/test.yml/badge.svg?branch=development)](https://github.com/threefoldtech/terraform-provider-grid/actions/workflows/test.yml) [![Testing](https://github.com/threefoldtech/terraform-provider-grid/actions/workflows/lint.yml/badge.svg?branch=development)](https://github.com/threefoldtech/terraform-provider-grid/actions/workflows/lint.yml) [![Testing](https://github.com/threefoldtech/terraform-provider-grid/actions/workflows/terratest.yml/badge.svg?branch=development)](https://github.com/threefoldtech/terraform-provider-grid/actions/workflows/terratest.yml) [![Dependabot](https://badgen.net/badge/Dependabot/enabled/green?icon=dependabot)](https://dependabot.com/)
+
 A terraform provider for the [threefold grid](https://threefold.io) to manage your infrastructure using terraform.
 
 ## Requirements

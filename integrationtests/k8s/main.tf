@@ -30,10 +30,11 @@ resource "grid_scheduler" "sched" {
 }
 
 resource "grid_network" "net1" {
-  nodes       = distinct([grid_scheduler.sched.nodes["node1"], grid_scheduler.sched.nodes["node2"]])
-  ip_range    = "10.1.0.0/16"
-  name        = "network12346"
-  description = "newer network"
+  nodes         = distinct([grid_scheduler.sched.nodes["node1"], grid_scheduler.sched.nodes["node2"]])
+  ip_range      = "10.1.0.0/16"
+  name          = "network12346"
+  description   = "newer network"
+  add_wg_access = true
 }
 
 resource "grid_kubernetes" "k8s1" {

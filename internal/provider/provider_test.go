@@ -4,7 +4,7 @@ package provider
 import (
 	"testing"
 
-	"github.com/threefoldtech/terraform-provider-grid/pkg/state"
+	"github.com/threefoldtech/terraform-provider-grid/internal/state"
 )
 
 func TestProvider(t *testing.T) {

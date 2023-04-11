@@ -14,7 +14,7 @@ terraform {
 provider "grid" {
 }
 
-resource "grid_scheduler" "scheduler" {
+resource "grid_scheduler" "sched" {
   requests {
     name = "node1"
     cru  = 2
