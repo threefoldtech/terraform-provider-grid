@@ -46,6 +46,7 @@ func newFQDNGatewayFromSchema(d *schema.ResourceData) (*workloads.GatewayFQDNPro
 		Backends:         backends,
 		FQDN:             d.Get("fqdn").(string),
 		TLSPassthrough:   d.Get("tls_passthrough").(bool),
+		Network:          d.Get("network").(string),
 		SolutionType:     d.Get("solution_type").(string),
 		Description:      d.Get("description").(string),
 		NodeDeploymentID: nodeDeploymentID,
@@ -77,6 +78,11 @@ func syncContractsFQDNGateways(d *schema.ResourceData, gw *workloads.GatewayFQDN
 	}
 
 	err = d.Set("fqdn", gw.FQDN)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	err = d.Set("network", gw.Network)
 	if err != nil {
 		errors = multierror.Append(errors, err)
 	}

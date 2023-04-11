@@ -41,13 +41,13 @@ func newNameGatewayFromSchema(d *schema.ResourceData) (*workloads.GatewayNamePro
 	}
 
 	gw := workloads.GatewayNameProxy{
-		NodeID:         uint32(d.Get("node").(int)),
-		Name:           d.Get("name").(string),
-		Backends:       backends,
-		TLSPassthrough: d.Get("tls_passthrough").(bool),
-		Description:    d.Get("description").(string),
-		SolutionType:   d.Get("solution_type").(string),
-
+		NodeID:           uint32(d.Get("node").(int)),
+		Name:             d.Get("name").(string),
+		Backends:         backends,
+		TLSPassthrough:   d.Get("tls_passthrough").(bool),
+		Description:      d.Get("description").(string),
+		SolutionType:     d.Get("solution_type").(string),
+		Network:          d.Get("network").(string),
 		FQDN:             d.Get("fqdn").(string),
 		NodeDeploymentID: nodeDeploymentID,
 		NameContractID:   uint64(d.Get("name_contract_id").(int)),
@@ -74,6 +74,11 @@ func syncContractsNameGateways(d *schema.ResourceData, gw *workloads.GatewayName
 	}
 
 	err = d.Set("backends", gw.Backends)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
+
+	err = d.Set("network", gw.Network)
 	if err != nil {
 		errors = multierror.Append(errors, err)
 	}
