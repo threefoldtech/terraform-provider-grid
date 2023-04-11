@@ -2,7 +2,7 @@ module "kubernetes" {
   source  = "github.com/threefoldtech/terraform-provider-grid/modules/k8s-module"
   token   = local.token
   network = local.network
-  master  = local.master
+  master  = var.master
   ssh     = var.ssh
   workers = var.workers
   disks   = var.disks
@@ -14,6 +14,19 @@ variable "ssh" {
 
 variable "network_nodes" {
   type = list(number)
+}
+
+variable "master" {
+  type = object({
+    name        = string
+    node        = number
+    cpu         = number
+    memory      = number
+    disk_name   = string
+    mount_point = string
+    publicip    = bool
+    planetary   = bool
+  })
 }
 
 variable "workers" {

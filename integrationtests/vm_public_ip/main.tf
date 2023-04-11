@@ -20,7 +20,8 @@ resource "grid_scheduler" "scheduler" {
     cru  = 2
     sru  = 512
     mru  = 1024
-    ipv4 = true
+    public_config   = true
+    public_ips_count = 1
   }
 }
 

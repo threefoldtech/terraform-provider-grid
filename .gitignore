@@ -7,6 +7,7 @@ terraform.tfstate
 **/.terraform/*
 **/.terraform*
 bin/
+coverage/
 dist/
 modules-dev/
 website/.vagrant

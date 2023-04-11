@@ -3,22 +3,23 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"time"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/pkg/errors"
-	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
+	"github.com/threefoldtech/grid3-go/deployer"
 )
 
 func resourceDeployment() *schema.Resource {
 	return &schema.Resource{
 		// This description is used by the documentation generator and the language server.
 		Description:   "Resource for deploying multiple workloads like vms (ZMachines), ZDBs, disks, Qsfss, and/or zlogs. A user should specify node id for this deployment, the (already) deployed network that this deployment should be a part of, and the desired workloads configurations.",
-		CreateContext: ResourceFunc(resourceDeploymentCreate),
-		ReadContext:   ResourceReadFunc(resourceDeploymentRead),
-		UpdateContext: ResourceFunc(resourceDeploymentUpdate),
-		DeleteContext: ResourceFunc(resourceDeploymentDelete),
+		CreateContext: resourceDeploymentCreate,
+		ReadContext:   resourceDeploymentRead,
+		UpdateContext: resourceDeploymentUpdate,
+		DeleteContext: resourceDeploymentDelete,
 
 		Timeouts: &schema.ResourceTimeout{
 			Create: schema.DefaultTimeout(45 * time.Minute),
@@ -434,48 +435,123 @@ func resourceDeployment() *schema.Resource {
 	}
 }
 
-func resourceDeploymentCreate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Syncer, error) {
-	deployer, err := newDeploymentDeployer(d, threefoldPluginClient)
-	if err != nil {
-		return nil, errors.Wrap(err, "couldn't load deployer data")
+func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+	tfPluginClient, ok := meta.(*deployer.TFPluginClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into threefold plugin client"))
 	}
 
-	return &deployer, deployer.Deploy(ctx, sub)
-}
-
-func resourceDeploymentRead(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Syncer, error) {
-	deployer, err := newDeploymentDeployer(d, threefoldPluginClient)
+	dl, err := newDeploymentFromSchema(d)
 	if err != nil {
-		return nil, err
+		return diag.Errorf("couldn't load deployment data with error: %v", err)
 	}
-	return &deployer, nil
+
+	if err := tfPluginClient.DeploymentDeployer.Deploy(ctx, dl); err != nil {
+		return diag.Errorf("couldn't deploy deployment with error: %v", err)
+	}
+
+	if err := tfPluginClient.DeploymentDeployer.Sync(ctx, dl); err != nil {
+		return diag.Errorf("couldn't sync deployment with error: %v", err)
+	}
+
+	if err := syncContractsDeployments(d, dl); err != nil {
+		return diag.Errorf("couldn't set deployment data to the resource with error: %v", err)
+	}
+
+	return diags
 }
 
-func resourceDeploymentUpdate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Syncer, error) {
+func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+	tfPluginClient, ok := meta.(*deployer.TFPluginClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into threefold plugin client"))
+	}
+
+	dl, err := newDeploymentFromSchema(d)
+	if err != nil {
+		return diag.Errorf("couldn't load deployment data with error: %v", err)
+	}
+
+	if err := tfPluginClient.DeploymentDeployer.Sync(ctx, dl); err != nil {
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  "failed to read deployment data (terraform refresh might help)",
+			Detail:   err.Error(),
+		})
+		return diags
+	}
+
+	if err := syncContractsDeployments(d, dl); err != nil {
+		return diag.Errorf("couldn't set deployment data to the resource with error: %v", err)
+	}
+
+	return diags
+}
+
+func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+	tfPluginClient, ok := meta.(*deployer.TFPluginClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into threefold plugin client"))
+	}
+
 	if d.HasChange("node") {
 		oldContractID, err := strconv.ParseUint(d.Id(), 10, 64)
 		if err != nil {
-			return nil, errors.Wrapf(err, "couldn't parse deployment id %s", d.Id())
+			return diag.Errorf("couldn't parse deployment id %s with error: %v", d.Id(), err)
 		}
-		err = sub.CancelContract(threefoldPluginClient.identity, oldContractID)
+		err = tfPluginClient.SubstrateConn.CancelContract(tfPluginClient.Identity, oldContractID)
 		if err != nil {
-			return nil, errors.Wrapf(err, "couldn't cancel old node contract")
+			return diag.Errorf("couldn't cancel old node contract with error: %v", err)
 		}
 		d.SetId("")
 	}
-	deployer, err := newDeploymentDeployer(d, threefoldPluginClient)
+
+	dl, err := newDeploymentFromSchema(d)
 	if err != nil {
-		return nil, errors.Wrap(err, "couldn't load deployer data")
+		return diag.Errorf("couldn't load deployment data with error: %v", err)
 	}
 
-	return &deployer, deployer.Deploy(ctx, sub)
+	if err := tfPluginClient.DeploymentDeployer.Deploy(ctx, dl); err != nil {
+		return diag.Errorf("couldn't update deployment with error: %v", err)
+	}
+
+	if err := tfPluginClient.DeploymentDeployer.Sync(ctx, dl); err != nil {
+		return diag.Errorf("couldn't sync deployment with error: %v", err)
+	}
+
+	if err := syncContractsDeployments(d, dl); err != nil {
+		return diag.Errorf("couldn't set deployment data to the resource with error: %v", err)
+	}
+
+	return diags
 }
 
-func resourceDeploymentDelete(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, threefoldPluginClient *threefoldPluginClient) (Syncer, error) {
-	deployer, err := newDeploymentDeployer(d, threefoldPluginClient)
-	if err != nil {
-		return nil, errors.Wrap(err, "couldn't load deployer data")
+func resourceDeploymentDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+	tfPluginClient, ok := meta.(*deployer.TFPluginClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into threefold plugin client"))
 	}
 
-	return &deployer, deployer.Cancel(ctx, sub)
+	dl, err := newDeploymentFromSchema(d)
+	if err != nil {
+		return diag.Errorf("couldn't load deployment data with error: %v", err)
+	}
+
+	if err := tfPluginClient.DeploymentDeployer.Cancel(ctx, dl); err != nil {
+		return diag.Errorf("couldn't cancel deployment with error: %v", err)
+	}
+
+	if err := tfPluginClient.DeploymentDeployer.Sync(ctx, dl); err != nil {
+		return diag.Errorf("couldn't sync deployment with error: %v", err)
+	}
+
+	if err := syncContractsDeployments(d, dl); err != nil {
+		return diag.Errorf("couldn't set deployment data to the resource with error: %v", err)
+	}
+
+	return diags
 }

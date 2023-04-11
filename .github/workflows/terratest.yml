@@ -9,10 +9,10 @@ jobs:
     name: Run Go Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3.3.0
+      - uses: actions/checkout@v3.5.0
         with:
           submodules: "true"
-      - uses: actions/setup-go@v1
+      - uses: actions/setup-go@v4
         with:
           go-version: 1.18
       - uses: autero1/action-terraform@v1.1.1
@@ -25,6 +25,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y wireguard
           sudo apt-get install dirmngr
+          sudo apt-get install curl
           gpg --fetch-keys https://neilalexander.s3.dualstack.eu-west-2.amazonaws.com/deb/key.txt
           gpg --export 569130E8CA20FBC4CB3FDE555898470A764B32C9 | sudo apt-key add -
           echo 'deb http://neilalexander.s3.dualstack.eu-west-2.amazonaws.com/deb/ debian yggdrasil' | sudo tee /etc/apt/sources.list.d/yggdrasil.list
@@ -39,4 +40,4 @@ jobs:
           MNEMONICS: ${{ secrets.MNEMONICS }}
           NETWORK: "test"
         working-directory: tests
-        run: go test ./tests/... -p 1 --tags=integration
+        run: go test ./integrationtests/... -p 1 --tags=integration

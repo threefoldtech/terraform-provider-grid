@@ -3,22 +3,17 @@ package provider
 
 import (
 	"context"
-	"fmt"
-	"log"
-	"os"
-	"strings"
-	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
-	proxy "github.com/threefoldtech/grid_proxy_server/pkg/client"
-	"github.com/threefoldtech/rmb-sdk-go"
-	"github.com/threefoldtech/rmb-sdk-go/direct"
-	"github.com/threefoldtech/substrate-client"
-	"github.com/threefoldtech/terraform-provider-grid/pkg/state"
-	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
+	"github.com/threefoldtech/grid3-go/deployer"
+	"github.com/threefoldtech/grid3-go/subi"
+
+	"github.com/threefoldtech/terraform-provider-grid/internal/state"
 )
+
+const errTerraformOutSync = "Error reading data from remote, terraform state might be out of sync with the remote state"
 
 var (
 	SUBSTRATE_URL = map[string]string{
@@ -34,7 +29,9 @@ var (
 		"main": "https://gridproxy.grid.tf/",
 	}
 	RelayURLs = map[string]string{
-		"dev": "wss://relay.dev.grid.tf",
+		"dev":  "wss://relay.dev.grid.tf",
+		"qa":   "wss://relay.qa.grid.tf",
+		"test": "wss://relay.test.grid.tf",
 	}
 )
 
@@ -124,7 +121,7 @@ func New(version string, st state.Getter) (func() *schema.Provider, subi.Substra
 				"grid_gateway_domain": dataSourceGatewayDomain(),
 			},
 			ResourcesMap: map[string]*schema.Resource{
-				"grid_scheduler":  ReourceScheduler(),
+				"grid_scheduler":  resourceScheduler(),
 				"grid_deployment": resourceDeployment(),
 				"grid_network":    resourceNetwork(),
 				"grid_kubernetes": resourceKubernetes(),
@@ -140,141 +137,31 @@ func New(version string, st state.Getter) (func() *schema.Provider, subi.Substra
 	}, substrateConnection
 }
 
-type threefoldPluginClient struct {
-	twinID          uint32
-	mnemonics       string
-	substrateURL    string
-	rmbRedisURL     string
-	useRmbProxy     bool
-	gridProxyClient proxy.Client
-	rmb             rmb.Client
-	substrateConn   subi.SubstrateExt
-	manager         subi.Manager
-	identity        substrate.Identity
-	state           state.Getter
-	rmbTimeout      time.Duration
-}
-
 func providerConfigure(st state.Getter) (func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics), subi.SubstrateExt) {
 	var substrateConn subi.SubstrateExt
 	return func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
-		var err error
-		threefoldPluginClient := threefoldPluginClient{}
-		threefoldPluginClient.mnemonics = d.Get("mnemonics").(string)
-
-		if !validateMnemonics(threefoldPluginClient.mnemonics) {
-			return nil, diag.Errorf("provided mnemonics are invalid")
-		}
-
+		mnemonics := d.Get("mnemonics").(string)
 		keyType := d.Get("key_type").(string)
-		var identity substrate.Identity
-
-		switch keyType {
-		case "ed25519":
-			identity, err = substrate.NewIdentityFromEd25519Phrase(string(threefoldPluginClient.mnemonics))
-		case "sr25519":
-			identity, err = substrate.NewIdentityFromSr25519Phrase(string(threefoldPluginClient.mnemonics))
-		default:
-			err = errors.New("key_type must be one of ed25519 and sr25519")
-		}
-
-		if err != nil {
-			return nil, diag.FromErr(errors.Wrap(err, "error getting identity"))
-		}
-
-		keyPair, err := identity.KeyPair()
-		if err != nil {
-			return nil, diag.FromErr(errors.Wrap(err, "error getting user secret"))
-		}
-
-		threefoldPluginClient.identity = identity
 		network := d.Get("network").(string)
-		if network != "dev" && network != "qa" && network != "test" && network != "main" {
-			return nil, diag.Errorf("network must be one of dev, qa, test, and main")
-		}
-		threefoldPluginClient.substrateURL = SUBSTRATE_URL[network]
-		rmbProxyURL := RMB_PROXY_URL[network]
 		substrateURL := d.Get("substrate_url").(string)
 		passedRmbProxyURL := d.Get("rmb_proxy_url").(string)
-		if len(strings.TrimSpace(substrateURL)) != 0 {
-			log.Printf("using a custom substrate url %s", substrateURL)
-			threefoldPluginClient.substrateURL = substrateURL
-			if err := validateSubstrateURL(threefoldPluginClient.substrateURL); err != nil {
-				return nil, diag.FromErr(err)
-			}
-		}
-		if len(strings.TrimSpace(passedRmbProxyURL)) != 0 {
-			rmbProxyURL = passedRmbProxyURL
-			if err := validateProxyURL(rmbProxyURL); err != nil {
-				return nil, diag.FromErr(err)
-			}
-		}
-
-		log.Printf("substrate url: %s %s\n", threefoldPluginClient.substrateURL, substrateURL)
-		threefoldPluginClient.manager = subi.NewManager(threefoldPluginClient.substrateURL)
-		subx, err := threefoldPluginClient.manager.SubstrateExt()
-		if err != nil {
-			return nil, diag.FromErr(errors.Wrap(err, "couldn't get substrate client"))
-		}
-		// substrate connection will be returned and closed in main.go
-		substrateConn = subx
-		threefoldPluginClient.substrateConn = subx
-		threefoldPluginClient.useRmbProxy = d.Get("use_rmb_proxy").(bool)
-
-		threefoldPluginClient.rmbRedisURL = d.Get("rmb_redis_url").(string)
-
-		if err := validateAccount(&threefoldPluginClient, threefoldPluginClient.substrateConn); err != nil {
-			return nil, diag.FromErr(err)
-		}
-		pk := keyPair.Public()
-		twin, err := subx.GetTwinByPubKey(pk)
-		if err != nil && errors.Is(err, substrate.ErrNotFound) {
-			return nil, diag.Errorf("no twin associated with the account with the given mnemonics")
-		}
-		if err != nil {
-			return nil, diag.FromErr(errors.Wrap(err, "failed to get twin for the given mnemonics"))
-		}
-
-		threefoldPluginClient.twinID = twin
-		var cl rmb.Client
-
-		sessionID := generateSessionID()
-
-		sub, err := threefoldPluginClient.manager.Substrate()
-		if err != nil {
-			return nil, diag.FromErr(errors.Wrap(err, "failed to get substrate client"))
-		}
 		relayURL := d.Get("relay_url").(string)
-		if relayURL != "" {
-			cl, err = direct.NewClient(context.Background(), keyType, threefoldPluginClient.mnemonics, relayURL, sessionID, sub, true)
-		} else {
-			relayURL, ok := RelayURLs[network]
-			if !ok {
-				return nil, diag.Errorf("error getting relay url for network %s", network)
-			}
-
-			cl, err = direct.NewClient(context.Background(), keyType, threefoldPluginClient.mnemonics, relayURL, sessionID, sub, true)
-		}
-
-		if err != nil {
-			return nil, diag.FromErr(errors.Wrap(err, "couldn't create rmb client"))
-		}
-		threefoldPluginClient.rmb = cl
-
-		gridProxyClient := proxy.NewClient(rmbProxyURL)
-		threefoldPluginClient.gridProxyClient = proxy.NewRetryingClient(gridProxyClient)
-		if err := validateRMBProxyServer(&threefoldPluginClient); err != nil {
-			return nil, diag.FromErr(err)
-		}
-		threefoldPluginClient.state = st
-
 		timeout := d.Get("rmb_timeout").(int)
-		threefoldPluginClient.rmbTimeout = time.Second * time.Duration(timeout)
+		verifyReply := d.Get("verify_reply").(bool)
+		debug := true
 
-		return &threefoldPluginClient, nil
+		// TODO:
+		// d.Get("use_rmb_proxy").(bool)
+		// d.Get("rmb_redis_url").(string)
+
+		tfPluginClient, err := deployer.NewTFPluginClient(mnemonics, keyType, network, substrateURL, relayURL, passedRmbProxyURL, timeout, verifyReply, debug)
+		if err != nil {
+			return nil, diag.FromErr(errors.Wrap(err, "error creating threefold plugin client"))
+		}
+
+		// set state
+		tfPluginClient.State.SetNetworks(st.GetState().Networks)
+
+		return &tfPluginClient, nil
 	}, substrateConn
-}
-
-func generateSessionID() string {
-	return fmt.Sprintf("tf-%d", os.Getpid())
 }

@@ -25,7 +25,6 @@ func TestZdbs(t *testing.T) {
 		password := "password123"
 		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 			TerraformDir: "./zdbs",
-			Parallelism:  1,
 			Vars: map[string]interface{}{
 				"password": password,
 			},

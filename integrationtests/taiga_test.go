@@ -34,7 +34,6 @@ func TestTaiga(t *testing.T) {
 		Vars: map[string]interface{}{
 			"public_key": publicKey,
 		},
-		Parallelism: 1,
 	})
 	defer terraform.Destroy(t, terraformOptions)
 

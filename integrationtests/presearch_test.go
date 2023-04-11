@@ -34,7 +34,6 @@ func TestPresearch(t *testing.T) {
 			"public_key":                  publicKey,
 			"presearch_regestration_code": presearchRegestrationCode,
 		},
-		Parallelism: 1,
 	})
 	defer terraform.Destroy(t, terraformOptions)
 
