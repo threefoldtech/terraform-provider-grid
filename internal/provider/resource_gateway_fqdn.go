@@ -58,7 +58,7 @@ func resourceGatewayFQDNProxy() *schema.Resource {
 			"network": {
 				Type:        schema.TypeString,
 				Optional:    true,
-				Default:     false,
+				Default:     "",
 				Description: "Network name to join, if backend IP is private.",
 			},
 			"backends": {
