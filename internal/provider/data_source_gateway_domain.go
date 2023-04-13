@@ -10,8 +10,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/grid3-go/deployer"
-	client "github.com/threefoldtech/grid3-go/node"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
+	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
 )
 
 func dataSourceGatewayDomain() *schema.Resource {

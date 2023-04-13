@@ -7,9 +7,9 @@ import (
 	"math/rand"
 
 	"github.com/pkg/errors"
-	proxy "github.com/threefoldtech/grid_proxy_server/pkg/client"
-	proxyTypes "github.com/threefoldtech/grid_proxy_server/pkg/types"
-	"github.com/threefoldtech/rmb-sdk-go"
+	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
+	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
 )
 
 // Scheduler struct for scheduling

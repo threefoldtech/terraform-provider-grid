@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/threefoldtech/grid3-go/deployer"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 )
 
 func resourceDeployment() *schema.Resource {
