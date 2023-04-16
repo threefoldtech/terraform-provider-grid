@@ -1,15 +1,16 @@
-name: Run Tests
+name: Intgeration tests
 
 on:
   schedule:
     - cron: "0 0 * * *"
+  workflow_dispatch:
 
 jobs:
   go-tests:
     name: Run Go Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3.5.1
+      - uses: actions/checkout@v3.5.0
         with:
           submodules: "true"
       - uses: actions/setup-go@v4
@@ -40,4 +41,4 @@ jobs:
           MNEMONICS: ${{ secrets.MNEMONICS }}
           NETWORK: "test"
         working-directory: integrationtests
-        run: go test ./integrationtests/... -p 1 --tags=integration
+        run: go test -v ./... --tags=integration
