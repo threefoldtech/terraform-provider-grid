@@ -39,6 +39,6 @@ jobs:
       - name: Run Go Tests
         env:
           MNEMONICS: ${{ secrets.MNEMONICS }}
-          NETWORK: "test"
+          NETWORK: ${{ secrets.NETWORK }}
         working-directory: integrationtests
         run: go test -v ./... --tags=integration
