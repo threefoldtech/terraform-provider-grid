@@ -56,7 +56,7 @@ func TestGateWay(t *testing.T) {
 
 		time.Sleep(3 * time.Second)
 
-		response, err := http.Get(fmt.Sprintf("http://%s", fqdn))
+		response, err := http.Get(fmt.Sprintf("https://%s", fqdn))
 		assert.NoError(t, err)
 
 		body, err := io.ReadAll(response.Body)
@@ -110,13 +110,16 @@ func TestGateWay(t *testing.T) {
 
 		time.Sleep(3 * time.Second)
 
-		response, err := http.Get(fmt.Sprintf("http://%s", fqdn))
+		response, err := http.Get(fmt.Sprintf("https://%s", fqdn))
 		assert.NoError(t, err)
-		body, err := io.ReadAll(response.Body)
-		if body != nil {
-			defer response.Body.Close()
+
+		if response != nil {
+			body, err := io.ReadAll(response.Body)
+			if body != nil {
+				defer response.Body.Close()
+			}
+			assert.NoError(t, err)
+			assert.Contains(t, string(body), "Directory listing for")
 		}
-		assert.NoError(t, err)
-		assert.Contains(t, string(body), "Directory listing for")
 	})
 }

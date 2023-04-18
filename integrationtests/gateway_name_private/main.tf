@@ -62,10 +62,14 @@ resource "grid_deployment" "d1" {
   }
 }
 
+locals {
+  ygg_ip = try(length(grid_deployment.d1.vms[0].ygg_ip), 0) > 0 ? grid_deployment.d1.vms[0].ygg_ip : ""
+}
+
 resource "grid_name_proxy" "p1" {
   node            = 14
   name            = "examp123456"
-  backends        = [format("http://%s:9000", grid_deployment.d1.vms[0].ip)]
+  backends        = [format("http://%s:9000", local.ygg_ip)]
   network         = grid_network.net1.name
   tls_passthrough = false
 }
