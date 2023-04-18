@@ -7,7 +7,8 @@ variable "public_key" {
 terraform {
   required_providers {
     grid = {
-      source = "threefoldtech/grid"
+      source  = "threefoldtechdev.com/providers/grid"
+      version = "0.2"
     }
   }
 }
@@ -23,8 +24,8 @@ resource "grid_scheduler" "sched" {
   }
 
   requests {
-    name   = "gateway"
-    public_config   = true
+    name             = "gateway"
+    public_config    = true
     public_ips_count = 1
   }
 }

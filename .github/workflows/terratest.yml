@@ -4,6 +4,9 @@ on:
   schedule:
     - cron: "0 0 * * *"
   workflow_dispatch:
+  push:
+    tags:
+      - "v*"
 
 jobs:
   go-tests:
@@ -36,6 +39,12 @@ jobs:
           PEERS=$(curl https://raw.githubusercontent.com/threefoldtech/zos-config/main/development.json | jq '.yggdrasil.peers[]' -r | sed 's/\//\\\//g' | sed -z 's/\n/\\n/g')
           sudo  sed -i -- 's/Peers\: \[\]/Peers: [\n'"$PEERS"']/g' /etc/yggdrasil.conf
           sudo systemctl start yggdrasil
+      - name: Build
+        run: |
+          go mod tidy
+          mkdir -p ~/.terraform.d/plugins/threefoldtechdev.com/providers/grid/0.2/linux_amd64/
+          go build -o terraform-provider-grid
+          mv terraform-provider-grid ~/.terraform.d/plugins/threefoldtechdev.com/providers/grid/0.2/linux_amd64/
       - name: Run Go Tests
         env:
           MNEMONICS: ${{ secrets.MNEMONICS }}

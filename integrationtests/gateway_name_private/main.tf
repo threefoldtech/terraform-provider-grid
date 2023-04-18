@@ -5,7 +5,8 @@ variable "public_key" {
 terraform {
   required_providers {
     grid = {
-      source = "threefoldtech/grid"
+      source  = "threefoldtechdev.com/providers/grid"
+      version = "0.2"
     }
   }
 }
@@ -57,7 +58,7 @@ resource "grid_deployment" "d1" {
     env_vars = {
       SSH_KEY = "${var.public_key}"
     }
-    planetary    = true
+    planetary = true
   }
 }
 
