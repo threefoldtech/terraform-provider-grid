@@ -56,7 +56,7 @@ func TestGateWayPrivate(t *testing.T) {
 
 		time.Sleep(3 * time.Second)
 
-		response, err := http.Get(fmt.Sprintf("httpa://%s", fqdn))
+		response, err := http.Get(fmt.Sprintf("https://%s", fqdn))
 		assert.NoError(t, err)
 
 		body, err := io.ReadAll(response.Body)
