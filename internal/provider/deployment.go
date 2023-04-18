@@ -137,13 +137,11 @@ func syncContractsDeployments(r *schema.ResourceData, d *workloads.Deployment) (
 		errors = multierror.Append(errors, fmt.Errorf("failed to set solution type with error: %w", err))
 	}
 
-	var solutionProvider int
 	if d.SolutionProvider != nil {
-		solutionProvider = int(*d.SolutionProvider)
-	}
-	err = r.Set("solution_provider", solutionProvider)
-	if err != nil {
-		errors = multierror.Append(errors, fmt.Errorf("failed to set solution provider with error: %w", err))
+		err = r.Set("solution_provider", int(*d.SolutionProvider))
+		if err != nil {
+			errors = multierror.Append(errors, fmt.Errorf("failed to set solution provider with error: %w", err))
+		}
 	}
 
 	/* TODO: iprange
