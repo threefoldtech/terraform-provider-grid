@@ -82,7 +82,7 @@ func TestGateWayPrivate(t *testing.T) {
 		   - Destroy the deployment
 		*/
 
-		fqdn := "hamada1.3x0.me" // points to node 11 devnet
+		fqdn := "hamada1.3x0.me" // points to node 15 devnet
 
 		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 			TerraformDir: "./gateway_with_fqdn_private",

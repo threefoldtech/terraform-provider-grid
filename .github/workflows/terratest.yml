@@ -12,6 +12,7 @@ jobs:
   go-tests:
     name: Run Go Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v3.5.2
         with:

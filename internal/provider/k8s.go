@@ -76,6 +76,11 @@ func storeK8sState(d *schema.ResourceData, k8s *workloads.K8sCluster, state depl
 		nodeDeploymentID[fmt.Sprintf("%d", node)] = int(id)
 	}
 
+	nodeIPRanges := make(map[string]interface{})
+	for node, ip := range k8s.NodesIPRange {
+		nodeIPRanges[fmt.Sprintf("%d", node)] = ip.String()
+	}
+
 	if k8s.Master == nil {
 		k8s.Master = &workloads.K8sNode{}
 	}
@@ -120,7 +125,7 @@ func storeK8sState(d *schema.ResourceData, k8s *workloads.K8sCluster, state depl
 		errors = multierror.Append(errors, err)
 	}
 
-	err = d.Set("nodes_ip_range", k8s.NodesIPRange)
+	err = d.Set("nodes_ip_range", nodeIPRanges)
 	if err != nil {
 		errors = multierror.Append(errors, err)
 	}
