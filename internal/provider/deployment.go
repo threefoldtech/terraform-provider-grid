@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/threefoldtech/grid3-go/workloads"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 )
 
 func newDeploymentFromSchema(d *schema.ResourceData) (*workloads.Deployment, error) {

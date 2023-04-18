@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/threefoldtech/grid_proxy_server/pkg/types"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
 func TestFulfilsSuccess(t *testing.T) {

@@ -8,8 +8,8 @@ import (
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
-	gridproxy "github.com/threefoldtech/grid_proxy_server/pkg/client"
-	"github.com/threefoldtech/grid_proxy_server/pkg/types"
+	gridproxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
 // AssertNodesAreReady runs `kubectl get node` on the master node and asserts that all nodes are ready

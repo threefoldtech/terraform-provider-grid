@@ -2,7 +2,7 @@
 package scheduler
 
 import (
-	proxyTypes "github.com/threefoldtech/grid_proxy_server/pkg/types"
+	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
 var (

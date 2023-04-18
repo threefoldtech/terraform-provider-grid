@@ -1,7 +1,7 @@
 // Package state provides a state to save the user work in a database.
 package state
 
-import "github.com/threefoldtech/grid3-go/deployer"
+import "github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 
 // State struct
 type State struct {
