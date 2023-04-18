@@ -112,7 +112,7 @@ func TestGateWay(t *testing.T) {
 
 		time.Sleep(3 * time.Second)
 
-		response, err := http.Get(fmt.Sprintf("https://%s", fqdn))
+		response, err := http.Get(fmt.Sprintf("http://%s", fqdn))
 		assert.NoError(t, err)
 
 		if response != nil {
