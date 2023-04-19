@@ -5,12 +5,14 @@ variable "public_key" {
 terraform {
   required_providers {
     grid = {
-      source = "threefoldtech/grid"
+      source  = "threefoldtechdev.com/providers/grid"
+      version = "0.2"
     }
   }
 }
 
 provider "grid" {
+  network = "dev"
 }
 
 # resource "grid_scheduler" "sched" {
@@ -57,14 +59,18 @@ resource "grid_deployment" "d1" {
     env_vars = {
       SSH_KEY = "${var.public_key}"
     }
-    planetary    = true
+    planetary = true
   }
+}
+
+locals {
+  ygg_ip = try(length(grid_deployment.d1.vms[0].ygg_ip), 0) > 0 ? grid_deployment.d1.vms[0].ygg_ip : ""
 }
 
 resource "grid_name_proxy" "p1" {
   node            = 14
   name            = "examp123456"
-  backends        = [format("http://%s:9000", grid_deployment.d1.vms[0].ip)]
+  backends        = [format("http://%s:9000", local.ygg_ip)]
   network         = grid_network.net1.name
   tls_passthrough = false
 }
