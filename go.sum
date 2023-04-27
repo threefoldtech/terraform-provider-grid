@@ -642,8 +642,8 @@ github.com/threefoldtech/go-substrate-rpc-client/v4 v4.0.6-0.20230102154731-7c63
 github.com/threefoldtech/go-substrate-rpc-client/v4 v4.0.6-0.20230102154731-7c633b7d3c71/go.mod h1:5g1oM4Zu3BOaLpsKQ+O8PAv2kNuq+kPcA1VzFbsSqxE=
 github.com/threefoldtech/substrate-client v0.1.5 h1:yYmWaJCMoJO0ieaO6eu3vIK0agehSw4OhSXlGydmv/E=
 github.com/threefoldtech/substrate-client v0.1.5/go.mod h1:ys/GJLeLmNX8E36UFMeR0yZC5Lo4PufYtfwsVX8H/AM=
-github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.1.0 h1:xPGEFsh5n1eHy4gvRxTUmSurBntNLvEaW1rAsv5N5M8=
-github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.1.0/go.mod h1:HkvH7GqrKPLCAIPXUhcuwKVMCbgRX0HiCnfICf08MHE=
+github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.2.0 h1:goUdgzvgJ93a28pinBwerYsJ1z8b3skKqCDUdUDP76k=
+github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.2.0/go.mod h1:DrKef+rHMejD7eHDLg/rW7RUEPJCINv9XMEsXxNllKU=
 github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.1.0 h1:rGaQYTuJ+H5EIwvs6SxBiGyMONwQ2eoZDHGVQLt0npM=
 github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.1.0/go.mod h1:fNse7PMQGKF6fWY7E58zjlHyqeNgNE4XX2dLdVAneCk=
 github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.2.0 h1:dUPLbUFYBTfsM31UpIyPVyv18kDMLczHYIINPK/mFKI=
@@ -722,6 +722,8 @@ golang.org/x/exp v0.0.0-20191227195350-da58074b4299/go.mod h1:2RIsYlXP63K8oxa1u0
 golang.org/x/exp v0.0.0-20200119233911-0405dc783f0a/go.mod h1:2RIsYlXP63K8oxa1u096TMicItID8zy7Y6sNkU49FU4=
 golang.org/x/exp v0.0.0-20200207192155-f17229e696bd/go.mod h1:J/WKrq2StrnmMY6+EHIKF9dgMWnmCNThgcyBT1FY9mM=
 golang.org/x/exp v0.0.0-20200224162631-6cc2880d07d6/go.mod h1:3jZMyOhIsHpP37uCMkUooju7aAi5cS1Q23tOzKc+0MU=
+golang.org/x/exp v0.0.0-20230206171751-46f607a40771 h1:xP7rWLUr1e1n2xkK5YB4LI0hPEy3LJC6Wk+D4pGlOJg=
+golang.org/x/exp v0.0.0-20230206171751-46f607a40771/go.mod h1:CxIveKay+FTh1D0yPZemJVgC/95VzuuOLq5Qi4xnoYc=
 golang.org/x/image v0.0.0-20190227222117-0694c2d4d067/go.mod h1:kZ7UVZpmo3dzQBMxlp+ypCbDeSB+sBbTgSJuh5dn5js=
 golang.org/x/image v0.0.0-20190802002840-cff245a6509b/go.mod h1:FeLwcggjj3mMvU+oOTbSwawSJRM1uh48EjtB4UJZlP0=
 golang.org/x/lint v0.0.0-20181026193005-c67002cb31c3/go.mod h1:UVdnD1Gm6xHRNCYTkRU2/jEulfH38KcIWyp/GAMgvoE=
