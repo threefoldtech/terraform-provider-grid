@@ -160,7 +160,7 @@ func providerConfigure(st state.Getter) (func(ctx context.Context, d *schema.Res
 		}
 
 		// set state
-		tfPluginClient.State.SetNetworks(st.GetState().Networks)
+		tfPluginClient.State.Networks = st.GetState().Networks
 
 		return &tfPluginClient, nil
 	}, substrateConn

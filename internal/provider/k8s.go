@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/state"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
@@ -65,7 +65,7 @@ func retainChecksums(workers []interface{}, master interface{}, k8s *workloads.K
 	}
 }
 
-func storeK8sState(d *schema.ResourceData, k8s *workloads.K8sCluster, state deployer.State) (errors error) {
+func storeK8sState(d *schema.ResourceData, k8s *workloads.K8sCluster, state state.State) (errors error) {
 	workers := make([]interface{}, 0)
 	for _, w := range k8s.Workers {
 		workers = append(workers, w.ToMap())
@@ -133,9 +133,8 @@ func storeK8sState(d *schema.ResourceData, k8s *workloads.K8sCluster, state depl
 	return
 }
 
-func updateNetworkState(d *schema.ResourceData, k8s *workloads.K8sCluster, state deployer.State) {
-	ns := state.GetNetworks()
-	network := ns.GetNetwork(k8s.NetworkName)
+func updateNetworkState(d *schema.ResourceData, k8s *workloads.K8sCluster, state state.State) {
+	network := state.Networks.GetNetwork(k8s.NetworkName)
 
 	before, _ := d.GetChange("node_deployment_id")
 	for node, deploymentID := range before.(map[string]interface{}) {

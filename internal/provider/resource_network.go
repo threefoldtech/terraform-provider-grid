@@ -268,12 +268,8 @@ func storeState(d *schema.ResourceData, tfPluginClient *deployer.TFPluginClient,
 }
 
 func updateNetworkLocalState(tfPluginClient *deployer.TFPluginClient, net *workloads.ZNet) {
-	ns := tfPluginClient.State.GetNetworks()
-	ns.DeleteNetwork(net.Name)
-	network := ns.GetNetwork(net.Name)
-	for nodeID, subnet := range net.NodesIPRange {
-		network.SetNodeSubnet(nodeID, subnet.String())
-	}
+	tfPluginClient.State.Networks.DeleteNetwork(net.Name)
+	tfPluginClient.State.Networks.UpdateNetwork(net.Name, net.NodesIPRange)
 }
 
 func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
