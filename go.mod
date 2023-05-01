@@ -10,10 +10,10 @@ require (
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.26.1
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.2
-	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.1.0
-	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.1.0
-	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.2.0
-	github.com/threefoldtech/zos v0.5.6-0.20230321103809-44426c1a69c7
+	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.3.0
+	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.3.0
+	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.3.0
+	github.com/threefoldtech/zos v0.5.6-0.20230426125942-0ea2f91b21f5
 	golang.org/x/crypto v0.8.0
 	golang.org/x/sync v0.1.0
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20210803171230-4253848d036c
@@ -107,7 +107,7 @@ require (
 	github.com/russross/blackfriday v1.6.0 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
-	github.com/threefoldtech/substrate-client v0.1.5 // indirect
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230425112357-f35e342c2193 // indirect
 	github.com/tmccombs/hcl2json v0.3.3 // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/ulikunitz/xz v0.5.10 // indirect
@@ -117,6 +117,7 @@ require (
 	github.com/vmihailenco/tagparser v0.1.1 // indirect
 	github.com/zclconf/go-cty v1.13.1 // indirect
 	go.opencensus.io v0.24.0 // indirect
+	golang.org/x/exp v0.0.0-20230206171751-46f607a40771 // indirect
 	golang.org/x/mod v0.10.0 // indirect
 	golang.org/x/net v0.9.0 // indirect
 	golang.org/x/oauth2 v0.1.0 // indirect
