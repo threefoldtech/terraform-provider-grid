@@ -14,26 +14,6 @@ import (
 
 const errTerraformOutSync = "Error reading data from remote, terraform state might be out of sync with the remote state"
 
-var (
-	SubstrateURL = map[string]string{
-		"dev":  "wss://tfchain.dev.grid.tf/ws",
-		"test": "wss://tfchain.test.grid.tf/ws",
-		"qa":   "wss://tfchain.qa.grid.tf/ws",
-		"main": "wss://tfchain.grid.tf/ws",
-	}
-	GridProxyURL = map[string]string{
-		"dev":  "https://gridproxy.dev.grid.tf/",
-		"test": "https://gridproxy.test.grid.tf/",
-		"qa":   "https://gridproxy.qa.grid.tf/",
-		"main": "https://gridproxy.grid.tf/",
-	}
-	RelayURLs = map[string]string{
-		"dev":  "wss://relay.dev.grid.tf",
-		"qa":   "wss://relay.qa.grid.tf",
-		"test": "wss://relay.test.grid.tf",
-	}
-)
-
 // New returns a new schema.Provider instance, and an open substrate connection
 func New(version string, st state.Getter) (func() *schema.Provider, subi.SubstrateExt) {
 	var substrateConnection subi.SubstrateExt
