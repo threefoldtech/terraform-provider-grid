@@ -7,49 +7,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
+	"github.com/threefoldtech/terraform-provider-grid/internal/state"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
-
-	"github.com/threefoldtech/terraform-provider-grid/internal/state"
 )
 
 const errTerraformOutSync = "Error reading data from remote, terraform state might be out of sync with the remote state"
-
-var (
-	SUBSTRATE_URL = map[string]string{
-		"dev":  "wss://tfchain.dev.grid.tf/ws",
-		"test": "wss://tfchain.test.grid.tf/ws",
-		"qa":   "wss://tfchain.qa.grid.tf/ws",
-		"main": "wss://tfchain.grid.tf/ws",
-	}
-	RMB_PROXY_URL = map[string]string{
-		"dev":  "https://gridproxy.dev.grid.tf/",
-		"test": "https://gridproxy.test.grid.tf/",
-		"qa":   "https://gridproxy.qa.grid.tf/",
-		"main": "https://gridproxy.grid.tf/",
-	}
-	RelayURLs = map[string]string{
-		"dev":  "wss://relay.dev.grid.tf",
-		"qa":   "wss://relay.qa.grid.tf",
-		"test": "wss://relay.test.grid.tf",
-	}
-)
-
-func init() {
-	// Set descriptions to support markdown syntax, this will be used in document generation
-	// and the language server.
-	schema.DescriptionKind = schema.StringMarkdown
-
-	// Customize the content of descriptions when output. For example you can add defaults on
-	// to the exported descriptions if present.
-	// schema.SchemaDescriptionBuilder = func(s *schema.Schema) string {
-	// 	desc := s.Description
-	// 	if s.Default != nil {
-	// 		desc += fmt.Sprintf(" Defaults to `%v`.", s.Default)
-	// 	}
-	// 	return strings.TrimSpace(desc)
-	// }
-}
 
 // New returns a new schema.Provider instance, and an open substrate connection
 func New(version string, st state.Getter) (func() *schema.Provider, subi.SubstrateExt) {
@@ -81,34 +44,11 @@ func New(version string, st state.Getter) (func() *schema.Provider, subi.Substra
 					Description: "substrate url, example: wss://tfchain.dev.grid.tf/ws",
 					DefaultFunc: schema.EnvDefaultFunc("SUBSTRATE_URL", nil),
 				},
-				"rmb_redis_url": {
-					Type:        schema.TypeString,
-					Optional:    true,
-					DefaultFunc: schema.EnvDefaultFunc("RMB_URL", "tcp://127.0.0.1:6379"),
-				},
-				"rmb_proxy_url": {
-					Type:        schema.TypeString,
-					Optional:    true,
-					Description: "rmb proxy url, example: https://gridproxy.dev.grid.tf/",
-					DefaultFunc: schema.EnvDefaultFunc("RMB_PROXY_URL", nil),
-				},
 				"relay_url": {
 					Type:        schema.TypeString,
 					Optional:    true,
 					Description: "rmb proxy url, example: wss://relay.dev.grid.tf",
 					DefaultFunc: schema.EnvDefaultFunc("RELAY_URL", nil),
-				},
-				"use_rmb_proxy": {
-					Type:        schema.TypeBool,
-					Optional:    true,
-					Description: "whether to use the rmb proxy or not",
-					DefaultFunc: schema.EnvDefaultFunc("USE_RMB_PROXY", true),
-				},
-				"verify_reply": {
-					Type:        schema.TypeBool,
-					Optional:    true,
-					Description: "whether to verify rmb replies (temporary for dev use only)",
-					DefaultFunc: schema.EnvDefaultFunc("VERIFY_REPLY", false),
 				},
 				"rmb_timeout": {
 					Type:        schema.TypeInt,

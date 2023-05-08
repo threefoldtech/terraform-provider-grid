@@ -20,16 +20,16 @@ A user should have some fully qualified domain name (fqdn) (e.g. example.com), p
 ### Required
 
 - `backends` (List of String) The backends of the gateway proxy (in the format (http|https)://ip:port), with tls_passthrough the scheme must be https.
-- `fqdn` (String) The fully quallified domain name of the deployed workload.
+- `fqdn` (String) The fully qualified domain name of the deployed workload.
 - `node` (Number) The gateway's node id.
 
 ### Optional
 
 - `description` (String) Description of the gateway fqdn workload.
 - `name` (String) Gateway workload name.  This has to be unique within the deployment.
+- `network` (String) Network name to join, if backend IP is private.
 - `solution_type` (String) Solution type for created contract to be consistent across threefold tooling.
 - `tls_passthrough` (Boolean) TLS passthrough controls the TLS termination, if false, the gateway will terminate the TLS, if True, it will only be terminated by the backend service.
-- `network` (String) Network name to join, if backend URL used is a private IP.
 
 ### Read-Only
 

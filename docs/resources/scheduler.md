@@ -35,11 +35,14 @@ Optional:
 
 - `certified` (Boolean) Flag to pick only certified nodes (Not implemented).
 - `cru` (Number) Number of required virtual CPUs.
-- `domain` (Boolean) Flag to pick only nodes with public config containing domain.
-- `farm` (String) Farm name to search for eligible nodes.
+- `dedicated` (Boolean) Flag to pick a rentable node
+- `distinct` (Boolean) True to ensure this request returns a distinct node relative to this scheduler resource.
+- `farm_id` (Number) Farm id to search for eligible nodes.
 - `hru` (Number) Disk HDD size in MBs.
-- `ipv4` (Boolean) Flag to pick only nodes with public ipv4 configuration.
 - `mru` (Number) Memory size in MBs.
+- `node_exclude` (List of Number) List of node ids you want to exclude from the search.
+- `public_config` (Boolean) Flag to pick only nodes with public config containing domain.
+- `public_ips_count` (Number) Required count of public ips.
 - `sru` (Number) Disk SSD size in MBs.
 
 
