@@ -80,6 +80,7 @@ export NETWORK="network" # dev, qa, test, main
 - ### Integration tests
 
   ```bash
+  make integrationtests
   cd integrationtests
   go test . -run <TestNameFunction> -v --tags=integration 
   go test . -run <TestNameFunction/SubFunctionName> -v --tags=integration #for testing only one sub-function 
