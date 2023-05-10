@@ -84,17 +84,11 @@ func providerConfigure(st state.Getter) (func(ctx context.Context, d *schema.Res
 		keyType := d.Get("key_type").(string)
 		network := d.Get("network").(string)
 		substrateURL := d.Get("substrate_url").(string)
-		passedRmbProxyURL := d.Get("rmb_proxy_url").(string)
 		relayURL := d.Get("relay_url").(string)
 		timeout := d.Get("rmb_timeout").(int)
-		verifyReply := d.Get("verify_reply").(bool)
-		debug := true
+		debug := false
 
-		// TODO:
-		// d.Get("use_rmb_proxy").(bool)
-		// d.Get("rmb_redis_url").(string)
-
-		tfPluginClient, err := deployer.NewTFPluginClient(mnemonics, keyType, network, substrateURL, relayURL, passedRmbProxyURL, timeout, verifyReply, debug)
+		tfPluginClient, err := deployer.NewTFPluginClient(mnemonics, keyType, network, substrateURL, relayURL, "", timeout, debug)
 		if err != nil {
 			return nil, diag.FromErr(errors.Wrap(err, "error creating threefold plugin client"))
 		}
