@@ -82,11 +82,14 @@ export NETWORK="network" # dev, qa, test, main
   ```bash
   make integration
   ```
-- if you want to run one test use:
 
-  cd integrationtests
-  go test . -run <TestNameFunction> -v --tags=integration 
-  go test . -run <TestNameFunction/SubFunctionName> -v --tags=integration #for testing only one sub-function
+  - if you want to run one test use:
+
+    ```bash
+    cd integrationtests
+    go test . -run <TestNameFunction> -v --tags=integration 
+    go test . -run <TestNameFunction/SubFunctionName> -v --tags=integration #for testing only one sub-function
+    ```
 
 ## Known Issues
 
