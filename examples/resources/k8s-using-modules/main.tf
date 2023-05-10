@@ -59,3 +59,10 @@ locals {
     },
   ]
 }
+output "master" {
+  value = module.kubernetes.master
+}
+
+output "workers" {
+  value = module.kubernetes.workers
+}
