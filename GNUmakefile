@@ -22,7 +22,7 @@ testacc:
 unittests:
 	go test -v `go list ./... | grep -v integrationtests`
 
-integrationtests: 
+integration: 
 	go test -v ./integrationtests/... --tags=integration
 
 tests: unittests integrationtests
