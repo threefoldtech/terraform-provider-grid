@@ -57,12 +57,14 @@ func newDeploymentFromSchema(d *schema.ResourceData) (*workloads.Deployment, err
 	}
 
 	var contractID uint64
+	nodeDeploymentID := map[uint32]uint64{}
 	var err error
 	if d.Id() != "" {
 		contractID, err = strconv.ParseUint(d.Id(), 10, 64)
 		if err != nil {
 			return nil, err
 		}
+		nodeDeploymentID[nodeID] = contractID
 	}
 
 	dl := workloads.Deployment{
@@ -76,6 +78,7 @@ func newDeploymentFromSchema(d *schema.ResourceData) (*workloads.Deployment, err
 		Zdbs:             zdbs,
 		NetworkName:      networkName,
 		ContractID:       contractID,
+		NodeDeploymentID: nodeDeploymentID,
 	}
 
 	return &dl, nil
