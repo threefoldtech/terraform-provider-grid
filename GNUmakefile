@@ -1,5 +1,9 @@
 GOPATH=$(shell go env GOPATH)
 
+DIRS := . $(shell find integrationtests -type d)
+GARBAGE_PATTERNS := terraform.tfstate.backup terraform.tfstate .terraform.lock.hcl state.json .terraform
+GARBAGE := $(foreach DIR,$(DIRS),$(addprefix $(DIR)/,$(GARBAGE_PATTERNS)))
+
 default: build-dev
 
 # Run acceptance tests
@@ -22,10 +26,13 @@ testacc:
 unittests:
 	go test -v `go list ./... | grep -v integrationtests`
 
-integration: 
+integration: clean build-dev
 	go test -v ./integrationtests/... --tags=integration
 
 tests: unittests integrationtests
+
+clean:
+	rm -rf $(GARBAGE)
 
 getverifiers:
 	@echo "Installing staticcheck" && go get -u honnef.co/go/tools/cmd/staticcheck && go install honnef.co/go/tools/cmd/staticcheck
