@@ -12,7 +12,12 @@ jobs:
   go-tests:
     name: Run Go Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 0
+    strategy:
+      fail-fast: false
+      matrix:
+        network: ["dev", "qa", "test", "main"]
+        
     steps:
       - uses: actions/checkout@v3.5.2
         with:
@@ -40,6 +45,8 @@ jobs:
           PEERS=$(curl https://raw.githubusercontent.com/threefoldtech/zos-config/main/development.json | jq '.yggdrasil.peers[]' -r | sed 's/\//\\\//g' | sed -z 's/\n/\\n/g')
           sudo  sed -i -- 's/Peers\: \[\]/Peers: [\n'"$PEERS"']/g' /etc/yggdrasil.conf
           sudo systemctl start yggdrasil
+          git checkout git describe --match "v[0-9]*\.[0-9]*\.[0-9]*"  --exclude='*-rc*' --exclude='*-dev*' --abbrev=0 HEAD
+          -----------
       - name: Build
         run: |
           go mod tidy
@@ -49,6 +56,8 @@ jobs:
       - name: Run Go Tests
         env:
           MNEMONICS: ${{ secrets.MNEMONICS }}
-          NETWORK: ${{ secrets.NETWORK }}
+          NETWORK: ${{ matrix.network }}
         working-directory: integrationtests
         run: go test -v ./... --tags=integration
+
+

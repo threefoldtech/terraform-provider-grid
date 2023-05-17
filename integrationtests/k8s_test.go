@@ -35,7 +35,7 @@ func TestK8s(t *testing.T) {
 		t.Fatalf("failed to generate ssh key pair: %s", err.Error())
 	}
 
-	t.Run("k8s", func(t *testing.T) {
+	t.Run("kubee", func(t *testing.T) {
 		/* Test case for deployeng a k8s.
 
 		   **Test Scenario**
@@ -129,11 +129,15 @@ func TestK8s(t *testing.T) {
 		freeMRU := uint64(1024)
 		freeSRU := uint64(2 * 1024)
 		freeCRU := uint64(1)
+		dedicated := false
+		twinID := uint64(56)
 		f := types.NodeFilter{
-			Status:   &status,
-			FreeMRU:  &freeMRU,
-			FreeSRU:  &freeSRU,
-			TotalCRU: &freeCRU,
+			Status:       &status,
+			FreeMRU:      &freeMRU,
+			FreeSRU:      &freeSRU,
+			TotalCRU:     &freeCRU,
+			Dedicated:    &dedicated,
+			AvailableFor: &twinID,
 		}
 		l := types.Limit{
 			Page: 1,
@@ -152,7 +156,7 @@ func TestK8s(t *testing.T) {
 			TerraformDir: "./k8s_using_module",
 			Vars: map[string]interface{}{
 				"ssh":           publicKey,
-				"network_nodes": []int{12, masterNode},
+				"network_nodes": []int{masterNode, worker0Node, worker1Node},
 				"master": map[string]interface{}{
 					"name":        "mr",
 					"node":        masterNode,
