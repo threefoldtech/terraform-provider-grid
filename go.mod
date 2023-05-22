@@ -4,14 +4,14 @@ go 1.18
 
 require (
 	github.com/google/uuid v1.3.0
-	github.com/gruntwork-io/terratest v0.41.24
+	github.com/gruntwork-io/terratest v0.41.25
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/terraform-plugin-docs v0.14.1
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.26.1
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.3
 	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.6.0
-	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.5.0
+	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.6.0
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.5.0
 	github.com/threefoldtech/zos v0.5.6-0.20230426125942-0ea2f91b21f5
 	golang.org/x/crypto v0.9.0
