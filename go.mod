@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/google/uuid v1.3.0
-	github.com/gruntwork-io/terratest v0.41.26
+	github.com/gruntwork-io/terratest v0.42.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/terraform-plugin-docs v0.14.1
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.26.1
