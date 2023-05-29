@@ -18,13 +18,13 @@ jobs:
       matrix:
         network: ["dev", "qa", "test", "main"]
         include: 
-          - describe: "git describe --match 'v[0-9]*.[0-9]*.[0-9]*'  --exclude='*-rc*' --exclude='*-qa*' --abbrev=0 HEAD"
+          - describe: "git describe --match 'v[0-9]*.[0-9]*.[0-9]*-*'  --exclude='*-rc*' --exclude='*-qa*' --abbrev=0 HEAD"
             network: "dev"
-          - describe: "git describe --match 'v[0-9]*.[0-9]*.[0-9]*'  --exclude='*-rc*' --exclude='*-dev*' --abbrev=0 HEAD"
+          - describe: "git describe --match 'v[0-9]*.[0-9]*.[0-9]*-*'  --exclude='*-rc*' --exclude='*-dev*' --abbrev=0 HEAD"
             network: "qa"
-          - describe: "git describe --match 'v[0-9]*.[0-9]*.[0-9]*'  --exclude='*-dev*' --exclude='*-qa*' --abbrev=0 HEAD"
+          - describe: "git describe --match 'v[0-9]*.[0-9]*.[0-9]*-*'  --exclude='*-dev*' --exclude='*-qa*' --abbrev=0 HEAD"
             network: "test"
-          - describe: "git describe --match 'v[0-9]*.[0-9]*.[0-9]' --abbrev=0 HEAD"
+          - describe: v1.8.2
             network: "main"
     steps:
       - uses: actions/setup-go@v4
