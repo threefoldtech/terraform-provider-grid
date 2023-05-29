@@ -11,6 +11,12 @@ terraform {
   }
 }
 
+locals {
+  name = "testvm"
+  vm_disk_size=2
+  vm_memory=2048
+}
+
 provider "grid" {
 }
 
@@ -18,8 +24,8 @@ resource "grid_scheduler" "scheduler" {
   requests {
     name = "node1"
     cru  = 2
-    sru  = 512
-    mru  = 128
+    sru  = local.vm_disk_size*1024
+    mru  = local.vm_memory
   }
 }
 

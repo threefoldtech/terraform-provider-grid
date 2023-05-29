@@ -4,7 +4,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
@@ -19,7 +18,6 @@ func AssertNodesAreReady(t *testing.T, terraformOptions *terraform.Options, priv
 	masterYggIP := terraform.Output(t, terraformOptions, "ygg_ip")
 	assert.NotEmpty(t, masterYggIP)
 
-	time.Sleep(5 * time.Second)
 	output, err := RemoteRun("root", masterYggIP, "export KUBECONFIG=/etc/rancher/k3s/k3s.yaml && kubectl get node", privateKey)
 	output = strings.TrimSpace(output)
 	assert.Empty(t, err)
@@ -35,7 +33,7 @@ func TestK8s(t *testing.T) {
 		t.Fatalf("failed to generate ssh key pair: %s", err.Error())
 	}
 
-	t.Run("k8s", func(t *testing.T) {
+	t.Run("kubernetes", func(t *testing.T) {
 		/* Test case for deployeng a k8s.
 
 		   **Test Scenario**
@@ -60,13 +58,19 @@ func TestK8s(t *testing.T) {
 		masterIP := terraform.Output(t, terraformOptions, "ygg_ip")
 		assert.NotEmpty(t, masterIP)
 
+		workerIP := terraform.Output(t, terraformOptions, "worker_ygg_ip")
+		assert.NotEmpty(t, workerIP)
+
 		// Check wireguard config in output
 		wgConfig := terraform.Output(t, terraformOptions, "wg_config")
 		assert.NotEmpty(t, wgConfig)
 
-		// Check that master is reachable
+		// Check that master and workers is reachable
 		// testing connection on port 22, waits at max 3mins until it becomes ready otherwise it fails
 		ok := TestConnection(masterIP, "22")
+		assert.True(t, ok)
+
+		ok = TestConnection(workerIP, "22")
 		assert.True(t, ok)
 
 		// ssh to master node

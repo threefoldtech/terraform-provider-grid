@@ -14,19 +14,25 @@ terraform {
 
 provider "grid" {
 }
+locals {
+  master_disk_size = 2
+  master_memory=2048
+  worker_disk_size =2
+  worker_memory=2048
+}
 resource "grid_scheduler" "sched" {
   requests {
     name = "node1"
     cru  = 2
-    sru  = 512
-    mru  = 2048
+    sru  = local.master_disk_size*1024
+    mru  = local.master_memory
   }
 
   requests {
     name = "node2"
     cru  = 2
-    sru  = 512
-    mru  = 2048
+    sru  = local.worker_disk_size*1024
+    mru  = local.worker_memory
   }
 }
 
@@ -44,19 +50,19 @@ resource "grid_kubernetes" "k8s1" {
   ssh_key      = var.public_key
 
   master {
-    disk_size = 22
+    disk_size = local.master_disk_size
     node      = grid_scheduler.sched.nodes["node1"]
     name      = "mr"
     cpu       = 2
-    memory    = 2048
+    memory    = local.master_memory
     planetary = true
   }
   workers {
-    disk_size = 15
+    disk_size = local.worker_disk_size
     node      = grid_scheduler.sched.nodes["node2"]
     name      = "w0"
     cpu       = 2
-    memory    = 2048
+    memory    = local.worker_memory
   }
 }
 
@@ -67,4 +73,8 @@ output "ygg_ip" {
 
 output "wg_config" {
   value = grid_network.net1.access_wg_config
+}
+
+output "worker_ygg_ip" {
+  value = grid_kubernetes.k8s1.workers[0].ygg_ip
 }
