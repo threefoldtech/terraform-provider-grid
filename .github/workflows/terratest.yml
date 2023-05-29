@@ -7,7 +7,6 @@ on:
   push:
     tags:
       - "v*"
-
 jobs:
   go-tests:
     name: Run Go Tests
@@ -24,7 +23,7 @@ jobs:
             network: "qa"
           - describe: "git describe --match 'v[0-9]*.[0-9]*.[0-9]*-*'  --exclude='*-dev*' --exclude='*-qa*' --abbrev=0 HEAD"
             network: "test"
-          - describe: v1.8.2
+          - describe: "git describe v1.8.2"
             network: "main"
     steps:
       - uses: actions/setup-go@v4
@@ -52,7 +51,8 @@ jobs:
           sudo systemctl start yggdrasil
       - uses: actions/checkout@v3.5.2
         with:
-          ref: ${{ matrix.describe }}
+          fetch-depth: 0
+      - run: git checkout $(${{ matrix.describe }})
       - name: Build
         run: |
           go mod tidy
@@ -65,5 +65,3 @@ jobs:
           NETWORK: ${{ matrix.network }}
         working-directory: integrationtests
         run: go test -v ./... --tags=integration
-
-
