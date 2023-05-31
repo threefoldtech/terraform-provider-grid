@@ -27,7 +27,7 @@ unittests:
 	go test -v `go list ./... | grep -v integrationtests`
 
 integration: clean build-dev
-	go test -v ./integrationtests/... --tags=integration
+	go test -v ./integrationtests/... --tags=integration -timeout 1800s
 
 tests: unittests integrationtests
 

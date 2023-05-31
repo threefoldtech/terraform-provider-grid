@@ -16,7 +16,6 @@ terraform {
 }
 
 provider "grid" {
-  network = "dev"
 }
 
 resource "grid_scheduler" "sched" {
