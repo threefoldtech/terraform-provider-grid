@@ -12,12 +12,14 @@ require (
 	github.com/stretchr/testify v1.8.3
 	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.7.0
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.7.0
-	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.7.0
+	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.8.0
 	github.com/threefoldtech/zos v0.5.6-0.20230426125942-0ea2f91b21f5
 	golang.org/x/crypto v0.9.0
 	golang.org/x/sync v0.2.0
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20210803171230-4253848d036c
 )
+
+require github.com/holiman/uint256 v1.2.2-0.20230321075855-87b91420868c // indirect
 
 require (
 	cloud.google.com/go v0.105.0 // indirect
@@ -41,10 +43,10 @@ require (
 	github.com/cosmos/go-bip39 v1.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
-	github.com/decred/base58 v1.0.4 // indirect
-	github.com/decred/dcrd/crypto/blake256 v1.0.0 // indirect
-	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0 // indirect
-	github.com/ethereum/go-ethereum v1.11.5 // indirect
+	github.com/decred/base58 v1.0.5 // indirect
+	github.com/decred/dcrd/crypto/blake256 v1.0.1 // indirect
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
+	github.com/ethereum/go-ethereum v1.11.6 // indirect
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/go-stack/stack v1.8.1 // indirect
@@ -102,12 +104,12 @@ require (
 	github.com/pierrec/xxHash v0.1.5 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/posener/complete v1.2.3 // indirect
-	github.com/rs/cors v1.8.3 // indirect
-	github.com/rs/zerolog v1.29.0 // indirect
+	github.com/rs/cors v1.9.0 // indirect
+	github.com/rs/zerolog v1.29.1 // indirect
 	github.com/russross/blackfriday v1.6.0 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
-	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230509101146-8e43c43597cd // indirect
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230530114457-e57ee9560f79 // indirect
 	github.com/tmccombs/hcl2json v0.3.3 // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/ulikunitz/xz v0.5.10 // indirect
