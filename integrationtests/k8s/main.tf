@@ -63,6 +63,7 @@ resource "grid_kubernetes" "k8s1" {
     name      = "w0"
     cpu       = 2
     memory    = local.worker_memory
+    planetary = true
   }
 }
 
