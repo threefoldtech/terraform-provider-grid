@@ -16,10 +16,10 @@ provider "grid" {
 
 resource "grid_scheduler" "sched" {
   requests {
-    name = "node1"
-    cru  = 2
-    sru  = 512
-    mru  = 1024
+    name          = "node1"
+    cru           = 2
+    sru           = 512
+    mru           = 1024
     public_config = true
   }
 }
@@ -67,9 +67,9 @@ locals {
 }
 
 resource "grid_name_proxy" "p1" {
-  node         = grid_scheduler.sched.nodes["node1"]
+  node            = grid_scheduler.sched.nodes["node1"]
   name            = "examp123456"
-  backends        = [format("http://%s:9000", local.ygg_ip)]
+  backends        = [format("http://%s:9000", grid_deployment.d1.vms[0].ip)]
   network         = grid_network.net1.name
   tls_passthrough = false
 }
