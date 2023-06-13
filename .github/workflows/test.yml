@@ -35,7 +35,7 @@ jobs:
           go mod download
 
       - name: Install GoReleaser
-        uses: goreleaser/goreleaser-action@v4.2.0
+        uses: goreleaser/goreleaser-action@v4.3.0
         with:
           install-only: true
 
