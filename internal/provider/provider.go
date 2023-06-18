@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/terraform-provider-grid/internal/state"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
@@ -31,24 +32,34 @@ func New(version string, st state.Getter) (func() *schema.Provider, subi.Substra
 					Optional:    true,
 					Description: "key type registered on substrate (ed25519 or sr25519)",
 					DefaultFunc: schema.EnvDefaultFunc("KEY_TYPE", "sr25519"),
+					ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice(
+						[]string{"ed25519", "sr25519"},
+						false,
+					)),
 				},
 				"network": {
 					Type:        schema.TypeString,
 					Required:    true,
 					Description: "grid network, one of: dev test qa main",
 					DefaultFunc: schema.EnvDefaultFunc("NETWORK", "dev"),
+					ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice(
+						[]string{"dev", "qa", "test", "main"},
+						false,
+					)),
 				},
 				"substrate_url": {
-					Type:        schema.TypeString,
-					Optional:    true,
-					Description: "substrate url, example: wss://tfchain.dev.grid.tf/ws",
-					DefaultFunc: schema.EnvDefaultFunc("SUBSTRATE_URL", nil),
+					Type:             schema.TypeString,
+					Optional:         true,
+					Description:      "substrate url, example: wss://tfchain.dev.grid.tf/ws",
+					DefaultFunc:      schema.EnvDefaultFunc("SUBSTRATE_URL", nil),
+					ValidateDiagFunc: validation.ToDiagFunc(validation.IsURLWithScheme([]string{"wss"})),
 				},
 				"relay_url": {
-					Type:        schema.TypeString,
-					Optional:    true,
-					Description: "rmb proxy url, example: wss://relay.dev.grid.tf",
-					DefaultFunc: schema.EnvDefaultFunc("RELAY_URL", nil),
+					Type:             schema.TypeString,
+					Optional:         true,
+					Description:      "rmb proxy url, example: wss://relay.dev.grid.tf",
+					DefaultFunc:      schema.EnvDefaultFunc("RELAY_URL", nil),
+					ValidateDiagFunc: validation.ToDiagFunc(validation.IsURLWithScheme([]string{"wss"})),
 				},
 				"rmb_timeout": {
 					Type:        schema.TypeInt,

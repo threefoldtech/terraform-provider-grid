@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 )
@@ -52,9 +53,10 @@ func resourceKubernetes() *schema.Resource {
 				Description: "SSH key to access the cluster nodes.",
 			},
 			"token": {
-				Type:        schema.TypeString,
-				Required:    true,
-				Description: "The cluster secret token. Each node has to have this token to be part of the cluster. This token should be an alphanumeric non-empty string.",
+				Type:             schema.TypeString,
+				Required:         true,
+				Description:      "The cluster secret token. Each node has to have this token to be part of the cluster. This token should be an alphanumeric non-empty string.",
+				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotEmpty),
 			},
 			"nodes_ip_range": {
 				Type:        schema.TypeMap,
@@ -80,9 +82,10 @@ func resourceKubernetes() *schema.Resource {
 							Description: "Node ID to deploy master node on.",
 						},
 						"disk_size": {
-							Type:        schema.TypeInt,
-							Required:    true,
-							Description: "Disk size for master node in GBs.",
+							Type:             schema.TypeInt,
+							Required:         true,
+							Description:      "Disk size for master node in GBs.",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(1, 10*1024)),
 						},
 						"publicip": {
 							Type:        schema.TypeBool,
@@ -121,14 +124,16 @@ func resourceKubernetes() *schema.Resource {
 							Description: "The private wireguard IP of master node.",
 						},
 						"cpu": {
-							Type:        schema.TypeInt,
-							Required:    true,
-							Description: "Number of virtual CPUs.",
+							Type:             schema.TypeInt,
+							Required:         true,
+							Description:      "Number of virtual CPUs.",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(1, 32)),
 						},
 						"memory": {
-							Type:        schema.TypeInt,
-							Required:    true,
-							Description: "Memory size in MB.",
+							Type:             schema.TypeInt,
+							Required:         true,
+							Description:      "Memory size in MB.",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(256, 256*1024)),
 						},
 						"planetary": {
 							Type:        schema.TypeBool,
@@ -167,9 +172,10 @@ func resourceKubernetes() *schema.Resource {
 							Description: "if present, the flist is rejected if it has a different hash.",
 						},
 						"disk_size": {
-							Type:        schema.TypeInt,
-							Required:    true,
-							Description: "Data disk size in GBs.",
+							Type:             schema.TypeInt,
+							Required:         true,
+							Description:      "Data disk size in GBs.",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(1, 10*1024)),
 						},
 						"node": {
 							Type:        schema.TypeInt,
@@ -202,14 +208,16 @@ func resourceKubernetes() *schema.Resource {
 							Description: "The private IP (computed from nodes_ip_range).",
 						},
 						"cpu": {
-							Type:        schema.TypeInt,
-							Required:    true,
-							Description: "Number of virtual CPUs.",
+							Type:             schema.TypeInt,
+							Required:         true,
+							Description:      "Number of virtual CPUs.",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(1, 32)),
 						},
 						"memory": {
-							Type:        schema.TypeInt,
-							Required:    true,
-							Description: "Memory size in MB.",
+							Type:             schema.TypeInt,
+							Required:         true,
+							Description:      "Memory size in MB.",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(256, 256*1024)),
 						},
 						"planetary": {
 							Type:        schema.TypeBool,

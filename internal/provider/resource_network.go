@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
@@ -55,9 +56,10 @@ func resourceNetwork() *schema.Resource {
 				Description: "List of node ids to add to the network.",
 			},
 			"ip_range": {
-				Type:        schema.TypeString,
-				Required:    true,
-				Description: "Network IP range (e.g. 10.1.2.0/16). Has to have a subnet mask of 16.",
+				Type:             schema.TypeString,
+				Required:         true,
+				Description:      "Network IP range (e.g. 10.1.2.0/16). Has to have a subnet mask of 16.",
+				ValidateDiagFunc: validation.ToDiagFunc(validation.IsCIDRNetwork(16, 16)),
 			},
 			"add_wg_access": {
 				Type:        schema.TypeBool,

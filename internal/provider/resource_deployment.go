@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 )
 
@@ -71,9 +72,10 @@ func resourceDeployment() *schema.Resource {
 							Description: "Disk workload name. This has to be unique within the deployment.",
 						},
 						"size": {
-							Type:        schema.TypeInt,
-							Required:    true,
-							Description: "Disk size in GBs.",
+							Type:             schema.TypeInt,
+							Required:         true,
+							Description:      "Disk size in GBs.",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(1, 10*1024)),
 						},
 						"description": {
 							Type:        schema.TypeString,
@@ -186,16 +188,18 @@ func resourceDeployment() *schema.Resource {
 							Description: "The reserved public ipv6 if any.",
 						},
 						"ip": {
-							Type:        schema.TypeString,
-							Optional:    true,
-							Computed:    true,
-							Description: "The private wireguard IP of the vm.",
+							Type:             schema.TypeString,
+							Optional:         true,
+							Computed:         true,
+							Description:      "The private wireguard IP of the vm.",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.IsIPAddress),
 						},
 						"cpu": {
-							Type:        schema.TypeInt,
-							Optional:    true,
-							Default:     1,
-							Description: "Number of virtual CPUs.",
+							Type:             schema.TypeInt,
+							Optional:         true,
+							Default:          1,
+							Description:      "Number of virtual CPUs.",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(1, 32)),
 						},
 						"description": {
 							Type:        schema.TypeString,
@@ -204,14 +208,16 @@ func resourceDeployment() *schema.Resource {
 							Description: "Description of the vm.",
 						},
 						"memory": {
-							Type:        schema.TypeInt,
-							Optional:    true,
-							Description: "Memory size in MB.",
+							Type:             schema.TypeInt,
+							Optional:         true,
+							Description:      "Memory size in MB.",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(256, 256*1024)),
 						},
 						"rootfs_size": {
-							Type:        schema.TypeInt,
-							Optional:    true,
-							Description: "Root file system size in MB.",
+							Type:             schema.TypeInt,
+							Optional:         true,
+							Description:      "Root file system size in MB.",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(1024, 10*1024*1024)),
 						},
 						"entrypoint": {
 							Type:        schema.TypeString,
