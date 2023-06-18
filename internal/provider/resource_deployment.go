@@ -4,6 +4,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strconv"
 	"time"
 
@@ -33,10 +34,11 @@ func resourceDeployment() *schema.Resource {
 				Description: "Node id to place the deployment on.",
 			},
 			"name": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Default:     "vm",
-				Description: "Solution name for created contract to be consistent across threefold tooling.",
+				Type:             schema.TypeString,
+				Optional:         true,
+				Default:          "vm",
+				Description:      "Solution name for created contract to be consistent across threefold tooling.",
+				ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 			},
 			"solution_type": {
 				Type:        schema.TypeString,
@@ -67,9 +69,10 @@ func resourceDeployment() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
-							Type:        schema.TypeString,
-							Required:    true,
-							Description: "Disk workload name. This has to be unique within the deployment.",
+							Type:             schema.TypeString,
+							Required:         true,
+							Description:      "Disk workload name. This has to be unique within the deployment.",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 						},
 						"size": {
 							Type:             schema.TypeInt,
@@ -93,9 +96,10 @@ func resourceDeployment() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
-							Type:        schema.TypeString,
-							Required:    true,
-							Description: "ZDB worklod name. This has to be unique within the deployment.",
+							Type:             schema.TypeString,
+							Required:         true,
+							Description:      "ZDB worklod name. This has to be unique within the deployment.",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 						},
 						"password": {
 							Type:        schema.TypeString,
@@ -153,9 +157,10 @@ func resourceDeployment() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
-							Type:        schema.TypeString,
-							Required:    true,
-							Description: "Vm (zmachine) workload name. This has to be unique within the deployment.",
+							Type:             schema.TypeString,
+							Required:         true,
+							Description:      "Vm (zmachine) workload name. This has to be unique within the deployment.",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 						},
 						"flist": {
 							Type:        schema.TypeString,
@@ -284,9 +289,10 @@ func resourceDeployment() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
-							Type:        schema.TypeString,
-							Required:    true,
-							Description: "Qsfs workload name. This has to be unique within the deployment.",
+							Type:             schema.TypeString,
+							Required:         true,
+							Description:      "Qsfs workload name. This has to be unique within the deployment.",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 						},
 						"description": {
 							Type:        schema.TypeString,

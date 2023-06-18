@@ -4,6 +4,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"regexp"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -22,9 +23,10 @@ func resourceGatewayNameProxy() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"name": {
-				Type:        schema.TypeString,
-				Required:    true,
-				Description: "Domain prefix. The fqdn will be <name>.<gateway-domain>.  This has to be unique within the deployment.",
+				Type:             schema.TypeString,
+				Required:         true,
+				Description:      "Domain prefix. The fqdn will be <name>.<gateway-domain>.  This has to be unique within the deployment.",
+				ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 			},
 			"solution_type": {
 				Type:        schema.TypeString,

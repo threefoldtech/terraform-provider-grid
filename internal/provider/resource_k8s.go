@@ -4,6 +4,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"regexp"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -25,9 +26,10 @@ func resourceKubernetes() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"name": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Description: "Solution name for the created contracts to be consistent across threefold tooling.",
+				Type:             schema.TypeString,
+				Optional:         true,
+				Description:      "Solution name for the created contracts to be consistent across threefold tooling.",
+				ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 			},
 			"solution_type": {
 				Type:        schema.TypeString,
@@ -72,9 +74,10 @@ func resourceKubernetes() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
-							Type:        schema.TypeString,
-							Required:    true,
-							Description: "Master node ZMachine workload name.  This has to be unique within the node.",
+							Type:             schema.TypeString,
+							Required:         true,
+							Description:      "Master node ZMachine workload name.  This has to be unique within the node.",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 						},
 						"node": {
 							Type:        schema.TypeInt,
@@ -156,9 +159,10 @@ func resourceKubernetes() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
-							Type:        schema.TypeString,
-							Required:    true,
-							Description: "Worker node ZMachine workload name. This has to be unique within the node.",
+							Type:             schema.TypeString,
+							Required:         true,
+							Description:      "Worker node ZMachine workload name. This has to be unique within the node.",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 						},
 						"flist": {
 							Type:        schema.TypeString,

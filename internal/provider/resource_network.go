@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"regexp"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -31,9 +32,10 @@ func resourceNetwork() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"name": {
-				Type:        schema.TypeString,
-				Required:    true,
-				Description: "Network workloads Name.  This has to be unique within the node.",
+				Type:             schema.TypeString,
+				Required:         true,
+				Description:      "Network workloads Name.  This has to be unique within the node.",
+				ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 			},
 			"solution_type": {
 				Type:        schema.TypeString,
