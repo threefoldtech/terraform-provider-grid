@@ -4,11 +4,13 @@ package provider
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strconv"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 )
 
@@ -32,10 +34,11 @@ func resourceDeployment() *schema.Resource {
 				Description: "Node id to place the deployment on.",
 			},
 			"name": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Default:     "vm",
-				Description: "Solution name for created contract to be consistent across threefold tooling.",
+				Type:             schema.TypeString,
+				Optional:         true,
+				Default:          "vm",
+				Description:      "Solution name for created contract to be consistent across threefold tooling.",
+				ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 			},
 			"solution_type": {
 				Type:        schema.TypeString,
@@ -66,14 +69,16 @@ func resourceDeployment() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
-							Type:        schema.TypeString,
-							Required:    true,
-							Description: "Disk workload name. This has to be unique within the deployment.",
+							Type:             schema.TypeString,
+							Required:         true,
+							Description:      "Disk workload name. This has to be unique within the deployment.",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 						},
 						"size": {
-							Type:        schema.TypeInt,
-							Required:    true,
-							Description: "Disk size in GBs.",
+							Type:             schema.TypeInt,
+							Required:         true,
+							Description:      "Disk size in GBs.",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(1, 10*1024)),
 						},
 						"description": {
 							Type:        schema.TypeString,
@@ -91,9 +96,10 @@ func resourceDeployment() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
-							Type:        schema.TypeString,
-							Required:    true,
-							Description: "ZDB worklod name. This has to be unique within the deployment.",
+							Type:             schema.TypeString,
+							Required:         true,
+							Description:      "ZDB worklod name. This has to be unique within the deployment.",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 						},
 						"password": {
 							Type:        schema.TypeString,
@@ -151,9 +157,10 @@ func resourceDeployment() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
-							Type:        schema.TypeString,
-							Required:    true,
-							Description: "Vm (zmachine) workload name. This has to be unique within the deployment.",
+							Type:             schema.TypeString,
+							Required:         true,
+							Description:      "Vm (zmachine) workload name. This has to be unique within the deployment.",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 						},
 						"flist": {
 							Type:        schema.TypeString,
@@ -186,16 +193,18 @@ func resourceDeployment() *schema.Resource {
 							Description: "The reserved public ipv6 if any.",
 						},
 						"ip": {
-							Type:        schema.TypeString,
-							Optional:    true,
-							Computed:    true,
-							Description: "The private wireguard IP of the vm.",
+							Type:             schema.TypeString,
+							Optional:         true,
+							Computed:         true,
+							Description:      "The private wireguard IP of the vm.",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.IsIPAddress),
 						},
 						"cpu": {
-							Type:        schema.TypeInt,
-							Optional:    true,
-							Default:     1,
-							Description: "Number of virtual CPUs.",
+							Type:             schema.TypeInt,
+							Optional:         true,
+							Default:          1,
+							Description:      "Number of virtual CPUs.",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(1, 32)),
 						},
 						"description": {
 							Type:        schema.TypeString,
@@ -204,14 +213,16 @@ func resourceDeployment() *schema.Resource {
 							Description: "Description of the vm.",
 						},
 						"memory": {
-							Type:        schema.TypeInt,
-							Optional:    true,
-							Description: "Memory size in MB.",
+							Type:             schema.TypeInt,
+							Optional:         true,
+							Description:      "Memory size in MB.",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(256, 256*1024)),
 						},
 						"rootfs_size": {
-							Type:        schema.TypeInt,
-							Optional:    true,
-							Description: "Root file system size in MB.",
+							Type:             schema.TypeInt,
+							Optional:         true,
+							Description:      "Root file system size in MB.",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(1024, 10*1024*1024)),
 						},
 						"entrypoint": {
 							Type:        schema.TypeString,
@@ -278,9 +289,10 @@ func resourceDeployment() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
-							Type:        schema.TypeString,
-							Required:    true,
-							Description: "Qsfs workload name. This has to be unique within the deployment.",
+							Type:             schema.TypeString,
+							Required:         true,
+							Description:      "Qsfs workload name. This has to be unique within the deployment.",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 						},
 						"description": {
 							Type:        schema.TypeString,
