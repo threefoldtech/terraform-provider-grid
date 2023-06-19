@@ -4,6 +4,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
@@ -12,7 +13,7 @@ import (
 )
 
 // AssertNodesAreReady runs `kubectl get node` on the master node and asserts that all nodes are ready
-func AssertNodesAreReady(t *testing.T, terraformOptions *terraform.Options, privateKey string) {
+func AssertNodesAreReady(t *testing.T, terraformOptions *terraform.Options, privateKey string, nodesNumber int) {
 	t.Helper()
 
 	masterYggIP := terraform.Output(t, terraformOptions, "ygg_ip")
@@ -22,7 +23,6 @@ func AssertNodesAreReady(t *testing.T, terraformOptions *terraform.Options, priv
 	output = strings.TrimSpace(output)
 	assert.Empty(t, err)
 
-	nodesNumber := 2
 	numberOfReadyNodes := strings.Count(output, "Ready")
 	assert.True(t, numberOfReadyNodes == nodesNumber, "number of ready nodes is not equal to number of nodes only %s nodes are ready", numberOfReadyNodes)
 
@@ -49,6 +49,7 @@ func TestK8s(t *testing.T) {
 				"public_key": publicKey,
 			},
 		})
+		nodesNumber := 2
 		defer terraform.Destroy(t, terraformOptions)
 
 		_, err = terraform.InitAndApplyE(t, terraformOptions)
@@ -70,11 +71,17 @@ func TestK8s(t *testing.T) {
 		ok := TestConnection(masterIP, "22")
 		assert.True(t, ok)
 
-		ok = TestConnection(workerIP, "22")
-		assert.True(t, ok)
+		ticker := time.NewTicker(2 * time.Second)
+		for now := time.Now(); time.Since(now) < 1*time.Minute; {
+			<-ticker.C
+			output, err := RemoteRun("root", masterIP, "zinit list", privateKey)
+			if err == nil && strings.Contains(output, "k3s: Running") {
+				break
+			}
+		}
 
 		// ssh to master node
-		AssertNodesAreReady(t, terraformOptions, privateKey)
+		AssertNodesAreReady(t, terraformOptions, privateKey, nodesNumber)
 	})
 
 	t.Run("k8s_invalid_names", func(t *testing.T) {
@@ -133,11 +140,15 @@ func TestK8s(t *testing.T) {
 		freeMRU := uint64(1024)
 		freeSRU := uint64(2 * 1024)
 		freeCRU := uint64(1)
+		dedicated := false
+		availableFor := uint64(56)
 		f := types.NodeFilter{
-			Status:   &status,
-			FreeMRU:  &freeMRU,
-			FreeSRU:  &freeSRU,
-			TotalCRU: &freeCRU,
+			Status:       &status,
+			FreeMRU:      &freeMRU,
+			FreeSRU:      &freeSRU,
+			TotalCRU:     &freeCRU,
+			Dedicated:    &dedicated,
+			AvailableFor: &availableFor,
 		}
 		l := types.Limit{
 			Page: 1,
@@ -156,7 +167,7 @@ func TestK8s(t *testing.T) {
 			TerraformDir: "./k8s_using_module",
 			Vars: map[string]interface{}{
 				"ssh":           publicKey,
-				"network_nodes": []int{12, masterNode},
+				"network_nodes": []int{masterNode, worker0Node, worker1Node},
 				"master": map[string]interface{}{
 					"name":        "mr",
 					"node":        masterNode,
@@ -200,7 +211,23 @@ func TestK8s(t *testing.T) {
 		assert.NoError(t, err)
 		defer terraform.Destroy(t, terraformOptions)
 
-		AssertNodesAreReady(t, terraformOptions, privateKey)
+		// Check that the outputs not empty
+		masterIP := terraform.Output(t, terraformOptions, "ygg_ip")
+		assert.NotEmpty(t, masterIP)
+
+		// Check that master and workers is reachable
+		// testing connection on port 22, waits at max 3mins until it becomes ready otherwise it fails
+		ok = TestConnection(masterIP, "22")
+		assert.True(t, ok)
+
+		ticker := time.NewTicker(2 * time.Second)
+		for now := time.Now(); time.Since(now) < 1*time.Minute; {
+			<-ticker.C
+			output, err := RemoteRun("root", masterIP, "zinit list", privateKey)
+			if err == nil && strings.Contains(output, "k3s: Running") {
+				break
+			}
+		}
 
 		terraformOptions.Vars["workers"] = []map[string]interface{}{
 			{
@@ -247,7 +274,13 @@ func TestK8s(t *testing.T) {
 		_, err = terraform.ApplyE(t, terraformOptions)
 		assert.NoError(t, err)
 
-		AssertNodesAreReady(t, terraformOptions, privateKey)
-
+		ticker = time.NewTicker(2 * time.Second)
+		for now := time.Now(); time.Since(now) < 1*time.Minute; {
+			<-ticker.C
+			output, err := RemoteRun("root", masterIP, "zinit list", privateKey)
+			if err == nil && strings.Contains(output, "k3s: Running") {
+				break
+			}
+		}
 	})
 }
