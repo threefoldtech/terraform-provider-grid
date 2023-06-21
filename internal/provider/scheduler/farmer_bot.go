@@ -144,6 +144,10 @@ func buildFarmerBotParams(r *Request) []Params {
 	if r.Certified {
 		params = append(params, Params{Key: "certified", Value: r.Certified})
 	}
+
+	if r.HasGPU {
+		params = append(params, Params{Key: "has_gpy", Value: r.Certified})
+	}
 	return params
 }
 
