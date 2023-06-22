@@ -47,12 +47,10 @@ func (node *nodeInfo) fulfils(r *Request, farm farmInfo) bool {
 		(r.PublicIpsCount > uint32(farm.freeIPs)) ||
 		(r.Dedicated && !node.Node.Dedicated) ||
 		(r.Certified && node.Node.CertificationType != "Certified") ||
-		(r.HasGPU && !node.Node.HasGPU) ||
 		contains(r.NodeExclude, uint32(node.Node.NodeID)) {
 		return false
 	}
 	return true
-
 }
 
 // NewScheduler generates a new scheduler

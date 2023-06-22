@@ -10,10 +10,10 @@ require (
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.26.1
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.4
-	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.8.0
-	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.8.4-0.20230620072036-89149cd5dff8
-	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.8.0
-	github.com/threefoldtech/zos v0.5.6-0.20230619090727-df9b1fd2fbed
+	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.9.1-0.20230622124729-11a6d0ab4036
+	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.9.1-0.20230622124729-11a6d0ab4036
+	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.9.1-0.20230622124729-11a6d0ab4036
+	github.com/threefoldtech/zos v0.5.6-0.20230621094643-c1c26774b2a8
 	golang.org/x/crypto v0.9.0
 	golang.org/x/sync v0.3.0
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20210803171230-4253848d036c
@@ -21,8 +21,16 @@ require (
 
 require (
 	github.com/ProtonMail/go-crypto v0.0.0-20230217124315-7d5c6f04bbb8 // indirect
+	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/cloudflare/circl v1.3.3 // indirect
+	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/holiman/uint256 v1.2.2-0.20230321075855-87b91420868c // indirect
+	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
+	github.com/tklauser/go-sysconf v0.3.9 // indirect
+	github.com/tklauser/numcpus v0.6.0 // indirect
+	github.com/vishvananda/netlink v1.1.1-0.20201029203352-d40f9887b852 // indirect
+	github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f // indirect
+	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 )
 
 require (
@@ -113,7 +121,7 @@ require (
 	github.com/russross/blackfriday v1.6.0 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
-	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230616110830-e0aae0ad6d60 // indirect
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230619085748-dd2f8ad00fe5 // indirect
 	github.com/tmccombs/hcl2json v0.3.3 // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/ulikunitz/xz v0.5.10 // indirect
@@ -140,3 +148,7 @@ require (
 )
 
 replace github.com/threefoldtech/tfgrid-sdk-go/grid-client => ../tfgrid-sdk-go/grid-client
+
+replace github.com/threefoldtech/tfgrid-sdk-go/grid-proxy => ../tfgrid-sdk-go/grid-proxy
+
+replace github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go => ../tfgrid-sdk-go/rmb-sdk-go

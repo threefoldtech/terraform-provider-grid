@@ -21,7 +21,6 @@ type Request struct {
 	Dedicated      bool
 	NodeExclude    []uint32
 	Distinct       bool
-	HasGPU         bool
 }
 
 func (r *Request) constructFilter(twinID uint64) (f proxyTypes.NodeFilter) {
@@ -50,9 +49,6 @@ func (r *Request) constructFilter(twinID uint64) (f proxyTypes.NodeFilter) {
 	}
 	if r.Dedicated {
 		f.Rentable = &trueVal
-	}
-	if r.HasGPU {
-		f.HasGPU = &trueVal
 	}
 	return f
 }

@@ -93,12 +93,6 @@ func resourceScheduler() *schema.Resource {
 							Default:     false,
 							Description: "True to ensure this request returns a distinct node relative to this scheduler resource.",
 						},
-						"has_gpu": {
-							Type:        schema.TypeBool,
-							Optional:    true,
-							Default:     false,
-							Description: "if True, node must have gpus attached to it",
-						},
 					},
 				},
 			},
@@ -121,7 +115,7 @@ func parseAssignment(d *schema.ResourceData) map[string]uint32 {
 	return assignment
 }
 
-func parseRequests(d *schema.ResourceData, assignment map[string]uint32) ([]scheduler.Request, error) {
+func parseRequests(d *schema.ResourceData, assignment map[string]uint32) []scheduler.Request {
 	reqsIfs := d.Get("requests").([]interface{})
 	reqs := make([]scheduler.Request, 0)
 	for _, r := range reqsIfs {
@@ -130,20 +124,19 @@ func parseRequests(d *schema.ResourceData, assignment map[string]uint32) ([]sche
 			// skip already assigned ones
 			continue
 		}
-
 		nodesToExcludeIF := mp["node_exclude"].([]interface{})
 		nodesToExclude := make([]uint32, len(nodesToExcludeIF))
 		for idx, n := range nodesToExcludeIF {
 			nodesToExclude[idx] = uint32(n.(int))
 		}
-		req := scheduler.Request{
+
+		reqs = append(reqs, scheduler.Request{
 			Name:           mp["name"].(string),
 			FarmId:         uint32(mp["farm_id"].(int)),
 			PublicConfig:   mp["public_config"].(bool),
 			PublicIpsCount: uint32(mp["public_ips_count"].(int)),
 			Certified:      mp["certified"].(bool),
 			Dedicated:      mp["dedicated"].(bool),
-			HasGPU:         mp["has_gpu"].(bool),
 			NodeExclude:    nodesToExclude,
 			Capacity: scheduler.Capacity{
 				MRU: uint64(mp["mru"].(int)) * uint64(gridtypes.Megabyte),
@@ -151,14 +144,9 @@ func parseRequests(d *schema.ResourceData, assignment map[string]uint32) ([]sche
 				SRU: uint64(mp["sru"].(int)) * uint64(gridtypes.Megabyte),
 			},
 			Distinct: mp["distinct"].(bool),
-		}
-		if req.HasGPU && !req.Dedicated {
-			return reqs, errors.New("deploying on gpu nodes requires node to be dedicated")
-		}
-		reqs = append(reqs, req)
-
+		})
 	}
-	return reqs, nil
+	return reqs
 }
 
 func schedule(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -168,17 +156,14 @@ func schedule(ctx context.Context, d *schema.ResourceData, meta interface{}) dia
 	}
 	// read previously assigned nodes
 	assignment := parseAssignment(d)
-	reqs, err := parseRequests(d, assignment)
-	if err != nil {
-		return diag.FromErr(err)
-	}
+	reqs := parseRequests(d, assignment)
 
 	scheduler := scheduler.NewScheduler(tfPluginClient.GridProxyClient, uint64(tfPluginClient.TwinID), tfPluginClient.RMB)
 	if err := scheduler.ProcessRequests(ctx, reqs, assignment); err != nil {
 		return diag.FromErr(err)
 	}
 
-	err = d.Set("nodes", assignment)
+	err := d.Set("nodes", assignment)
 	if err != nil {
 		return diag.FromErr(errors.Wrapf(err, "couldn't set nodes with %v", assignment))
 	}
