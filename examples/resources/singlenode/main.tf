@@ -14,13 +14,13 @@ locals {
 
 resource "grid_scheduler" "sched" {
   requests {
-    name = "node1"
-    cru  = 3
-    sru  = 1024
-    mru  = 2048
-    node_exclude = [33] # exlude node 33 from your search
-    public_ips_count = 0 # this deployment needs 0 public ips
-    public_config = false # this node does not need to have public config
+    name             = "node1"
+    cru              = 3
+    sru              = 1024
+    mru              = 2048
+    node_exclude     = [33]  # exlude node 33 from your search
+    public_ips_count = 0     # this deployment needs 0 public ips
+    public_config    = false # this node does not need to have public config
   }
 }
 
