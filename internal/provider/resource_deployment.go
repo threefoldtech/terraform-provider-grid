@@ -279,6 +279,16 @@ func resourceDeployment() *schema.Resource {
 								Type:        schema.TypeString,
 								Description: "Url of the remote location receiving logs. URLs should use one of `redis, ws, wss` schema. e.g. wss://example_ip.com:9000"},
 						},
+						"gpus": {
+							Type:        schema.TypeList,
+							Optional:    true,
+							Description: "List of the GPUs to be attached to the vm and must not be used by other vms",
+							Elem: &schema.Schema{
+								Type:             schema.TypeString,
+								Description:      "Id of the GPU",
+								ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(gpuValidationRegex), gpuValidationErrMsg)),
+							},
+						},
 					},
 				},
 			},
