@@ -286,7 +286,7 @@ func resourceDeployment() *schema.Resource {
 							Elem: &schema.Schema{
 								Type:             schema.TypeString,
 								Description:      "Id of the GPU",
-								ValidateDiagFunc: validation.ToDiagFunc(IsGPUId),
+								ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(gpuValidationRegex), gpuValidationErrMsg)),
 							},
 						},
 					},

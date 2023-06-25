@@ -16,6 +16,8 @@ import (
 const errTerraformOutSync = "Error reading data from remote, terraform state might be out of sync with the remote state"
 const nameValidationRegex = "^[-a-z0-9]+$"
 const nameValidationErrorMessage = "must only include lowercase alphanumeric and hyphen"
+const gpuValidationRegex = "^[A-Za-z0-9:.]+/[A-Za-z0-9]+/[A-Za-z0-9]+$"
+const gpuValidationErrMsg = "not a valid gpu id"
 
 // New returns a new schema.Provider instance, and an open substrate connection
 func New(version string, st state.Getter) (func() *schema.Provider, subi.SubstrateExt) {
