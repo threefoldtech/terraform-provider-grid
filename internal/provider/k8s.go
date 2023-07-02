@@ -19,12 +19,19 @@ import (
 func newK8sFromSchema(d *schema.ResourceData) (*workloads.K8sCluster, error) {
 	nodesIPRange := make(map[uint32]gridtypes.IPNet)
 
-	master := workloads.NewK8sNodeFromMap(d.Get("master").([]interface{})[0].(map[string]interface{}))
+	masterIf, err := workloads.NewWorkloadFromMap(d.Get("master").([]interface{})[0].(map[string]interface{}), workloads.K8sNode{})
+	master := masterIf.(workloads.K8sNode)
+	if err != nil {
+		return nil, errors.Wrapf(err, "couldn't get master from map")
+	}
 	workers := make([]workloads.K8sNode, 0)
 
 	for _, w := range d.Get("workers").([]interface{}) {
-		data := workloads.NewK8sNodeFromMap(w.(map[string]interface{}))
-		workers = append(workers, data)
+		data, err := workloads.NewWorkloadFromMap(w.(map[string]interface{}), workloads.K8sNode{})
+		if err != nil {
+			return nil, errors.Wrapf(err, "couldn't get worker from map")
+		}
+		workers = append(workers, data.(workloads.K8sNode))
 	}
 
 	nodeDeploymentIDIf := d.Get("node_deployment_id").(map[string]interface{})
@@ -68,7 +75,11 @@ func retainChecksums(workers []interface{}, master interface{}, k8s *workloads.K
 func storeK8sState(d *schema.ResourceData, k8s *workloads.K8sCluster, state state.State) (errors error) {
 	workers := make([]interface{}, 0)
 	for _, w := range k8s.Workers {
-		workers = append(workers, w.ToMap())
+		worker, err := workloads.ToMap(w)
+		if err != nil {
+			errors = multierror.Append(errors, err)
+		}
+		workers = append(workers, worker)
 	}
 
 	nodeDeploymentID := make(map[string]interface{})
@@ -84,13 +95,16 @@ func storeK8sState(d *schema.ResourceData, k8s *workloads.K8sCluster, state stat
 	if k8s.Master == nil {
 		k8s.Master = &workloads.K8sNode{}
 	}
-	master := k8s.Master.ToMap()
+	master, err := workloads.ToMap(k8s.Master)
+	if err != nil {
+		errors = multierror.Append(errors, err)
+	}
 	retainChecksums(workers, master, k8s)
 
 	updateNetworkState(d, k8s, state)
 
 	l := []interface{}{master}
-	err := d.Set("master", l)
+	err = d.Set("master", l)
 	if err != nil {
 		errors = multierror.Append(errors, err)
 	}

@@ -18,22 +18,40 @@ func newDeploymentFromSchema(d *schema.ResourceData) (*workloads.Deployment, err
 
 	disks := make([]workloads.Disk, 0)
 	for _, disk := range d.Get("disks").([]interface{}) {
-		d := workloads.NewDiskFromMap(disk.(map[string]interface{}))
-		disks = append(disks, d)
+		d, err := workloads.NewWorkloadFromMap(disk.(map[string]interface{}), workloads.Disk{})
+		if err != nil {
+			return nil, err
+		}
+		disks = append(disks, d.(workloads.Disk))
 	}
 
 	zdbs := make([]workloads.ZDB, 0)
 	for _, zdb := range d.Get("zdbs").([]interface{}) {
-		z := workloads.NewZDBFromMap(zdb.(map[string]interface{}))
-		zdbs = append(zdbs, z)
+		z, err := workloads.NewWorkloadFromMap(zdb.(map[string]interface{}), workloads.ZDB{})
+		if err != nil {
+			return nil, err
+		}
+		zdbs = append(zdbs, z.(workloads.ZDB))
 	}
 
 	vms := make([]workloads.VM, 0)
 	for _, vm := range d.Get("vms").([]interface{}) {
 		vmMap := vm.(map[string]interface{})
 		vmMap["network_name"] = networkName
-		v := workloads.NewVMFromMap(vmMap)
-		vms = append(vms, *v)
+		v, err := workloads.NewWorkloadFromMap(vmMap, workloads.VM{})
+		if err != nil {
+			return nil, err
+		}
+		vms = append(vms, v.(workloads.VM))
+	}
+
+	qsfs := make([]workloads.QSFS, 0)
+	for _, qsfsData := range d.Get("qsfs").([]interface{}) {
+		q, err := workloads.NewWorkloadFromMap(qsfsData.(map[string]interface{}), workloads.QSFS{})
+		if err != nil {
+			return nil, err
+		}
+		qsfs = append(qsfs, q.(workloads.QSFS))
 	}
 
 	// TODO: ip_range
@@ -41,12 +59,6 @@ func newDeploymentFromSchema(d *schema.ResourceData) (*workloads.Deployment, err
 	// if err != nil {
 	// 	errors = multierror.Append(errors, err)
 	// }
-
-	qsfs := make([]workloads.QSFS, 0)
-	for _, qsfsdata := range d.Get("qsfs").([]interface{}) {
-		q := workloads.NewQSFSFromMap(qsfsdata.(map[string]interface{}))
-		qsfs = append(qsfs, q)
-	}
 
 	solutionProviderVal := uint64(d.Get("solution_provider").(int))
 	var solutionProvider *uint64
@@ -90,19 +102,38 @@ func syncContractsDeployments(r *schema.ResourceData, d *workloads.Deployment) (
 	disks := make([]interface{}, 0)
 	zdbs := make([]interface{}, 0)
 	qsfs := make([]interface{}, 0)
+
 	for _, vm := range d.Vms {
-		vmMap := vm.ToMap()
+		vmMap, err := workloads.ToMap(vm)
+		if err != nil {
+			errors = multierror.Append(errors, fmt.Errorf("failed to convert vm to a map: %w", err))
+		}
 		delete(vmMap, "network_name")
 		vms = append(vms, vmMap)
 	}
+
 	for _, d := range d.Disks {
-		disks = append(disks, d.ToMap())
+		diskMap, err := workloads.ToMap(d)
+		if err != nil {
+			errors = multierror.Append(errors, fmt.Errorf("failed to convert disk to a map: %w", err))
+		}
+		disks = append(disks, diskMap)
 	}
+
 	for _, zdb := range d.Zdbs {
-		zdbs = append(zdbs, zdb.ToMap())
+		zdbMap, err := workloads.ToMap(zdb)
+		if err != nil {
+			errors = multierror.Append(errors, fmt.Errorf("failed to convert zdb to a map: %w", err))
+		}
+
+		zdbs = append(zdbs, zdbMap)
 	}
 	for _, q := range d.QSFS {
-		qsfs = append(qsfs, q.ToMap())
+		qsfsMap, err := workloads.ToMap(q)
+		if err != nil {
+			errors = multierror.Append(errors, fmt.Errorf("failed to convert qsfs to a map: %w", err))
+		}
+		qsfs = append(qsfs, qsfsMap)
 	}
 
 	err := r.Set("vms", vms)
