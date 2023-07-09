@@ -149,6 +149,26 @@ func resourceKubernetes() *schema.Resource {
 							Computed:    true,
 							Description: "The allocated Yggdrasil IP.",
 						},
+						"console_url": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "The url to access the vm via cloud console on private interface using wireguard.",
+						},
+						"network_name": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Network name.",
+						},
+						"ssh_key": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "ssh key.",
+						},
+						"token": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "cluster token.",
+						},
 					},
 				},
 			},
@@ -233,6 +253,26 @@ func resourceKubernetes() *schema.Resource {
 							Type:        schema.TypeString,
 							Computed:    true,
 							Description: "The allocated Yggdrasil IP.",
+						},
+						"console_url": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "The url to access the vm via cloud console on private interface using wireguard.",
+						},
+						"network_name": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Network name.",
+						},
+						"ssh_key": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "ssh key.",
+						},
+						"token": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "cluster token.",
 						},
 					},
 				},

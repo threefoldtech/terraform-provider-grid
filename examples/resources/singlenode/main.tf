@@ -63,7 +63,9 @@ output "vm1_ip" {
 output "vm1_ygg_ip" {
   value = grid_deployment.d1.vms[0].ygg_ip
 }
-
+output "vm1_console_url" {
+  value = grid_deployment.d1.vms[0].console_url
+}
 output "vm2_ip" {
   value = grid_deployment.d1.vms[1].ip
 }

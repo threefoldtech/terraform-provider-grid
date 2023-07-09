@@ -289,6 +289,11 @@ func resourceDeployment() *schema.Resource {
 								ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(gpuValidationRegex), gpuValidationErrMsg)),
 							},
 						},
+						"console_url": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "The url to access the vm via cloud console on private interface using wireguard.",
+						},
 					},
 				},
 			},
