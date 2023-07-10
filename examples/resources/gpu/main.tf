@@ -23,14 +23,23 @@ resource "grid_deployment" "d1" {
   name         = local.name
   node         = 93
   network_name = grid_network.net1.name
+  disks {
+    name        = "data"
+    size        = 100
+    description = "volume holding app data"
+  }
   vms {
     name       = "vm1"
-    flist      = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
-    cpu        = 2
-    memory     = 1024
-    entrypoint = "/sbin/zinit init"
+    flist      = "https://hub.grid.tf/tf-official-vms/ubuntu-22.04.flist"
+    cpu        = 4
+    memory     = 1024 * 4
+    entrypoint = "/init.sh"
     env_vars = {
       SSH_KEY = file("~/.ssh/id_rsa.pub")
+    }
+    mounts {
+      disk_name   = "data"
+      mount_point = "/app"
     }
     planetary = true
     gpus = [
