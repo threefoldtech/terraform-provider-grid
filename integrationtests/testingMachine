@@ -1,0 +1,20 @@
+#!/usr/bin/bash 
+sudo apt-get update
+sudo apt-get install -y wireguard
+sudo apt-get install dirmngr
+sudo apt-get install curl
+gpg --fetch-keys https://neilalexander.s3.dualstack.eu-west-2.amazonaws.com/deb/key.txt
+gpg --export 569130E8CA20FBC4CB3FDE555898470A764B32C9 | sudo apt-key add -
+echo 'deb http://neilalexander.s3.dualstack.eu-west-2.amazonaws.com/deb/ debian yggdrasil' | sudo tee /etc/apt/sources.list.d/yggdrasil.list
+sudo apt-get update
+sudo apt-get install yggdrasil
+sudo systemctl enable yggdrasil
+PEERS=$(curl https://raw.githubusercontent.com/threefoldtech/zos-config/main/development.json | jq '.yggdrasil.peers[]' -r | sed 's/\//\\\//g' | sed -z 's/\n/\\n/g')
+sudo  sed -i -- 's/Peers\: \[\]/Peers: [\n'"$PEERS"']/g' /etc/yggdrasil.conf
+sudo apt install make
+sudo apt update
+wget https://go.dev/dl/go1.20.1.linux-amd64.tar.gz
+sudo tar -C /usr/local -xzf go1.20.1.linux-amd64.tar.gz
+export PATH=$PATH:/usr/local/go/bin
+rm -rf go1.20.1.linux-amd64.tar.gz
+rm -rf go1.20.1.linux-amd64
