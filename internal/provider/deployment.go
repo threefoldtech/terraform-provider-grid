@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/pkg/errors"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 )
 
@@ -18,22 +19,31 @@ func newDeploymentFromSchema(d *schema.ResourceData) (*workloads.Deployment, err
 
 	disks := make([]workloads.Disk, 0)
 	for _, disk := range d.Get("disks").([]interface{}) {
-		d := workloads.NewDiskFromMap(disk.(map[string]interface{}))
-		disks = append(disks, d)
+		d, err := workloads.NewWorkloadFromMap(disk.(map[string]interface{}), &workloads.Disk{})
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create workload from disk map")
+		}
+		disks = append(disks, d.(workloads.Disk))
 	}
 
 	zdbs := make([]workloads.ZDB, 0)
 	for _, zdb := range d.Get("zdbs").([]interface{}) {
-		z := workloads.NewZDBFromMap(zdb.(map[string]interface{}))
-		zdbs = append(zdbs, z)
+		z, err := workloads.NewWorkloadFromMap(zdb.(map[string]interface{}), &workloads.ZDB{})
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create workload from zdb map")
+		}
+		zdbs = append(zdbs, z.(workloads.ZDB))
 	}
 
 	vms := make([]workloads.VM, 0)
 	for _, vm := range d.Get("vms").([]interface{}) {
 		vmMap := vm.(map[string]interface{})
 		vmMap["network_name"] = networkName
-		v := workloads.NewVMFromMap(vmMap)
-		vms = append(vms, *v)
+		v, err := workloads.NewWorkloadFromMap(vmMap, &workloads.VM{})
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create workload from vm map")
+		}
+		vms = append(vms, *v.(*workloads.VM))
 	}
 
 	// TODO: ip_range
@@ -44,8 +54,11 @@ func newDeploymentFromSchema(d *schema.ResourceData) (*workloads.Deployment, err
 
 	qsfs := make([]workloads.QSFS, 0)
 	for _, qsfsdata := range d.Get("qsfs").([]interface{}) {
-		q := workloads.NewQSFSFromMap(qsfsdata.(map[string]interface{}))
-		qsfs = append(qsfs, q)
+		q, err := workloads.NewWorkloadFromMap(qsfsdata.(map[string]interface{}), &workloads.QSFS{})
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create workload from qsfs map")
+		}
+		qsfs = append(qsfs, q.(workloads.QSFS))
 	}
 
 	solutionProviderVal := uint64(d.Get("solution_provider").(int))
@@ -91,18 +104,33 @@ func syncContractsDeployments(r *schema.ResourceData, d *workloads.Deployment) (
 	zdbs := make([]interface{}, 0)
 	qsfs := make([]interface{}, 0)
 	for _, vm := range d.Vms {
-		vmMap := vm.ToMap()
+		vmMap, err := workloads.ToMap(vm)
+		if err != nil {
+			return err
+		}
 		delete(vmMap, "network_name")
 		vms = append(vms, vmMap)
 	}
 	for _, d := range d.Disks {
-		disks = append(disks, d.ToMap())
+		disk, err := workloads.ToMap(d)
+		if err != nil {
+			return err
+		}
+		disks = append(disks, disk)
 	}
-	for _, zdb := range d.Zdbs {
-		zdbs = append(zdbs, zdb.ToMap())
+	for _, z := range d.Zdbs {
+		zdb, err := workloads.ToMap(z)
+		if err != nil {
+			return err
+		}
+		zdbs = append(zdbs, zdb)
 	}
 	for _, q := range d.QSFS {
-		qsfs = append(qsfs, q.ToMap())
+		qs, err := workloads.ToMap(q)
+		if err != nil {
+			return err
+		}
+		qsfs = append(qsfs, qs)
 	}
 
 	err := r.Set("vms", vms)

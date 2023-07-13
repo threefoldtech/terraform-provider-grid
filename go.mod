@@ -10,9 +10,9 @@ require (
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.26.1
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.4
-	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.9.1-0.20230625103337-99dbdf364b3a
-	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.9.1-0.20230625103337-99dbdf364b3a
-	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.9.1-0.20230625103337-99dbdf364b3a
+	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.9.1-0.20230711152718-88bcd4c6dafb
+	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.9.1-0.20230711152718-88bcd4c6dafb
+	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.9.1-0.20230711152718-88bcd4c6dafb
 	github.com/threefoldtech/zos v0.5.6-0.20230621094643-c1c26774b2a8
 	golang.org/x/crypto v0.9.0
 	golang.org/x/sync v0.3.0
