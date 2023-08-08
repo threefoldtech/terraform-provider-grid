@@ -18,7 +18,7 @@ Resource for deploying a gateway name workload. A user should specify some uniqu
 ### Required
 
 - `backends` (List of String) The backends of the gateway proxy (in the format (http|https)://ip:port), with tls_passthrough the scheme must be https.
-- `name` (String) Domain prefix. The fqdn will be <name>.<gateway-domain>.  This has to be unique within the deployment.
+- `name` (String) Domain prefix. The fqdn will be <name>.<gateway-domain>.  This has to be unique within the deployment. Must contain only lowercase alphanumeric and hyphens.
 - `node` (Number) The gateway's node id.
 
 ### Optional
@@ -34,5 +34,3 @@ Resource for deploying a gateway name workload. A user should specify some uniqu
 - `id` (String) The ID of this resource.
 - `name_contract_id` (Number) The id of the created name contract.
 - `node_deployment_id` (Map of Number) Mapping from each node to its deployment id.
-
-

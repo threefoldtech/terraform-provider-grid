@@ -22,7 +22,7 @@ Resource to deploy a kubernetes cluster. A cluster should consist of one master 
 
 ### Optional
 
-- `name` (String) Solution name for the created contracts to be consistent across threefold tooling.
+- `name` (String) Solution name for the created contracts to be consistent across threefold tooling. Must contain only lowercase alphanumeric and hyphens.
 - `network_name` (String) The network name to deploy the cluster on.
 - `solution_type` (String) Solution type for the created contracts to be consistent across threefold tooling.
 - `ssh_key` (String) SSH key to access the cluster nodes.
@@ -39,10 +39,10 @@ Resource to deploy a kubernetes cluster. A cluster should consist of one master 
 
 Required:
 
-- `cpu` (Number) Number of virtual CPUs.
-- `disk_size` (Number) Disk size for master node in GBs.
-- `memory` (Number) Memory size in MB.
-- `name` (String) Master node ZMachine workload name.  This has to be unique within the node.
+- `cpu` (Number) Number of virtual CPUs. Must be between 1 and 32.
+- `disk_size` (Number) Disk size for master node in GBs. Must be between 1GB and 10240GBs (10TBs).
+- `memory` (Number) Memory size in MB. Must be between 256MBs and 262144MBs (256GBs).
+- `name` (String) Master node ZMachine workload name.  This has to be unique within the node. Must contain only lowercase alphanumeric and hyphens.
 - `node` (Number) Node ID to deploy master node on.
 
 Optional:
@@ -57,7 +57,11 @@ Read-Only:
 
 - `computedip` (String) The reserved public IPv4.
 - `computedip6` (String) The reserved public IPv6.
+- `console_url` (String) The url to access the vm via cloud console on private interface using wireguard.
 - `ip` (String) The private wireguard IP of master node.
+- `network_name` (String) Network name.
+- `ssh_key` (String) ssh key.
+- `token` (String) cluster token.
 - `ygg_ip` (String) The allocated Yggdrasil IP.
 
 
@@ -66,10 +70,10 @@ Read-Only:
 
 Required:
 
-- `cpu` (Number) Number of virtual CPUs.
-- `disk_size` (Number) Data disk size in GBs.
-- `memory` (Number) Memory size in MB.
-- `name` (String) Worker node ZMachine workload name. This has to be unique within the node.
+- `cpu` (Number) Number of virtual CPUs. Must be between 1 and 32.
+- `disk_size` (Number) Data disk size in GBs. Must be between 1GB and 10240GBs (10TBs).
+- `memory` (Number) Memory size in MB. Must be between 256MBs and 262144MBs (256GBs).
+- `name` (String) Worker node ZMachine workload name. This has to be unique within the node. Must contain only lowercase alphanumeric and hyphens.
 - `node` (Number) Node ID to deploy worker node on.
 
 Optional:
@@ -84,7 +88,9 @@ Read-Only:
 
 - `computedip` (String) The reserved public ipv4.
 - `computedip6` (String) The reserved public ipv6.
+- `console_url` (String) The url to access the vm via cloud console on private interface using wireguard.
 - `ip` (String) The private IP (computed from nodes_ip_range).
+- `network_name` (String) Network name.
+- `ssh_key` (String) ssh key.
+- `token` (String) cluster token.
 - `ygg_ip` (String) The allocated Yggdrasil IP.
-
-
