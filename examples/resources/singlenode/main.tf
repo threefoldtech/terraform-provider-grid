@@ -2,7 +2,6 @@ terraform {
   required_providers {
     grid = {
       source = "threefoldtech/grid"
-      version = "0.2"
     }
   }
 }
@@ -15,13 +14,13 @@ locals {
 
 resource "grid_scheduler" "sched" {
   requests {
-    name = "node1"
-    cru  = 3
-    sru  = 1024
-    mru  = 2048
-    node_exclude = [33] # exlude node 33 from your search
-    public_ips_count = 0 # this deployment needs 0 public ips
-    public_config = false # this node does not need to have public config
+    name             = "node1"
+    cru              = 3
+    sru              = 1024
+    mru              = 2048
+    node_exclude     = [33]  # exlude node 33 from your search
+    public_ips_count = 0     # this deployment needs 0 public ips
+    public_config    = false # this node does not need to have public config
   }
 }
 
@@ -64,7 +63,9 @@ output "vm1_ip" {
 output "vm1_ygg_ip" {
   value = grid_deployment.d1.vms[0].ygg_ip
 }
-
+output "vm1_console_url" {
+  value = grid_deployment.d1.vms[0].console_url
+}
 output "vm2_ip" {
   value = grid_deployment.d1.vms[1].ip
 }

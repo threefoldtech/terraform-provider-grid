@@ -18,7 +18,7 @@ Resource to deploy a network on the grid. This is a private wireguard network. A
 ### Required
 
 - `ip_range` (String) Network IP range (e.g. 10.1.2.0/16). Has to have a subnet mask of 16.
-- `name` (String) Network workloads Name.  This has to be unique within the node.
+- `name` (String) Network workloads Name.  This has to be unique within the node. Must contain only lowercase alphanumeric and hyphens.
 - `nodes` (List of Number) List of node ids to add to the network.
 
 ### Optional
@@ -36,5 +36,3 @@ Resource to deploy a network on the grid. This is a private wireguard network. A
 - `id` (String) The ID of this resource.
 - `node_deployment_id` (Map of Number) Mapping from each node to its deployment id.
 - `public_node_id` (Number) Public node id (in case it's added). Used for wireguard access and supporting hidden nodes.
-
-

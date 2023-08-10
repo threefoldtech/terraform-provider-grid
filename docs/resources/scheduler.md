@@ -44,5 +44,3 @@ Optional:
 - `public_config` (Boolean) Flag to pick only nodes with public config containing domain.
 - `public_ips_count` (Number) Required count of public ips.
 - `sru` (Number) Disk SSD size in MBs.
-
-

@@ -28,7 +28,7 @@ func resourceKubernetes() *schema.Resource {
 			"name": {
 				Type:             schema.TypeString,
 				Optional:         true,
-				Description:      "Solution name for the created contracts to be consistent across threefold tooling.",
+				Description:      "Solution name for the created contracts to be consistent across threefold tooling. Must contain only lowercase alphanumeric and hyphens.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 			},
 			"solution_type": {
@@ -76,7 +76,7 @@ func resourceKubernetes() *schema.Resource {
 						"name": {
 							Type:             schema.TypeString,
 							Required:         true,
-							Description:      "Master node ZMachine workload name.  This has to be unique within the node.",
+							Description:      "Master node ZMachine workload name.  This has to be unique within the node. Must contain only lowercase alphanumeric and hyphens.",
 							ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 						},
 						"node": {
@@ -87,7 +87,7 @@ func resourceKubernetes() *schema.Resource {
 						"disk_size": {
 							Type:             schema.TypeInt,
 							Required:         true,
-							Description:      "Disk size for master node in GBs.",
+							Description:      "Disk size for master node in GBs. Must be between 1GB and 10240GBs (10TBs).",
 							ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(1, 10*1024)),
 						},
 						"publicip": {
@@ -129,13 +129,13 @@ func resourceKubernetes() *schema.Resource {
 						"cpu": {
 							Type:             schema.TypeInt,
 							Required:         true,
-							Description:      "Number of virtual CPUs.",
+							Description:      "Number of virtual CPUs. Must be between 1 and 32.",
 							ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(1, 32)),
 						},
 						"memory": {
 							Type:             schema.TypeInt,
 							Required:         true,
-							Description:      "Memory size in MB.",
+							Description:      "Memory size in MB. Must be between 256MBs and 262144MBs (256GBs).",
 							ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(256, 256*1024)),
 						},
 						"planetary": {
@@ -149,6 +149,26 @@ func resourceKubernetes() *schema.Resource {
 							Computed:    true,
 							Description: "The allocated Yggdrasil IP.",
 						},
+						"console_url": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "The url to access the vm via cloud console on private interface using wireguard.",
+						},
+						"network_name": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Network name.",
+						},
+						"ssh_key": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "ssh key.",
+						},
+						"token": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "cluster token.",
+						},
 					},
 				},
 			},
@@ -161,7 +181,7 @@ func resourceKubernetes() *schema.Resource {
 						"name": {
 							Type:             schema.TypeString,
 							Required:         true,
-							Description:      "Worker node ZMachine workload name. This has to be unique within the node.",
+							Description:      "Worker node ZMachine workload name. This has to be unique within the node. Must contain only lowercase alphanumeric and hyphens.",
 							ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 						},
 						"flist": {
@@ -178,7 +198,7 @@ func resourceKubernetes() *schema.Resource {
 						"disk_size": {
 							Type:             schema.TypeInt,
 							Required:         true,
-							Description:      "Data disk size in GBs.",
+							Description:      "Data disk size in GBs. Must be between 1GB and 10240GBs (10TBs).",
 							ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(1, 10*1024)),
 						},
 						"node": {
@@ -214,13 +234,13 @@ func resourceKubernetes() *schema.Resource {
 						"cpu": {
 							Type:             schema.TypeInt,
 							Required:         true,
-							Description:      "Number of virtual CPUs.",
+							Description:      "Number of virtual CPUs. Must be between 1 and 32.",
 							ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(1, 32)),
 						},
 						"memory": {
 							Type:             schema.TypeInt,
 							Required:         true,
-							Description:      "Memory size in MB.",
+							Description:      "Memory size in MB. Must be between 256MBs and 262144MBs (256GBs).",
 							ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(256, 256*1024)),
 						},
 						"planetary": {
@@ -233,6 +253,26 @@ func resourceKubernetes() *schema.Resource {
 							Type:        schema.TypeString,
 							Computed:    true,
 							Description: "The allocated Yggdrasil IP.",
+						},
+						"console_url": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "The url to access the vm via cloud console on private interface using wireguard.",
+						},
+						"network_name": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Network name.",
+						},
+						"ssh_key": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "ssh key.",
+						},
+						"token": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "cluster token.",
 						},
 					},
 				},

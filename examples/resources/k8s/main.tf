@@ -99,3 +99,7 @@ output "computed_master_public_ip" {
 output "wg_config" {
   value = grid_network.net1.access_wg_config
 }
+output "master_console_url" {
+  value = grid_kubernetes.k8s1.master[0].console_url
+}
+

@@ -37,7 +37,7 @@ func resourceDeployment() *schema.Resource {
 				Type:             schema.TypeString,
 				Optional:         true,
 				Default:          "vm",
-				Description:      "Solution name for created contract to be consistent across threefold tooling.",
+				Description:      "Solution name for created contract to be consistent across threefold tooling. Must contain only lowercase alphanumeric and hyphens.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 			},
 			"solution_type": {
@@ -71,13 +71,13 @@ func resourceDeployment() *schema.Resource {
 						"name": {
 							Type:             schema.TypeString,
 							Required:         true,
-							Description:      "Disk workload name. This has to be unique within the deployment.",
+							Description:      "Disk workload name. This has to be unique within the deployment. Must contain only lowercase alphanumeric and hyphens.",
 							ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 						},
 						"size": {
 							Type:             schema.TypeInt,
 							Required:         true,
-							Description:      "Disk size in GBs.",
+							Description:      "Disk size in GBs. Must be between 1GB and 10240GBs (10TBs)",
 							ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(1, 10*1024)),
 						},
 						"description": {
@@ -98,7 +98,7 @@ func resourceDeployment() *schema.Resource {
 						"name": {
 							Type:             schema.TypeString,
 							Required:         true,
-							Description:      "ZDB worklod name. This has to be unique within the deployment.",
+							Description:      "ZDB worklod name. This has to be unique within the deployment. Must contain only lowercase alphanumeric and hyphens.",
 							ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 						},
 						"password": {
@@ -159,7 +159,7 @@ func resourceDeployment() *schema.Resource {
 						"name": {
 							Type:             schema.TypeString,
 							Required:         true,
-							Description:      "Vm (zmachine) workload name. This has to be unique within the deployment.",
+							Description:      "Vm (zmachine) workload name. This has to be unique within the deployment. Must contain only lowercase alphanumeric and hyphens.",
 							ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 						},
 						"flist": {
@@ -203,7 +203,7 @@ func resourceDeployment() *schema.Resource {
 							Type:             schema.TypeInt,
 							Optional:         true,
 							Default:          1,
-							Description:      "Number of virtual CPUs.",
+							Description:      "Number of virtual CPUs. Must be between 1 and 32.",
 							ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(1, 32)),
 						},
 						"description": {
@@ -215,13 +215,13 @@ func resourceDeployment() *schema.Resource {
 						"memory": {
 							Type:             schema.TypeInt,
 							Optional:         true,
-							Description:      "Memory size in MB.",
+							Description:      "Memory size in MB. Must be between 256MBs and 262144MBs (256GBs).",
 							ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(256, 256*1024)),
 						},
 						"rootfs_size": {
 							Type:             schema.TypeInt,
 							Optional:         true,
-							Description:      "Root file system size in MB.",
+							Description:      "Root file system size in MB. Must be between 1024MBs and 10485760MBs (10TBs).",
 							ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(1024, 10*1024*1024)),
 						},
 						"entrypoint": {
@@ -279,6 +279,21 @@ func resourceDeployment() *schema.Resource {
 								Type:        schema.TypeString,
 								Description: "Url of the remote location receiving logs. URLs should use one of `redis, ws, wss` schema. e.g. wss://example_ip.com:9000"},
 						},
+						"gpus": {
+							Type:        schema.TypeList,
+							Optional:    true,
+							Description: "List of the GPUs to be attached to the vm and must not be used by other vms",
+							Elem: &schema.Schema{
+								Type:             schema.TypeString,
+								Description:      "Id of the GPU",
+								ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(gpuValidationRegex), gpuValidationErrMsg)),
+							},
+						},
+						"console_url": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "The url to access the vm via cloud console on private interface using wireguard.",
+						},
 					},
 				},
 			},
@@ -291,7 +306,7 @@ func resourceDeployment() *schema.Resource {
 						"name": {
 							Type:             schema.TypeString,
 							Required:         true,
-							Description:      "Qsfs workload name. This has to be unique within the deployment.",
+							Description:      "Qsfs workload name. This has to be unique within the deployment. Must contain only lowercase alphanumeric and hyphens.",
 							ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 						},
 						"description": {
