@@ -628,8 +628,8 @@ github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230809064214
 github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230809064214-d8ef5ca360eb/go.mod h1:dtDKAPiUDxAwIkfHV7xcAFZcOm+xwNIuOI1MLFS+MeQ=
 github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.10.3 h1:ADY7sUR1NJyh/HZc0vGqgsixgVo3EdlZV2d8SHnKrvg=
 github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.10.3/go.mod h1:Q1G6S4s+ydew591aVnlbjV2rd6X017Bah37sTd++dM0=
-github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.10.3 h1:rsXWJMefnR0RuqWUNbce96vlSIZXOEDlatvH6mmA6zQ=
-github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.10.3/go.mod h1:oL6i7KhqTgvjinjZNqUjgwY4HzZCYa1taaVcX0FzLjw=
+github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.10.4 h1:TRvFiZ+ArRkMHmh76Qa+GLxAoq2ZR38oAVDkO7WS918=
+github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.10.4/go.mod h1:CalNMImwoLbqVD/RQD8IPru2WCurrzSDiDwMWfdAg8c=
 github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.10.3 h1:TWEiMQ7MVA6YNiSvazRpgOkIIQlbdhY6POFHf5p8lhg=
 github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.10.3/go.mod h1:KkuHJvpggc/kqR9LNkrmTe9F+nVwuAcNm/sHrKD6fsg=
 github.com/threefoldtech/zos v0.5.6-0.20230809073554-ddb0ad98fc4c h1:koGfjcZgxN/Yyo+hM5t5Xyfz/kodxOxitTEmcRD4t9I=
