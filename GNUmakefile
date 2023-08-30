@@ -1,6 +1,6 @@
 GOPATH=$(shell go env GOPATH)
 
-DIRS := . $(shell find integrationtests -type d)
+DIRS := . $(shell find integrationtests examples -type d)
 GARBAGE_PATTERNS := terraform.tfstate.backup terraform.tfstate .terraform.lock.hcl state.json .terraform
 GARBAGE := $(foreach DIR,$(DIRS),$(addprefix $(DIR)/,$(GARBAGE_PATTERNS)))
 

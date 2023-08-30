@@ -10,19 +10,29 @@ provider "grid" {
 }
 
 locals {
-  name = "mountDeployment"
+  name = "mountdeployment"
 }
 
 
+resource "grid_scheduler" "sched" {
+  requests {
+    name             = "node1"
+    cru              = 1
+    sru              = 1024*10
+    mru              = 2048
+  }
+}
+
 resource "grid_network" "net1" {
-  nodes       = [2, 4]
+  nodes       = [grid_scheduler.sched.nodes["node1"]]
   ip_range    = "10.1.0.0/16"
   name        = local.name
   description = "newer network"
 }
+
 resource "grid_deployment" "d1" {
   name         = local.name
-  node         = 2
+  node         = grid_scheduler.sched.nodes["node1"]
   network_name = grid_network.net1.name
   disks {
     name        = "data"

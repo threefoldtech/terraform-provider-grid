@@ -23,7 +23,7 @@ func newDeploymentFromSchema(d *schema.ResourceData) (*workloads.Deployment, err
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create workload from disk map")
 		}
-		disks = append(disks, d.(workloads.Disk))
+		disks = append(disks, *(d.(*workloads.Disk)))
 	}
 
 	zdbs := make([]workloads.ZDB, 0)
@@ -32,7 +32,7 @@ func newDeploymentFromSchema(d *schema.ResourceData) (*workloads.Deployment, err
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create workload from zdb map")
 		}
-		zdbs = append(zdbs, z.(workloads.ZDB))
+		zdbs = append(zdbs, *(z.(*workloads.ZDB)))
 	}
 
 	vms := make([]workloads.VM, 0)
@@ -58,7 +58,7 @@ func newDeploymentFromSchema(d *schema.ResourceData) (*workloads.Deployment, err
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create workload from qsfs map")
 		}
-		qsfs = append(qsfs, q.(workloads.QSFS))
+		qsfs = append(qsfs, *q.(*workloads.QSFS))
 	}
 
 	solutionProviderVal := uint64(d.Get("solution_provider").(int))
