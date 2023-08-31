@@ -22,7 +22,7 @@ Resource to deploy a kubernetes cluster. A cluster should consist of one master 
 
 ### Optional
 
-- `name` (String) Solution name for the created contracts to be consistent across threefold tooling. Must contain only lowercase alphanumeric and hyphens.
+- `name` (String) Solution name for the created contracts to be consistent across threefold tooling. Must contain only lowercase alphanumeric.
 - `network_name` (String) The network name to deploy the cluster on.
 - `solution_type` (String) Solution type for the created contracts to be consistent across threefold tooling.
 - `ssh_key` (String) SSH key to access the cluster nodes.
@@ -42,7 +42,7 @@ Required:
 - `cpu` (Number) Number of virtual CPUs. Must be between 1 and 32.
 - `disk_size` (Number) Disk size for master node in GBs. Must be between 1GB and 10240GBs (10TBs).
 - `memory` (Number) Memory size in MB. Must be between 256MBs and 262144MBs (256GBs).
-- `name` (String) Master node ZMachine workload name.  This has to be unique within the node. Must contain only lowercase alphanumeric and hyphens.
+- `name` (String) Master node ZMachine workload name.  This has to be unique within the node. Must contain only lowercase alphanumeric.
 - `node` (Number) Node ID to deploy master node on.
 
 Optional:
@@ -73,7 +73,7 @@ Required:
 - `cpu` (Number) Number of virtual CPUs. Must be between 1 and 32.
 - `disk_size` (Number) Data disk size in GBs. Must be between 1GB and 10240GBs (10TBs).
 - `memory` (Number) Memory size in MB. Must be between 256MBs and 262144MBs (256GBs).
-- `name` (String) Worker node ZMachine workload name. This has to be unique within the node. Must contain only lowercase alphanumeric and hyphens.
+- `name` (String) Worker node ZMachine workload name. This has to be unique within the node. Must contain only lowercase alphanumeric.
 - `node` (Number) Node ID to deploy worker node on.
 
 Optional:

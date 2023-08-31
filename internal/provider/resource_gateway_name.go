@@ -25,7 +25,7 @@ func resourceGatewayNameProxy() *schema.Resource {
 			"name": {
 				Type:             schema.TypeString,
 				Required:         true,
-				Description:      "Domain prefix. The fqdn will be <name>.<gateway-domain>.  This has to be unique within the deployment. Must contain only lowercase alphanumeric and hyphens.",
+				Description:      "Domain prefix. The fqdn will be <name>.<gateway-domain>.  This has to be unique within the deployment. Must contain only lowercase alphanumeric.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 			},
 			"solution_type": {

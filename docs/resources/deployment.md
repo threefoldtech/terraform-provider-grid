@@ -22,7 +22,7 @@ Resource for deploying multiple workloads like vms (ZMachines), ZDBs, disks, Qsf
 ### Optional
 
 - `disks` (Block List) List of disk workloads configurations. (see [below for nested schema](#nestedblock--disks))
-- `name` (String) Solution name for created contract to be consistent across threefold tooling. Must contain only lowercase alphanumeric and hyphens.
+- `name` (String) Solution name for created contract to be consistent across threefold tooling. Must contain only lowercase alphanumeric.
 - `network_name` (String) Network name of the deployed network resource to connect vms.
 - `qsfs` (Block List) List of Qsfs workloads configurations. Qsfs is a quantum storage file system.
 You can read more about it [here](https://github.com/threefoldtech/quantum-storage). (see [below for nested schema](#nestedblock--qsfs))
@@ -42,7 +42,7 @@ You can read more about it [here](https://github.com/threefoldtech/quantum-stora
 
 Required:
 
-- `name` (String) Disk workload name. This has to be unique within the deployment. Must contain only lowercase alphanumeric and hyphens.
+- `name` (String) Disk workload name. This has to be unique within the deployment. Must contain only lowercase alphanumeric.
 - `size` (Number) Disk size in GBs. Must be between 1GB and 10240GBs (10TBs)
 
 Optional:
@@ -62,7 +62,7 @@ Required:
 - `max_zdb_data_dir_size` (Number) Maximum size of the data dir in MiB, if this is set and the sum of the file sizes in the data dir gets higher than this value, the least used, already encoded file will be removed.
 - `metadata` (Block List, Min: 1, Max: 1) (see [below for nested schema](#nestedblock--qsfs--metadata))
 - `minimal_shards` (Number) The minimum amount of shards which are needed to recover the original data.
-- `name` (String) Qsfs workload name. This has to be unique within the deployment. Must contain only lowercase alphanumeric and hyphens.
+- `name` (String) Qsfs workload name. This has to be unique within the deployment. Must contain only lowercase alphanumeric.
 - `redundant_groups` (Number) The amount of groups which one should be able to loose while still being able to recover the original data.
 - `redundant_nodes` (Number) The amount of nodes that can be lost in every group while still being able to recover the original data.
 
@@ -134,7 +134,7 @@ Optional:
 Required:
 
 - `flist` (String) Flist used on this vm, e.g. https://hub.grid.tf/tf-official-apps/base:latest.flist. All flists could be found in `https://hub.grid.tf/`.
-- `name` (String) Vm (zmachine) workload name. This has to be unique within the deployment. Must contain only lowercase alphanumeric and hyphens.
+- `name` (String) Vm (zmachine) workload name. This has to be unique within the deployment. Must contain only lowercase alphanumeric.
 
 Optional:
 
@@ -176,7 +176,7 @@ Required:
 
 Required:
 
-- `name` (String) ZDB worklod name. This has to be unique within the deployment. Must contain only lowercase alphanumeric and hyphens.
+- `name` (String) ZDB worklod name. This has to be unique within the deployment. Must contain only lowercase alphanumeric.
 - `password` (String) ZDB password.
 - `size` (Number) Size of the ZDB in GBs.
 

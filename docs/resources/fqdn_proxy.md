@@ -26,7 +26,7 @@ A user should have some fully qualified domain name (fqdn) (e.g. example.com), p
 ### Optional
 
 - `description` (String) Description of the gateway fqdn workload.
-- `name` (String) Gateway workload name.  This has to be unique within the deployment. Must contain only lowercase alphanumeric and hyphens.
+- `name` (String) Gateway workload name.  This has to be unique within the deployment. Must contain only lowercase alphanumeric.
 - `network` (String) Network name to join, if backend IP is private.
 - `solution_type` (String) Solution type for created contract to be consistent across threefold tooling.
 - `tls_passthrough` (Boolean) TLS passthrough controls the TLS termination, if false, the gateway will terminate the TLS, if True, it will only be terminated by the backend service.
