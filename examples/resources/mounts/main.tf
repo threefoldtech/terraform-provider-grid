@@ -19,7 +19,7 @@ resource "grid_scheduler" "sched" {
     name             = "node1"
     cru              = 1
     sru              = 1024*10
-    mru              = 2048
+    mru              = 1024
   }
 }
 
