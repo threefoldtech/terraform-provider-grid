@@ -54,6 +54,8 @@ func newDeploymentFromSchema(d *schema.ResourceData) (*workloads.Deployment, err
 
 	qsfs := make([]workloads.QSFS, 0)
 	for _, qsfsdata := range d.Get("qsfs").([]interface{}) {
+		qsfsI := qsfsdata.(map[string]interface{})
+		qsfsI["metadata"] = qsfsI["metadata"].([]interface{})[0]
 		q, err := workloads.NewWorkloadFromMap(qsfsdata.(map[string]interface{}), &workloads.QSFS{})
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create workload from qsfs map")
@@ -130,6 +132,8 @@ func syncContractsDeployments(r *schema.ResourceData, d *workloads.Deployment) (
 		if err != nil {
 			return err
 		}
+
+		qs["metadata"] = []interface{}{qs["metadata"]}
 		qsfs = append(qsfs, qs)
 	}
 
