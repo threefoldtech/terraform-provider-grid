@@ -37,7 +37,7 @@ func resourceDeployment() *schema.Resource {
 				Type:             schema.TypeString,
 				Optional:         true,
 				Default:          "vm",
-				Description:      "Solution name for created contract to be consistent across threefold tooling. Must contain only lowercase alphanumeric.",
+				Description:      "Solution name for created contract to be consistent across threefold tooling. Must contain only alphanumeric and underscore characters.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 			},
 			"solution_type": {
@@ -71,7 +71,7 @@ func resourceDeployment() *schema.Resource {
 						"name": {
 							Type:             schema.TypeString,
 							Required:         true,
-							Description:      "Disk workload name. This has to be unique within the deployment. Must contain only lowercase alphanumeric.",
+							Description:      "Disk workload name. This has to be unique within the deployment. Must contain only alphanumeric and underscore characters.",
 							ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 						},
 						"size": {
@@ -98,7 +98,7 @@ func resourceDeployment() *schema.Resource {
 						"name": {
 							Type:             schema.TypeString,
 							Required:         true,
-							Description:      "ZDB worklod name. This has to be unique within the deployment. Must contain only lowercase alphanumeric.",
+							Description:      "ZDB worklod name. This has to be unique within the deployment. Must contain only alphanumeric and underscore characters.",
 							ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 						},
 						"password": {
@@ -159,7 +159,7 @@ func resourceDeployment() *schema.Resource {
 						"name": {
 							Type:             schema.TypeString,
 							Required:         true,
-							Description:      "Vm (zmachine) workload name. This has to be unique within the deployment. Must contain only lowercase alphanumeric.",
+							Description:      "Vm (zmachine) workload name. This has to be unique within the deployment. Must contain only alphanumeric and underscore characters.",
 							ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 						},
 						"flist": {
@@ -306,7 +306,7 @@ func resourceDeployment() *schema.Resource {
 						"name": {
 							Type:             schema.TypeString,
 							Required:         true,
-							Description:      "Qsfs workload name. This has to be unique within the deployment. Must contain only lowercase alphanumeric.",
+							Description:      "Qsfs workload name. This has to be unique within the deployment. Must contain only alphanumeric and underscore characters.",
 							ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 						},
 						"description": {

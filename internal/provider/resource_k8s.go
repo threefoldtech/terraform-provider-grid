@@ -28,7 +28,7 @@ func resourceKubernetes() *schema.Resource {
 			"name": {
 				Type:             schema.TypeString,
 				Optional:         true,
-				Description:      "Solution name for the created contracts to be consistent across threefold tooling. Must contain only lowercase alphanumeric.",
+				Description:      "Solution name for the created contracts to be consistent across threefold tooling. Must contain only alphanumeric and underscore characters.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 			},
 			"solution_type": {
@@ -76,7 +76,7 @@ func resourceKubernetes() *schema.Resource {
 						"name": {
 							Type:             schema.TypeString,
 							Required:         true,
-							Description:      "Master node ZMachine workload name.  This has to be unique within the node. Must contain only lowercase alphanumeric.",
+							Description:      "Master node ZMachine workload name.  This has to be unique within the node. Must contain only alphanumeric and underscore characters.",
 							ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 						},
 						"node": {
@@ -181,7 +181,7 @@ func resourceKubernetes() *schema.Resource {
 						"name": {
 							Type:             schema.TypeString,
 							Required:         true,
-							Description:      "Worker node ZMachine workload name. This has to be unique within the node. Must contain only lowercase alphanumeric.",
+							Description:      "Worker node ZMachine workload name. This has to be unique within the node. Must contain only alphanumeric and underscore characters.",
 							ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 						},
 						"flist": {
