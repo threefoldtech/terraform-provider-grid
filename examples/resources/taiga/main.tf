@@ -13,10 +13,25 @@ locals {
 provider "grid" {
 }
 
+resource "grid_scheduler" "sched" {
+  requests {
+    name = "node"
+    cru  = 4
+    sru  = 100 * 1024
+    mru  = 8096
+  }
+
+  requests {
+    name             = "gateway"
+    public_config    = true
+    public_ips_count = 1
+  }
+}
+
 resource "grid_network" "net2" {
   solution_type = local.solution_type
   name          = local.name
-  nodes         = [1]
+  nodes         = [grid_scheduler.sched.nodes["node"]]
   ip_range      = "10.1.0.0/16"
   description   = "newer network"
   add_wg_access = true
@@ -25,7 +40,7 @@ resource "grid_network" "net2" {
 resource "grid_deployment" "node1" {
   solution_type = local.solution_type
   name          = local.name
-  node          = 1
+  node          = grid_scheduler.sched.nodes["node"]
   network_name  = grid_network.net2.name
   disks {
     name = "data0"
@@ -65,13 +80,13 @@ resource "grid_deployment" "node1" {
 }
 
 data "grid_gateway_domain" "domain" {
-  node = 7
+  node = grid_scheduler.sched.nodes["gateway"]
   name = "grid3taiga"
 }
 resource "grid_name_proxy" "p1" {
   solution_type   = local.solution_type
   name            = local.name
-  node            = 7
+  node            = grid_scheduler.sched.nodes["gateway"]
   backends        = [format("http://%s:9000", grid_deployment.node1.vms[0].ygg_ip)]
   tls_passthrough = false
 }
