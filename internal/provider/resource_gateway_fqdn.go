@@ -27,7 +27,7 @@ func resourceGatewayFQDNProxy() *schema.Resource {
 				Type:             schema.TypeString,
 				Optional:         true,
 				Default:          "name",
-				Description:      "Gateway workload name.  This has to be unique within the deployment. Must contain only lowercase alphanumeric and hyphens.",
+				Description:      "Gateway workload name.  This has to be unique within the deployment. Must contain only alphanumeric and underscore characters.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 			},
 			"solution_type": {

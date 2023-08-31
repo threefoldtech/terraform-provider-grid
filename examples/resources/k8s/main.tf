@@ -17,6 +17,7 @@ resource "grid_scheduler" "sched" {
     mru              = 2048
     distinct         = true
     public_ips_count = 1
+    public_config    = true
   }
   requests {
     name     = "worker1_node"

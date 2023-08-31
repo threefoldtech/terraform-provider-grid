@@ -8,13 +8,23 @@ terraform {
 
 provider "grid" {
 }
+
+
+resource "grid_scheduler" "sched" {
+  requests {
+    name = "node1"
+    sru  = 1024 * 12
+  }
+}
+
 locals {
-  name = "mydisk"
+  name  = "mydisk"
+  node1 = grid_scheduler.sched.nodes["node1"]
 }
 
 resource "grid_deployment" "d1" {
   name = local.name
-  node = 4
+  node = local.node1
 
   zdbs {
     name        = "zdb1"

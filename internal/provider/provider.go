@@ -14,8 +14,8 @@ import (
 )
 
 const errTerraformOutSync = "Error reading data from remote, terraform state might be out of sync with the remote state"
-const nameValidationRegex = "^[-a-z0-9]+$"
-const nameValidationErrorMessage = "must only include lowercase alphanumeric and hyphen"
+const nameValidationRegex = "^[a-zA-Z0-9_]+$"
+const nameValidationErrorMessage = "must only include alphanumeric and underscore characters"
 const gpuValidationRegex = "^[A-Za-z0-9:.]+/[A-Za-z0-9]+/[A-Za-z0-9]+$"
 const gpuValidationErrMsg = "not a valid gpu id"
 

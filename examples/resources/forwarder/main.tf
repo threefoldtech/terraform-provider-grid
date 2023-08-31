@@ -8,11 +8,27 @@ terraform {
 provider "grid" {
 }
 
+
+resource "grid_scheduler" "sched" {
+  requests {
+    name = "node1"
+    cru  = 2
+    mru  = 1024
+  }
+  requests {
+    name             = "node2"
+    cru              = 2
+    mru              = 1024
+    public_config    = true
+    public_ips_count = 1
+  }
+}
+
 locals {
   name  = "myvm"
   name2 = "myvm2"
-  node  = 34
-  node2 = 49
+  node  = grid_scheduler.sched.nodes["node1"]
+  node2 = grid_scheduler.sched.nodes["node2"]
 }
 
 resource "grid_network" "net1" {
@@ -57,5 +73,5 @@ resource "grid_deployment" "d2" {
 }
 
 output "computed_public_ip" {
-  value = grid_deployment.d2.vms[0].computedip
+  value = split("/", grid_deployment.d2.vms[0].computedip)[0]
 }
