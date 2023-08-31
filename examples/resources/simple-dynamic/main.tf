@@ -45,7 +45,7 @@ resource "grid_deployment" "server1" {
     flist       = "https://hub.grid.tf/tf-official-apps/simple-http-server-latest.flist"
     cpu         = 1
     memory      = 256
-    rootfs_size = 512
+    rootfs_size = 51200
     entrypoint  = "/main.sh"
     env_vars = {
       key   = "SSH_KEY"
@@ -64,7 +64,7 @@ resource "grid_deployment" "server2" {
     flist       = "https://hub.grid.tf/tf-official-apps/simple-http-server-latest.flist"
     cpu         = 1
     memory      = 256
-    rootfs_size = 512
+    rootfs_size = 51200
     entrypoint  = "/main.sh"
     env_vars = {
       key   = "SSH_KEY"

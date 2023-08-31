@@ -68,7 +68,7 @@ output "node1_zmachine1_ip" {
   value = grid_deployment.d1.vms[0].ip
 }
 output "computed_public_ip" {
-  value = grid_deployment.d1.vms[0].computedip
+  value = split("/", grid_deployment.d1.vms[0].computedip)[0]
 }
 
 output "ygg_ip" {

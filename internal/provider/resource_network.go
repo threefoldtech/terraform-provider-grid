@@ -34,7 +34,7 @@ func resourceNetwork() *schema.Resource {
 			"name": {
 				Type:             schema.TypeString,
 				Required:         true,
-				Description:      "Network workloads Name.  This has to be unique within the node. Must contain only lowercase alphanumeric and hyphens.",
+				Description:      "Network workloads Name.  This has to be unique within the node. Must contain only alphanumeric and underscore characters.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 			},
 			"solution_type": {

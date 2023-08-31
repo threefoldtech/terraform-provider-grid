@@ -8,16 +8,28 @@ terraform {
 
 provider "grid" {
 }
+
 locals {
   solution_type = "Presearch"
   name          = "mypreasearch"
 }
 
 
+resource "grid_scheduler" "sched" {
+  requests {
+    name             = "node1"
+    cru              = 1
+    sru              = 1024 * 10
+    mru              = 1024
+    public_ips_count = 1
+    public_config    = true
+  }
+}
+
 resource "grid_network" "net1" {
   solution_type = local.solution_type
   name          = local.name
-  nodes         = [8]
+  nodes         = [grid_scheduler.sched.nodes["node1"]]
   ip_range      = "10.1.0.0/16"
   description   = "newer network"
   add_wg_access = true
@@ -27,7 +39,7 @@ resource "grid_network" "net1" {
 resource "grid_deployment" "d1" {
   solution_type = local.solution_type
   name          = local.name
-  node          = 8
+  node          = grid_scheduler.sched.nodes["node1"]
   network_name  = grid_network.net1.name
 
   disks {
@@ -84,7 +96,7 @@ output "node1_zmachine1_ip" {
 }
 
 output "computed_public_ip" {
-  value = grid_deployment.d1.vms[0].computedip
+  value = split("/", grid_deployment.d1.vms[0].computedip)[0]
 }
 
 output "ygg_ip" {

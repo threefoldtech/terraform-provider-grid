@@ -23,7 +23,7 @@ func newDeploymentFromSchema(d *schema.ResourceData) (*workloads.Deployment, err
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create workload from disk map")
 		}
-		disks = append(disks, d.(workloads.Disk))
+		disks = append(disks, *(d.(*workloads.Disk)))
 	}
 
 	zdbs := make([]workloads.ZDB, 0)
@@ -32,7 +32,7 @@ func newDeploymentFromSchema(d *schema.ResourceData) (*workloads.Deployment, err
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create workload from zdb map")
 		}
-		zdbs = append(zdbs, z.(workloads.ZDB))
+		zdbs = append(zdbs, *(z.(*workloads.ZDB)))
 	}
 
 	vms := make([]workloads.VM, 0)
@@ -54,11 +54,13 @@ func newDeploymentFromSchema(d *schema.ResourceData) (*workloads.Deployment, err
 
 	qsfs := make([]workloads.QSFS, 0)
 	for _, qsfsdata := range d.Get("qsfs").([]interface{}) {
+		qsfsI := qsfsdata.(map[string]interface{})
+		qsfsI["metadata"] = qsfsI["metadata"].([]interface{})[0]
 		q, err := workloads.NewWorkloadFromMap(qsfsdata.(map[string]interface{}), &workloads.QSFS{})
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create workload from qsfs map")
 		}
-		qsfs = append(qsfs, q.(workloads.QSFS))
+		qsfs = append(qsfs, *q.(*workloads.QSFS))
 	}
 
 	solutionProviderVal := uint64(d.Get("solution_provider").(int))
@@ -130,6 +132,8 @@ func syncContractsDeployments(r *schema.ResourceData, d *workloads.Deployment) (
 		if err != nil {
 			return err
 		}
+
+		qs["metadata"] = []interface{}{qs["metadata"]}
 		qsfs = append(qsfs, qs)
 	}
 

@@ -14,15 +14,24 @@ locals {
   datas = ["data1", "data2", "data3", "data4"]
 }
 
+resource "grid_scheduler" "sched" {
+  requests {
+    name = "node1"
+    cru  = 2
+    sru  = 1024 * 10 * 8
+    mru  = 1024
+  }
+}
+
 resource "grid_network" "net1" {
-  nodes       = [7]
+  nodes       = [grid_scheduler.sched.nodes["node1"]]
   ip_range    = "10.1.0.0/16"
   name        = "network"
   description = "newer network"
 }
 
 resource "grid_deployment" "d1" {
-  node = 7
+  node = grid_scheduler.sched.nodes["node1"]
   dynamic "zdbs" {
     for_each = local.metas
     content {
@@ -46,7 +55,7 @@ resource "grid_deployment" "d1" {
 }
 
 resource "grid_deployment" "qsfs" {
-  node         = 7
+  node         = grid_scheduler.sched.nodes["node1"]
   network_name = grid_network.net1.name
   qsfs {
     name                  = "qsfs"
@@ -68,7 +77,7 @@ resource "grid_deployment" "qsfs" {
       dynamic "backends" {
         for_each = [for zdb in grid_deployment.d1.zdbs : zdb if zdb.mode != "seq"]
         content {
-          address   = format("[%s]:%d", backends.value.ips[1], backends.value.port)
+          address   = format("[%s]:%d", backends.value.ips[0], backends.value.port)
           namespace = backends.value.namespace
           password  = backends.value.password
         }
@@ -78,7 +87,7 @@ resource "grid_deployment" "qsfs" {
       dynamic "backends" {
         for_each = [for zdb in grid_deployment.d1.zdbs : zdb if zdb.mode == "seq"]
         content {
-          address   = format("[%s]:%d", backends.value.ips[1], backends.value.port)
+          address   = format("[%s]:%d", backends.value.ips[0], backends.value.port)
           namespace = backends.value.namespace
           password  = backends.value.password
         }
