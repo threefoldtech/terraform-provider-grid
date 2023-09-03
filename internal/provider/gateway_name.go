@@ -3,9 +3,7 @@ package provider
 
 import (
 	"fmt"
-	"net"
 	"strconv"
-	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -114,16 +112,15 @@ func syncContractsNameGateways(d *schema.ResourceData, gw *workloads.GatewayName
 func validateBackends(backnends []zos.Backend, tlsPassthrough bool) error {
 	for _, u := range backnends {
 		if tlsPassthrough {
-			_, _, err := net.SplitHostPort(string(u))
-			if err != nil {
-				return fmt.Errorf("invalid backend %s, backends with tls passthrough must be in the form ip:port", u)
+			if err := u.Valid(tlsPassthrough); err != nil {
+				return errors.Wrap(err, "backend with tls passthrough should be in the form ip:port")
 			}
 
 			continue
 		}
 
-		if strings.HasPrefix(string(u), "https") || !strings.HasPrefix(string(u), "http") {
-			return fmt.Errorf("invalid backend %s, backends without tls passthrough must have http scheme", u)
+		if err := u.Valid(tlsPassthrough); err != nil {
+			return errors.Wrap(err, "backends without tls passthrough should be in the form http://ip[:port]")
 		}
 	}
 
