@@ -3,7 +3,9 @@ package provider
 
 import (
 	"fmt"
+	"net"
 	"strconv"
+	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -40,11 +42,16 @@ func newNameGatewayFromSchema(d *schema.ResourceData) (*workloads.GatewayNamePro
 		}
 	}
 
+	tlsPassthrough := d.Get("tls_passthrough").(bool)
+	if err := validateBackends(backends, tlsPassthrough); err != nil {
+		return nil, err
+	}
+
 	gw := workloads.GatewayNameProxy{
 		NodeID:           uint32(d.Get("node").(int)),
 		Name:             d.Get("name").(string),
 		Backends:         backends,
-		TLSPassthrough:   d.Get("tls_passthrough").(bool),
+		TLSPassthrough:   tlsPassthrough,
 		Description:      d.Get("description").(string),
 		SolutionType:     d.Get("solution_type").(string),
 		Network:          d.Get("network").(string),
@@ -100,4 +107,25 @@ func syncContractsNameGateways(d *schema.ResourceData, gw *workloads.GatewayName
 
 	d.SetId(fmt.Sprint(gw.ContractID))
 	return
+}
+
+// validateBackends ensures that if tlsPassthrough is set, the backend form is ip:port
+// and if not set, the form is http://ip[:port]
+func validateBackends(backnends []zos.Backend, tlsPassthrough bool) error {
+	for _, u := range backnends {
+		if tlsPassthrough {
+			_, _, err := net.SplitHostPort(string(u))
+			if err != nil {
+				return fmt.Errorf("invalid backend %s, backends with tls passthrough must be in the form ip:port", u)
+			}
+
+			continue
+		}
+
+		if strings.HasPrefix(string(u), "https") || !strings.HasPrefix(string(u), "http") {
+			return fmt.Errorf("invalid backend %s, backends without tls passthrough must have http scheme", u)
+		}
+	}
+
+	return nil
 }

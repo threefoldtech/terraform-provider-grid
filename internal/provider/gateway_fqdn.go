@@ -40,12 +40,17 @@ func newFQDNGatewayFromSchema(d *schema.ResourceData) (*workloads.GatewayFQDNPro
 		}
 	}
 
+	tlsPassthrough := d.Get("tls_passthrough").(bool)
+	if err := validateBackends(backends, tlsPassthrough); err != nil {
+		return nil, err
+	}
+
 	gw := workloads.GatewayFQDNProxy{
 		NodeID:           uint32(d.Get("node").(int)),
 		Name:             d.Get("name").(string),
 		Backends:         backends,
 		FQDN:             d.Get("fqdn").(string),
-		TLSPassthrough:   d.Get("tls_passthrough").(bool),
+		TLSPassthrough:   tlsPassthrough,
 		Network:          d.Get("network").(string),
 		SolutionType:     d.Get("solution_type").(string),
 		Description:      d.Get("description").(string),
