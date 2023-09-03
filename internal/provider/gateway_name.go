@@ -40,11 +40,16 @@ func newNameGatewayFromSchema(d *schema.ResourceData) (*workloads.GatewayNamePro
 		}
 	}
 
+	tlsPassthrough := d.Get("tls_passthrough").(bool)
+	if err := validateBackends(backends, tlsPassthrough); err != nil {
+		return nil, err
+	}
+
 	gw := workloads.GatewayNameProxy{
 		NodeID:           uint32(d.Get("node").(int)),
 		Name:             d.Get("name").(string),
 		Backends:         backends,
-		TLSPassthrough:   d.Get("tls_passthrough").(bool),
+		TLSPassthrough:   tlsPassthrough,
 		Description:      d.Get("description").(string),
 		SolutionType:     d.Get("solution_type").(string),
 		Network:          d.Get("network").(string),
@@ -100,4 +105,24 @@ func syncContractsNameGateways(d *schema.ResourceData, gw *workloads.GatewayName
 
 	d.SetId(fmt.Sprint(gw.ContractID))
 	return
+}
+
+// validateBackends ensures that if tlsPassthrough is set, the backend form is ip:port
+// and if not set, the form is http://ip[:port]
+func validateBackends(backnends []zos.Backend, tlsPassthrough bool) error {
+	for _, u := range backnends {
+		if tlsPassthrough {
+			if err := u.Valid(tlsPassthrough); err != nil {
+				return errors.Wrap(err, "backend with tls passthrough should be in the form ip:port")
+			}
+
+			continue
+		}
+
+		if err := u.Valid(tlsPassthrough); err != nil {
+			return errors.Wrap(err, "backends without tls passthrough should be in the form http://ip[:port]")
+		}
+	}
+
+	return nil
 }

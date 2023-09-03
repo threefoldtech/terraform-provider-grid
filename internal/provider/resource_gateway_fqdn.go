@@ -68,10 +68,9 @@ func resourceGatewayFQDNProxy() *schema.Resource {
 				Type:     schema.TypeList,
 				Required: true,
 				Elem: &schema.Schema{
-					Type:             schema.TypeString,
-					ValidateDiagFunc: validation.ToDiagFunc(validation.IsURLWithHTTPorHTTPS),
+					Type: schema.TypeString,
 				},
-				Description: "The backends of the gateway proxy (in the format (http|https)://ip:port), with tls_passthrough the scheme must be https.",
+				Description: "The backends of the gateway proxy. must be in the format ip:port if tls_passthrough is set, otherwise the format should be http://ip[:port]",
 			},
 			"node_deployment_id": {
 				Type:        schema.TypeMap,
