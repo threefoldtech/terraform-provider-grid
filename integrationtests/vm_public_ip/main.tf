@@ -6,7 +6,8 @@ variable "public_key" {
 terraform {
   required_providers {
     grid = {
-      source = "threefoldtech/grid"
+      source  = "threefoldtechdev.com/providers/grid"
+      version = "0.2"
     }
   }
 }
@@ -16,11 +17,12 @@ provider "grid" {
 
 resource "grid_scheduler" "scheduler" {
   requests {
-    name = "node1"
-    cru  = 2
-    sru  = 512
-    mru  = 1024
-    ipv4 = true
+    name             = "node1"
+    cru              = 2
+    sru              = 512
+    mru              = 1024
+    public_config    = true
+    public_ips_count = 1
   }
 }
 

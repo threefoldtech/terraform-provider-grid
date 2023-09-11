@@ -3,22 +3,25 @@ package provider
 
 import (
 	"context"
+	"fmt"
+	"regexp"
 	"strconv"
 	"time"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/pkg/errors"
-	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 )
 
 func resourceDeployment() *schema.Resource {
 	return &schema.Resource{
 		// This description is used by the documentation generator and the language server.
 		Description:   "Resource for deploying multiple workloads like vms (ZMachines), ZDBs, disks, Qsfss, and/or zlogs. A user should specify node id for this deployment, the (already) deployed network that this deployment should be a part of, and the desired workloads configurations.",
-		CreateContext: ResourceFunc(resourceDeploymentCreate),
-		ReadContext:   ResourceReadFunc(resourceDeploymentRead),
-		UpdateContext: ResourceFunc(resourceDeploymentUpdate),
-		DeleteContext: ResourceFunc(resourceDeploymentDelete),
+		CreateContext: resourceDeploymentCreate,
+		ReadContext:   resourceDeploymentRead,
+		UpdateContext: resourceDeploymentUpdate,
+		DeleteContext: resourceDeploymentDelete,
 
 		Timeouts: &schema.ResourceTimeout{
 			Create: schema.DefaultTimeout(45 * time.Minute),
@@ -31,10 +34,11 @@ func resourceDeployment() *schema.Resource {
 				Description: "Node id to place the deployment on.",
 			},
 			"name": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Default:     "vm",
-				Description: "Solution name for created contract to be consistent across threefold tooling.",
+				Type:             schema.TypeString,
+				Optional:         true,
+				Default:          "vm",
+				Description:      "Solution name for created contract to be consistent across threefold tooling. Must contain only alphanumeric and underscore characters.",
+				ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 			},
 			"solution_type": {
 				Type:        schema.TypeString,
@@ -65,14 +69,16 @@ func resourceDeployment() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
-							Type:        schema.TypeString,
-							Required:    true,
-							Description: "Disk workload name. This has to be unique within the deployment.",
+							Type:             schema.TypeString,
+							Required:         true,
+							Description:      "Disk workload name. This has to be unique within the deployment. Must contain only alphanumeric and underscore characters.",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 						},
 						"size": {
-							Type:        schema.TypeInt,
-							Required:    true,
-							Description: "Disk size in GBs.",
+							Type:             schema.TypeInt,
+							Required:         true,
+							Description:      "Disk size in GBs. Must be between 1GB and 10240GBs (10TBs)",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(1, 10*1024)),
 						},
 						"description": {
 							Type:        schema.TypeString,
@@ -90,9 +96,10 @@ func resourceDeployment() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
-							Type:        schema.TypeString,
-							Required:    true,
-							Description: "ZDB worklod name. This has to be unique within the deployment.",
+							Type:             schema.TypeString,
+							Required:         true,
+							Description:      "ZDB worklod name. This has to be unique within the deployment. Must contain only alphanumeric and underscore characters.",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 						},
 						"password": {
 							Type:        schema.TypeString,
@@ -150,9 +157,10 @@ func resourceDeployment() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
-							Type:        schema.TypeString,
-							Required:    true,
-							Description: "Vm (zmachine) workload name. This has to be unique within the deployment.",
+							Type:             schema.TypeString,
+							Required:         true,
+							Description:      "Vm (zmachine) workload name. This has to be unique within the deployment. Must contain only alphanumeric and underscore characters.",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 						},
 						"flist": {
 							Type:        schema.TypeString,
@@ -185,16 +193,18 @@ func resourceDeployment() *schema.Resource {
 							Description: "The reserved public ipv6 if any.",
 						},
 						"ip": {
-							Type:        schema.TypeString,
-							Optional:    true,
-							Computed:    true,
-							Description: "The private wireguard IP of the vm.",
+							Type:             schema.TypeString,
+							Optional:         true,
+							Computed:         true,
+							Description:      "The private wireguard IP of the vm.",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.IsIPAddress),
 						},
 						"cpu": {
-							Type:        schema.TypeInt,
-							Optional:    true,
-							Default:     1,
-							Description: "Number of virtual CPUs.",
+							Type:             schema.TypeInt,
+							Optional:         true,
+							Default:          1,
+							Description:      "Number of virtual CPUs. Must be between 1 and 32.",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(1, 32)),
 						},
 						"description": {
 							Type:        schema.TypeString,
@@ -203,14 +213,16 @@ func resourceDeployment() *schema.Resource {
 							Description: "Description of the vm.",
 						},
 						"memory": {
-							Type:        schema.TypeInt,
-							Optional:    true,
-							Description: "Memory size in MB.",
+							Type:             schema.TypeInt,
+							Optional:         true,
+							Description:      "Memory size in MB. Must be between 256MBs and 262144MBs (256GBs).",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(256, 256*1024)),
 						},
 						"rootfs_size": {
-							Type:        schema.TypeInt,
-							Optional:    true,
-							Description: "Root file system size in MB.",
+							Type:             schema.TypeInt,
+							Optional:         true,
+							Description:      "Root file system size in MB. Must be between 1024MBs and 10485760MBs (10TBs).",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.IntBetween(1024, 10*1024*1024)),
 						},
 						"entrypoint": {
 							Type:        schema.TypeString,
@@ -267,6 +279,21 @@ func resourceDeployment() *schema.Resource {
 								Type:        schema.TypeString,
 								Description: "Url of the remote location receiving logs. URLs should use one of `redis, ws, wss` schema. e.g. wss://example_ip.com:9000"},
 						},
+						"gpus": {
+							Type:        schema.TypeList,
+							Optional:    true,
+							Description: "List of the GPUs to be attached to the vm and must not be used by other vms",
+							Elem: &schema.Schema{
+								Type:             schema.TypeString,
+								Description:      "Id of the GPU",
+								ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(gpuValidationRegex), gpuValidationErrMsg)),
+							},
+						},
+						"console_url": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "The url to access the vm via cloud console on private interface using wireguard.",
+						},
 					},
 				},
 			},
@@ -277,9 +304,10 @@ func resourceDeployment() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
-							Type:        schema.TypeString,
-							Required:    true,
-							Description: "Qsfs workload name. This has to be unique within the deployment.",
+							Type:             schema.TypeString,
+							Required:         true,
+							Description:      "Qsfs workload name. This has to be unique within the deployment. Must contain only alphanumeric and underscore characters.",
+							ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 						},
 						"description": {
 							Type:        schema.TypeString,
@@ -434,48 +462,123 @@ func resourceDeployment() *schema.Resource {
 	}
 }
 
-func resourceDeploymentCreate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
-	deployer, err := getDeploymentDeployer(d, apiClient)
-	if err != nil {
-		return nil, errors.Wrap(err, "couldn't load deployer data")
+func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+	tfPluginClient, ok := meta.(*deployer.TFPluginClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into threefold plugin client"))
 	}
 
-	return &deployer, deployer.Deploy(ctx, sub)
-}
-
-func resourceDeploymentRead(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
-	deployer, err := getDeploymentDeployer(d, apiClient)
+	dl, err := newDeploymentFromSchema(d)
 	if err != nil {
-		return nil, err
+		return diag.Errorf("couldn't load deployment data with error: %v", err)
 	}
-	return &deployer, nil
+
+	if err := tfPluginClient.DeploymentDeployer.Deploy(ctx, dl); err != nil {
+		return diag.Errorf("couldn't deploy deployment with error: %v", err)
+	}
+
+	if err := tfPluginClient.DeploymentDeployer.Sync(ctx, dl); err != nil {
+		return diag.Errorf("couldn't sync deployment with error: %v", err)
+	}
+
+	if err := syncContractsDeployments(d, dl); err != nil {
+		return diag.Errorf("couldn't set deployment data to the resource with error: %v", err)
+	}
+
+	return diags
 }
 
-func resourceDeploymentUpdate(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
+func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+	tfPluginClient, ok := meta.(*deployer.TFPluginClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into threefold plugin client"))
+	}
+
+	dl, err := newDeploymentFromSchema(d)
+	if err != nil {
+		return diag.Errorf("couldn't load deployment data with error: %v", err)
+	}
+
+	if err := tfPluginClient.DeploymentDeployer.Sync(ctx, dl); err != nil {
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  "failed to read deployment data (terraform refresh might help)",
+			Detail:   err.Error(),
+		})
+		return diags
+	}
+
+	if err := syncContractsDeployments(d, dl); err != nil {
+		return diag.Errorf("couldn't set deployment data to the resource with error: %v", err)
+	}
+
+	return diags
+}
+
+func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+	tfPluginClient, ok := meta.(*deployer.TFPluginClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into threefold plugin client"))
+	}
+
 	if d.HasChange("node") {
 		oldContractID, err := strconv.ParseUint(d.Id(), 10, 64)
 		if err != nil {
-			return nil, errors.Wrapf(err, "couldn't parse deployment id %s", d.Id())
+			return diag.Errorf("couldn't parse deployment id %s with error: %v", d.Id(), err)
 		}
-		err = sub.CancelContract(apiClient.identity, oldContractID)
+		err = tfPluginClient.SubstrateConn.CancelContract(tfPluginClient.Identity, oldContractID)
 		if err != nil {
-			return nil, errors.Wrapf(err, "couldn't cancel old node contract")
+			return diag.Errorf("couldn't cancel old node contract with error: %v", err)
 		}
 		d.SetId("")
 	}
-	deployer, err := getDeploymentDeployer(d, apiClient)
+
+	dl, err := newDeploymentFromSchema(d)
 	if err != nil {
-		return nil, errors.Wrap(err, "couldn't load deployer data")
+		return diag.Errorf("couldn't load deployment data with error: %v", err)
 	}
 
-	return &deployer, deployer.Deploy(ctx, sub)
+	if err := tfPluginClient.DeploymentDeployer.Deploy(ctx, dl); err != nil {
+		return diag.Errorf("couldn't update deployment with error: %v", err)
+	}
+
+	if err := tfPluginClient.DeploymentDeployer.Sync(ctx, dl); err != nil {
+		return diag.Errorf("couldn't sync deployment with error: %v", err)
+	}
+
+	if err := syncContractsDeployments(d, dl); err != nil {
+		return diag.Errorf("couldn't set deployment data to the resource with error: %v", err)
+	}
+
+	return diags
 }
 
-func resourceDeploymentDelete(ctx context.Context, sub subi.SubstrateExt, d *schema.ResourceData, apiClient *apiClient) (Marshalable, error) {
-	deployer, err := getDeploymentDeployer(d, apiClient)
-	if err != nil {
-		return nil, errors.Wrap(err, "couldn't load deployer data")
+func resourceDeploymentDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+	tfPluginClient, ok := meta.(*deployer.TFPluginClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast meta into threefold plugin client"))
 	}
 
-	return &deployer, deployer.Cancel(ctx, sub)
+	dl, err := newDeploymentFromSchema(d)
+	if err != nil {
+		return diag.Errorf("couldn't load deployment data with error: %v", err)
+	}
+
+	if err := tfPluginClient.DeploymentDeployer.Cancel(ctx, dl); err != nil {
+		return diag.Errorf("couldn't cancel deployment with error: %v", err)
+	}
+
+	if err := tfPluginClient.DeploymentDeployer.Sync(ctx, dl); err != nil {
+		return diag.Errorf("couldn't sync deployment with error: %v", err)
+	}
+
+	if err := syncContractsDeployments(d, dl); err != nil {
+		return diag.Errorf("couldn't set deployment data to the resource with error: %v", err)
+	}
+
+	return diags
 }

@@ -5,9 +5,16 @@ variable "public_key" {
 terraform {
   required_providers {
     grid = {
-      source = "threefoldtech/grid"
+      source  = "threefoldtechdev.com/providers/grid"
+      version = "0.2"
     }
   }
+}
+
+locals {
+  name = "testvm"
+  vm_disk_size=2
+  vm_memory=2048
 }
 
 provider "grid" {
@@ -17,8 +24,8 @@ resource "grid_scheduler" "scheduler" {
   requests {
     name = "node1"
     cru  = 0
-    sru  = 512
-    mru  = 1024
+    sru  = local.vm_disk_size*1024
+    mru  = local.vm_memory
   }
 }
 
@@ -35,7 +42,7 @@ resource "grid_deployment" "d1" {
     name       = "vm1"
     flist      = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
     cpu        = 0
-    memory     = 1024
+    memory     = local.vm_memory
     entrypoint = "/sbin/zinit init"
     env_vars = {
       SSH_KEY = "${var.public_key}"

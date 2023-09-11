@@ -9,7 +9,8 @@ variable "public_key" {
 terraform {
   required_providers {
     grid = {
-      source = "threefoldtech/grid"
+      source  = "threefoldtechdev.com/providers/grid"
+      version = "0.2"
     }
   }
 }
@@ -25,8 +26,8 @@ resource "grid_scheduler" "sched" {
     mru  = 1024
   }
   requests {
-    name = "gateway"
-    ipv4 = true
+    name          = "gateway"
+    public_config = true
   }
 }
 
@@ -58,11 +59,16 @@ resource "grid_deployment" "d1" {
   }
 }
 
+
+locals {
+  ygg_ip = try(length(grid_deployment.d1.vms[0].ygg_ip), 0) > 0 ? grid_deployment.d1.vms[0].ygg_ip : ""
+}
+
 resource "grid_fqdn_proxy" "p1" {
   node            = grid_scheduler.sched.nodes["gateway"]
   name            = "test"
   fqdn            = var.fqdn
-  backends        = [format("http://[%s]:9000", grid_deployment.d1.vms[0].ygg_ip)]
+  backends        = [format("http://[%s]:9000", local.ygg_ip)]
   tls_passthrough = false
 }
 

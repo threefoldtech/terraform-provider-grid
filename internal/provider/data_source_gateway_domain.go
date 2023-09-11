@@ -10,7 +10,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
-	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
+	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
 )
 
 func dataSourceGatewayDomain() *schema.Resource {
@@ -42,31 +43,33 @@ func dataSourceGatewayDomain() *schema.Resource {
 
 // TODO: make this non failing
 func dataSourceGatewayRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	apiClient, ok := meta.(*apiClient)
+	tfPluginClient, ok := meta.(*deployer.TFPluginClient)
 	if !ok {
-		return diag.FromErr(fmt.Errorf("failed to cast meta into api client"))
+		return diag.FromErr(fmt.Errorf("failed to cast meta into threefold plugin client"))
 	}
 
 	nodeID := uint32(d.Get("node").(int))
 	name := d.Get("name").(string)
-	ncPool := client.NewNodeClientPool(apiClient.rmb)
-	nodeClient, err := ncPool.GetNodeClient(apiClient.substrateConn, nodeID)
+
+	ncPool := client.NewNodeClientPool(tfPluginClient.RMB, tfPluginClient.RMBTimeout)
+	nodeClient, err := ncPool.GetNodeClient(tfPluginClient.SubstrateConn, nodeID)
 	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "failed to get node client"))
+		return diag.FromErr(errors.Wrapf(err, "failed to get node client with ID %d", nodeID))
 	}
-	ctx2, cancel := context.WithTimeout(ctx, time.Minute)
-	defer cancel()
-	cfg, err := nodeClient.NetworkGetPublicConfig(ctx2)
+
+	cfg, err := nodeClient.NetworkGetPublicConfig(ctx)
 	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "couldn't get node public config"))
+		return diag.FromErr(errors.Wrapf(err, "couldn't get node %d public config", nodeID))
 	}
+
 	if cfg.Domain == "" {
-		return diag.FromErr(errors.New("node doesn't contain a domain in its public config"))
+		return diag.FromErr(fmt.Errorf("node %d doesn't contain a domain in its public config", nodeID))
 	}
+
 	fqdn := fmt.Sprintf("%s.%s", name, cfg.Domain)
 	err = d.Set("fqdn", fqdn)
 	if err != nil {
-		return diag.FromErr(errors.Wrap(err, "couldn't set fqdn"))
+		return diag.FromErr(errors.Wrapf(err, "couldn't set fqdn %s", fqdn))
 	}
 
 	d.SetId(strconv.FormatInt(time.Now().Unix(), 10))

@@ -17,13 +17,14 @@ Resource for deploying a gateway name workload. A user should specify some uniqu
 
 ### Required
 
-- `backends` (List of String) The backends of the gateway proxy (in the format (http|https)://ip:port), with tls_passthrough the scheme must be https.
-- `name` (String) Domain prefix. The fqdn will be <name>.<gateway-domain>.  This has to be unique within the deployment.
+- `backends` (List of String) The backends of the gateway proxy. must be in the format ip:port if tls_passthrough is set, otherwise the format should be http://ip[:port]
+- `name` (String) Domain prefix. The fqdn will be <name>.<gateway-domain>.  This has to be unique within the deployment. Must contain only alphanumeric and underscore characters.
 - `node` (Number) The gateway's node id.
 
 ### Optional
 
 - `description` (String)
+- `network` (String) Network name to join, if backend IP is private.
 - `solution_type` (String) Solution type for created contract to be consistent across threefold tooling.
 - `tls_passthrough` (Boolean) TLS passthrough controls the TLS termination, if false, the gateway will terminate the TLS, if True, it will only be terminated by the backend service.
 
@@ -33,5 +34,3 @@ Resource for deploying a gateway name workload. A user should specify some uniqu
 - `id` (String) The ID of this resource.
 - `name_contract_id` (Number) The id of the created name contract.
 - `node_deployment_id` (Map of Number) Mapping from each node to its deployment id.
-
-

@@ -8,16 +8,28 @@ terraform {
 
 provider "grid" {
 }
+
 locals {
   solution_type = "Presearch"
   name          = "mypreasearch"
 }
 
 
+resource "grid_scheduler" "sched" {
+  requests {
+    name             = "node1"
+    cru              = 1
+    sru              = 1024 * 10
+    mru              = 1024
+    public_ips_count = 1
+    public_config    = true
+  }
+}
+
 resource "grid_network" "net1" {
   solution_type = local.solution_type
   name          = local.name
-  nodes         = [8]
+  nodes         = [grid_scheduler.sched.nodes["node1"]]
   ip_range      = "10.1.0.0/16"
   description   = "newer network"
   add_wg_access = true
@@ -27,7 +39,7 @@ resource "grid_network" "net1" {
 resource "grid_deployment" "d1" {
   solution_type = local.solution_type
   name          = local.name
-  node          = 8
+  node          = grid_scheduler.sched.nodes["node1"]
   network_name  = grid_network.net1.name
 
   disks {
@@ -51,7 +63,7 @@ resource "grid_deployment" "d1" {
     }
 
     env_vars = {
-      SSH_KEY                     = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDZnBgLQt77C1suFHsBH5sNdbTxcCCiowDPB+U8h0OsT7onOg/HCYGEguUh9yl5VlacODXSexBhg9LsFTDuO/nBTf/DQVpjqRGQs1QenoGrpaxxaI5Svo5GBLE3Jogva/fhbJtwK9yEgW+1zltO3rTp+sdQ7JFG3uZGnlLSN1U+PCJVzONM2BaAGkQ6XHHuCCiisMlNgWXUzN3T+DjkzHWbXyqPEoK/gSkV20QzWbDRzxM/FJNIOZZh70H+n3QcSl9Q5VTfhc2K1rMNnGRQrl2QHcBsPoO/8dYJxKGt/u9pZI3wkE5C0coYtNvfXIcNj7cSsSJIvCdYYl6x4LkxXhwrOomOwmtZTmJEewe0nhClDU4gMm4s3eET7j2GPe73Ft2OVuF9j+3z0K3jUFQ/2m3HmDDtNVYlB7IOL5479cLRfBBvvQuNpd0p1yBUopxoBureFdqgZYa5887BcUENOKiR58JgF1mZ15g4nnUrdkXqm7KhQgniAp9E68MdsJEg9t0= omar@jarvis",
+      SSH_KEY                     = file("~/.ssh/id_rsa.pub"),
       PRESEARCH_REGISTRATION_CODE = "",
 
       # COMMENT the two env vars below to create a new node. 
@@ -84,7 +96,7 @@ output "node1_zmachine1_ip" {
 }
 
 output "computed_public_ip" {
-  value = grid_deployment.d1.vms[0].computedip
+  value = split("/", grid_deployment.d1.vms[0].computedip)[0]
 }
 
 output "ygg_ip" {

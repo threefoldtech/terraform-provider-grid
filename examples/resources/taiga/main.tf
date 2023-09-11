@@ -13,10 +13,25 @@ locals {
 provider "grid" {
 }
 
+resource "grid_scheduler" "sched" {
+  requests {
+    name = "node"
+    cru  = 4
+    sru  = 100 * 1024
+    mru  = 8096
+  }
+
+  requests {
+    name             = "gateway"
+    public_config    = true
+    public_ips_count = 1
+  }
+}
+
 resource "grid_network" "net2" {
   solution_type = local.solution_type
   name          = local.name
-  nodes         = [1]
+  nodes         = [grid_scheduler.sched.nodes["node"]]
   ip_range      = "10.1.0.0/16"
   description   = "newer network"
   add_wg_access = true
@@ -25,7 +40,7 @@ resource "grid_network" "net2" {
 resource "grid_deployment" "node1" {
   solution_type = local.solution_type
   name          = local.name
-  node          = 1
+  node          = grid_scheduler.sched.nodes["node"]
   network_name  = grid_network.net2.name
   disks {
     name = "data0"
@@ -45,7 +60,7 @@ resource "grid_deployment" "node1" {
       mount_point = "/var/lib/docker"
     }
     env_vars = {
-      SSH_KEY        = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC9MI7fh4xEOOEKL7PvLvXmSeRWesToj6E26bbDASvlZnyzlSKFLuYRpnVjkr8JcuWKZP6RQn8+2aRs6Owyx7Tx+9kmEh7WI5fol0JNDn1D0gjp4XtGnqnON7d0d5oFI+EjQQwgCZwvg0PnV/2DYoH4GJ6KPCclPz4a6eXrblCLA2CHTzghDgyj2x5B4vB3rtoI/GAYYNqxB7REngOG6hct8vdtSndeY1sxuRoBnophf7MPHklRQ6EG2GxQVzAOsBgGHWSJPsXQkxbs8am0C9uEDL+BJuSyFbc/fSRKptU1UmS18kdEjRgGNoQD7D+Maxh1EbmudYqKW92TVgdxXWTQv1b1+3dG5+9g+hIWkbKZCBcfMe4nA5H7qerLvoFWLl6dKhayt1xx5mv8XhXCpEC22/XHxhRBHBaWwSSI+QPOCvs4cdrn4sQU+EXsy7+T7FIXPeWiC2jhFd6j8WIHAv6/rRPsiwV1dobzZOrCxTOnrqPB+756t7ANxuktsVlAZaM= sameh@sameh-inspiron-3576",
+      SSH_KEY        = file("~/.ssh/id_rsa.pub"),
       DOMAIN_NAME    = data.grid_gateway_domain.domain.fqdn,
       ADMIN_USERNAME = "sameh",
       ADMIN_PASSWORD = "password",
@@ -65,13 +80,13 @@ resource "grid_deployment" "node1" {
 }
 
 data "grid_gateway_domain" "domain" {
-  node = 7
+  node = grid_scheduler.sched.nodes["gateway"]
   name = "grid3taiga"
 }
 resource "grid_name_proxy" "p1" {
   solution_type   = local.solution_type
   name            = local.name
-  node            = 7
+  node            = grid_scheduler.sched.nodes["gateway"]
   backends        = [format("http://%s:9000", grid_deployment.node1.vms[0].ygg_ip)]
   tls_passthrough = false
 }

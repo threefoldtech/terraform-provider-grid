@@ -34,7 +34,6 @@ func TestTaiga(t *testing.T) {
 		Vars: map[string]interface{}{
 			"public_key": publicKey,
 		},
-		Parallelism: 1,
 	})
 	defer terraform.Destroy(t, terraformOptions)
 
@@ -60,7 +59,7 @@ func TestTaiga(t *testing.T) {
 	// taiga takes alot of time to be ready
 	for now := time.Now(); time.Since(now) < 10*time.Minute; {
 		<-ticker.C
-		resp, err := http.Get(fmt.Sprintf("http://%s", fqdn))
+		resp, err := http.Get(fmt.Sprintf("https://%s", fqdn))
 		if err == nil && resp.StatusCode == 200 {
 			statusOk = true
 			break

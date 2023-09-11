@@ -4,12 +4,12 @@ package provider
 import (
 	"testing"
 
-	"github.com/threefoldtech/terraform-provider-grid/pkg/state"
+	"github.com/threefoldtech/terraform-provider-grid/internal/state"
 )
 
 func TestProvider(t *testing.T) {
-	st := state.NewState()
-	f, sub := New("dev", &st)
+	stateDB := state.NewLocalFileState()
+	f, sub := New("dev", &stateDB)
 	if sub != nil {
 		defer sub.Close()
 	}

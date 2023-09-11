@@ -8,14 +8,28 @@ terraform {
 
 provider "grid" {
 }
+
+
+resource "grid_scheduler" "sched" {
+  requests {
+    name             = "node1"
+    mru              = 4 * 1024
+    cru              = 2
+    public_config    = true
+    public_ips_count = 1
+  }
+}
+
 locals {
   solution_type = "CosmosValidator"
   name          = "cosmosvalidator"
+  node1         = grid_scheduler.sched.nodes["node1"]
 }
+
 resource "grid_network" "net1" {
   solution_type = local.solution_type
   name          = local.name
-  nodes         = [8]
+  nodes         = [local.node1]
   ip_range      = "10.1.0.0/16"
   description   = "newer network"
   add_wg_access = true
@@ -23,7 +37,7 @@ resource "grid_network" "net1" {
 resource "grid_deployment" "d1" {
   solution_type = local.solution_type
   name          = local.name
-  node          = 8
+  node          = local.node1
   network_name  = grid_network.net1.name
   vms {
     name       = "vm1"

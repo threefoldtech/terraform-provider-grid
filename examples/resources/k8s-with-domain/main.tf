@@ -8,30 +8,51 @@ terraform {
 
 provider "grid" {
 }
+
 locals {
   solution_type = "Kubernetes"
   name          = "mykubernetes"
 }
+
+resource "grid_scheduler" "sched" {
+  requests {
+    name             = "node1"
+    cru              = 4
+    mru              = 4 * 1024
+    public_config    = true
+    public_ips_count = 1
+  }
+  requests {
+    name = "node2"
+    cru  = 2
+    mru  = 2 * 1024
+  }
+  requests {
+    name             = "gateway"
+    public_config    = true
+    public_ips_count = 1
+  }
+}
+
 resource "grid_network" "net1" {
   solution_type = local.solution_type
   name          = local.name
-  nodes         = [2, 4]
+  nodes         = [grid_scheduler.sched.nodes["node1"], grid_scheduler.sched.nodes["node2"]]
   ip_range      = "10.1.0.0/16"
   description   = "newer network"
   add_wg_access = true
 }
 
 resource "grid_kubernetes" "k8s1" {
-  solution_type  = local.solution_type
-  name           = local.name
-  network_name   = grid_network.net1.name
-  nodes_ip_range = grid_network.net1.nodes_ip_range
-  token          = "12345678910122"
-  ssh_key        = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDTwULSsUubOq3VPWL6cdrDvexDmjfznGydFPyaNcn7gAL9lRxwFbCDPMj7MbhNSpxxHV2+/iJPQOTVJu4oc1N7bPP3gBCnF51rPrhTpGCt5pBbTzeyNweanhedkKDsCO2mIEh/92Od5Hg512dX4j7Zw6ipRWYSaepapfyoRnNSriW/s3DH/uewezVtL5EuypMdfNngV/u2KZYWoeiwhrY/yEUykQVUwDysW/xUJNP5o+KSTAvNSJatr3FbuCFuCjBSvageOLHePTeUwu6qjqe+Xs4piF1ByO/6cOJ8bt5Vcx0bAtI8/MPApplUU/JWevsPNApvnA/ntffI+u8DCwgP"
+  solution_type = local.solution_type
+  name          = local.name
+  network_name  = grid_network.net1.name
+  token         = "12345678910122"
+  ssh_key       = file("~/.ssh/id_rsa.pub")
 
   master {
     disk_size = 23
-    node      = 2
+    node      = grid_scheduler.sched.nodes["node1"]
     name      = "mr"
     cpu       = 2
     publicip  = true
@@ -39,21 +60,21 @@ resource "grid_kubernetes" "k8s1" {
   }
   workers {
     disk_size = 15
-    node      = 2
+    node      = grid_scheduler.sched.nodes["node1"]
     name      = "w0"
     cpu       = 2
     memory    = 2048
   }
   workers {
     disk_size = 14
-    node      = 4
+    node      = grid_scheduler.sched.nodes["node2"]
     name      = "w2"
     cpu       = 1
     memory    = 2048
   }
   workers {
     disk_size = 13
-    node      = 4
+    node      = grid_scheduler.sched.nodes["node2"]
     name      = "w3"
     cpu       = 1
     memory    = 2048
@@ -61,14 +82,13 @@ resource "grid_kubernetes" "k8s1" {
 }
 
 data "grid_gateway_domain" "domain" {
-  node = 7
+  node = grid_scheduler.sched.nodes["gateway"]
   name = "ashraf"
 }
 resource "grid_name_proxy" "p1" {
-  node            = 7
-  name            = "ashraf"
-  backends        = [format("https://%s:443", split("/", grid_kubernetes.k8s1.master[0].computedip)[0])]
-  tls_passthrough = true
+  node     = grid_scheduler.sched.nodes["gateway"]
+  name     = "ashraf"
+  backends = [format("http://%s:443", split("/", grid_kubernetes.k8s1.master[0].computedip)[0])]
 }
 output "computed_master_public_ip" {
   value = grid_kubernetes.k8s1.master[0].computedip

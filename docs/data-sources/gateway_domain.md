@@ -24,5 +24,3 @@ Data source for computing gateway name proxy fqdn.
 
 - `fqdn` (String) Fully qualified domain name
 - `id` (String) The ID of this resource.
-
-

@@ -11,10 +11,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/terraform-provider-grid/internal/provider/scheduler"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
-func ReourceScheduler() *schema.Resource {
+func resourceScheduler() *schema.Resource {
 	return &schema.Resource{
 		Description:   "Resource to dynamically assign resource requests to nodes. A user could specify their desired node configurations, and the scheduler searches the grid for eligible nodes.",
 		CreateContext: ResourceSchedCreate,
@@ -53,25 +54,44 @@ func ReourceScheduler() *schema.Resource {
 							Optional:    true,
 							Description: "Disk HDD size in MBs.",
 						},
-						"farm": {
-							Type:        schema.TypeString,
+						"farm_id": {
+							Type:        schema.TypeInt,
 							Optional:    true,
-							Description: "Farm name to search for eligible nodes.",
+							Description: "Farm id to search for eligible nodes.",
 						},
-						"ipv4": {
-							Type:        schema.TypeBool,
-							Optional:    true,
-							Description: "Flag to pick only nodes with public ipv4 configuration.",
-						},
-						"domain": {
+						"public_config": {
 							Type:        schema.TypeBool,
 							Optional:    true,
 							Description: "Flag to pick only nodes with public config containing domain.",
+						},
+						"public_ips_count": {
+							Type:        schema.TypeInt,
+							Optional:    true,
+							Description: "Required count of public ips.",
 						},
 						"certified": {
 							Type:        schema.TypeBool,
 							Optional:    true,
 							Description: "Flag to pick only certified nodes (Not implemented).",
+						},
+						"dedicated": {
+							Type:        schema.TypeBool,
+							Optional:    true,
+							Description: "Flag to pick a rentable node",
+						},
+						"node_exclude": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeInt,
+							},
+							Description: "List of node ids you want to exclude from the search.",
+						},
+						"distinct": {
+							Type:        schema.TypeBool,
+							Optional:    true,
+							Default:     false,
+							Description: "True to ensure this request returns a distinct node relative to this scheduler resource.",
 						},
 					},
 				},
@@ -90,7 +110,7 @@ func parseAssignment(d *schema.ResourceData) map[string]uint32 {
 	assignmentIfs := d.Get("nodes").(map[string]interface{})
 	assignment := make(map[string]uint32)
 	for k, v := range assignmentIfs {
-		assignment[k] = v.(uint32)
+		assignment[k] = uint32(v.(int))
 	}
 	return assignment
 }
@@ -104,38 +124,45 @@ func parseRequests(d *schema.ResourceData, assignment map[string]uint32) []sched
 			// skip already assigned ones
 			continue
 		}
+		nodesToExcludeIF := mp["node_exclude"].([]interface{})
+		nodesToExclude := make([]uint32, len(nodesToExcludeIF))
+		for idx, n := range nodesToExcludeIF {
+			nodesToExclude[idx] = uint32(n.(int))
+		}
+
 		reqs = append(reqs, scheduler.Request{
-			Name:      mp["name"].(string),
-			Farm:      mp["farm"].(string),
-			HasIPv4:   mp["ipv4"].(bool),
-			HasDomain: mp["domain"].(bool),
-			Certified: mp["certified"].(bool),
+			Name:           mp["name"].(string),
+			FarmId:         uint32(mp["farm_id"].(int)),
+			PublicConfig:   mp["public_config"].(bool),
+			PublicIpsCount: uint32(mp["public_ips_count"].(int)),
+			Certified:      mp["certified"].(bool),
+			Dedicated:      mp["dedicated"].(bool),
+			NodeExclude:    nodesToExclude,
 			Capacity: scheduler.Capacity{
 				MRU: uint64(mp["mru"].(int)) * uint64(gridtypes.Megabyte),
 				HRU: uint64(mp["hru"].(int)) * uint64(gridtypes.Megabyte),
 				SRU: uint64(mp["sru"].(int)) * uint64(gridtypes.Megabyte),
 			},
+			Distinct: mp["distinct"].(bool),
 		})
 	}
 	return reqs
 }
 
 func schedule(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	apiClient, ok := meta.(*apiClient)
+	tfPluginClient, ok := meta.(*deployer.TFPluginClient)
 	if !ok {
 		return diag.FromErr(fmt.Errorf("failed to cast meta into api client"))
 	}
-
+	// read previously assigned nodes
 	assignment := parseAssignment(d)
 	reqs := parseRequests(d, assignment)
-	scheduler := scheduler.NewScheduler(apiClient.grid_client, uint64(apiClient.twin_id))
-	for _, r := range reqs {
-		node, err := scheduler.Schedule(&r)
-		if err != nil {
-			return diag.FromErr(errors.Wrapf(err, "couldn't schedule request %s", r.Name))
-		}
-		assignment[r.Name] = node
+
+	scheduler := scheduler.NewScheduler(tfPluginClient.GridProxyClient, uint64(tfPluginClient.TwinID), tfPluginClient.RMB)
+	if err := scheduler.ProcessRequests(ctx, reqs, assignment); err != nil {
+		return diag.FromErr(err)
 	}
+
 	err := d.Set("nodes", assignment)
 	if err != nil {
 		return diag.FromErr(errors.Wrapf(err, "couldn't set nodes with %v", assignment))
@@ -144,10 +171,12 @@ func schedule(ctx context.Context, d *schema.ResourceData, meta interface{}) dia
 
 }
 
+// ResourceSchedRead reads for schedule resource
 func ResourceSchedRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	return diag.Diagnostics{}
 }
 
+// ResourceSchedCreate creates for schedule resource
 func ResourceSchedCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	diags := schedule(ctx, d, meta)
 	if diags.HasError() {
@@ -157,10 +186,12 @@ func ResourceSchedCreate(ctx context.Context, d *schema.ResourceData, meta inter
 	return diags
 }
 
+// ResourceSchedUpdate updates for schedule resource
 func ResourceSchedUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	return schedule(ctx, d, meta)
 }
 
+// ResourceSchedDelete deletes for schedule resource
 func ResourceSchedDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	d.SetId("")
 	return diag.Diagnostics{}

@@ -9,13 +9,19 @@ terraform {
 provider "grid" {
 }
 
+resource "grid_scheduler" "sched" {
+  requests {
+    name             = "gateway"
+    public_config    = true
+    public_ips_count = 1
+  }
+}
 
 resource "grid_fqdn_proxy" "p1" {
-  node            = 40
-  name            = "workloadname"
-  fqdn            = "remote.omar.grid.tf"
-  backends        = [format("https://137.184.106.152:443")]
-  tls_passthrough = true
+  node     = grid_scheduler.sched.nodes["gateway"]
+  name     = "workloadname"
+  fqdn     = "remote.omar.grid.tf"
+  backends = [format("http://137.184.106.152:443")]
 }
 
 output "fqdn" {

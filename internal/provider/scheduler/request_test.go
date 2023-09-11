@@ -5,15 +5,23 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
 func TestFulfilsSuccess(t *testing.T) {
 	cap := freeCapacity(&node)
 	nodeInfo := nodeInfo{
 		FreeCapacity: &cap,
-		FarmID:       1,
-		HasIPv4:      true,
-		HasDomain:    true,
+		Node: types.Node{
+			FarmID: 1,
+			PublicConfig: types.PublicConfig{
+				Ipv4:   "1.2.3.4",
+				Domain: "example.com",
+			},
+		},
+	}
+	farm := farmInfo{
+		freeIPs: 1,
 	}
 	assert.Equal(t, nodeInfo.fulfils(&Request{
 		Capacity: Capacity{
@@ -21,59 +29,67 @@ func TestFulfilsSuccess(t *testing.T) {
 			SRU: 3,
 			HRU: 3,
 		},
-		farmID:    1,
-		HasIPv4:   true,
-		HasDomain: false,
-	}), true, "fullfil-success")
+		FarmId:         1,
+		PublicIpsCount: 1,
+		PublicConfig:   false,
+	}, farm), true, "fullfil-success")
 }
 
 func TestFulfilsFail(t *testing.T) {
 	cap := freeCapacity(&node)
 	nodeInfo := nodeInfo{
 		FreeCapacity: &cap,
-		FarmID:       1,
-		HasIPv4:      false,
-		HasDomain:    false,
+		Node: types.Node{
+			FarmID: 1,
+			PublicConfig: types.PublicConfig{
+				Ipv4:   "",
+				Domain: "",
+			},
+		},
 	}
-
 	req := Request{
 		Capacity: Capacity{
 			MRU: 3,
-			SRU: 8,
+			SRU: 3,
 			HRU: 3,
 		},
-		farmID:    1,
-		HasIPv4:   false,
-		HasDomain: false,
+		FarmId:         1,
+		PublicIpsCount: 0,
+		PublicConfig:   false,
 	}
+	farmInfo := farmInfo{
+		freeIPs: 1,
+	}
+	assert.Equal(t, nodeInfo.fulfils(&req, farmInfo), true, "this request should be successful")
+
 	violations := map[string]func(r *Request){
-		"mru":     func(r *Request) { r.Capacity.MRU = 4 },
-		"sru":     func(r *Request) { r.Capacity.SRU = 9 },
-		"hru":     func(r *Request) { r.Capacity.HRU = 4 },
-		"farm_id": func(r *Request) { r.farmID = 2 },
-		"ipv4":    func(r *Request) { r.HasIPv4 = true },
-		"domain":  func(r *Request) { r.HasDomain = true },
+		"mru":              func(r *Request) { r.Capacity.MRU = 4 },
+		"sru":              func(r *Request) { r.Capacity.SRU = 9 },
+		"hru":              func(r *Request) { r.Capacity.HRU = 4 },
+		"farm_id":          func(r *Request) { r.FarmId = 2 },
+		"public_ips_count": func(r *Request) { r.PublicIpsCount = 3 },
+		"public_config":    func(r *Request) { r.PublicConfig = true },
 	}
 	for key, fn := range violations {
 		cp := req
 		fn(&cp)
-		assert.Equal(t, nodeInfo.fulfils(&cp), false, fmt.Sprintf("fullfil-fail-%s", key))
+
+		assert.Equal(t, nodeInfo.fulfils(&cp, farmInfo), false, fmt.Sprintf("fullfil-fail-%s", key))
 	}
 }
 
 func TestConstructFilter(t *testing.T) {
-	var farm string = "freefarm"
 	r := Request{
 		Capacity: Capacity{
 			MRU: 1,
 			SRU: 2,
 			HRU: 3,
 		},
-		Name:      "a",
-		Farm:      farm,
-		HasIPv4:   true,
-		HasDomain: false,
-		Certified: true,
+		Name:           "a",
+		FarmId:         1,
+		PublicIpsCount: 1,
+		PublicConfig:   false,
+		Certified:      true,
 	}
 
 	con := r.constructFilter(1)
@@ -83,10 +99,9 @@ func TestConstructFilter(t *testing.T) {
 	assert.Equal(t, *con.FreeHRU, uint64(3), "construct-filter-hru")
 	assert.Empty(t, con.Country, "construct-filter-country")
 	assert.Empty(t, con.City, "construct-filter-city")
-	assert.Equal(t, *con.FarmName, "freefarm", "construct-filter-farm-name")
-	assert.Empty(t, con.FarmIDs, "construct-filter-farm-ids")
-	assert.Empty(t, con.FreeIPs, "construct-filter-free-ips")
-	assert.Equal(t, *con.IPv4, true, "construct-filter-ipv4")
+	assert.Equal(t, con.FarmIDs, []uint64{uint64(r.FarmId)}, "construct-filter-farm-ids")
+	assert.Equal(t, *con.FreeIPs, uint64(1), "construct-filter-free-ips")
+	assert.Empty(t, con.IPv4, "construct-filter-ipv4")
 	assert.Empty(t, con.IPv6, "construct-filter-ipv6")
 	assert.Empty(t, con.Domain, "construct-filter-domain")
 	assert.Empty(t, con.Rentable, "construct-filter-rentable")

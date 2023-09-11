@@ -22,7 +22,7 @@ Resource for deploying multiple workloads like vms (ZMachines), ZDBs, disks, Qsf
 ### Optional
 
 - `disks` (Block List) List of disk workloads configurations. (see [below for nested schema](#nestedblock--disks))
-- `name` (String) Solution name for created contract to be consistent across threefold tooling.
+- `name` (String) Solution name for created contract to be consistent across threefold tooling. Must contain only alphanumeric and underscore characters.
 - `network_name` (String) Network name of the deployed network resource to connect vms.
 - `qsfs` (Block List) List of Qsfs workloads configurations. Qsfs is a quantum storage file system.
 You can read more about it [here](https://github.com/threefoldtech/quantum-storage). (see [below for nested schema](#nestedblock--qsfs))
@@ -42,8 +42,8 @@ You can read more about it [here](https://github.com/threefoldtech/quantum-stora
 
 Required:
 
-- `name` (String) Disk workload name. This has to be unique within the deployment.
-- `size` (Number) Disk size in GBs.
+- `name` (String) Disk workload name. This has to be unique within the deployment. Must contain only alphanumeric and underscore characters.
+- `size` (Number) Disk size in GBs. Must be between 1GB and 10240GBs (10TBs)
 
 Optional:
 
@@ -62,7 +62,7 @@ Required:
 - `max_zdb_data_dir_size` (Number) Maximum size of the data dir in MiB, if this is set and the sum of the file sizes in the data dir gets higher than this value, the least used, already encoded file will be removed.
 - `metadata` (Block List, Min: 1, Max: 1) (see [below for nested schema](#nestedblock--qsfs--metadata))
 - `minimal_shards` (Number) The minimum amount of shards which are needed to recover the original data.
-- `name` (String) Qsfs workload name. This has to be unique within the deployment.
+- `name` (String) Qsfs workload name. This has to be unique within the deployment. Must contain only alphanumeric and underscore characters.
 - `redundant_groups` (Number) The amount of groups which one should be able to loose while still being able to recover the original data.
 - `redundant_nodes` (Number) The amount of nodes that can be lost in every group while still being able to recover the original data.
 
@@ -134,29 +134,31 @@ Optional:
 Required:
 
 - `flist` (String) Flist used on this vm, e.g. https://hub.grid.tf/tf-official-apps/base:latest.flist. All flists could be found in `https://hub.grid.tf/`.
-- `name` (String) Vm (zmachine) workload name. This has to be unique within the deployment.
+- `name` (String) Vm (zmachine) workload name. This has to be unique within the deployment. Must contain only alphanumeric and underscore characters.
 
 Optional:
 
 - `corex` (Boolean) Flag to enable corex. More information about corex could be found [here](https://github.com/threefoldtech/corex)
-- `cpu` (Number) Number of virtual CPUs.
+- `cpu` (Number) Number of virtual CPUs. Must be between 1 and 32.
 - `description` (String) Description of the vm.
 - `entrypoint` (String) Command to execute as the ZMachine init.
 - `env_vars` (Map of String) Environment variables to pass to the zmachine.
 - `flist_checksum` (String) if present, the flist is rejected if it has a different hash.
+- `gpus` (List of String) List of the GPUs to be attached to the vm and must not be used by other vms
 - `ip` (String) The private wireguard IP of the vm.
-- `memory` (Number) Memory size in MB.
+- `memory` (Number) Memory size in MB. Must be between 256MBs and 262144MBs (256GBs).
 - `mounts` (Block List) List of vm (ZMachine) mounts. Can reference QSFSs and Disks. (see [below for nested schema](#nestedblock--vms--mounts))
 - `planetary` (Boolean) Flag to enable Yggdrasil IP allocation.
 - `publicip` (Boolean) Flag to enable public ipv4 reservation.
 - `publicip6` (Boolean) Flag to enable public ipv6 reservation.
-- `rootfs_size` (Number) Root file system size in MB.
+- `rootfs_size` (Number) Root file system size in MB. Must be between 1024MBs and 10485760MBs (10TBs).
 - `zlogs` (List of String) List of Zlogs workloads configurations (URLs). Zlogs is a utility workload that allows you to stream `ZMachine` logs to a remote location.
 
 Read-Only:
 
 - `computedip` (String) The reserved public ipv4 if any.
 - `computedip6` (String) The reserved public ipv6 if any.
+- `console_url` (String) The url to access the vm via cloud console on private interface using wireguard.
 - `ygg_ip` (String) The allocated Yggdrasil IP.
 
 <a id="nestedblock--vms--mounts"></a>
@@ -174,7 +176,7 @@ Required:
 
 Required:
 
-- `name` (String) ZDB worklod name. This has to be unique within the deployment.
+- `name` (String) ZDB worklod name. This has to be unique within the deployment. Must contain only alphanumeric and underscore characters.
 - `password` (String) ZDB password.
 - `size` (Number) Size of the ZDB in GBs.
 
@@ -189,5 +191,3 @@ Read-Only:
 - `ips` (List of String) Computed IPs of the ZDB. Two IPs are returned: a public IPv6, and a YggIP, in this order
 - `namespace` (String) Namespace of the ZDB.
 - `port` (Number) Port of the ZDB.
-
-

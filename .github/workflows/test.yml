@@ -3,9 +3,6 @@
 #
 name: Tests
 on:
-  pull_request:
-    paths-ignore:
-      - "README.md"
   push:
     paths-ignore:
       - "README.md"
@@ -23,22 +20,22 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: "1.18"
         id: go
 
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v3.3.0
+        uses: actions/checkout@v4.0.0
         with:
           submodules: "true"
 
       - name: Get dependencies
         run: |
           go mod download
-      
+
       - name: Install GoReleaser
-        uses: goreleaser/goreleaser-action@v4
+        uses: goreleaser/goreleaser-action@v4.6.0
         with:
           install-only: true
 
@@ -63,13 +60,13 @@ jobs:
           - "1.0.8"
     steps:
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: "1.18"
         id: go
 
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v3.3.0
+        uses: actions/checkout@v4.0.0
         with:
           submodules: "true"
 
@@ -88,5 +85,31 @@ jobs:
           # following syntax:
           # SOME_VAR: ${{ secrets.SOME_VAR }}
 
+        run: |
+          go test -v -cover ./internal/provider/ `go list ./... | grep -v integrationtests`
+
+  unittest:
+    name: Unit Test
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.18"
+        id: go
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v4.0.0
+        with:
+          submodules: "true"
+
+      - name: Get dependencies
+        run: |
+          go mod download
+
+      - name: run unit tests
+        timeout-minutes: 10
         run: |
           go test -v `go list ./... | grep -v integrationtests`

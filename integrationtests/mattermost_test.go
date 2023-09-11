@@ -34,7 +34,6 @@ func TestMattermost(t *testing.T) {
 		Vars: map[string]interface{}{
 			"public_key": publicKey,
 		},
-		Parallelism: 1,
 	})
 	defer terraform.Destroy(t, terraformOptions)
 
@@ -59,7 +58,7 @@ func TestMattermost(t *testing.T) {
 	ticker := time.NewTicker(2 * time.Second)
 	for now := time.Now(); time.Since(now) < 1*time.Minute; {
 		<-ticker.C
-		resp, err := http.Get(fmt.Sprintf("http://%s", fqdn))
+		resp, err := http.Get(fmt.Sprintf("https://%s", fqdn))
 		if err == nil && resp.StatusCode == http.StatusOK {
 			statusOk = true
 			break

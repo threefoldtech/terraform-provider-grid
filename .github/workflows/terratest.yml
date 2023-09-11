@@ -1,21 +1,35 @@
-name: Run Tests
+name: Intgeration tests
 
 on:
   schedule:
     - cron: "0 0 * * *"
-
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
 jobs:
   go-tests:
     name: Run Go Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 0
+    strategy:
+      fail-fast: false
+      matrix:
+        network: ["dev", "qa", "test", "main"]
+        include: 
+          - describe: "git describe --match 'v[0-9]*.[0-9]*.[0-9]*-*'  --exclude='*-rc*' --exclude='*-qa*' --abbrev=0 HEAD"
+            network: "dev"
+          - describe: "git describe --match 'v[0-9]*.[0-9]*.[0-9]*-*'  --exclude='*-rc*' --exclude='*-dev*' --abbrev=0 HEAD"
+            network: "qa"
+          - describe: "git describe --match 'v[0-9]*.[0-9]*.[0-9]*-*'  --exclude='*-dev*' --exclude='*-qa*' --abbrev=0 HEAD"
+            network: "test"
+          - describe: "git describe v1.8.2"
+            network: "main"
     steps:
-      - uses: actions/checkout@v3.3.0
-        with:
-          submodules: "true"
-      - uses: actions/setup-go@v1
+      - uses: actions/setup-go@v4
         with:
           go-version: 1.18
-      - uses: autero1/action-terraform@v1.1.0
+      - uses: autero1/action-terraform@v1.1.1
         env:
           ACTIONS_ALLOW_UNSECURE_COMMANDS: true
         with:
@@ -25,6 +39,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y wireguard
           sudo apt-get install dirmngr
+          sudo apt-get install curl
           gpg --fetch-keys https://neilalexander.s3.dualstack.eu-west-2.amazonaws.com/deb/key.txt
           gpg --export 569130E8CA20FBC4CB3FDE555898470A764B32C9 | sudo apt-key add -
           echo 'deb http://neilalexander.s3.dualstack.eu-west-2.amazonaws.com/deb/ debian yggdrasil' | sudo tee /etc/apt/sources.list.d/yggdrasil.list
@@ -34,9 +49,19 @@ jobs:
           PEERS=$(curl https://raw.githubusercontent.com/threefoldtech/zos-config/main/development.json | jq '.yggdrasil.peers[]' -r | sed 's/\//\\\//g' | sed -z 's/\n/\\n/g')
           sudo  sed -i -- 's/Peers\: \[\]/Peers: [\n'"$PEERS"']/g' /etc/yggdrasil.conf
           sudo systemctl start yggdrasil
+      - uses: actions/checkout@v4.0.0
+        with:
+          fetch-depth: 0
+      - run: git checkout $(${{ matrix.describe }})
+      - name: Build
+        run: |
+          go mod tidy
+          mkdir -p ~/.terraform.d/plugins/threefoldtechdev.com/providers/grid/0.2/linux_amd64/
+          go build -o terraform-provider-grid
+          mv terraform-provider-grid ~/.terraform.d/plugins/threefoldtechdev.com/providers/grid/0.2/linux_amd64/
       - name: Run Go Tests
         env:
           MNEMONICS: ${{ secrets.MNEMONICS }}
-          NETWORK: "test"
-        working-directory: tests
-        run: go test ./tests/... -p 1 --tags=integration
+          NETWORK: ${{ matrix.network }}
+        working-directory: integrationtests
+        run: go test -v ./... --tags=integration

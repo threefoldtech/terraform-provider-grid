@@ -2,32 +2,29 @@ package integrationtests
 
 import (
 	"os"
-	"reflect"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
-	gridproxy "github.com/threefoldtech/grid_proxy_server/pkg/client"
-	"github.com/threefoldtech/grid_proxy_server/pkg/types"
+	gridproxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
 // AssertNodesAreReady runs `kubectl get node` on the master node and asserts that all nodes are ready
 func AssertNodesAreReady(t *testing.T, terraformOptions *terraform.Options, privateKey string) {
 	t.Helper()
 
-	masterYggIP := terraform.Output(t, terraformOptions, "master_yggip")
+	masterYggIP := terraform.Output(t, terraformOptions, "ygg_ip")
 	assert.NotEmpty(t, masterYggIP)
 
-	time.Sleep(5 * time.Second)
-	output, err := RemoteRun("root", masterYggIP, "kubectl get node", privateKey)
+	output, err := RemoteRun("root", masterYggIP, "export KUBECONFIG=/etc/rancher/k3s/k3s.yaml && kubectl get node", privateKey)
 	output = strings.TrimSpace(output)
 	assert.Empty(t, err)
 
-	nodesNumber := reflect.ValueOf(terraformOptions.Vars["workers"]).Len() + 1
-	numberOfReadynodes := strings.Count(output, "Ready")
-	assert.True(t, numberOfReadynodes == nodesNumber, "number of ready nodes is not equal to number of nodes only %s nodes are ready", numberOfReadynodes)
+	nodesNumber := 2
+	numberOfReadyNodes := strings.Count(output, "Ready")
+	assert.True(t, numberOfReadyNodes == nodesNumber, "number of ready nodes is not equal to number of nodes only %s nodes are ready", numberOfReadyNodes)
 
 }
 func TestK8s(t *testing.T) {
@@ -36,7 +33,7 @@ func TestK8s(t *testing.T) {
 		t.Fatalf("failed to generate ssh key pair: %s", err.Error())
 	}
 
-	t.Run("k8s", func(t *testing.T) {
+	t.Run("kubernetes", func(t *testing.T) {
 		/* Test case for deployeng a k8s.
 
 		   **Test Scenario**
@@ -51,7 +48,6 @@ func TestK8s(t *testing.T) {
 			Vars: map[string]interface{}{
 				"public_key": publicKey,
 			},
-			Parallelism: 1,
 		})
 		defer terraform.Destroy(t, terraformOptions)
 
@@ -62,13 +58,19 @@ func TestK8s(t *testing.T) {
 		masterIP := terraform.Output(t, terraformOptions, "ygg_ip")
 		assert.NotEmpty(t, masterIP)
 
+		workerIP := terraform.Output(t, terraformOptions, "worker_ygg_ip")
+		assert.NotEmpty(t, workerIP)
+
 		// Check wireguard config in output
 		wgConfig := terraform.Output(t, terraformOptions, "wg_config")
 		assert.NotEmpty(t, wgConfig)
 
-		// Check that master is reachable
+		// Check that master and workers is reachable
 		// testing connection on port 22, waits at max 3mins until it becomes ready otherwise it fails
 		ok := TestConnection(masterIP, "22")
+		assert.True(t, ok)
+
+		ok = TestConnection(workerIP, "22")
 		assert.True(t, ok)
 
 		// ssh to master node
@@ -89,7 +91,6 @@ func TestK8s(t *testing.T) {
 			Vars: map[string]interface{}{
 				"public_key": publicKey,
 			},
-			Parallelism: 1,
 		})
 		defer terraform.Destroy(t, terraformOptions)
 
@@ -153,21 +154,18 @@ func TestK8s(t *testing.T) {
 
 		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 			TerraformDir: "./k8s_using_module",
-			Parallelism:  1,
 			Vars: map[string]interface{}{
 				"ssh":           publicKey,
 				"network_nodes": []int{12, masterNode},
-				"master": []map[string]interface{}{
-					{
-						"name":        "mr",
-						"node":        masterNode,
-						"cpu":         1,
-						"memory":      1024,
-						"disk_name":   "mrdisk",
-						"mount_point": "/mydisk",
-						"publicip":    false,
-						"planetary":   true,
-					},
+				"master": map[string]interface{}{
+					"name":        "mr",
+					"node":        masterNode,
+					"cpu":         1,
+					"memory":      1024,
+					"disk_name":   "mrdisk",
+					"mount_point": "/mydisk",
+					"publicip":    false,
+					"planetary":   true,
 				},
 				"workers": []map[string]interface{}{
 					{

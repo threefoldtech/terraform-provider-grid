@@ -5,7 +5,28 @@ terraform {
     }
   }
 }
+
 provider "grid" {
+}
+
+resource "grid_scheduler" "sched" {
+  requests {
+    name = "peertube"
+    cru  = 2
+    sru  = 512
+    mru  = 4096
+  }
+
+  requests {
+    name          = "domain"
+    public_config = true
+  }
+}
+
+locals {
+  solution_type = "Peertube"
+  name          = "ashraftube"
+  node          = grid_scheduler.sched.nodes["peertube"]
 }
 
 # this data source is used to break circular dependency in cases similar to the following:
@@ -13,37 +34,31 @@ provider "grid" {
 # gateway_name: needs the ip of the vm to use as backend.
 # - the fqdn can be computed from grid_gateway_domain for the vm
 # - the backend can reference the vm ip directly  
-locals {
-  solution_type = "Peertube"
-  name          = "ashraftube"
-  node          = 34
-}
 data "grid_gateway_domain" "domain" {
-  node = 45
+  node = grid_scheduler.sched.nodes["domain"]
   name = local.name
 }
 
 resource "grid_network" "net1" {
   solution_type = local.solution_type
   name          = local.name
-  nodes         = [local.node]
+  nodes         = [grid_scheduler.sched.nodes["peertube"]]
   ip_range      = "10.1.0.0/16"
   description   = "newer network"
 }
 resource "grid_deployment" "d1" {
-  node          = local.node
+  node          = grid_scheduler.sched.nodes["peertube"]
   solution_type = local.solution_type
   name          = local.name
   network_name  = grid_network.net1.name
   vms {
-    name  = "vm1"
-    flist = "https://hub.grid.tf/tf-official-apps/peertube-v3.1.1.flist"
-    cpu   = 2
-    # publicip = true
+    name       = "vm1"
+    flist      = "https://hub.grid.tf/tf-official-apps/peertube-v3.1.1.flist"
+    cpu        = 2
     entrypoint = "/sbin/zinit init"
     memory     = 4096
     env_vars = {
-      SSH_KEY                     = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDTwULSsUubOq3VPWL6cdrDvexDmjfznGydFPyaNcn7gAL9lRxwFbCDPMj7MbhNSpxxHV2+/iJPQOTVJu4oc1N7bPP3gBCnF51rPrhTpGCt5pBbTzeyNweanhedkKDsCO2mIEh/92Od5Hg512dX4j7Zw6ipRWYSaepapfyoRnNSriW/s3DH/uewezVtL5EuypMdfNngV/u2KZYWoeiwhrY/yEUykQVUwDysW/xUJNP5o+KSTAvNSJatr3FbuCFuCjBSvageOLHePTeUwu6qjqe+Xs4piF1ByO/6cOJ8bt5Vcx0bAtI8/MPApplUU/JWevsPNApvnA/ntffI+u8DCwgP ashraf@thinkpad"
+      SSH_KEY                     = file("~/.ssh/id_rsa.pub")
       PEERTUBE_DB_SUFFIX          = "_prod"
       PEERTUBE_DB_USERNAME        = "peertube"
       PEERTUBE_DB_PASSWORD        = "peertube"
@@ -59,7 +74,7 @@ resource "grid_deployment" "d1" {
   }
 }
 resource "grid_name_proxy" "p1" {
-  node            = 45
+  node            = grid_scheduler.sched.nodes["domain"]
   solution_type   = local.solution_type
   name            = local.name
   backends        = [format("http://[%s]:9000", grid_deployment.d1.vms[0].ygg_ip)]
@@ -71,11 +86,7 @@ output "fqdn" {
 output "node1_zmachine1_ip" {
   value = grid_deployment.d1.vms[0].ip
 }
-# output "computed_public_ip" {
-#     value = split("/",grid_deployment.d1.vms[0].computedip)[0]
-# }
 
 output "ygg_ip" {
   value = grid_deployment.d1.vms[0].ygg_ip
 }
-
