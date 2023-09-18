@@ -629,8 +629,8 @@ github.com/stretchr/testify v1.8.4 h1:CcVxjf3Q8PM0mHUKJCdn+eZZtm5yQwehR5yeSVQQcU
 github.com/stretchr/testify v1.8.4/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
 github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230809064214-d8ef5ca360eb h1:ljvL1BMwTPrV0kAz9E56zJ5jq39TPRsd/tP6l0+0TzY=
 github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230809064214-d8ef5ca360eb/go.mod h1:dtDKAPiUDxAwIkfHV7xcAFZcOm+xwNIuOI1MLFS+MeQ=
-github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.11.1 h1:71Cf7XgDgFSEfrMOqpLtzfzPmH+VJv5bOPDJD2tj974=
-github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.11.1/go.mod h1:ZmlVr+p/m3sTmI3LzgdeaEP2iBd1EZLV9vwWFKNeFpE=
+github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.11.2 h1:6aZYW8fzlgAqiCjuqecL7on+2eBmTeBRpFFnSlsKalc=
+github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.11.2/go.mod h1:EroQwveJ0tZGneNwAwqBcf6noRFzV0040RAMxxBosIY=
 github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.11.1 h1:0yM7nRmwUOu6sFqfl9RW3beOgLQd3YLEt//1xEeqS14=
 github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.11.1/go.mod h1:5wldHWnp4POrhzFMj6+JlsJWa7dgeiY5DBEfZhpNlg8=
 github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.11.1 h1:BFlpkfiBVMA9zOLQSuZ6wxhWGc7MoC7NPfQvhADwJ/k=
