@@ -49,7 +49,7 @@ jobs:
           PEERS=$(curl https://raw.githubusercontent.com/threefoldtech/zos-config/main/development.json | jq '.yggdrasil.peers[]' -r | sed 's/\//\\\//g' | sed -z 's/\n/\\n/g')
           sudo  sed -i -- 's/Peers\: \[\]/Peers: [\n'"$PEERS"']/g' /etc/yggdrasil.conf
           sudo systemctl start yggdrasil
-      - uses: actions/checkout@v4.0.0
+      - uses: actions/checkout@v4.1.0
         with:
           fetch-depth: 0
       - run: git checkout $(${{ matrix.describe }})
