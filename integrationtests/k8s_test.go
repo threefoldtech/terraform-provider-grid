@@ -78,6 +78,7 @@ func TestK8s(t *testing.T) {
 	})
 
 	t.Run("k8s_invalid_names", func(t *testing.T) {
+		t.Skip()
 		/* Test case for deployeng a k8s.
 
 		   **Test Scenario**

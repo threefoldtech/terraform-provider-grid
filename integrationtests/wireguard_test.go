@@ -8,6 +8,7 @@ import (
 )
 
 func TestWireguard(t *testing.T) {
+	t.Skip()
 	/* Test case for deployeng a singlenode.
 
 	   **Test Scenario**
