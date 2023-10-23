@@ -78,7 +78,6 @@ func TestK8s(t *testing.T) {
 	})
 
 	t.Run("k8s_invalid_names", func(t *testing.T) {
-		t.Skip()
 		/* Test case for deployeng a k8s.
 
 		   **Test Scenario**
@@ -103,6 +102,7 @@ func TestK8s(t *testing.T) {
 	})
 
 	t.Run("k8s_using_module", func(t *testing.T) {
+		t.Skip("https://github.com/threefoldtech/terraform-provider-grid/issues/770")
 		/* Test case for deployeng a singlenode.
 
 		   **Test Scenario**
