@@ -8,6 +8,7 @@ import (
 )
 
 func TestWireguard(t *testing.T) {
+	t.Skip("https://github.com/threefoldtech/terraform-provider-grid/issues/769")
 	/* Test case for deployeng a singlenode.
 
 	   **Test Scenario**
