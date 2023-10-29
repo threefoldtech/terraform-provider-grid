@@ -107,6 +107,13 @@ func (m *GridProxyClientMock) Twins(filter proxyTypes.TwinFilter, pagination pro
 func (m *GridProxyClientMock) Counters(filter proxyTypes.StatsFilter) (res proxyTypes.Counters, err error) {
 	return
 }
+func (m *GridProxyClientMock) Contract(contractID uint32) (res proxyTypes.Contract, err error) {
+	return
+}
+func (m *GridProxyClientMock) ContractBills(contractID uint32, limit proxyTypes.Limit) (res []proxyTypes.ContractBilling, count uint, err error) {
+	return
+}
+
 func TestSchedulerEmpty(t *testing.T) {
 	proxy := &GridProxyClientMock{}
 	rmbClient := &RMBClientMock{
