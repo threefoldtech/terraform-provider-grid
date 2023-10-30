@@ -31,7 +31,7 @@ resource "grid_deployment" "server1" {
     entrypoint = local.entrypoint
     ip         = var.first_server_ip
     env_vars = {
-      SSH_KEY = var.ssh_key
+      SSH_KEY       = var.ssh_key
       NOMAD_SERVERS = 3
     }
     planetary = var.servers[0].planetary
@@ -55,7 +55,7 @@ resource "grid_deployment" "servers" {
       env_vars = {
         SSH_KEY         = var.ssh_key
         FIRST_SERVER_IP = var.first_server_ip
-        NOMAD_SERVERS = 3
+        NOMAD_SERVERS   = 3
       }
     }
   }
@@ -78,7 +78,7 @@ resource "grid_deployment" "clients" {
       env_vars = {
         SSH_KEY         = var.ssh_key
         FIRST_SERVER_IP = var.first_server_ip
-        NOMAD_SERVERS = 3
+        NOMAD_SERVERS   = 3
       }
     }
   }
