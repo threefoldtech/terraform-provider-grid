@@ -15,29 +15,27 @@ variable "network" {
   })
 }
 
-variable "nomad" {
-  type = object({
-    name         = string
-    node        = number
-    network_name = string
-
-    servers = list(object({
-      name        = string
-      cpu         = number
-      memory      = number
-      planetary   = bool
-    }))
-
-    clients = list(object({
-      name        = string
-      cpu         = number
-      memory      = number
-      planetary   = bool
-    }))
-  })
+variable "servers" {
+  type = list(object({
+    name      = string
+    node      = number
+    cpu       = number
+    memory    = number
+    planetary = bool
+  }))
 
   validation {
-    condition     = length(var.nomad.servers) == 3
+    condition     = length(var.servers) == 3
     error_message = "nomad servers should be exactly 3"
   }
+}
+
+variable "clients" {
+  type = list(object({
+    name      = string
+    node      = number
+    cpu       = number
+    memory    = number
+    planetary = bool
+  }))
 }
