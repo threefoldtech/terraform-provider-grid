@@ -17,11 +17,18 @@ variable "network" {
 
 variable "servers" {
   type = list(object({
-    name      = string
-    node      = number
-    cpu       = number
-    memory    = number
-    planetary = bool
+    name        = string
+    node        = number
+    cpu         = number
+    memory      = number
+    mount_point = string
+    publicip    = bool
+    publicip6   = bool
+    planetary   = bool
+    disk = object({
+      name = string
+      size = number
+    })
   }))
 
   validation {
@@ -32,10 +39,17 @@ variable "servers" {
 
 variable "clients" {
   type = list(object({
-    name      = string
-    node      = number
-    cpu       = number
-    memory    = number
-    planetary = bool
+    name        = string
+    node        = number
+    cpu         = number
+    memory      = number
+    mount_point = string
+    publicip    = bool
+    publicip6   = bool
+    planetary   = bool
+    disk = object({
+      name = string
+      size = number
+    })
   }))
 }
