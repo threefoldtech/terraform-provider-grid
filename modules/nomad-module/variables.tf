@@ -19,37 +19,32 @@ variable "servers" {
   type = list(object({
     name        = string
     node        = number
-    cpu         = number
-    memory      = number
-    mount_point = string
-    publicip    = bool
-    publicip6   = bool
-    planetary   = bool
+    cpu         = optional(number, 2)
+    memory      = optional(number, 1024)
+    mount_point = optional(string, "/mnt")
+    publicip    = optional(bool, false)
+    publicip6   = optional(bool, false)
+    planetary   = optional(bool, true)
     disk = object({
       name = string
-      size = number
+      size = optional(number, 5)
     })
   }))
-
-  validation {
-    condition     = length(var.servers) == 3
-    error_message = "nomad servers should be exactly 3"
-  }
 }
 
 variable "clients" {
   type = list(object({
     name        = string
     node        = number
-    cpu         = number
-    memory      = number
-    mount_point = string
-    publicip    = bool
-    publicip6   = bool
-    planetary   = bool
-    disk = object({
+    cpu         = optional(number, 2)
+    memory      = optional(number, 1024)
+    mount_point = optional(string, "/mnt")
+    publicip    = optional(bool, false)
+    publicip6   = optional(bool, false)
+    planetary   = optional(bool, true)
+    disk = optional(object({
       name = string
-      size = number
-    })
+      size = optional(number, 5)
+    }))
   }))
 }

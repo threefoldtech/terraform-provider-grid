@@ -1,5 +1,5 @@
 module "nomad" {
-  source          = "/home/eslam/work/currently/terraform-provider-grid/modules/nomad-module"
+  source          = "github.com/threefoldtech/terraform-provider-grid/modules/nomad-module"
   ssh_key         = local.ssh_key
   first_server_ip = local.first_server_ip
   network         = local.network
@@ -12,7 +12,7 @@ locals {
   first_server_ip = "10.1.2.2"
 
   network = {
-    nodes       = [29]
+    nodes       = [29, 27]
     ip_range    = "10.1.0.0/16"
     name        = "nomadtest"
     description = "new network for nomad"
@@ -24,9 +24,6 @@ locals {
       node        = 29
       cpu         = 2
       memory      = 1024
-      publicip    = false
-      publicip6   = false
-      planetary   = true
       mount_point = "/mnt"
       disk = {
         name = "server1dsk"
@@ -35,11 +32,9 @@ locals {
     },
     {
       name        = "server2"
-      node        = 29
+      node        = 27
       cpu         = 2
       memory      = 1024
-      publicip    = false
-      publicip6   = false
       planetary   = true
       mount_point = "/mnt"
       disk = {
@@ -48,14 +43,10 @@ locals {
       }
     },
     {
-      name        = "server3"
-      node        = 29
-      cpu         = 2
-      memory      = 1024
-      publicip    = false
-      publicip6   = false
-      planetary   = true
-      mount_point = "/mnt"
+      name   = "server3"
+      node   = 29
+      cpu    = 2
+      memory = 1024
       disk = {
         name = "server3dsk"
         size = 5
@@ -65,31 +56,26 @@ locals {
 
   clients = [
     {
-      name        = "client1"
-      node        = 29
-      cpu         = 2
-      memory      = 1024
-      publicip    = false
-      publicip6   = false
-      planetary   = true
-      mount_point = "/mnt"
+      name   = "client1"
+      node   = 29
+      cpu    = 2
+      memory = 1024
       disk = {
         name = "client1dsk"
-        size = 5
       }
     },
   ]
 }
 
 output "server1_ip" {
-  value = module.nomad.server1.vms[0].ygg_ip
+  value = module.nomad.servers[0].vms[0].ygg_ip
 }
 output "server2_ip" {
-  value = module.nomad.servers.vm[0].vms[0].ygg_ip
+  value = module.nomad.servers[1].vms[0].ygg_ip
 }
 output "server3_ip" {
-  value = module.nomad.servers.vm[0].vms[1].ygg_ip
+  value = module.nomad.servers[2].vms[0].ygg_ip
 }
 output "client1_ip" {
-  value = module.nomad.clients.vm[0].vms[0].ygg_ip
+  value = module.nomad.clients[0].vms[0].ygg_ip
 }
