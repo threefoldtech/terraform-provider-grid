@@ -12,7 +12,7 @@ locals {
   first_server_ip = "10.1.2.2"
 
   network = {
-    nodes       = [29, 27]
+    nodes       = [13, 27]
     ip_range    = "10.1.0.0/16"
     name        = "nomadtest"
     description = "new network for nomad"
@@ -21,9 +21,10 @@ locals {
   servers = [
     {
       name        = "server1"
-      node        = 29
+      node        = 13 
       cpu         = 2
       memory      = 1024
+      rootfs_size = 1024
       mount_point = "/mnt"
       disk = {
         name = "server1dsk"
@@ -35,6 +36,7 @@ locals {
       node        = 27
       cpu         = 2
       memory      = 1024
+      rootfs_size = 1024
       planetary   = true
       mount_point = "/mnt"
       disk = {
@@ -44,9 +46,10 @@ locals {
     },
     {
       name   = "server3"
-      node   = 29
+      node   = 13
       cpu    = 2
       memory = 1024
+      rootfs_size = 1024
       disk = {
         name = "server3dsk"
         size = 5
@@ -57,9 +60,10 @@ locals {
   clients = [
     {
       name   = "client1"
-      node   = 29
+      node   = 13 
       cpu    = 2
       memory = 1024
+      rootfs_size = 1024
       disk = {
         name = "client1dsk"
       }
@@ -68,14 +72,14 @@ locals {
 }
 
 output "server1_ip" {
-  value = module.nomad.servers[0].vms[0].ygg_ip
+  value = module.nomad.servers[0].vms[0].ip
 }
 output "server2_ip" {
-  value = module.nomad.servers[1].vms[0].ygg_ip
+  value = module.nomad.servers[1].vms[0].ip
 }
 output "server3_ip" {
-  value = module.nomad.servers[2].vms[0].ygg_ip
+  value = module.nomad.servers[2].vms[0].ip
 }
 output "client1_ip" {
-  value = module.nomad.clients[0].vms[0].ygg_ip
+  value = module.nomad.clients[0].vms[0].ip
 }

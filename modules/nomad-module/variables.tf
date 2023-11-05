@@ -21,6 +21,7 @@ variable "servers" {
     node        = number
     cpu         = optional(number, 2)
     memory      = optional(number, 1024)
+    rootfs_size = optional(number, 51200)
     mount_point = optional(string, "/mnt")
     publicip    = optional(bool, false)
     publicip6   = optional(bool, false)
@@ -38,6 +39,7 @@ variable "clients" {
     node        = number
     cpu         = optional(number, 2)
     memory      = optional(number, 1024)
+    rootfs_size = optional(number, 51200)
     mount_point = optional(string, "/mnt")
     publicip    = optional(bool, false)
     publicip6   = optional(bool, false)

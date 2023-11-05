@@ -14,9 +14,9 @@ locals {
 }
 
 resource "grid_network" "net" {
+  name        = var.network.name
   nodes       = var.network.nodes
   ip_range    = var.network.ip_range
-  name        = var.network.name
   description = var.network.description
 }
 
@@ -27,15 +27,16 @@ resource "grid_deployment" "servers" {
   network_name = grid_network.net.name
 
   vms {
-    name       = each.value.name
-    flist      = local.server_flist
-    cpu        = each.value.cpu
-    memory     = each.value.memory
-    ip         = each.key == "0" ? var.first_server_ip : null
-    publicip   = each.value.publicip
-    publicip6  = each.value.publicip6
-    planetary  = each.value.planetary
-    entrypoint = local.entrypoint
+    name        = each.value.name
+    flist       = local.server_flist
+    cpu         = each.value.cpu
+    memory      = each.value.memory
+    rootfs_size = each.value.rootfs_size
+    ip          = each.key == "0" ? var.first_server_ip : null
+    publicip    = each.value.publicip
+    publicip6   = each.value.publicip6
+    planetary   = each.value.planetary
+    entrypoint  = local.entrypoint
     mounts {
       disk_name   = each.value.disk.name
       mount_point = each.value.mount_point
@@ -60,14 +61,15 @@ resource "grid_deployment" "clients" {
   network_name = grid_network.net.name
 
   vms {
-    name       = each.value.name
-    flist      = local.client_flist
-    cpu        = each.value.cpu
-    memory     = each.value.memory
-    publicip   = each.value.publicip
-    publicip6  = each.value.publicip6
-    planetary  = each.value.planetary
-    entrypoint = local.entrypoint
+    name        = each.value.name
+    flist       = local.client_flist
+    cpu         = each.value.cpu
+    memory      = each.value.memory
+    rootfs_size = each.value.rootfs_size
+    publicip    = each.value.publicip
+    publicip6   = each.value.publicip6
+    planetary   = each.value.planetary
+    entrypoint  = local.entrypoint
     mounts {
       disk_name   = each.value.disk.name
       mount_point = each.value.mount_point
