@@ -33,7 +33,7 @@ locals {
     },
     {
       name        = "server2"
-      node        = 27
+      node        = 13
       cpu         = 2
       memory      = 1024
       rootfs_size = 1024
@@ -60,7 +60,7 @@ locals {
   clients = [
     {
       name   = "client1"
-      node   = 13 
+      node   = 27 
       cpu    = 2
       memory = 1024
       rootfs_size = 1024
@@ -72,14 +72,14 @@ locals {
 }
 
 output "server1_ip" {
-  value = module.nomad.servers[0].vms[0].ip
+  value = module.nomad.servers.vm[0].vms[0].ip
 }
 output "server2_ip" {
-  value = module.nomad.servers[1].vms[0].ip
+  value = module.nomad.servers.vm[0].vms[1].ip
 }
 output "server3_ip" {
-  value = module.nomad.servers[2].vms[0].ip
+  value = module.nomad.servers.vm[0].vms[2].ip
 }
 output "client1_ip" {
-  value = module.nomad.clients[0].vms[0].ip
+  value = module.nomad.clients.vm[0].vms[0].ip
 }

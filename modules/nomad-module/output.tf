@@ -1,7 +1,7 @@
 output "servers" {
-  value = grid_deployment.servers
+  value = { for s in grid_deployment.servers : s.name => s... }
 }
 
 output "clients" {
-  value = grid_deployment.clients
+  value = { for c in grid_deployment.clients: c.name => c... }
 }

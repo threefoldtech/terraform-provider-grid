@@ -21,67 +21,77 @@ resource "grid_network" "net" {
 }
 
 resource "grid_deployment" "servers" {
-  for_each     = { for i, s in var.servers : i => s }
-  node         = each.value.node
-  name         = each.value.name
+  for_each     = { for s in var.servers : s.node => s... }
+  node         = each.key
   network_name = grid_network.net.name
 
-  vms {
-    name        = each.value.name
-    flist       = local.server_flist
-    cpu         = each.value.cpu
-    memory      = each.value.memory
-    rootfs_size = each.value.rootfs_size
-    ip          = each.key == "0" ? var.first_server_ip : null
-    publicip    = each.value.publicip
-    publicip6   = each.value.publicip6
-    planetary   = each.value.planetary
-    entrypoint  = local.entrypoint
-    mounts {
-      disk_name   = each.value.disk.name
-      mount_point = each.value.mount_point
-    }
-    env_vars = {
-      SSH_KEY         = var.ssh_key
-      NOMAD_SERVERS   = local.servers_count
-      FIRST_SERVER_IP = each.key != "0" ? var.first_server_ip : null
+  dynamic "vms" {
+    for_each = each.value
+    content {
+      name        = vms.value.name
+      flist       = local.client_flist
+      cpu         = vms.value.cpu
+      ip          = vms.value == var.servers[0] ? var.first_server_ip : null
+      memory      = vms.value.memory
+      rootfs_size = vms.value.rootfs_size
+      publicip    = vms.value.publicip
+      publicip6   = vms.value.publicip6
+      planetary   = vms.value.planetary
+      entrypoint  = local.entrypoint
+      mounts {
+        disk_name   = vms.value.disk.name
+          mount_point = vms.value.mount_point
+      }
+      env_vars = {
+        SSH_KEY         = var.ssh_key
+        NOMAD_SERVERS   = local.servers_count
+        FIRST_SERVER_IP = vms.value != var.servers[0] ? var.first_server_ip : null
+      }
     }
   }
 
-  disks {
-    name = each.value.disk.name
-    size = each.value.disk.size
+  dynamic "disks" {
+    for_each = each.value
+    content {
+      name = disks.value.disk.name
+      size = disks.value.disk.size
+    }
   }
 }
 
 resource "grid_deployment" "clients" {
-  for_each     = { for i, c in var.clients : i => c }
-  node         = each.value.node
-  name         = each.value.name
+  for_each     = { for c in var.clients : c.node => c... }
+  node         = each.key
   network_name = grid_network.net.name
 
-  vms {
-    name        = each.value.name
-    flist       = local.client_flist
-    cpu         = each.value.cpu
-    memory      = each.value.memory
-    rootfs_size = each.value.rootfs_size
-    publicip    = each.value.publicip
-    publicip6   = each.value.publicip6
-    planetary   = each.value.planetary
-    entrypoint  = local.entrypoint
-    mounts {
-      disk_name   = each.value.disk.name
-      mount_point = each.value.mount_point
-    }
-    env_vars = {
-      SSH_KEY         = var.ssh_key
-      FIRST_SERVER_IP = var.first_server_ip
+  dynamic "vms" {
+    for_each = each.value
+    content {
+      name        = vms.value.name
+      flist       = local.client_flist
+      cpu         = vms.value.cpu
+      memory      = vms.value.memory
+      rootfs_size = vms.value.rootfs_size
+      publicip    = vms.value.publicip
+      publicip6   = vms.value.publicip6
+      planetary   = vms.value.planetary
+      entrypoint  = local.entrypoint
+      mounts {
+        disk_name   = vms.value.disk.name
+          mount_point = vms.value.mount_point
+      }
+      env_vars = {
+        SSH_KEY         = var.ssh_key
+        FIRST_SERVER_IP = var.first_server_ip
+      }
     }
   }
 
-  disks {
-    name = each.value.disk.name
-    size = each.value.disk.size
+  dynamic "disks" {
+    for_each = each.value
+    content {
+      name = disks.value.disk.name
+      size = disks.value.disk.size
+    }
   }
 }
