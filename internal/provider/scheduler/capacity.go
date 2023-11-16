@@ -25,6 +25,6 @@ func freeCapacity(node *proxyTypes.Node) Capacity {
 	res.MRU = uint64(node.TotalResources.MRU) - uint64(node.UsedResources.MRU)
 	res.HRU = uint64(node.TotalResources.HRU) - uint64(node.UsedResources.HRU)
 	res.SRU = uint64(node.TotalResources.SRU) - uint64(node.UsedResources.SRU)
-	res.CRU = uint64(node.TotalResources.CRU) - uint64(node.UsedResources.CRU)
+	res.CRU = node.TotalResources.CRU - node.UsedResources.CRU
 	return res
 }

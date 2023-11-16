@@ -1,5 +1,3 @@
-GOPATH=$(shell go env GOPATH)
-
 DIRS := . $(shell find integrationtests examples -type d)
 GARBAGE_PATTERNS := terraform.tfstate.backup terraform.tfstate .terraform.lock.hcl state.json .terraform
 GARBAGE := $(foreach DIR,$(DIRS),$(addprefix $(DIR)/,$(GARBAGE_PATTERNS)))
@@ -8,7 +6,6 @@ default: build-dev
 
 # Run acceptance tests
 .PHONY: testacc build docs
-
 
 build-dev:
 	go get
@@ -34,39 +31,9 @@ tests: unittests integrationtests
 clean:
 	rm -rf $(GARBAGE)
 
-getverifiers:
-	@echo "Installing staticcheck" && go get -u honnef.co/go/tools/cmd/staticcheck && go install honnef.co/go/tools/cmd/staticcheck
-	@echo "Installing gocyclo" && go get -u github.com/fzipp/gocyclo/cmd/gocyclo && go install github.com/fzipp/gocyclo/cmd/gocyclo
-	@echo "Installing deadcode" && go get -u github.com/remyoudompheng/go-misc/deadcode && go install github.com/remyoudompheng/go-misc/deadcode
-	@echo "Installing misspell" && go get -u github.com/client9/misspell/cmd/misspell && go install github.com/client9/misspell/cmd/misspell
-	@echo "Installing golangci-lint" && go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.45
-
-verifiers: fmt lint cyclo deadcode spelling staticcheck
-
-checks: verifiers
-
-fmt:
-	@echo "Running $@"
-	@gofmt -d .
-	@terraform fmt -recursive
-
 lint:
 	@echo "Running $@"
-	@${GOPATH}/bin/golangci-lint run
+	golangci-lint run -c .golangci.yml --timeout 10m --skip-dirs=integrationtests
 
-cyclo:
-	@echo "Running $@"
-	@${GOPATH}/bin/gocyclo -over 100 .
-
-deadcode:
-	@echo "Running $@"
-	@${GOPATH}/bin/deadcode -test $(shell go list ./...) || true
-
-spelling:
-	@echo "Running $@"
-	@${GOPATH}/bin/misspell -i monitord -error `find .`
-
-staticcheck:
-	@echo "Running $@"
-	@${GOPATH}/bin/staticcheck -- ./...
-
+get_linter:
+	@echo "Installing golangci-lint" && go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.45

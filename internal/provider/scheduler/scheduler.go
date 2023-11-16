@@ -65,12 +65,12 @@ func NewScheduler(gridProxyClient proxy.Client, twinID uint64, rmbClient rmb.Cli
 	}
 }
 
-func (n *Scheduler) getFarmInfo(farmID uint32) (farmInfo, error) {
+func (n *Scheduler) getFarmInfo(ctx context.Context, farmID uint32) (farmInfo, error) {
 	if f, ok := n.farms[farmID]; ok {
 		return f, nil
 	}
 	id := uint64(farmID)
-	farm, _, err := n.gridProxyClient.Farms(proxyTypes.FarmFilter{
+	farm, _, err := n.gridProxyClient.Farms(ctx, proxyTypes.FarmFilter{
 		FarmID: &id,
 	}, proxyTypes.Limit{
 		Size: 1,
@@ -101,14 +101,14 @@ func getPublicIPsCount(publicIPs []proxyTypes.PublicIP) uint64 {
 	return uint64(freeIPs)
 }
 
-func (n *Scheduler) getNode(r *Request) uint32 {
+func (n *Scheduler) getNode(ctx context.Context, r *Request) uint32 {
 	nodes := make([]uint32, 0, len(n.nodes))
 	for node := range n.nodes {
 		nodes = append(nodes, node)
 	}
 	rand.Shuffle(len(nodes), func(i, j int) { nodes[i], nodes[j] = nodes[j], nodes[i] })
 	for _, node := range nodes {
-		farm, err := n.getFarmInfo(r.FarmId)
+		farm, err := n.getFarmInfo(ctx, r.FarmId)
 		if err != nil {
 			continue
 		}
@@ -140,10 +140,10 @@ func (n *Scheduler) Schedule(ctx context.Context, r *Request) (uint32, error) {
 			return n.farmerBotSchedule(ctx, r)
 		}
 	}
-	return n.gridProxySchedule(r)
+	return n.gridProxySchedule(ctx, r)
 }
 
-func (n *Scheduler) gridProxySchedule(r *Request) (uint32, error) {
+func (n *Scheduler) gridProxySchedule(ctx context.Context, r *Request) (uint32, error) {
 	f := r.constructFilter(n.twinID)
 	l := proxyTypes.Limit{
 		Size:     10,
@@ -151,9 +151,9 @@ func (n *Scheduler) gridProxySchedule(r *Request) (uint32, error) {
 		RetCount: false,
 	}
 
-	node := n.getNode(r)
+	node := n.getNode(ctx, r)
 	for node == 0 {
-		nodes, _, err := n.gridProxyClient.Nodes(f, l)
+		nodes, _, err := n.gridProxyClient.Nodes(ctx, f, l)
 		if err != nil {
 			return 0, errors.Wrap(err, "couldn't list nodes from the grid proxy")
 		}
@@ -161,7 +161,7 @@ func (n *Scheduler) gridProxySchedule(r *Request) (uint32, error) {
 			return 0, errors.New("couldn't find a node satisfying the given requirements")
 		}
 		n.addNodes(nodes)
-		node = n.getNode(r)
+		node = n.getNode(ctx, r)
 		if l.Page == 1 && l.Size == 10 {
 			l.Page = 2
 		} else {
