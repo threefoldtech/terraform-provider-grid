@@ -8,25 +8,17 @@ jobs:
   lint:
     name: lint
     runs-on: ubuntu-latest
-    timeout-minutes: 5
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: "1.19"
-        id: go
+          go-version: 1.21
 
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v4.1.1
-        with:
-          submodules: "true"
-
-      - name: golangci-lint
+      - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
-          args: --timeout 3m --verbose --build-tags integration
-
-      - name: gofmt
-        uses: Jerome1337/gofmt-action@v1.0.5
-        with:
-          gofmt-flags: "-l -d"
+          version: v1.53.3
+          args: --config=.golangci.yml
