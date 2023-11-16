@@ -33,7 +33,7 @@ clean:
 
 lint:
 	@echo "Running $@"
-	golangci-lint run -c .golangci.yml --timeout 10m --skip-dirs=integrationtests
+	golangci-lint run -c .golangci.yml --timeout 10m
 
 get_linter:
 	@echo "Installing golangci-lint" && go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.45

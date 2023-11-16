@@ -11,3 +11,5 @@ linters:
   enable-all: false
 run:
   timeout: 20m
+  skip-dirs:
+    - integrationtests
