@@ -44,11 +44,10 @@ jobs:
           gpg --export 569130E8CA20FBC4CB3FDE555898470A764B32C9 | sudo apt-key add -
           echo 'deb http://neilalexander.s3.dualstack.eu-west-2.amazonaws.com/deb/ debian yggdrasil' | sudo tee /etc/apt/sources.list.d/yggdrasil.list
           sudo apt-get update
-          wget https://github.com/yggdrasil-network/yggdrasil-go/releases/download/v0.4.7/yggdrasil-0.4.7-amd64.deb
-          sudo dpkg -i yggdrasil-0.4.7-amd64.deb
+          sudo apt-get install yggdrasil
           sudo systemctl enable yggdrasil
           PEERS=$(curl https://raw.githubusercontent.com/threefoldtech/zos-config/main/development.json | jq '.yggdrasil.peers[]' -r | sed 's/\//\\\//g' | sed -z 's/\n/\\n/g')
-          sudo  sed -i -- 's/Peers\: \[\]/Peers: [\n'"$PEERS"']/g' /etc/yggdrasil.conf
+          sudo  sed -i -- 's/Peers\: \[\]/Peers: [\n'"$PEERS"']/g' /etc/yggdrasil/yggdrasil.conf
           sudo systemctl start yggdrasil
       - uses: actions/checkout@v4.1.1
         with:
