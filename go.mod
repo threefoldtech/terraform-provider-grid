@@ -11,10 +11,10 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.4
 	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.11.7
-	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.11.7
+	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.11.8
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.11.7
 	github.com/threefoldtech/zos v0.5.6-0.20231029102142-baf8d9ee77fe
-	golang.org/x/crypto v0.15.0
+	golang.org/x/crypto v0.16.0
 	golang.org/x/sync v0.5.0
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20210803171230-4253848d036c
 )
@@ -23,7 +23,8 @@ require (
 	github.com/ProtonMail/go-crypto v0.0.0-20230828082145-3c4c8a2d2371 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/cloudflare/circl v1.3.3 // indirect
-	github.com/holiman/uint256 v1.2.2-0.20230321075855-87b91420868c // indirect
+	github.com/gorilla/schema v1.2.0 // indirect
+	github.com/holiman/uint256 v1.2.3 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230525234035-dd9d682886f9 // indirect
@@ -49,7 +50,7 @@ require (
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.12 // indirect
 	github.com/cosmos/go-bip39 v1.0.0 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
 	github.com/decred/base58 v1.0.5 // indirect
 	github.com/decred/dcrd/crypto/blake256 v1.0.1 // indirect
@@ -110,14 +111,14 @@ require (
 	github.com/onsi/gomega v1.25.0 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/pierrec/xxHash v0.1.5 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/posener/complete v1.2.3 // indirect
-	github.com/rs/cors v1.9.0 // indirect
+	github.com/rs/cors v1.10.1 // indirect
 	github.com/rs/zerolog v1.31.0 // indirect
 	github.com/russross/blackfriday v1.6.0 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
-	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20231017113908-9d56a805ead0 // indirect
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20231129121046-56ffc1f8f5c6 // indirect
 	github.com/tmccombs/hcl2json v0.3.3 // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/ulikunitz/xz v0.5.10 // indirect
@@ -125,11 +126,11 @@ require (
 	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
 	github.com/zclconf/go-cty v1.14.1 // indirect
 	go.opencensus.io v0.24.0 // indirect
-	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63 // indirect
+	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
 	golang.org/x/mod v0.13.0 // indirect
-	golang.org/x/net v0.17.0 // indirect
+	golang.org/x/net v0.18.0 // indirect
 	golang.org/x/oauth2 v0.7.0 // indirect
-	golang.org/x/sys v0.14.0 // indirect
+	golang.org/x/sys v0.15.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/api v0.114.0 // indirect
