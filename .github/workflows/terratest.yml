@@ -26,7 +26,7 @@ jobs:
           - describe: "git describe v1.8.2"
             network: "main"
     steps:
-      - uses: actions/setup-go@v4
+      - uses: actions/setup-go@v5
         with:
           go-version: 1.21
       - uses: autero1/action-terraform@v1.1.1
