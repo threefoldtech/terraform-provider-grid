@@ -1,6 +1,7 @@
 package integrationtests
 
 import (
+	"context"
 	"os"
 	"strings"
 	"testing"
@@ -144,7 +145,7 @@ func TestK8s(t *testing.T) {
 			Page: 1,
 			Size: 3,
 		}
-		res, _, err := cl.Nodes(f, l)
+		res, _, err := cl.Nodes(context.Background(), f, l)
 		if err != nil || len(res) != 3 {
 			t.Fatal("gridproxy could not find nodes with suitable resources")
 		}
