@@ -11,8 +11,8 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.4
 	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.11.9
-	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.11.8
-	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.11.8
+	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.11.9
+	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.11.9
 	github.com/threefoldtech/zos v0.5.6-0.20231029102142-baf8d9ee77fe
 	golang.org/x/crypto v0.16.0
 	golang.org/x/sync v0.5.0
