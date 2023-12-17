@@ -20,6 +20,7 @@ locals {
   worker_disk_size =2
   worker_memory=2048
 }
+
 resource "grid_scheduler" "sched" {
   requests {
     name = "node1"
@@ -68,7 +69,7 @@ resource "grid_kubernetes" "k8s1" {
 }
 
 
-output "ygg_ip" {
+output "mr_ygg_ip" {
   value = grid_kubernetes.k8s1.master[0].ygg_ip
 }
 
