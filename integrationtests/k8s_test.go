@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
@@ -77,6 +78,8 @@ func TestK8s(t *testing.T) {
 
 		ok = TestConnection(workerIP, "22")
 		assert.True(t, ok)
+
+		time.Sleep(5 * time.Second)
 
 		// ssh to master node
 		AssertNodesAreReady(t, terraformOptions, privateKey)
