@@ -22,6 +22,7 @@ resource "grid_scheduler" "scheduler" {
     sru              = 512
     mru              = 1024
     public_config    = true
+    farm_id          = 1
     public_ips_count = 1
   }
 }

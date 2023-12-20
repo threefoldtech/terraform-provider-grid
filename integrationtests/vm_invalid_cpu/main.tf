@@ -12,9 +12,9 @@ terraform {
 }
 
 locals {
-  name = "testvm"
-  vm_disk_size=2
-  vm_memory=2048
+  name         = "testvm"
+  vm_disk_size = 2
+  vm_memory    = 2048
 }
 
 provider "grid" {
@@ -22,10 +22,11 @@ provider "grid" {
 
 resource "grid_scheduler" "scheduler" {
   requests {
-    name = "node1"
-    cru  = 0
-    sru  = local.vm_disk_size*1024
-    mru  = local.vm_memory
+    name    = "node1"
+    cru     = 0
+    sru     = local.vm_disk_size * 1024
+    mru     = local.vm_memory
+    farm_id = 1
   }
 }
 

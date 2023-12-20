@@ -34,7 +34,9 @@ func TestVM(t *testing.T) {
 		defer terraform.Destroy(t, terraformOptions)
 
 		_, err = terraform.InitAndApplyE(t, terraformOptions)
-		assert.NoError(t, err)
+		if !(assert.NoError(t, err)) {
+			return
+		}
 
 		yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
 		assert.NotEmpty(t, yggIP)
@@ -66,7 +68,9 @@ func TestVM(t *testing.T) {
 		defer terraform.Destroy(t, terraformOptions)
 
 		_, err = terraform.InitAndApplyE(t, terraformOptions)
-		assert.NoError(t, err)
+		if !(assert.NoError(t, err)) {
+			return
+		}
 
 		vmComputedIP := terraform.Output(t, terraformOptions, "vm_public_ip")
 		assert.NotEmpty(t, vmComputedIP)
@@ -74,13 +78,12 @@ func TestVM(t *testing.T) {
 		vmIP := terraform.Output(t, terraformOptions, "vm_ip")
 		assert.NotEmpty(t, vmIP)
 
-		//spliting ip to connect on it
+		// spliting ip to connect on it
 		publicIP := strings.Split(vmComputedIP, "/")[0]
 
-		//testing connections
+		// testing connections
 		ok := TestConnection(publicIP, "22")
 		assert.True(t, ok)
-
 	})
 
 	t.Run("vm_invalid_cpu", func(t *testing.T) {
@@ -103,9 +106,7 @@ func TestVM(t *testing.T) {
 
 		_, err = terraform.InitAndApplyE(t, terraformOptions)
 
-		if err == nil {
-			t.Errorf("Should fail with can't deploy with 0 cpu but err is null")
-		}
+		assert.Error(t, err, "Should fail with can't deploy with 0 cpu but err is null")
 	})
 
 	t.Run("vm_invalid_memory", func(t *testing.T) {
@@ -128,7 +129,6 @@ func TestVM(t *testing.T) {
 
 		_, err = terraform.InitAndApplyE(t, terraformOptions)
 		assert.Error(t, err, "Should fail with mem capacity can't be less that 250M but err is null")
-
 	})
 	t.Run("vm_mounts", func(t *testing.T) {
 		/* Test case for deployeng a disk and mount it.
@@ -157,7 +157,9 @@ func TestVM(t *testing.T) {
 		defer terraform.Destroy(t, terraformOptions)
 
 		_, err = terraform.InitAndApplyE(t, terraformOptions)
-		assert.NoError(t, err)
+		if !(assert.NoError(t, err)) {
+			return
+		}
 
 		// Check that the outputs not empty
 		yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
@@ -196,7 +198,9 @@ func TestVM(t *testing.T) {
 		defer terraform.Destroy(t, terraformOptions)
 
 		_, err = terraform.InitAndApplyE(t, terraformOptions)
-		assert.NoError(t, err)
+		if !(assert.NoError(t, err)) {
+			return
+		}
 
 		yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
 		assert.NotEmpty(t, yggIP)
@@ -226,7 +230,9 @@ func TestVM(t *testing.T) {
 		defer terraform.Destroy(t, terraformOptions)
 
 		_, err = terraform.InitAndApplyE(t, terraformOptions)
-		assert.NoError(t, err)
+		if !(assert.NoError(t, err)) {
+			return
+		}
 
 		// Check that the outputs not empty
 		vm1IP := terraform.Output(t, terraformOptions, "vm1_ip")
@@ -241,7 +247,7 @@ func TestVM(t *testing.T) {
 		vm2YggIP := terraform.Output(t, terraformOptions, "vm2_ygg_ip")
 		assert.NotEmpty(t, vm2YggIP)
 
-		//testing connections
+		// testing connections
 		ok := TestConnection(vm1YggIP, "22")
 		assert.True(t, ok)
 
