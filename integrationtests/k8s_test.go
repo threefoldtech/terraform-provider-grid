@@ -79,7 +79,7 @@ func TestK8s(t *testing.T) {
 		ok = TestConnection(workerIP, "22")
 		assert.True(t, ok)
 
-		time.Sleep(5 * time.Second)
+		time.Sleep(10 * time.Second)
 
 		// ssh to master node
 		AssertNodesAreReady(t, terraformOptions, privateKey)
