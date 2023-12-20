@@ -68,6 +68,10 @@ func TestVM(t *testing.T) {
 		defer terraform.Destroy(t, terraformOptions)
 
 		_, err = terraform.InitAndApplyE(t, terraformOptions)
+		if err != nil && strings.Contains(err.Error(), "couldn't find a node") {
+			t.Skip("couldn't find any nodes with public ip")
+			return
+		}
 		if !(assert.NoError(t, err)) {
 			return
 		}
