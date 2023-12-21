@@ -94,7 +94,8 @@ export NETWORK="network" # dev, qa, test, main
 ## Known Issues
 
 - [increasing IPs in active deployment](https://github.com/threefoldtech/terraform-provider-grid/issues/15)
-
+- [same private ips for parallel deployments](https://github.com/threefoldtech/terraform-provider-grid/issues/781#issuecomment-1865961184)
+  
 ## Latest Releases
 
 - Releasing for each environment is done using the methods in this [Wiki](wiki/release.md#releasing-for-each-environment)
