@@ -12,6 +12,8 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
 )
 
+var noNodesFoundErr = errors.New("couldn't find a node satisfying the given requirements")
+
 // Scheduler struct for scheduling
 type Scheduler struct {
 	nodes           map[uint32]nodeInfo
@@ -157,7 +159,7 @@ func (n *Scheduler) gridProxySchedule(ctx context.Context, r *Request) (uint32, 
 			return 0, errors.Wrap(err, "couldn't list nodes from the grid proxy")
 		}
 		if len(nodes) == 0 {
-			return 0, errors.New("couldn't find a node satisfying the given requirements")
+			return 0, noNodesFoundErr
 		}
 		n.addNodes(nodes)
 		node = n.getNode(ctx, r)
