@@ -63,6 +63,6 @@ locals {
   }
 }
 
-output "master_yggip" {
+output "mr_ygg_ip" {
   value = module.kubernetes.master.ygg_ip
 }
