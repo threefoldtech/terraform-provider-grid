@@ -154,7 +154,7 @@ func TestK8s(t *testing.T) {
 
 		masterNode := nodes[0].NodeID
 		worker0Node := nodes[1].NodeID
-		worker1Node := nodes[2].NodeID
+		// worker1Node := nodes[2].NodeID
 
 		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 			TerraformDir: "./k8s_using_module",
