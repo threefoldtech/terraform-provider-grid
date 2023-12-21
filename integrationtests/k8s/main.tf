@@ -16,23 +16,26 @@ provider "grid" {
 }
 locals {
   master_disk_size = 2
-  master_memory=2048
-  worker_disk_size =2
-  worker_memory=2048
+  master_memory    = 2048
+  worker_disk_size = 2
+  worker_memory    = 2048
 }
+
 resource "grid_scheduler" "sched" {
   requests {
-    name = "node1"
-    cru  = 2
-    sru  = local.master_disk_size*1024
-    mru  = local.master_memory
+    name    = "node1"
+    cru     = 2
+    sru     = local.master_disk_size * 1024
+    mru     = local.master_memory
+    farm_id = 1
   }
 
   requests {
-    name = "node2"
-    cru  = 2
-    sru  = local.worker_disk_size*1024
-    mru  = local.worker_memory
+    name    = "node2"
+    cru     = 2
+    sru     = local.worker_disk_size * 1024
+    mru     = local.worker_memory
+    farm_id = 1
   }
 }
 
@@ -68,7 +71,7 @@ resource "grid_kubernetes" "k8s1" {
 }
 
 
-output "ygg_ip" {
+output "mr_ygg_ip" {
   value = grid_kubernetes.k8s1.master[0].ygg_ip
 }
 

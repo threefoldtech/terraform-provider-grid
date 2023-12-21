@@ -29,7 +29,7 @@ func UpWg(wgConfig, wgConfDir string) (string, error) {
 
 	_, err = exec.Command("wg-quick", "up", f.Name()).Output()
 	if err != nil {
-		return "", errors.Wrapf(err, "could not excute wg-quick up with"+f.Name())
+		return "", errors.Wrapf(err, "could not execute wg-quick up with"+f.Name())
 	}
 
 	return f.Name(), nil
@@ -37,11 +37,11 @@ func UpWg(wgConfig, wgConfDir string) (string, error) {
 }
 
 // DownWG used for tearing down the wireguard interface
-func DownWG(wgConfDir string) (string, error) {
-	cmd := exec.Command("wg-quick", "down", path.Join(wgConfDir, "test.conf"))
+func DownWG(wgConfPath string) (string, error) {
+	cmd := exec.Command("wg-quick", "down", wgConfPath)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", errors.Wrapf(err, "could not excute wg-quick down with output %s", out)
+		return "", errors.Wrapf(err, "could not execute wg-quick down with output %s", out)
 	}
 	return string(out), nil
 }

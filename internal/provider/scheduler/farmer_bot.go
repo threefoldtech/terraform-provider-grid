@@ -62,7 +62,7 @@ func (s *Scheduler) hasFarmerBot(ctx context.Context, farmID uint32) bool {
 	params := []Params{}
 	data := buildFarmerBotAction(farmID, uint32(s.twinID), args, params, FarmerBotVersionAction)
 
-	info, err := s.getFarmInfo(farmID)
+	info, err := s.getFarmInfo(ctx, farmID)
 	if err != nil {
 		return false
 	}
@@ -79,7 +79,7 @@ func (s *Scheduler) hasFarmerBot(ctx context.Context, farmID uint32) bool {
 }
 
 func (n *Scheduler) farmerBotSchedule(ctx context.Context, r *Request) (uint32, error) {
-	info, err := n.getFarmInfo(r.FarmId)
+	info, err := n.getFarmInfo(ctx, r.FarmId)
 	if err != nil {
 		return 0, errors.Wrapf(err, "failed to get farm %d info", r.FarmId)
 	}

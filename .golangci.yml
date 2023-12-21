@@ -1,0 +1,15 @@
+linters:
+  enable:
+    - errcheck
+    - goconst
+    - gofmt
+    - govet
+    - ineffassign
+    - megacheck
+    - misspell
+    - unconvert
+  enable-all: false
+run:
+  timeout: 20m
+  skip-dirs:
+    - integrationtests

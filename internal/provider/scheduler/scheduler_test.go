@@ -47,7 +47,7 @@ func (m *GridProxyClientMock) Ping() error {
 	return nil
 }
 
-func (m *GridProxyClientMock) Nodes(filter proxyTypes.NodeFilter, pagination proxyTypes.Limit) (res []proxyTypes.Node, totalCount int, err error) {
+func (m *GridProxyClientMock) Nodes(ctx context.Context, filter proxyTypes.NodeFilter, pagination proxyTypes.Limit) (res []proxyTypes.Node, totalCount int, err error) {
 	start, end := (pagination.Page-1)*pagination.Size, pagination.Page*pagination.Size
 	if int(end) > len(m.nodes) {
 		end = uint64(len(m.nodes))
@@ -59,7 +59,7 @@ func (m *GridProxyClientMock) Nodes(filter proxyTypes.NodeFilter, pagination pro
 	return
 }
 
-func (m *GridProxyClientMock) Farms(filter proxyTypes.FarmFilter, pagination proxyTypes.Limit) (res []proxyTypes.Farm, totalCount int, err error) {
+func (m *GridProxyClientMock) Farms(ctx context.Context, filter proxyTypes.FarmFilter, pagination proxyTypes.Limit) (res []proxyTypes.Farm, totalCount int, err error) {
 	start, end := (pagination.Page-1)*pagination.Size, pagination.Page*pagination.Size
 	if int(end) > len(m.nodes) {
 		end = uint64(len(m.nodes))
@@ -71,7 +71,7 @@ func (m *GridProxyClientMock) Farms(filter proxyTypes.FarmFilter, pagination pro
 	return
 }
 
-func (m *GridProxyClientMock) Node(nodeID uint32) (res proxyTypes.NodeWithNestedCapacity, err error) {
+func (m *GridProxyClientMock) Node(ctx context.Context, nodeID uint32) (res proxyTypes.NodeWithNestedCapacity, err error) {
 	for _, node := range m.nodes {
 		if uint32(node.NodeID) == nodeID {
 			res = proxyTypes.NodeWithNestedCapacity{
@@ -87,26 +87,31 @@ func (m *GridProxyClientMock) Node(nodeID uint32) (res proxyTypes.NodeWithNested
 	return
 }
 
-func (m *GridProxyClientMock) NodeStatus(nodeID uint32) (res proxyTypes.NodeStatus, err error) {
+func (m *GridProxyClientMock) NodeStatus(ctx context.Context, nodeID uint32) (res proxyTypes.NodeStatus, err error) {
 	return
 }
-
 func (m *GridProxyClientMock) AddFarm(farm proxyTypes.Farm) {
 	m.farms = append(m.farms, farm)
 }
-
 func (m *GridProxyClientMock) AddNode(id uint32, node proxyTypes.Node) {
 	m.nodes = append(m.nodes, node)
 }
-func (m *GridProxyClientMock) Contracts(filter proxyTypes.ContractFilter, pagination proxyTypes.Limit) (res []proxyTypes.Contract, totalCount int, err error) {
+func (m *GridProxyClientMock) Contracts(ctx context.Context, filter proxyTypes.ContractFilter, pagination proxyTypes.Limit) (res []proxyTypes.Contract, totalCount int, err error) {
 	return
 }
-func (m *GridProxyClientMock) Twins(filter proxyTypes.TwinFilter, pagination proxyTypes.Limit) (res []proxyTypes.Twin, totalCount int, err error) {
+func (m *GridProxyClientMock) Stats(ctx context.Context, filter proxyTypes.StatsFilter) (res proxyTypes.Stats, err error) {
 	return
 }
-func (m *GridProxyClientMock) Counters(filter proxyTypes.StatsFilter) (res proxyTypes.Counters, err error) {
+func (m *GridProxyClientMock) Twins(ctx context.Context, filter proxyTypes.TwinFilter, pagination proxyTypes.Limit) (res []proxyTypes.Twin, totalCount int, err error) {
 	return
 }
+func (m *GridProxyClientMock) Contract(ctx context.Context, contractID uint32) (res proxyTypes.Contract, err error) {
+	return
+}
+func (m *GridProxyClientMock) ContractBills(ctx context.Context, contractID uint32, limit proxyTypes.Limit) (res []proxyTypes.ContractBilling, count uint, err error) {
+	return
+}
+
 func TestSchedulerEmpty(t *testing.T) {
 	proxy := &GridProxyClientMock{}
 	rmbClient := &RMBClientMock{
