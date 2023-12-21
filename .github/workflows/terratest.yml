@@ -65,5 +65,4 @@ jobs:
           NETWORK: ${{ matrix.network }}
         working-directory: integrationtests
         # run: go test -v ./... --tags=integration -timeout 3600s
-        run: |
-          go test -v ./... -run TestWireguard --tags=integration -timeout 3600s
+        run: go test -v ./... -run TestK8s/k8s_using_module --tags=integration -timeout 3600s
