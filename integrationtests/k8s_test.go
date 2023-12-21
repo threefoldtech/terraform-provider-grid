@@ -20,6 +20,8 @@ func AssertNodesAreReady(t *testing.T, terraformOptions *terraform.Options, priv
 	masterYggIP := terraform.Output(t, terraformOptions, "mr_ygg_ip")
 	assert.NotEmpty(t, masterYggIP)
 
+	time.Sleep(10 * time.Second)
+
 	output, err := RemoteRun("root", masterYggIP, "export KUBECONFIG=/etc/rancher/k3s/k3s.yaml && kubectl get node", privateKey)
 	output = strings.TrimSpace(output)
 	assert.Empty(t, err)
@@ -78,8 +80,6 @@ func TestK8s(t *testing.T) {
 
 		ok = TestConnection(workerIP, "22")
 		assert.True(t, ok)
-
-		time.Sleep(10 * time.Second)
 
 		// ssh to master node
 		AssertNodesAreReady(t, terraformOptions, privateKey)
