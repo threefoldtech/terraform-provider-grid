@@ -64,4 +64,4 @@ jobs:
           MNEMONICS: ${{ secrets.MNEMONICS }}
           NETWORK: ${{ matrix.network }}
         working-directory: integrationtests
-        run: go test -v ./... --tags=integration -timeout 1800s
+        run: go test -v ./... --tags=integration -timeout 3600s

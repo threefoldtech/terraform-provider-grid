@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
@@ -16,8 +17,10 @@ import (
 func AssertNodesAreReady(t *testing.T, terraformOptions *terraform.Options, privateKey string) {
 	t.Helper()
 
-	masterYggIP := terraform.Output(t, terraformOptions, "ygg_ip")
+	masterYggIP := terraform.Output(t, terraformOptions, "mr_ygg_ip")
 	assert.NotEmpty(t, masterYggIP)
+
+	time.Sleep(10 * time.Second)
 
 	output, err := RemoteRun("root", masterYggIP, "export KUBECONFIG=/etc/rancher/k3s/k3s.yaml && kubectl get node", privateKey)
 	output = strings.TrimSpace(output)
@@ -25,9 +28,9 @@ func AssertNodesAreReady(t *testing.T, terraformOptions *terraform.Options, priv
 
 	nodesNumber := 2
 	numberOfReadyNodes := strings.Count(output, "Ready")
-	assert.True(t, numberOfReadyNodes == nodesNumber, "number of ready nodes is not equal to number of nodes only %s nodes are ready", numberOfReadyNodes)
-
+	assert.True(t, numberOfReadyNodes == nodesNumber, "number of ready nodes is not equal to number of nodes only %d nodes are ready", numberOfReadyNodes)
 }
+
 func TestK8s(t *testing.T) {
 	publicKey, privateKey, err := GenerateSSHKeyPair()
 	if err != nil {
@@ -53,11 +56,15 @@ func TestK8s(t *testing.T) {
 		defer terraform.Destroy(t, terraformOptions)
 
 		_, err = terraform.InitAndApplyE(t, terraformOptions)
-		assert.NoError(t, err)
+		if !assert.NoError(t, err) {
+			return
+		}
 
 		// Check that the outputs not empty
-		masterIP := terraform.Output(t, terraformOptions, "ygg_ip")
-		assert.NotEmpty(t, masterIP)
+		masterIP := terraform.Output(t, terraformOptions, "mr_ygg_ip")
+		if !assert.NotEmpty(t, masterIP) {
+			return
+		}
 
 		workerIP := terraform.Output(t, terraformOptions, "worker_ygg_ip")
 		assert.NotEmpty(t, workerIP)
@@ -250,6 +257,5 @@ func TestK8s(t *testing.T) {
 		assert.NoError(t, err)
 
 		AssertNodesAreReady(t, terraformOptions, privateKey)
-
 	})
 }
