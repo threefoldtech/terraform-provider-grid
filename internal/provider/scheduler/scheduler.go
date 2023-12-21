@@ -12,6 +12,9 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
 )
 
+// NoNodesFoundErr for empty nodes returned from scheduler
+var NoNodesFoundErr = errors.New("couldn't find a node satisfying the given requirements")
+
 // Scheduler struct for scheduling
 type Scheduler struct {
 	nodes           map[uint32]nodeInfo
@@ -108,12 +111,11 @@ func (n *Scheduler) getNode(ctx context.Context, r *Request) uint32 {
 	}
 	rand.Shuffle(len(nodes), func(i, j int) { nodes[i], nodes[j] = nodes[j], nodes[i] })
 	for _, node := range nodes {
-		farm, err := n.getFarmInfo(ctx, r.FarmId)
+		farm, err := n.getFarmInfo(ctx, uint32(n.nodes[node].Node.FarmID))
 		if err != nil {
 			continue
 		}
 		nodeInfo := n.nodes[node]
-		// TODO: later add free ips check when specifying the number of ips is supported
 		if nodeInfo.fulfils(r, farm) {
 			return node
 		}
@@ -158,7 +160,7 @@ func (n *Scheduler) gridProxySchedule(ctx context.Context, r *Request) (uint32, 
 			return 0, errors.Wrap(err, "couldn't list nodes from the grid proxy")
 		}
 		if len(nodes) == 0 {
-			return 0, errors.New("couldn't find a node satisfying the given requirements")
+			return 0, NoNodesFoundErr
 		}
 		n.addNodes(nodes)
 		node = n.getNode(ctx, r)
@@ -169,7 +171,7 @@ func (n *Scheduler) gridProxySchedule(ctx context.Context, r *Request) (uint32, 
 		}
 	}
 	n.nodes[node].FreeCapacity.consume(r)
-	n.consumePublicIPs(r.FarmId, r.PublicIpsCount)
+	n.consumePublicIPs(uint32(n.nodes[node].Node.FarmID), r.PublicIpsCount)
 	return node, nil
 }
 
