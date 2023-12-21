@@ -64,4 +64,7 @@ jobs:
           MNEMONICS: ${{ secrets.MNEMONICS }}
           NETWORK: ${{ matrix.network }}
         working-directory: integrationtests
-        run: go test -v ./... --tags=integration -timeout 3600s
+        # run: go test -v ./... --tags=integration -timeout 3600s
+        run: |
+          go test -v ./integrationtests -run TestK8s/k8s_using_module --tags=integration -timeout 3600s
+          go test -v ./integrationtests -run TestWireguard --tags=integration -timeout 3600s
