@@ -9,7 +9,7 @@ import (
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
-	gridproxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
@@ -110,7 +110,7 @@ func TestK8s(t *testing.T) {
 	})
 
 	t.Run("k8s_using_module", func(t *testing.T) {
-		t.Skip("https://github.com/threefoldtech/terraform-provider-grid/issues/770")
+		// t.Skip("https://github.com/threefoldtech/terraform-provider-grid/issues/770")
 		/* Test case for deployeng a singlenode.
 
 		   **Test Scenario**
@@ -122,22 +122,19 @@ func TestK8s(t *testing.T) {
 
 		*/
 
-		gridProxyURL := map[string]string{
-			"dev":  "https://gridproxy.dev.grid.tf/",
-			"test": "https://gridproxy.test.grid.tf/",
-			"qa":   "https://gridproxy.qa.grid.tf/",
-			"main": "https://gridproxy.grid.tf/",
+		mnemonics := os.Getenv("MNEMONICS")
+		if mnemonics == "" {
+			t.Fatal("invalid empty mnemonic")
 		}
+
 		network := os.Getenv("NETWORK")
 		if network == "" {
 			network = "dev"
 		}
-		url, ok := gridProxyURL[network]
-		if !ok {
-			t.Fatalf("invalid network name %s", network)
-		}
-		// girdproxy tries to find 3 different nodes with suitable resources for the cluster
-		cl := gridproxy.NewClient(url)
+
+		tfPlugin, err := deployer.NewTFPluginClient(mnemonics, "sr25519", network, "", "", "", 0, false)
+		assert.NoError(t, err)
+
 		status := "up"
 		freeMRU := uint64(1024)
 		freeSRU := uint64(2 * 1024)
@@ -148,18 +145,16 @@ func TestK8s(t *testing.T) {
 			FreeSRU:  &freeSRU,
 			TotalCRU: &freeCRU,
 		}
-		l := types.Limit{
-			Page: 1,
-			Size: 3,
-		}
-		res, _, err := cl.Nodes(context.Background(), f, l)
-		if err != nil || len(res) != 3 {
+
+		nodes, err := deployer.FilterNodes(context.Background(), tfPlugin, f, []uint64{freeSRU}, []uint64{}, []uint64{}, 3)
+		if err != nil || len(nodes) != 3 {
 			t.Fatal("gridproxy could not find nodes with suitable resources")
 		}
+		assert.NoError(t, err)
 
-		masterNode := res[0].NodeID
-		worker0Node := res[1].NodeID
-		worker1Node := res[2].NodeID
+		masterNode := nodes[0].NodeID
+		worker0Node := nodes[1].NodeID
+		worker1Node := nodes[2].NodeID
 
 		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 			TerraformDir: "./k8s_using_module",
