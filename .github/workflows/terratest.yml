@@ -7,6 +7,7 @@ on:
   push:
     tags:
       - "v*"
+
 jobs:
   go-tests:
     name: Run Go Tests
@@ -16,15 +17,6 @@ jobs:
       fail-fast: false
       matrix:
         network: ["dev", "qa", "test", "main"]
-        include: 
-          - describe: "git describe --match 'v[0-9]*.[0-9]*.[0-9]*-*'  --exclude='*-rc*' --exclude='*-qa*' --abbrev=0 HEAD"
-            network: "dev"
-          - describe: "git describe --match 'v[0-9]*.[0-9]*.[0-9]*-*'  --exclude='*-rc*' --exclude='*-dev*' --abbrev=0 HEAD"
-            network: "qa"
-          - describe: "git describe --match 'v[0-9]*.[0-9]*.[0-9]*-*'  --exclude='*-dev*' --exclude='*-qa*' --abbrev=0 HEAD"
-            network: "test"
-          - describe: "git describe v1.8.2"
-            network: "main"
     steps:
       - uses: actions/setup-go@v5
         with:
@@ -52,7 +44,6 @@ jobs:
       - uses: actions/checkout@v4.1.1
         with:
           fetch-depth: 0
-      # - run: git checkout $(${{ matrix.describe }})
       - name: Build
         run: |
           go mod tidy
@@ -64,5 +55,4 @@ jobs:
           MNEMONICS: ${{ secrets.MNEMONICS }}
           NETWORK: ${{ matrix.network }}
         working-directory: integrationtests
-        # run: go test -v ./... --tags=integration -timeout 3600s
-        run: go test -v ./... -run TestK8s/k8s_using_module --tags=integration -timeout 3600s
+        run: go test -v ./... --tags=integration -timeout 3600s

@@ -110,7 +110,7 @@ func TestK8s(t *testing.T) {
 	})
 
 	t.Run("k8s_using_module", func(t *testing.T) {
-		// t.Skip("https://github.com/threefoldtech/terraform-provider-grid/issues/770")
+		t.Skip("https://github.com/threefoldtech/terraform-provider-grid/issues/770")
 		/* Test case for deployeng a singlenode.
 
 		   **Test Scenario**
@@ -154,7 +154,7 @@ func TestK8s(t *testing.T) {
 
 		masterNode := nodes[0].NodeID
 		worker0Node := nodes[1].NodeID
-		// worker1Node := nodes[2].NodeID
+		worker1Node := nodes[2].NodeID
 
 		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 			TerraformDir: "./k8s_using_module",
@@ -206,51 +206,51 @@ func TestK8s(t *testing.T) {
 
 		AssertNodesAreReady(t, terraformOptions, privateKey)
 
-		// terraformOptions.Vars["workers"] = []map[string]interface{}{
-		// 	{
-		// 		"name":        "w0",
-		// 		"node":        worker0Node,
-		// 		"cpu":         1,
-		// 		"memory":      1024,
-		// 		"disk_name":   "w0disk",
-		// 		"mount_point": "/mydisk",
-		// 		"publicip":    false,
-		// 		"planetary":   true,
-		// 	},
-		// 	{
-		// 		"name":        "w1",
-		// 		"node":        worker1Node,
-		// 		"cpu":         1,
-		// 		"memory":      1024,
-		// 		"disk_name":   "w1disk",
-		// 		"mount_point": "/mydisk",
-		// 		"publicip":    false,
-		// 		"planetary":   true,
-		// 	},
-		// }
-		// terraformOptions.Vars["disks"] = []map[string]interface{}{
-		// 	{
-		// 		"name":        "mrdisk",
-		// 		"node":        masterNode,
-		// 		"size":        2,
-		// 		"description": "",
-		// 	},
-		// 	{
-		// 		"name":        "w0disk",
-		// 		"node":        worker0Node,
-		// 		"size":        2,
-		// 		"description": "",
-		// 	},
-		// 	{
-		// 		"name":        "w1disk",
-		// 		"node":        worker1Node,
-		// 		"size":        2,
-		// 		"description": "",
-		// 	},
-		// }
-		// _, err = terraform.ApplyE(t, terraformOptions)
-		// assert.NoError(t, err)
+		terraformOptions.Vars["workers"] = []map[string]interface{}{
+			{
+				"name":        "w0",
+				"node":        worker0Node,
+				"cpu":         1,
+				"memory":      1024,
+				"disk_name":   "w0disk",
+				"mount_point": "/mydisk",
+				"publicip":    false,
+				"planetary":   true,
+			},
+			{
+				"name":        "w1",
+				"node":        worker1Node,
+				"cpu":         1,
+				"memory":      1024,
+				"disk_name":   "w1disk",
+				"mount_point": "/mydisk",
+				"publicip":    false,
+				"planetary":   true,
+			},
+		}
+		terraformOptions.Vars["disks"] = []map[string]interface{}{
+			{
+				"name":        "mrdisk",
+				"node":        masterNode,
+				"size":        2,
+				"description": "",
+			},
+			{
+				"name":        "w0disk",
+				"node":        worker0Node,
+				"size":        2,
+				"description": "",
+			},
+			{
+				"name":        "w1disk",
+				"node":        worker1Node,
+				"size":        2,
+				"description": "",
+			},
+		}
+		_, err = terraform.ApplyE(t, terraformOptions)
+		assert.NoError(t, err)
 
-		// AssertNodesAreReady(t, terraformOptions, privateKey)
+		AssertNodesAreReady(t, terraformOptions, privateKey)
 	})
 }
