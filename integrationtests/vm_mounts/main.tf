@@ -24,10 +24,11 @@ provider "grid" {
 
 resource "grid_scheduler" "scheduler" {
   requests {
-    name = "node1"
-    cru  = 1
-    sru  = var.disk_size * 1024
-    mru  = 1024
+    name    = "node1"
+    cru     = 1
+    sru     = var.disk_size * 1024
+    mru     = 1024
+    farm_id = 1
   }
 }
 

@@ -1,12 +1,15 @@
 package integrationtests
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
 
+	"github.com/gruntwork-io/terratest/modules/retry"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
+	"github.com/threefoldtech/terraform-provider-grid/internal/provider/scheduler"
 )
 
 func TestVM(t *testing.T) {
@@ -34,7 +37,9 @@ func TestVM(t *testing.T) {
 		defer terraform.Destroy(t, terraformOptions)
 
 		_, err = terraform.InitAndApplyE(t, terraformOptions)
-		assert.NoError(t, err)
+		if !(assert.NoError(t, err)) {
+			return
+		}
 
 		yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
 		assert.NotEmpty(t, yggIP)
@@ -66,7 +71,13 @@ func TestVM(t *testing.T) {
 		defer terraform.Destroy(t, terraformOptions)
 
 		_, err = terraform.InitAndApplyE(t, terraformOptions)
-		assert.NoError(t, err)
+		if err != nil && errors.As(err, &retry.FatalError{Underlying: scheduler.NoNodesFoundErr}) {
+			t.Skip("couldn't find any nodes with public ip")
+			return
+		}
+		if !(assert.NoError(t, err)) {
+			return
+		}
 
 		vmComputedIP := terraform.Output(t, terraformOptions, "vm_public_ip")
 		assert.NotEmpty(t, vmComputedIP)
@@ -126,7 +137,6 @@ func TestVM(t *testing.T) {
 		_, err = terraform.InitAndApplyE(t, terraformOptions)
 		assert.Error(t, err, "Should fail with mem capacity can't be less that 250M but err is null")
 	})
-
 	t.Run("vm_mounts", func(t *testing.T) {
 		/* Test case for deployeng a disk and mount it.
 
@@ -154,7 +164,9 @@ func TestVM(t *testing.T) {
 		defer terraform.Destroy(t, terraformOptions)
 
 		_, err = terraform.InitAndApplyE(t, terraformOptions)
-		assert.NoError(t, err)
+		if !(assert.NoError(t, err)) {
+			return
+		}
 
 		// Check that the outputs not empty
 		yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
@@ -193,7 +205,9 @@ func TestVM(t *testing.T) {
 		defer terraform.Destroy(t, terraformOptions)
 
 		_, err = terraform.InitAndApplyE(t, terraformOptions)
-		assert.NoError(t, err)
+		if !(assert.NoError(t, err)) {
+			return
+		}
 
 		yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
 		assert.NotEmpty(t, yggIP)
@@ -223,7 +237,9 @@ func TestVM(t *testing.T) {
 		defer terraform.Destroy(t, terraformOptions)
 
 		_, err = terraform.InitAndApplyE(t, terraformOptions)
-		assert.NoError(t, err)
+		if !(assert.NoError(t, err)) {
+			return
+		}
 
 		// Check that the outputs not empty
 		vm1IP := terraform.Output(t, terraformOptions, "vm1_ip")
