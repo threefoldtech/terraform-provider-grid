@@ -108,12 +108,11 @@ func (n *Scheduler) getNode(ctx context.Context, r *Request) uint32 {
 	}
 	rand.Shuffle(len(nodes), func(i, j int) { nodes[i], nodes[j] = nodes[j], nodes[i] })
 	for _, node := range nodes {
-		farm, err := n.getFarmInfo(ctx, r.FarmId)
+		farm, err := n.getFarmInfo(ctx, uint32(n.nodes[node].Node.FarmID))
 		if err != nil {
 			continue
 		}
 		nodeInfo := n.nodes[node]
-		// TODO: later add free ips check when specifying the number of ips is supported
 		if nodeInfo.fulfils(r, farm) {
 			return node
 		}
@@ -169,7 +168,7 @@ func (n *Scheduler) gridProxySchedule(ctx context.Context, r *Request) (uint32, 
 		}
 	}
 	n.nodes[node].FreeCapacity.consume(r)
-	n.consumePublicIPs(r.FarmId, r.PublicIpsCount)
+	n.consumePublicIPs(uint32(n.nodes[node].Node.FarmID), r.PublicIpsCount)
 	return node, nil
 }
 
