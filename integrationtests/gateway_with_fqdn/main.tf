@@ -25,10 +25,6 @@ resource "grid_scheduler" "sched" {
     sru  = 512
     mru  = 1024
   }
-  requests {
-    name          = "gateway"
-    public_config = true
-  }
 }
 
 locals {
@@ -65,7 +61,7 @@ locals {
 }
 
 resource "grid_fqdn_proxy" "p1" {
-  node            = grid_scheduler.sched.nodes["gateway"]
+  node            = 11
   name            = "test"
   fqdn            = var.fqdn
   backends        = [format("http://[%s]:9000", local.ygg_ip)]
