@@ -67,7 +67,6 @@ func TestGateWay(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Contains(t, string(body), "Directory listing for")
 		}
-
 	})
 
 	t.Run("gateway_fqdn", func(t *testing.T) {
@@ -83,7 +82,7 @@ func TestGateWay(t *testing.T) {
 		   - Destroy the deployment
 		*/
 
-		fqdn := "hamada1.3x0.me" // points to node 15 devnet
+		fqdn := "hamada1.3x0.me" // points to node 11 devnet
 
 		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 			TerraformDir: "./gateway_with_fqdn",
@@ -95,7 +94,9 @@ func TestGateWay(t *testing.T) {
 		defer terraform.Destroy(t, terraformOptions)
 
 		_, err := terraform.InitAndApplyE(t, terraformOptions)
-		assert.NoError(t, err)
+		if !assert.NoError(t, err) {
+			return
+		}
 
 		// Check that the outputs not empty
 		fqdn = terraform.Output(t, terraformOptions, "fqdn")
