@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"testing"
 	"time"
 
@@ -81,6 +82,12 @@ func TestGateWay(t *testing.T) {
 		   - Make an http request to fqdn and assert that the response is correct.
 		   - Destroy the deployment
 		*/
+
+		// make sure the test runs only on devnet
+		if network, _ := os.LookupEnv("NETWORK"); network != "dev" {
+			t.Skip()
+			return
+		}
 
 		fqdn := "hamada1.3x0.me" // points to node 11 devnet
 
