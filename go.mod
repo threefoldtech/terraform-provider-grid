@@ -10,7 +10,7 @@ require (
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.31.0
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.4
-	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.11.10
+	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.12.0
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.11.10
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.11.10
 	github.com/threefoldtech/zos v0.5.6-0.20231029102142-baf8d9ee77fe
@@ -24,7 +24,7 @@ require (
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/google/s2a-go v0.1.4 // indirect
-	github.com/gorilla/schema v1.2.0 // indirect
+	github.com/gorilla/schema v1.2.1 // indirect
 	github.com/holiman/uint256 v1.2.3 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
