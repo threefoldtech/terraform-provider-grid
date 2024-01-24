@@ -12,7 +12,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.13.11
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.13.11
-	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.13.11
+	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.13.14
 	github.com/threefoldtech/zos v0.5.6-0.20231029102142-baf8d9ee77fe
 	golang.org/x/crypto v0.17.0
 	golang.org/x/sync v0.5.0
@@ -130,7 +130,7 @@ require (
 	golang.org/x/mod v0.14.0 // indirect
 	golang.org/x/net v0.19.0 // indirect
 	golang.org/x/oauth2 v0.13.0 // indirect
-	golang.org/x/sys v0.15.0 // indirect
+	golang.org/x/sys v0.16.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/api v0.128.0 // indirect
