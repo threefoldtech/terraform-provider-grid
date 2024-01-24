@@ -15,7 +15,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-// RemoteRun used for running cmd remotly using ssh
+// RemoteRun used for running cmd remotely using ssh
 func RemoteRun(user string, addr string, cmd string, privateKey string) (string, error) {
 	key, err := ssh.ParsePrivateKey([]byte(privateKey))
 	if err != nil {
