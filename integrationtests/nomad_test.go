@@ -37,8 +37,8 @@ func TestNomad(t *testing.T) {
 			network = "dev"
 		}
 
-		mnemoinc := os.Getenv("MNEMONICS")
-		tf, err := deployer.NewTFPluginClient(mnemoinc, "sr25519", network, "", "", "", 0, true)
+		mnemonic := os.Getenv("MNEMONICS")
+		tf, err := deployer.NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, true)
 		if err != nil {
 			t.Fatalf("failed to get create tf plugin client: %s", err.Error())
 		}
