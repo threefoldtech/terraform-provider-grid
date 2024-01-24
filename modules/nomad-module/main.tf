@@ -29,7 +29,7 @@ resource "grid_deployment" "servers" {
     for_each = each.value
     content {
       name        = vms.value.name
-      flist       = local.client_flist
+      flist       = local.server_flist
       cpu         = vms.value.cpu
       ip          = vms.value == var.servers[0] ? var.first_server_ip : null
       memory      = vms.value.memory
