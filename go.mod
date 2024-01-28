@@ -14,7 +14,7 @@ require (
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.13.13
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.13.13
 	github.com/threefoldtech/zos v0.5.6-0.20231029102142-baf8d9ee77fe
-	golang.org/x/crypto v0.17.0
+	golang.org/x/crypto v0.18.0
 	golang.org/x/sync v0.5.0
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20210803171230-4253848d036c
 )
