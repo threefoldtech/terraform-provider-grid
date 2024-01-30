@@ -10,7 +10,7 @@ require (
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.31.0
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.4
-	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.13.13
+	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.13.18
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.13.13
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.13.13
 	github.com/threefoldtech/zos v0.5.6-0.20231029102142-baf8d9ee77fe
@@ -112,7 +112,7 @@ require (
 	github.com/russross/blackfriday v1.6.0 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
-	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20240101155545-8dfb94126345 // indirect
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20240102110309-5d6a2dd91630 // indirect
 	github.com/tmccombs/hcl2json v0.3.3 // indirect
 	github.com/ulikunitz/xz v0.5.10 // indirect
 	github.com/vedhavyas/go-subkey v1.0.3 // indirect
