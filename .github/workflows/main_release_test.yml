@@ -16,7 +16,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: 1.21
-      - uses: autero1/action-terraform@v1.1.1
+      - uses: autero1/action-terraform@v3.0.0
         env:
           ACTIONS_ALLOW_UNSECURE_COMMANDS: true
         with:
