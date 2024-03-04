@@ -379,7 +379,6 @@ func resourceK8sRead(ctx context.Context, d *schema.ResourceData, meta interface
 }
 
 func resourceK8sDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	var diags diag.Diagnostics
 	tfPluginClient, ok := meta.(*deployer.TFPluginClient)
 	if !ok {
 		return diag.FromErr(fmt.Errorf("failed to cast meta into threefold plugin client"))
@@ -394,13 +393,6 @@ func resourceK8sDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 		return diag.Errorf("couldn't cancel k8s cluster with error: %v", err)
 	}
 
-	if err == nil {
-		d.SetId("")
-	} else {
-		err = storeK8sState(d, k8sCluster, *tfPluginClient.State)
-		if err != nil {
-			diags = diag.FromErr(err)
-		}
-	}
-	return diags
+	d.SetId("")
+	return nil
 }
