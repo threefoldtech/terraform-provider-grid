@@ -161,9 +161,10 @@ Read-Only:
 - `computedip6` (String) The reserved public ipv6 if any.
 - `console_url` (String) The url to access the vm via cloud console on private interface using wireguard.
 - `planetary_ip` (String) The allocated Yggdrasil IP.
-- `mycelium_ip` (String) The allocated mycelium IP.
+- `mycelium_ip` (String) The allocated Mycelium IP.
 
 <a id="nestedblock--vms--mounts"></a>
+
 ### Nested Schema for `vms.mounts`
 
 Required:

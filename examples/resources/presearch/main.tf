@@ -100,5 +100,5 @@ output "computed_public_ip" {
 }
 
 output "ygg_ip" {
-  value = grid_deployment.d1.vms[0].ygg_ip
+  value = grid_deployment.d1.vms[0].planetary_ip
 }
