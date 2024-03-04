@@ -118,5 +118,5 @@ output "metrics" {
   value = grid_deployment.qsfs.qsfs[0].metrics_endpoint
 }
 output "ygg_ip" {
-  value = grid_deployment.qsfs.vms[0].ygg_ip
+  value = grid_deployment.qsfs.vms[0].planetary_ip
 }

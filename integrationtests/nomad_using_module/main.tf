@@ -58,14 +58,14 @@ output "server1_ip" {
   value = module.nomad.servers.vm[0].vms[0].ip
 }
 output "server1_ygg_ip" {
-  value = module.nomad.servers.vm[0].vms[0].ygg_ip
+  value = module.nomad.servers.vm[0].vms[0].planetary_ip
 }
 output "server2_ygg_ip" {
-  value = module.nomad.servers.vm[1].vms[0].ygg_ip
+  value = module.nomad.servers.vm[1].vms[0].planetary_ip
 }
 output "server3_ygg_ip" {
-  value = module.nomad.servers.vm[2].vms[0].ygg_ip
+  value = module.nomad.servers.vm[2].vms[0].planetary_ip
 }
 output "client1_ygg_ip" {
-  value = module.nomad.clients.vm[0].vms[0].ygg_ip
+  value = module.nomad.clients.vm[0].vms[0].planetary_ip
 }

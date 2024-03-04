@@ -62,7 +62,7 @@ Read-Only:
 - `network_name` (String) Network name.
 - `ssh_key` (String) ssh key.
 - `token` (String) cluster token.
-- `ygg_ip` (String) The allocated Yggdrasil IP.
+- `planetary_ip` (String) The allocated Yggdrasil IP.
 
 
 <a id="nestedblock--workers"></a>
@@ -93,4 +93,4 @@ Read-Only:
 - `network_name` (String) Network name.
 - `ssh_key` (String) ssh key.
 - `token` (String) cluster token.
-- `ygg_ip` (String) The allocated Yggdrasil IP.
+- `planetary_ip` (String) The allocated Yggdrasil IP.

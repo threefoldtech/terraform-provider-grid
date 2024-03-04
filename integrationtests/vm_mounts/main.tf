@@ -66,5 +66,5 @@ output "vm_ip" {
   value = grid_deployment.d1.vms[0].ip
 }
 output "ygg_ip" {
-  value = grid_deployment.d1.vms[0].ygg_ip
+  value = grid_deployment.d1.vms[0].planetary_ip
 }

@@ -56,14 +56,14 @@ resource "grid_deployment" "swarm1" {
       "setsid /usr/bin/containerd &",
       "setsid /usr/bin/dockerd -H unix:// --containerd=/run/containerd/containerd.sock &",
       "sleep 10",
-      "docker swarm init --advertise-addr ${grid_deployment.swarm1.vms[0].ygg_ip}",
+      "docker swarm init --advertise-addr ${grid_deployment.swarm1.vms[0].planetary_ip}",
       "docker swarm join-token --quiet worker > /root/token",
     ]
     connection {
       type    = "ssh"
       user    = "root"
       agent   = true
-      host    = grid_deployment.swarm1.vms[0].ygg_ip
+      host    = grid_deployment.swarm1.vms[0].planetary_ip
       timeout = "20s"
     }
   }
@@ -75,7 +75,7 @@ resource "grid_deployment" "swarm1" {
       type    = "ssh"
       user    = "root"
       agent   = true
-      host    = grid_deployment.swarm1.vms[1].ygg_ip
+      host    = grid_deployment.swarm1.vms[1].planetary_ip
       timeout = "20s"
     }
   }
@@ -87,14 +87,14 @@ resource "grid_deployment" "swarm1" {
       "setsid /usr/bin/containerd &",
       "setsid /usr/bin/dockerd -H unix:// --containerd=/run/containerd/containerd.sock &",
       "chmod 400 /root/.ssh/id_rsa",
-      "scp -o StrictHostKeyChecking=no -o NoHostAuthenticationForLocalhost=yes -o UserKnownHostsFile=/dev/null -i /root/.ssh/id_rsa root@[${grid_deployment.swarm1.vms[0].ygg_ip}]:/root/token .",
-      "docker swarm join --token $(cat /root/token) [${grid_deployment.swarm1.vms[0].ygg_ip}]:2377"
+      "scp -o StrictHostKeyChecking=no -o NoHostAuthenticationForLocalhost=yes -o UserKnownHostsFile=/dev/null -i /root/.ssh/id_rsa root@[${grid_deployment.swarm1.vms[0].planetary_ip}]:/root/token .",
+      "docker swarm join --token $(cat /root/token) [${grid_deployment.swarm1.vms[0].planetary_ip}]:2377"
     ]
     connection {
       type    = "ssh"
       user    = "root"
       agent   = true
-      host    = grid_deployment.swarm1.vms[1].ygg_ip
+      host    = grid_deployment.swarm1.vms[1].planetary_ip
       timeout = "20s"
     }
   }
@@ -111,9 +111,9 @@ output "node1_zmachine2_ip" {
 }
 
 output "node1_zmachine1_ygg_ip" {
-  value = grid_deployment.swarm1.vms[0].ygg_ip
+  value = grid_deployment.swarm1.vms[0].planetary_ip
 }
 
 output "node1_zmachine2_ygg_ip" {
-  value = grid_deployment.swarm1.vms[1].ygg_ip
+  value = grid_deployment.swarm1.vms[1].planetary_ip
 }

@@ -146,6 +146,7 @@ Optional:
 - `flist_checksum` (String) if present, the flist is rejected if it has a different hash.
 - `gpus` (List of String) List of the GPUs to be attached to the vm and must not be used by other vms
 - `ip` (String) The private wireguard IP of the vm.
+- `mycelium_ip_seed` (String) seed used to get the same mycelium ip for the vm. Hex encoded 6 bytes (e.g. b60f2b7ec39c).
 - `memory` (Number) Memory size in MB. Must be between 256MBs and 262144MBs (256GBs).
 - `mounts` (Block List) List of vm (ZMachine) mounts. Can reference QSFSs and Disks. (see [below for nested schema](#nestedblock--vms--mounts))
 - `planetary` (Boolean) Flag to enable Yggdrasil IP allocation.
@@ -159,7 +160,8 @@ Read-Only:
 - `computedip` (String) The reserved public ipv4 if any.
 - `computedip6` (String) The reserved public ipv6 if any.
 - `console_url` (String) The url to access the vm via cloud console on private interface using wireguard.
-- `ygg_ip` (String) The allocated Yggdrasil IP.
+- `planetary_ip` (String) The allocated Yggdrasil IP.
+- `mycelium_ip` (String) The allocated mycelium IP.
 
 <a id="nestedblock--vms--mounts"></a>
 ### Nested Schema for `vms.mounts`

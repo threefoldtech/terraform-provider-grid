@@ -144,7 +144,7 @@ func resourceKubernetes() *schema.Resource {
 							Default:     false,
 							Description: "Flag to enable Yggdrasil IP allocation.",
 						},
-						"ygg_ip": {
+						"planetary_ip": {
 							Type:        schema.TypeString,
 							Computed:    true,
 							Description: "The allocated Yggdrasil IP.",
@@ -249,7 +249,7 @@ func resourceKubernetes() *schema.Resource {
 							Default:     false,
 							Description: "Flag to enable Yggdrasil IP allocation.",
 						},
-						"ygg_ip": {
+						"planetary_ip": {
 							Type:        schema.TypeString,
 							Computed:    true,
 							Description: "The allocated Yggdrasil IP.",
