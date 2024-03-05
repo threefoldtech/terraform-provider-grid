@@ -3,6 +3,7 @@ module github.com/threefoldtech/terraform-provider-grid
 go 1.21
 
 require (
+	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/google/uuid v1.6.0
 	github.com/gruntwork-io/terratest v0.46.11
 	github.com/hashicorp/go-multierror v1.1.1
@@ -10,9 +11,9 @@ require (
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.31.0
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.9.0
-	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.14.9
-	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.14.9
-	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.14.9
+	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.14.10
+	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.14.10
+	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.14.10
 	github.com/threefoldtech/zos v0.5.6-0.20240226114056-364e04acbed3
 	golang.org/x/crypto v0.20.0
 	golang.org/x/sync v0.6.0
@@ -49,7 +50,6 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
 	github.com/ethereum/go-ethereum v1.11.6 // indirect
 	github.com/fatih/color v1.16.0 // indirect
-	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect

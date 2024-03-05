@@ -149,6 +149,16 @@ func resourceKubernetes() *schema.Resource {
 							Computed:    true,
 							Description: "The allocated Yggdrasil IP.",
 						},
+						"mycelium_ip_seed": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "Mycelium seed used to get the same mycelium ip for k8s master. Hex encoded 6 bytes (e.g. b60f2b7ec39c).",
+						},
+						"mycelium_ip": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "The allocated mycelium IP.",
+						},
 						"console_url": {
 							Type:        schema.TypeString,
 							Computed:    true,
@@ -253,6 +263,16 @@ func resourceKubernetes() *schema.Resource {
 							Type:        schema.TypeString,
 							Computed:    true,
 							Description: "The allocated Yggdrasil IP.",
+						},
+						"mycelium_ip_seed": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "Mycelium seed used to get the same mycelium ip for k8s worker. Hex encoded 6 bytes (e.g. b60f2b7ec39c).",
+						},
+						"mycelium_ip": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "The allocated mycelium IP.",
 						},
 						"console_url": {
 							Type:        schema.TypeString,

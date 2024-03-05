@@ -52,6 +52,7 @@ Optional:
 - `planetary` (Boolean) Flag to enable Yggdrasil IP allocation.
 - `publicip` (Boolean) Flag to enable/disable public ipv4 reservation.
 - `publicip6` (Boolean) Flag to enable/disable public ipv6 reservation.
+- `mycelium_ip_seed` (String) seed used to get the same mycelium ip for the vm. Hex encoded 6 bytes (e.g. b60f2b7ec39c).
 
 Read-Only:
 
@@ -63,6 +64,7 @@ Read-Only:
 - `ssh_key` (String) ssh key.
 - `token` (String) cluster token.
 - `planetary_ip` (String) The allocated Yggdrasil IP.
+- `mycelium_ip` (String) The allocated Mycelium IP.
 
 
 <a id="nestedblock--workers"></a>
@@ -83,6 +85,7 @@ Optional:
 - `planetary` (Boolean) Flag to enable Yggdrasil IP allocation.
 - `publicip` (Boolean) Flag to enable/disable public ipv4 reservation.
 - `publicip6` (Boolean) Flag to enable/disable public ipv6 reservation.
+- `mycelium_ip_seed` (String) seed used to get the same mycelium ip for the vm. Hex encoded 6 bytes (e.g. b60f2b7ec39c).
 
 Read-Only:
 
@@ -94,3 +97,4 @@ Read-Only:
 - `ssh_key` (String) ssh key.
 - `token` (String) cluster token.
 - `planetary_ip` (String) The allocated Yggdrasil IP.
+- `mycelium_ip` (String) The allocated Mycelium IP.

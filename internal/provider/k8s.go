@@ -2,6 +2,7 @@
 package provider
 
 import (
+	"encoding/hex"
 	"fmt"
 	"log"
 	"net"
@@ -19,14 +20,33 @@ import (
 func newK8sFromSchema(d *schema.ResourceData) (*workloads.K8sCluster, error) {
 	nodesIPRange := make(map[uint32]gridtypes.IPNet)
 
-	master, err := workloads.NewWorkloadFromMap(d.Get("master").([]interface{})[0].(map[string]interface{}), &workloads.K8sNode{})
+	masterMap := d.Get("master").([]interface{})[0].(map[string]interface{})
+
+	myceliumIPSeed := masterMap["mycelium_ip_seed"].(string)
+	myceliumIPSeedBytes, err := hex.DecodeString(myceliumIPSeed)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to decode mycelium ip seed '%s'", myceliumIPSeed)
+	}
+	masterMap["mycelium_ip_seed"] = myceliumIPSeedBytes
+
+	masterI, err := workloads.NewWorkloadFromMap(masterMap, &workloads.K8sNode{})
 	if err != nil {
 		return nil, err
 	}
+
 	workers := make([]workloads.K8sNode, 0)
 
 	for _, w := range d.Get("workers").([]interface{}) {
-		data, err := workloads.NewWorkloadFromMap(w.(map[string]interface{}), &workloads.K8sNode{})
+		wMap := w.(map[string]interface{})
+
+		myceliumIPSeed := wMap["mycelium_ip_seed"].(string)
+		myceliumIPSeedBytes, err := hex.DecodeString(myceliumIPSeed)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to decode mycelium ip seed '%s'", myceliumIPSeed)
+		}
+		wMap["mycelium_ip_seed"] = myceliumIPSeedBytes
+
+		data, err := workloads.NewWorkloadFromMap(wMap, &workloads.K8sNode{})
 		if err != nil {
 			return nil, err
 		}
@@ -45,7 +65,7 @@ func newK8sFromSchema(d *schema.ResourceData) (*workloads.K8sCluster, error) {
 	}
 
 	k8s := workloads.K8sCluster{
-		Master:           master.(*workloads.K8sNode),
+		Master:           masterI.(*workloads.K8sNode),
 		Workers:          workers,
 		Token:            d.Get("token").(string),
 		SSHKey:           d.Get("ssh_key").(string),
@@ -78,6 +98,7 @@ func storeK8sState(d *schema.ResourceData, k8s *workloads.K8sCluster, state stat
 		if err != nil {
 			return err
 		}
+		wMap["mycelium_ip_seed"] = hex.EncodeToString(k8s.Master.MyceliumIPSeed)
 		workers = append(workers, wMap)
 	}
 
@@ -94,10 +115,13 @@ func storeK8sState(d *schema.ResourceData, k8s *workloads.K8sCluster, state stat
 	if k8s.Master == nil {
 		k8s.Master = &workloads.K8sNode{}
 	}
+
 	master, err := workloads.ToMap(k8s.Master)
 	if err != nil {
 		return err
 	}
+
+	master["mycelium_ip_seed"] = hex.EncodeToString(k8s.Master.MyceliumIPSeed)
 	retainChecksums(workers, master, k8s)
 
 	updateNetworkState(d, k8s, state)
