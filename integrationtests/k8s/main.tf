@@ -72,7 +72,7 @@ resource "grid_kubernetes" "k8s1" {
 
 
 output "mr_ygg_ip" {
-  value = grid_kubernetes.k8s1.master[0].ygg_ip
+  value = grid_kubernetes.k8s1.master[0].planetary_ip
 }
 
 output "wg_config" {
@@ -80,5 +80,5 @@ output "wg_config" {
 }
 
 output "worker_ygg_ip" {
-  value = grid_kubernetes.k8s1.workers[0].ygg_ip
+  value = grid_kubernetes.k8s1.workers[0].planetary_ip
 }

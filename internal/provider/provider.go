@@ -3,6 +3,7 @@ package provider
 
 import (
 	"context"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -61,9 +62,16 @@ func New(version string, st state.Getter) (func() *schema.Provider, subi.Substra
 				"relay_url": {
 					Type:             schema.TypeString,
 					Optional:         true,
-					Description:      "rmb proxy url, example: wss://relay.dev.grid.tf",
+					Description:      "relay url, example: wss://relay.dev.grid.tf",
 					DefaultFunc:      schema.EnvDefaultFunc("RELAY_URL", nil),
 					ValidateDiagFunc: validation.ToDiagFunc(validation.IsURLWithScheme([]string{"wss"})),
+				},
+				"proxy_url": {
+					Type:             schema.TypeString,
+					Optional:         true,
+					Description:      "proxy url, example: https://gridproxy.dev.grid.tf",
+					DefaultFunc:      schema.EnvDefaultFunc("PROXY_URL", nil),
+					ValidateDiagFunc: validation.ToDiagFunc(validation.IsURLWithScheme([]string{"https"})),
 				},
 				"rmb_timeout": {
 					Type:        schema.TypeInt,
@@ -100,10 +108,28 @@ func providerConfigure(st state.Getter) (func(ctx context.Context, d *schema.Res
 		network := d.Get("network").(string)
 		substrateURL := d.Get("substrate_url").(string)
 		relayURL := d.Get("relay_url").(string)
+		proxyURL := d.Get("proxy_url").(string)
 		timeout := d.Get("rmb_timeout").(int)
 		debug := false
 
-		tfPluginClient, err := deployer.NewTFPluginClient(mnemonics, keyType, network, substrateURL, relayURL, "", timeout, debug)
+		opts := []deployer.PluginOpt{
+			deployer.WithKeyType(keyType),
+			deployer.WithNetwork(network),
+			deployer.WithRelayURL(relayURL),
+			deployer.WithProxyURL(proxyURL),
+			deployer.WithRMBTimeout(timeout),
+			deployer.WithTwinCache(),
+		}
+
+		if len(strings.TrimSpace(substrateURL)) > 0 {
+			opts = append(opts, deployer.WithSubstrateURL(substrateURL))
+		}
+
+		if debug {
+			opts = append(opts, deployer.WithLogs())
+		}
+
+		tfPluginClient, err := deployer.NewTFPluginClient(mnemonics, opts...)
 		if err != nil {
 			return nil, diag.FromErr(errors.Wrap(err, "error creating threefold plugin client"))
 		}

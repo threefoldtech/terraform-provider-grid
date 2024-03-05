@@ -55,7 +55,7 @@ resource "grid_deployment" "d1" {
   }
 }
 output "ygg_ip" {
-  value = grid_deployment.d1.vms[0].ygg_ip
+  value = grid_deployment.d1.vms[0].planetary_ip
 }
 
 output "vm_ip" {

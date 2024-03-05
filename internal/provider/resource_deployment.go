@@ -199,6 +199,16 @@ func resourceDeployment() *schema.Resource {
 							Description:      "The private wireguard IP of the vm.",
 							ValidateDiagFunc: validation.ToDiagFunc(validation.IsIPAddress),
 						},
+						"mycelium_ip_seed": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "Mycelium seed used to get the same mycelium ip for the vm. Hex encoded 6 bytes (e.g. b60f2b7ec39c).",
+						},
+						"mycelium_ip": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "The allocated mycelium IP.",
+						},
 						"cpu": {
 							Type:             schema.TypeInt,
 							Optional:         true,
@@ -266,7 +276,7 @@ func resourceDeployment() *schema.Resource {
 							Default:     false,
 							Description: "Flag to enable corex. More information about corex could be found [here](https://github.com/threefoldtech/corex)",
 						},
-						"ygg_ip": {
+						"planetary_ip": {
 							Type:        schema.TypeString,
 							Computed:    true,
 							Description: "The allocated Yggdrasil IP.",
