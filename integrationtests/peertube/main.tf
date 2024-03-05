@@ -70,7 +70,7 @@ resource "grid_deployment" "d1" {
 }
 
 locals {
-  ygg_ip = try(length(grid_deployment.d1.vms[0].ygg_ip), 0) > 0 ? grid_deployment.d1.vms[0].ygg_ip : ""
+  ygg_ip = try(length(grid_deployment.d1.vms[0].planetary_ip), 0) > 0 ? grid_deployment.d1.vms[0].planetary_ip : ""
 }
 
 resource "grid_name_proxy" "p1" {
@@ -83,6 +83,6 @@ output "fqdn" {
   value = data.grid_gateway_domain.domain.fqdn
 }
 output "ygg_ip" {
-  value = grid_deployment.d1.vms[0].ygg_ip
+  value = grid_deployment.d1.vms[0].planetary_ip
 }
 

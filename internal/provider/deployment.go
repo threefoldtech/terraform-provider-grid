@@ -2,6 +2,7 @@
 package provider
 
 import (
+	"encoding/hex"
 	"fmt"
 	"strconv"
 
@@ -39,10 +40,19 @@ func newDeploymentFromSchema(d *schema.ResourceData) (*workloads.Deployment, err
 	for _, vm := range d.Get("vms").([]interface{}) {
 		vmMap := vm.(map[string]interface{})
 		vmMap["network_name"] = networkName
+
+		myceliumIPSeed := vmMap["mycelium_ip_seed"].(string)
+		myceliumIPSeedBytes, err := hex.DecodeString(myceliumIPSeed)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to decode mycelium ip seed '%s'", myceliumIPSeed)
+		}
+		vmMap["mycelium_ip_seed"] = myceliumIPSeedBytes
+
 		v, err := workloads.NewWorkloadFromMap(vmMap, &workloads.VM{})
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create workload from vm map")
 		}
+
 		vms = append(vms, *v.(*workloads.VM))
 	}
 
@@ -105,14 +115,18 @@ func syncContractsDeployments(r *schema.ResourceData, d *workloads.Deployment) (
 	disks := make([]interface{}, 0)
 	zdbs := make([]interface{}, 0)
 	qsfs := make([]interface{}, 0)
+
 	for _, vm := range d.Vms {
 		vmMap, err := workloads.ToMap(vm)
 		if err != nil {
 			return err
 		}
+
+		vmMap["mycelium_ip_seed"] = hex.EncodeToString(vm.MyceliumIPSeed)
 		delete(vmMap, "network_name")
 		vms = append(vms, vmMap)
 	}
+
 	for _, d := range d.Disks {
 		disk, err := workloads.ToMap(d)
 		if err != nil {
@@ -120,6 +134,7 @@ func syncContractsDeployments(r *schema.ResourceData, d *workloads.Deployment) (
 		}
 		disks = append(disks, disk)
 	}
+
 	for _, z := range d.Zdbs {
 		zdb, err := workloads.ToMap(z)
 		if err != nil {
@@ -127,6 +142,7 @@ func syncContractsDeployments(r *schema.ResourceData, d *workloads.Deployment) (
 		}
 		zdbs = append(zdbs, zdb)
 	}
+
 	for _, q := range d.QSFS {
 		qs, err := workloads.ToMap(q)
 		if err != nil {

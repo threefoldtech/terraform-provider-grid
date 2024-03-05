@@ -144,10 +144,20 @@ func resourceKubernetes() *schema.Resource {
 							Default:     false,
 							Description: "Flag to enable Yggdrasil IP allocation.",
 						},
-						"ygg_ip": {
+						"planetary_ip": {
 							Type:        schema.TypeString,
 							Computed:    true,
 							Description: "The allocated Yggdrasil IP.",
+						},
+						"mycelium_ip_seed": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "Mycelium seed used to get the same mycelium ip for k8s master. Hex encoded 6 bytes (e.g. b60f2b7ec39c).",
+						},
+						"mycelium_ip": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "The allocated mycelium IP.",
 						},
 						"console_url": {
 							Type:        schema.TypeString,
@@ -249,10 +259,20 @@ func resourceKubernetes() *schema.Resource {
 							Default:     false,
 							Description: "Flag to enable Yggdrasil IP allocation.",
 						},
-						"ygg_ip": {
+						"planetary_ip": {
 							Type:        schema.TypeString,
 							Computed:    true,
 							Description: "The allocated Yggdrasil IP.",
+						},
+						"mycelium_ip_seed": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "Mycelium seed used to get the same mycelium ip for k8s worker. Hex encoded 6 bytes (e.g. b60f2b7ec39c).",
+						},
+						"mycelium_ip": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "The allocated mycelium IP.",
 						},
 						"console_url": {
 							Type:        schema.TypeString,
@@ -379,7 +399,6 @@ func resourceK8sRead(ctx context.Context, d *schema.ResourceData, meta interface
 }
 
 func resourceK8sDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	var diags diag.Diagnostics
 	tfPluginClient, ok := meta.(*deployer.TFPluginClient)
 	if !ok {
 		return diag.FromErr(fmt.Errorf("failed to cast meta into threefold plugin client"))
@@ -394,13 +413,6 @@ func resourceK8sDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 		return diag.Errorf("couldn't cancel k8s cluster with error: %v", err)
 	}
 
-	if err == nil {
-		d.SetId("")
-	} else {
-		err = storeK8sState(d, k8sCluster, *tfPluginClient.State)
-		if err != nil {
-			diags = diag.FromErr(err)
-		}
-	}
-	return diags
+	d.SetId("")
+	return nil
 }

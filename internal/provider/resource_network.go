@@ -3,6 +3,7 @@ package provider
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"regexp"
@@ -62,6 +63,12 @@ func resourceNetwork() *schema.Resource {
 				Required:         true,
 				Description:      "Network IP range (e.g. 10.1.2.0/16). Has to have a subnet mask of 16.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.IsCIDRNetwork(16, 16)),
+			},
+			"mycelium_keys": {
+				Type:        schema.TypeMap,
+				Optional:    true,
+				Elem:        &schema.Schema{Type: schema.TypeString},
+				Description: "Network mycelium keys per node (e.g. 9751c596c7c951aedad1a5f78f18b59515064adf660e0d55abead65e6fbbd627). Hex encoded 32 bytes.",
 			},
 			"add_wg_access": {
 				Type:        schema.TypeBool,
@@ -139,6 +146,22 @@ func newNetwork(d *schema.ResourceData) (*workloads.ZNet, error) {
 		}
 	}
 
+	myceliumKeysIf := d.Get("mycelium_keys").(map[string]interface{})
+	myceliumKeys := make(map[uint32][]byte)
+	for node, key := range myceliumKeysIf {
+		nodeID, err := strconv.ParseUint(node, 10, 32)
+		if err != nil {
+			return nil, errors.Wrapf(err, "couldn't parse node id '%s'", node)
+		}
+
+		myceliumKey, err := hex.DecodeString(key.(string))
+		if err != nil {
+			return nil, errors.Wrapf(err, "couldn't decode mycelium key '%s'", key)
+		}
+
+		myceliumKeys[uint32(nodeID)] = myceliumKey
+	}
+
 	// external node related data
 	addWGAccess := d.Get("add_wg_access").(bool)
 
@@ -172,6 +195,7 @@ func newNetwork(d *schema.ResourceData) (*workloads.ZNet, error) {
 		Description:      d.Get("description").(string),
 		Nodes:            nodes,
 		IPRange:          ipRange,
+		MyceliumKeys:     myceliumKeys,
 		AddWGAccess:      addWGAccess,
 		AccessWGConfig:   d.Get("access_wg_config").(string),
 		ExternalIP:       externalIP,
@@ -196,6 +220,11 @@ func storeState(d *schema.ResourceData, tfPluginClient *deployer.TFPluginClient,
 	nodesIPRange := make(map[string]interface{})
 	for node, r := range net.NodesIPRange {
 		nodesIPRange[fmt.Sprintf("%d", node)] = r.String()
+	}
+
+	myceliumKeys := make(map[string]interface{})
+	for node, key := range net.MyceliumKeys {
+		myceliumKeys[fmt.Sprintf("%d", node)] = hex.EncodeToString(key)
 	}
 
 	nodes := make([]uint32, 0)

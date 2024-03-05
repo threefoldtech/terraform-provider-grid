@@ -87,7 +87,7 @@ resource "grid_name_proxy" "p1" {
   solution_type   = local.solution_type
   name            = local.name
   node            = grid_scheduler.sched.nodes["gateway"]
-  backends        = [format("http://%s:9000", grid_deployment.node1.vms[0].ygg_ip)]
+  backends        = [format("http://%s:9000", grid_deployment.node1.vms[0].planetary_ip)]
   tls_passthrough = false
 }
 
@@ -97,7 +97,7 @@ output "node1_zmachine1_ip" {
 
 
 output "node1_zmachine1_ygg_ip" {
-  value = grid_deployment.node1.vms[0].ygg_ip
+  value = grid_deployment.node1.vms[0].planetary_ip
 }
 
 output "fqdn" {

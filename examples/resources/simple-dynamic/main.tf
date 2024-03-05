@@ -79,7 +79,7 @@ resource "grid_fqdn_proxy" "balancer" {
   node            = 15
   name            = "balancer"
   fqdn            = "hamada1.3x0.me"
-  backends        = [format("http://[%s]", grid_deployment.server1.vms[0].ygg_ip), format("http://[%s]", grid_deployment.server2.vms[0].ygg_ip)]
+  backends        = [format("http://[%s]", grid_deployment.server1.vms[0].planetary_ip), format("http://[%s]", grid_deployment.server2.vms[0].planetary_ip)]
   tls_passthrough = false
 }
 

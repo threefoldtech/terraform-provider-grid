@@ -40,7 +40,7 @@ resource "grid_deployment" "d1" {
     type  = "ssh"
     user  = "root"
     agent = true
-    host  = grid_deployment.d1.vms[0].ygg_ip
+    host  = grid_deployment.d1.vms[0].planetary_ip
   }
 
   provisioner "remote-exec" {
@@ -56,6 +56,6 @@ output "node1_zmachine1_ip" {
 }
 
 output "ygg_ip" {
-  value = grid_deployment.d1.vms[0].ygg_ip
+  value = grid_deployment.d1.vms[0].planetary_ip
 }
 

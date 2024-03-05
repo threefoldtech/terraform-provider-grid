@@ -20,6 +20,7 @@ Resource to deploy a network on the grid. This is a private wireguard network. A
 - `ip_range` (String) Network IP range (e.g. 10.1.2.0/16). Has to have a subnet mask of 16.
 - `name` (String) Network workloads Name.  This has to be unique within the node. Must contain only alphanumeric and underscore characters.
 - `nodes` (List of Number) List of node ids to add to the network.
+- `mycelium_keys` map of node per key (e.g. 9751c596c7c951aedad1a5f78f18b59515064adf660e0d55abead65e6fbbd627). Hex encoded 32 bytes for keys.
 
 ### Optional
 
