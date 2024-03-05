@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     grid = {
-			source  = "threefoldtechdev.com/providers/grid"
+      source  = "threefoldtechdev.com/providers/grid"
       version = "0.2"
     }
   }
@@ -11,6 +11,15 @@ provider "grid" {
 
 locals {
   name = "testvm"
+}
+
+
+resource "random_bytes" "mycelium_ip_seed" {
+  length = 6
+}
+
+resource "random_bytes" "mycelium_key" {
+  length = 32
 }
 
 resource "grid_scheduler" "sched" {
@@ -26,12 +35,12 @@ resource "grid_scheduler" "sched" {
 }
 
 resource "grid_network" "net1" {
-  name        = local.name
-  nodes       = [grid_scheduler.sched.nodes["node1"]]
-  ip_range    = "10.1.0.0/16"
-	mycelium_keys = {
-		format("%s", grid_scheduler.sched.nodes["node1"]) = "9751c596c7c951aedad1a5f78f18b59515064adf660e0d55abead65e6fbbd627"
-	}
+  name     = local.name
+  nodes    = [grid_scheduler.sched.nodes["node1"]]
+  ip_range = "10.1.0.0/16"
+  mycelium_keys = {
+    format("%s", grid_scheduler.sched.nodes["node1"]) = random_bytes.mycelium_key.hex
+  }
   description = "newer network"
 }
 resource "grid_deployment" "d1" {
@@ -47,8 +56,7 @@ resource "grid_deployment" "d1" {
     env_vars = {
       SSH_KEY = file("~/.ssh/id_rsa.pub")
     }
-    # planetary = true
-		mycelium_ip_seed = "b60f2b7ec39c"
+    mycelium_ip_seed = random_bytes.mycelium_ip_seed.hex
   }
 }
 output "vm1_ip" {

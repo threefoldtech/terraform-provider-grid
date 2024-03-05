@@ -9,6 +9,38 @@ terraform {
 provider "grid" {
 }
 
+resource "random_bytes" "master_mycelium_ip_seed" {
+  length = 6
+}
+
+resource "random_bytes" "worker1_mycelium_ip_seed" {
+  length = 6
+}
+
+resource "random_bytes" "worker2_mycelium_ip_seed" {
+  length = 6
+}
+
+resource "random_bytes" "worker3_mycelium_ip_seed" {
+  length = 6
+}
+
+resource "random_bytes" "master_mycelium_key" {
+  length = 32
+}
+
+resource "random_bytes" "worker1_mycelium_key" {
+  length = 32
+}
+
+resource "random_bytes" "worker2_mycelium_key" {
+  length = 32
+}
+
+resource "random_bytes" "worker3_mycelium_key" {
+  length = 32
+}
+
 resource "grid_scheduler" "sched" {
   requests {
     name             = "master_node"
@@ -54,10 +86,10 @@ resource "grid_network" "net1" {
   description   = "newer network"
   add_wg_access = true
   mycelium_keys = {
-    format("%s", grid_scheduler.sched.nodes["master_node"])  = "9751c596c7c951aedad1a5f78f18b59515064adf660e0d55abead65e6fbbd627"
-    format("%s", grid_scheduler.sched.nodes["worker1_node"]) = "d88204d7c80f98bf6ddd62cdef5e6572e5f67a1d5b8db404880d6a063797956d"
-    format("%s", grid_scheduler.sched.nodes["worker2_node"]) = "01e92113d4d9fc12bd7980548b62e2bb548cebfb00529f122b76fc0768d4f65c"
-    format("%s", grid_scheduler.sched.nodes["worker3_node"]) = "247933aec8bfdc658c96ce0aa7987a76681b4b9d5759437253381ed65f46a4ed"
+    format("%s", grid_scheduler.sched.nodes["master_node"])  = random_bytes.master_mycelium_key.hex
+    format("%s", grid_scheduler.sched.nodes["worker1_node"]) = random_bytes.worker1_mycelium_key.hex
+    format("%s", grid_scheduler.sched.nodes["worker2_node"]) = random_bytes.worker2_mycelium_key.hex
+    format("%s", grid_scheduler.sched.nodes["worker3_node"]) = random_bytes.worker3_mycelium_key.hex
   }
 }
 
@@ -75,7 +107,7 @@ resource "grid_kubernetes" "k8s1" {
     cpu              = 2
     publicip         = true
     memory           = 2048
-    mycelium_ip_seed = "b60f2b7ec39c"
+    mycelium_ip_seed = random_bytes.master_mycelium_ip_seed.hex
   }
   workers {
     disk_size        = 2
@@ -83,7 +115,7 @@ resource "grid_kubernetes" "k8s1" {
     name             = "w0"
     cpu              = 2
     memory           = 2048
-    mycelium_ip_seed = "9f50592d6b55"
+    mycelium_ip_seed = random_bytes.worker1_mycelium_ip_seed.hex
   }
   workers {
     disk_size        = 2
@@ -91,7 +123,7 @@ resource "grid_kubernetes" "k8s1" {
     name             = "w2"
     cpu              = 2
     memory           = 2048
-    mycelium_ip_seed = "d04c42aa2a1a"
+    mycelium_ip_seed = random_bytes.worker2_mycelium_ip_seed.hex
   }
   workers {
     disk_size        = 2
@@ -99,7 +131,7 @@ resource "grid_kubernetes" "k8s1" {
     name             = "w3"
     cpu              = 2
     memory           = 2048
-    mycelium_ip_seed = "60a9601d738d"
+    mycelium_ip_seed = random_bytes.worker3_mycelium_ip_seed.hex
   }
 }
 
