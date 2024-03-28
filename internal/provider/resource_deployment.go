@@ -43,7 +43,7 @@ func resourceDeployment() *schema.Resource {
 			"solution_type": {
 				Type:        schema.TypeString,
 				Optional:    true,
-				Default:     "Virtual Machine",
+				Default:     "",
 				Description: "Solution type for created contract to be consistent across threefold tooling.",
 			},
 			"solution_provider": {

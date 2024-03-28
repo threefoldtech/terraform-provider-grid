@@ -45,6 +45,11 @@ func newFQDNGatewayFromSchema(d *schema.ResourceData) (*workloads.GatewayFQDNPro
 		return nil, err
 	}
 
+	solutionType := d.Get("solution_type").(string)
+	if solutionType == "" {
+		solutionType = d.Get("name").(string)
+	}
+
 	gw := workloads.GatewayFQDNProxy{
 		NodeID:           uint32(d.Get("node").(int)),
 		Name:             d.Get("name").(string),
@@ -52,7 +57,7 @@ func newFQDNGatewayFromSchema(d *schema.ResourceData) (*workloads.GatewayFQDNPro
 		FQDN:             d.Get("fqdn").(string),
 		TLSPassthrough:   tlsPassthrough,
 		Network:          d.Get("network").(string),
-		SolutionType:     d.Get("solution_type").(string),
+		SolutionType:     solutionType,
 		Description:      d.Get("description").(string),
 		NodeDeploymentID: nodeDeploymentID,
 		ContractID:       contractID,

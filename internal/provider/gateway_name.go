@@ -44,6 +44,10 @@ func newNameGatewayFromSchema(d *schema.ResourceData) (*workloads.GatewayNamePro
 	if err := validateBackends(backends, tlsPassthrough); err != nil {
 		return nil, err
 	}
+	solutionType := d.Get("solution_type").(string)
+	if solutionType == "" {
+		solutionType = d.Get("name").(string)
+	}
 
 	gw := workloads.GatewayNameProxy{
 		NodeID:           uint32(d.Get("node").(int)),
@@ -51,7 +55,7 @@ func newNameGatewayFromSchema(d *schema.ResourceData) (*workloads.GatewayNamePro
 		Backends:         backends,
 		TLSPassthrough:   tlsPassthrough,
 		Description:      d.Get("description").(string),
-		SolutionType:     d.Get("solution_type").(string),
+		SolutionType:     solutionType,
 		Network:          d.Get("network").(string),
 		FQDN:             d.Get("fqdn").(string),
 		NodeDeploymentID: nodeDeploymentID,

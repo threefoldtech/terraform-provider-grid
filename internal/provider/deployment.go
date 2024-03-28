@@ -17,6 +17,9 @@ func newDeploymentFromSchema(d *schema.ResourceData) (*workloads.Deployment, err
 	nodeID := uint32(d.Get("node").(int))
 	name := d.Get("name").(string)
 	solutionType := d.Get("solution_type").(string)
+	if solutionType == "" {
+		solutionType = fmt.Sprintf("vm/%s", name)
+	}
 
 	disks := make([]workloads.Disk, 0)
 	for _, disk := range d.Get("disks").([]interface{}) {
