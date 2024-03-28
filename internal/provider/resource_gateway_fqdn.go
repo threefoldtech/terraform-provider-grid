@@ -34,7 +34,7 @@ func resourceGatewayFQDNProxy() *schema.Resource {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Description: "Solution type for created contract to be consistent across threefold tooling.",
-				Default:     "Gateway",
+				Default:     "",
 			},
 			"description": {
 				Type:        schema.TypeString,

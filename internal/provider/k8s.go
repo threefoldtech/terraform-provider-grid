@@ -63,14 +63,19 @@ func newK8sFromSchema(d *schema.ResourceData) (*workloads.K8sCluster, error) {
 		deploymentID := uint64(id.(int))
 		nodeDeploymentID[uint32(nodeInt)] = deploymentID
 	}
+	master := masterI.(*workloads.K8sNode)
+	solutionType := d.Get("solution_type").(string)
 
+	if solutionType == "" {
+		solutionType = fmt.Sprintf("kubernetes/%s", master.Name)
+	}
 	k8s := workloads.K8sCluster{
-		Master:           masterI.(*workloads.K8sNode),
+		Master:           master,
 		Workers:          workers,
 		Token:            d.Get("token").(string),
 		SSHKey:           d.Get("ssh_key").(string),
 		NetworkName:      d.Get("network_name").(string),
-		SolutionType:     d.Get("solution_type").(string),
+		SolutionType:     solutionType,
 		NodeDeploymentID: nodeDeploymentID,
 		NodesIPRange:     nodesIPRange,
 	}
