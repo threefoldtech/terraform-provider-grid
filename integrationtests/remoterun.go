@@ -10,10 +10,23 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"net"
+	"os"
 
 	"github.com/pkg/errors"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"golang.org/x/crypto/ssh"
 )
+
+func setup() (deployer.TFPluginClient, error) {
+	mnemonics := os.Getenv("MNEMONICS")
+
+	network := os.Getenv("NETWORK")
+	if network == "" {
+		network = "dev"
+	}
+
+	return deployer.NewTFPluginClient(mnemonics, deployer.WithNetwork(network), deployer.WithLogs())
+}
 
 // RemoteRun used for running cmd remotely using ssh
 func RemoteRun(user string, addr string, cmd string, privateKey string) (string, error) {

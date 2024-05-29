@@ -26,7 +26,7 @@ type Request struct {
 func (r *Request) constructFilter(twinID uint64) (f proxyTypes.NodeFilter) {
 	// this filter only lacks certification type, which is validated after.
 	// grid proxy should support filtering a node by certification type.
-	f.Status = &statusUP
+	f.Status = []string{statusUP}
 	f.AvailableFor = &twinID
 	if r.FarmId != 0 {
 		f.FarmIDs = []uint64{uint64(r.FarmId)}

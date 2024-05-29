@@ -113,16 +113,28 @@ func providerConfigure(st state.Getter) (func(ctx context.Context, d *schema.Res
 		debug := false
 
 		opts := []deployer.PluginOpt{
-			deployer.WithKeyType(keyType),
 			deployer.WithNetwork(network),
-			deployer.WithRelayURL(relayURL),
-			deployer.WithProxyURL(proxyURL),
-			deployer.WithRMBTimeout(timeout),
 			deployer.WithTwinCache(),
+		}
+
+		if timeout > 0 {
+			opts = append(opts, deployer.WithRMBTimeout(timeout))
+		}
+
+		if len(strings.TrimSpace(keyType)) != 0 {
+			opts = append(opts, deployer.WithKeyType(keyType))
 		}
 
 		if len(strings.TrimSpace(substrateURL)) > 0 {
 			opts = append(opts, deployer.WithSubstrateURL(substrateURL))
+		}
+
+		if len(strings.TrimSpace(proxyURL)) > 0 {
+			opts = append(opts, deployer.WithProxyURL(proxyURL))
+		}
+
+		if len(strings.TrimSpace(relayURL)) > 0 {
+			opts = append(opts, deployer.WithRelayURL(relayURL))
 		}
 
 		if debug {
@@ -135,7 +147,7 @@ func providerConfigure(st state.Getter) (func(ctx context.Context, d *schema.Res
 		}
 
 		// set state
-		tfPluginClient.State.Networks = st.GetState().Networks
+		tfPluginClient.State.Networks = *st.GetState()
 
 		return &tfPluginClient, nil
 	}, substrateConn

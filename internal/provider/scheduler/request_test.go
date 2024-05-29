@@ -93,7 +93,7 @@ func TestConstructFilter(t *testing.T) {
 	}
 
 	con := r.constructFilter(1)
-	assert.Equal(t, *con.Status, "up", "construct-filter-status")
+	assert.Equal(t, con.Status, []string{"up"}, "construct-filter-status")
 	assert.Equal(t, *con.FreeMRU, uint64(1), "construct-filter-mru")
 	assert.Equal(t, *con.FreeSRU, uint64(2), "construct-filter-sru")
 	assert.Equal(t, *con.FreeHRU, uint64(3), "construct-filter-hru")

@@ -7,12 +7,13 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/state"
 )
 
 // Getter interface for local state
 type Getter interface {
 	// GetState
-	GetState() State
+	GetState() *state.NetworkState
 }
 
 const (
@@ -22,7 +23,7 @@ const (
 
 // LocalFileState struct is the local state file
 type LocalFileState struct {
-	st State
+	st *state.NetworkState
 }
 
 // NewLocalFileState generates a new local state
@@ -34,7 +35,7 @@ func NewLocalFileState() LocalFileState {
 // Load loads state from state.json file
 func (f *LocalFileState) Load(FileName string) error {
 	// os.OpenFile(FileName, os.O_CREATE, 0644)
-	f.st = State{}
+	f.st = &state.NetworkState{}
 	_, err := os.Stat(FileName)
 	if err != nil && os.IsNotExist(err) {
 		_, err = os.OpenFile(FileName, os.O_CREATE, 0644)
@@ -56,9 +57,11 @@ func (f *LocalFileState) Load(FileName string) error {
 }
 
 // GetState returns the current state
-func (f *LocalFileState) GetState() State {
-	if reflect.DeepEqual(f.st, State{}) {
-		state := NewState()
+func (f *LocalFileState) GetState() *state.NetworkState {
+	if reflect.DeepEqual(f.st, &state.NetworkState{}) {
+		state := &state.NetworkState{
+			State: make(map[string]state.Network),
+		}
 		f.st = state
 	}
 	return f.st
