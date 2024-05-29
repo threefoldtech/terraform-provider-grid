@@ -2,7 +2,6 @@ package integrationtests
 
 import (
 	"context"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -32,13 +31,7 @@ func TestNomad(t *testing.T) {
 
 		firstServerIP := "10.1.2.2"
 
-		network := os.Getenv("NETWORK")
-		if network == "" {
-			network = "dev"
-		}
-
-		mnemonic := os.Getenv("MNEMONICS")
-		tf, err := deployer.NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, true)
+		tf, err := setup()
 		if err != nil {
 			t.Fatalf("failed to get create tf plugin client: %s", err.Error())
 		}
@@ -50,7 +43,7 @@ func TestNomad(t *testing.T) {
 			context.Background(),
 			tf,
 			types.NodeFilter{
-				Status:  &status,
+				Status:  []string{status},
 				FreeMRU: freeMRU,
 				FreeSRU: freeSRU,
 				// Freefarm
