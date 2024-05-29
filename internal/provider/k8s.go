@@ -4,14 +4,11 @@ package provider
 import (
 	"encoding/hex"
 	"fmt"
-	"log"
-	"net"
 	"strconv"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/state"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
@@ -96,7 +93,7 @@ func retainChecksums(workers []interface{}, master interface{}, k8s *workloads.K
 	}
 }
 
-func storeK8sState(d *schema.ResourceData, k8s *workloads.K8sCluster, state state.State) (errors error) {
+func storeK8sState(d *schema.ResourceData, k8s *workloads.K8sCluster) (errors error) {
 	workers := make([]interface{}, 0)
 	for _, w := range k8s.Workers {
 		wMap, err := workloads.ToMap(w)
@@ -128,8 +125,6 @@ func storeK8sState(d *schema.ResourceData, k8s *workloads.K8sCluster, state stat
 
 	master["mycelium_ip_seed"] = hex.EncodeToString(k8s.Master.MyceliumIPSeed)
 	retainChecksums(workers, master, k8s)
-
-	updateNetworkState(d, k8s, state)
 
 	l := []interface{}{master}
 	err = d.Set("master", l)
@@ -173,45 +168,4 @@ func storeK8sState(d *schema.ResourceData, k8s *workloads.K8sCluster, state stat
 	}
 
 	return
-}
-
-func updateNetworkState(d *schema.ResourceData, k8s *workloads.K8sCluster, state state.State) {
-	network := state.Networks.GetNetwork(k8s.NetworkName)
-
-	before, _ := d.GetChange("node_deployment_id")
-	for node, deploymentID := range before.(map[string]interface{}) {
-		nodeID, err := strconv.Atoi(node)
-		if err != nil {
-			log.Printf("error converting node id string to int: %+v", err)
-			continue
-		}
-		deploymentIDStr := uint64(deploymentID.(int))
-		network.DeleteDeploymentHostIDs(uint32(nodeID), deploymentIDStr)
-	}
-
-	// remove old ips
-	network.DeleteDeploymentHostIDs(k8s.Master.Node, k8s.NodeDeploymentID[k8s.Master.Node])
-	for _, worker := range k8s.Workers {
-		network.DeleteDeploymentHostIDs(worker.Node, (k8s.NodeDeploymentID[worker.Node]))
-	}
-
-	// append new ips
-	var masterNodeDeploymentHostIDs []byte
-	masterIP := net.ParseIP(k8s.Master.IP)
-	if masterIP == nil {
-		log.Printf("couldn't parse master ip")
-	} else {
-		masterNodeDeploymentHostIDs = append(masterNodeDeploymentHostIDs, masterIP.To4()[3])
-	}
-	network.SetDeploymentHostIDs(k8s.Master.Node, k8s.NodeDeploymentID[k8s.Master.Node], masterNodeDeploymentHostIDs)
-	for _, worker := range k8s.Workers {
-		workerNodeDeploymentHostIDs := network.GetDeploymentHostIDs(worker.Node, k8s.NodeDeploymentID[worker.Node])
-		workerIP := net.ParseIP(worker.IP)
-		if workerIP == nil {
-			log.Printf("couldn't parse worker ip at node (%d)", worker.Node)
-		} else {
-			workerNodeDeploymentHostIDs = append(workerNodeDeploymentHostIDs, workerIP.To4()[3])
-		}
-		network.SetDeploymentHostIDs(worker.Node, k8s.NodeDeploymentID[worker.Node], workerNodeDeploymentHostIDs)
-	}
 }

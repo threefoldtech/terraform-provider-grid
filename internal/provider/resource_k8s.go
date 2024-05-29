@@ -322,7 +322,7 @@ func resourceK8sCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 		return diag.Errorf("couldn't update k8s cluster from remote with error: %v", err)
 	}
 
-	err = storeK8sState(d, k8sCluster, *tfPluginClient.State)
+	err = storeK8sState(d, k8sCluster)
 	if err != nil {
 		diags = diag.FromErr(err)
 	}
@@ -352,7 +352,7 @@ func resourceK8sUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		return diag.Errorf("couldn't update k8s cluster from remote with error: %v", err)
 	}
 
-	err = storeK8sState(d, k8sCluster, *tfPluginClient.State)
+	err = storeK8sState(d, k8sCluster)
 	if err != nil {
 		diags = diag.FromErr(err)
 	}
@@ -390,7 +390,7 @@ func resourceK8sRead(ctx context.Context, d *schema.ResourceData, meta interface
 		return diags
 	}
 
-	err = storeK8sState(d, k8sCluster, *tfPluginClient.State)
+	err = storeK8sState(d, k8sCluster)
 	if err != nil {
 		diags = diag.FromErr(err)
 	}
