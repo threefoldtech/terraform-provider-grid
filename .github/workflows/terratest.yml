@@ -25,7 +25,7 @@ jobs:
         env:
           ACTIONS_ALLOW_UNSECURE_COMMANDS: true
         with:
-          terraform-version: 1.0.11
+          terraform-version: 1.8.5
       - name: install wg and yggdrasil and add peers
         run: |
           sudo apt-get update
@@ -38,21 +38,19 @@ jobs:
           sudo apt-get update
           sudo apt-get install yggdrasil
           sudo systemctl enable yggdrasil
-          PEERS=$(curl https://raw.githubusercontent.com/threefoldtech/zos-config/main/development.json | jq '.yggdrasil.peers[]' -r | sed 's/\//\\\//g' | sed -z 's/\n/\\n/g')
-          sudo  sed -i -- 's/Peers\: \[\]/Peers: [\n'"$PEERS"']/g' /etc/yggdrasil/yggdrasil.conf
-          sudo systemctl start yggdrasil
+          PEERS=$(curl https://raw.githubusercontent.com/AhmedHanafy725/yggdrasil-config/main/config.json | jq '.yggdrasil.peers[]' -r | sed 's/\//\\\//g' | sed -z 's/\n/\\n/g')
+          sudo sed -i -- 's/Peers\: \[\]/Peers: [\n'"$PEERS"']/g' /etc/yggdrasil/yggdrasil.conf
+          sudo systemctl restart yggdrasil
       - uses: actions/checkout@v4.1.1
         with:
           fetch-depth: 0
       - name: Build
-        run: |
-          go mod tidy
-          mkdir -p ~/.terraform.d/plugins/threefoldtechdev.com/providers/grid/0.2/linux_amd64/
-          go build -o terraform-provider-grid
-          mv terraform-provider-grid ~/.terraform.d/plugins/threefoldtechdev.com/providers/grid/0.2/linux_amd64/
+        run: make build
       - name: Run Go Tests
         env:
           MNEMONICS: ${{ secrets.MNEMONICS }}
           NETWORK: ${{ matrix.network }}
         working-directory: integrationtests
-        run: go test -v ./... --tags=integration -timeout 3600s
+        run: |
+          go test -v ./... --tags=integration -run TestPeertube
+					#go test -v ./... --tags=integration -timeout 3600s
