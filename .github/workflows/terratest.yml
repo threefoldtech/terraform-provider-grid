@@ -3,6 +3,7 @@ name: Intgeration tests
 on:
   schedule:
     - cron: "0 0 * * *"
+    - cron: "0 0 * * 0"
   workflow_dispatch:
   push:
     tags:
@@ -45,7 +46,11 @@ jobs:
         with:
           fetch-depth: 0
       - name: Build
-        run: make build
+        run: |
+          go mod tidy
+          mkdir -p ~/.terraform.d/plugins/threefoldtechdev.com/providers/grid/0.2/linux_amd64/
+          go build -o terraform-provider-grid
+          mv terraform-provider-grid ~/.terraform.d/plugins/threefoldtechdev.com/providers/grid/0.2/linux_amd64/
       - name: Run Go Tests
         env:
           MNEMONICS: ${{ secrets.MNEMONICS }}
@@ -53,4 +58,5 @@ jobs:
         working-directory: integrationtests
         run: |
           go test -v ./... --tags=integration -run TestPeertube
-					#go test -v ./... --tags=integration -timeout 3600s
+          go test -v ./... --tags=integration -run TestPresearch
+          # go test -v ./... --tags=integration -timeout 3600s

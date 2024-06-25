@@ -1,8 +1,3 @@
-
-variable "public_key" {
-  type = string
-}
-
 terraform {
   required_providers {
     grid = {
@@ -64,7 +59,7 @@ resource "grid_deployment" "d1" {
     entrypoint = "/sbin/zinit init"
     memory     = 4096
     env_vars = {
-      SSH_KEY                     = try(length("${var.public_key}"), 0) > 0 ? "${var.public_key}" : file("~/.ssh/id_rsa.pub")
+      SSH_KEY                     = file("~/.ssh/id_rsa.pub")
       PEERTUBE_DB_SUFFIX          = "_prod"
       PEERTUBE_DB_USERNAME        = "peertube"
       PEERTUBE_DB_PASSWORD        = "peertube"

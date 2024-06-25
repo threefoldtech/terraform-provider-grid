@@ -1,12 +1,16 @@
 package integrationtests
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
+	"github.com/gruntwork-io/terratest/modules/retry"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/require"
+	"github.com/threefoldtech/terraform-provider-grid/internal/provider/scheduler"
 )
 
 func TestPeertube(t *testing.T) {
@@ -37,6 +41,11 @@ func TestPeertube(t *testing.T) {
 	defer terraform.Destroy(t, terraformOptions)
 
 	_, err = terraform.InitAndApplyE(t, terraformOptions)
+	if err != nil && errors.As(err, &retry.FatalError{Underlying: scheduler.NoNodesFoundErr}) {
+		t.Skip("couldn't find any available nodes")
+		return
+	}
+
 	require.NoError(t, err)
 
 	// Check that the outputs not empty
@@ -55,9 +64,14 @@ func TestPeertube(t *testing.T) {
 	require.Contains(t, output, "peertube: Running")
 
 	statusOk := false
-	resp, err := http.Get(fmt.Sprintf("https://%s", fqdn))
-	if err == nil && resp.StatusCode == 200 {
-		statusOk = true
+	ticker := time.NewTicker(2 * time.Second)
+	for now := time.Now(); time.Since(now) < 1*time.Minute; {
+		<-ticker.C
+		resp, err := http.Get(fmt.Sprintf("https://%s", fqdn))
+		if err == nil && resp.StatusCode == 200 {
+			statusOk = true
+			break
+		}
 	}
 
 	require.True(t, statusOk, "website did not respond with 200 status code")

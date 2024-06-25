@@ -1,13 +1,16 @@
 package integrationtests
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/gruntwork-io/terratest/modules/retry"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
+	"github.com/threefoldtech/terraform-provider-grid/internal/provider/scheduler"
 )
 
 func TestPresearch(t *testing.T) {
@@ -27,17 +30,23 @@ func TestPresearch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to generate ssh key pair: %s", err.Error())
 	}
-	presearchRegestrationCode := "e5083a8d0a6362c6cf7a3078bfac81e3"
+
+	presearchRegistrationCode := "e5083a8d0a6362c6cf7a3078bfac81e3"
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./presearch",
 		Vars: map[string]interface{}{
 			"public_key":                  publicKey,
-			"presearch_regestration_code": presearchRegestrationCode,
+			"presearch_registration_code": presearchRegistrationCode,
 		},
 	})
 	defer terraform.Destroy(t, terraformOptions)
 
 	_, err = terraform.InitAndApplyE(t, terraformOptions)
+	if err != nil && errors.As(err, &retry.FatalError{Underlying: scheduler.NoNodesFoundErr}) {
+		t.Skip("couldn't find any available nodes")
+		return
+	}
+
 	assert.NoError(t, err)
 
 	yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
@@ -48,7 +57,7 @@ func TestPresearch(t *testing.T) {
 
 	output, err := RemoteRun("root", yggIP, "cat /proc/1/environ", privateKey)
 	assert.NoError(t, err)
-	assert.Contains(t, string(output), fmt.Sprintf("PRESEARCH_REGISTRATION_CODE=%s", presearchRegestrationCode))
+	assert.Contains(t, string(output), fmt.Sprintf("PRESEARCH_REGISTRATION_CODE=%s", presearchRegistrationCode))
 
 	ticker := time.NewTicker(2 * time.Second)
 	for now := time.Now(); time.Since(now) < 1*time.Minute; {
