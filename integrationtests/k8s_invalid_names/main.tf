@@ -13,71 +13,53 @@ terraform {
 
 provider "grid" {
 }
+
+resource "random_string" "name" {
+  length  = 8
+  special = false
+}
+
 resource "grid_scheduler" "sched" {
   requests {
-    name    = "node1"
-    cru     = 2
-    sru     = 512
-    mru     = 2048
-    farm_id = 1
-  }
-
-  requests {
-    name    = "node2"
-    cru     = 2
-    sru     = 512
-    mru     = 2048
-    farm_id = 1
-  }
-
-  requests {
-    name    = "node3"
-    cru     = 2
-    sru     = 512
-    mru     = 2048
-    farm_id = 1
+    name = "node"
+    cru  = 2
+    sru  = 3 * 1024
+    mru  = 6 * 1024
   }
 }
 
 
 resource "grid_network" "net1" {
-  nodes = distinct([
-    grid_scheduler.sched.nodes["node1"],
-    grid_scheduler.sched.nodes["node2"],
-    grid_scheduler.sched.nodes["node3"]
-  ])
+  nodes       = [grid_scheduler.sched.nodes["node"]]
   ip_range    = "10.1.0.0/16"
-  name        = "network12346"
-  description = "newer network"
+  name        = random_string.name.result
+  description = "kubernetes network"
 }
+
 resource "grid_kubernetes" "k8s1" {
   network_name = grid_network.net1.name
   token        = "12345678910122"
   ssh_key      = var.public_key
 
   master {
-    disk_size = 22
-    node      = grid_scheduler.sched.nodes["node1"]
+    disk_size = 1
+    node      = grid_scheduler.sched.nodes["node"]
     name      = "mr"
     cpu       = 2
     memory    = 2048
   }
   workers {
-    disk_size = 15
-    node      = grid_scheduler.sched.nodes["node2"]
+    disk_size = 1
+    node      = grid_scheduler.sched.nodes["node"]
     name      = "w0"
     cpu       = 2
     memory    = 2048
   }
   workers {
-    disk_size = 13
-    node      = grid_scheduler.sched.nodes["node3"]
+    disk_size = 1
+    node      = grid_scheduler.sched.nodes["node"]
     name      = "w0"
-    cpu       = 1
+    cpu       = 2
     memory    = 2048
   }
-}
-
-output "computed_master_public_ip" {
-  value = grid_kubernetes.k8s1.master[0].computedip
 }

@@ -75,15 +75,15 @@ resource "grid_scheduler" "sched" {
 }
 
 locals {
-  solution_type = "Kubernetes"
+  solution_type = "kubernetes/mr"
   name          = "myk8s"
 }
+
 resource "grid_network" "net1" {
-  solution_type = local.solution_type
   name          = local.name
   nodes         = distinct(values(grid_scheduler.sched.nodes))
   ip_range      = "10.1.0.0/16"
-  description   = "newer network"
+  description   = "kubernetes network"
   add_wg_access = true
   mycelium_keys = {
     format("%s", grid_scheduler.sched.nodes["master_node"])  = random_bytes.master_mycelium_key.hex

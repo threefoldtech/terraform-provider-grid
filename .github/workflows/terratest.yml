@@ -57,7 +57,8 @@ jobs:
           NETWORK: ${{ matrix.network }}
         working-directory: integrationtests
         run: |
-          # go test -v ./... --tags=integration -timeout 3600s
+          # go test -v ./... --tags=integration -run TestVM
+          go test -v ./... --tags=integration -run TestK8s
           # go test -v ./... --tags=integration -run TestModuleK8s # SKIPPED
           # go test -v ./... --tags=integration -run TestPeertube
           # go test -v ./... --tags=integration -run TestPresearch
@@ -68,5 +69,4 @@ jobs:
           # go test -v ./... --tags=integration -run TestZdbs
           # go test -v ./... --tags=integration -run TestQSFS
           # go test -v ./... --tags=integration -run TestWireguard
-          go test -v ./... --tags=integration -run TestNomad
-          # go test -v ./... --tags=integration -run TestK8s
+          # go test -v ./... --tags=integration -run TestNomad
