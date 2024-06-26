@@ -19,11 +19,14 @@ terraform {
 provider "grid" {
 }
 
-locals {
-  solution_type = "Presearch"
-  name          = "presearch"
+resource "random_string" "name" {
+  length  = 8
+  special = false
 }
 
+locals {
+  solution_type = "Presearch"
+}
 
 resource "grid_scheduler" "sched" {
   requests {
@@ -36,7 +39,7 @@ resource "grid_scheduler" "sched" {
 
 resource "grid_network" "net1" {
   solution_type = local.solution_type
-  name          = local.name
+  name          = random_string.name.result
   nodes         = [grid_scheduler.sched.nodes["presearch"]]
   ip_range      = "10.1.0.0/16"
   description   = "presearch network"
@@ -45,7 +48,7 @@ resource "grid_network" "net1" {
 # Deployment specs
 resource "grid_deployment" "d1" {
   solution_type = local.solution_type
-  name          = local.name
+  name          = random_string.name.result
   node          = grid_scheduler.sched.nodes["presearch"]
   network_name  = grid_network.net1.name
 
@@ -56,7 +59,7 @@ resource "grid_deployment" "d1" {
   }
 
   vms {
-    name       = local.name
+    name       = random_string.name.result
     flist      = "https://hub.grid.tf/tf-official-apps/presearch-v2.2.flist"
     entrypoint = "/sbin/zinit init"
     planetary  = true

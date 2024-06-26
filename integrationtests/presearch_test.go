@@ -9,7 +9,7 @@ import (
 
 	"github.com/gruntwork-io/terratest/modules/retry"
 	"github.com/gruntwork-io/terratest/modules/terraform"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/threefoldtech/terraform-provider-grid/internal/provider/scheduler"
 )
 
@@ -47,17 +47,17 @@ func TestPresearch(t *testing.T) {
 		return
 	}
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
-	assert.NotEmpty(t, yggIP)
+	require.NotEmpty(t, yggIP)
 
 	ok := TestConnection(yggIP, "22")
-	assert.True(t, ok)
+	require.True(t, ok)
 
 	output, err := RemoteRun("root", yggIP, "cat /proc/1/environ", privateKey)
-	assert.NoError(t, err)
-	assert.Contains(t, string(output), fmt.Sprintf("PRESEARCH_REGISTRATION_CODE=%s", presearchRegistrationCode))
+	require.NoError(t, err)
+	require.Contains(t, string(output), fmt.Sprintf("PRESEARCH_REGISTRATION_CODE=%s", presearchRegistrationCode))
 
 	ticker := time.NewTicker(2 * time.Second)
 	for now := time.Now(); time.Since(now) < 1*time.Minute; {
@@ -68,6 +68,6 @@ func TestPresearch(t *testing.T) {
 		}
 	}
 
-	assert.NoError(t, err)
-	assert.Contains(t, output, "prenode: Success")
+	require.NoError(t, err)
+	require.Contains(t, output, "prenode: Success")
 }

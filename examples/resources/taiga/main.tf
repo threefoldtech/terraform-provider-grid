@@ -33,7 +33,7 @@ resource "grid_network" "net2" {
   name          = local.name
   nodes         = [grid_scheduler.sched.nodes["node"]]
   ip_range      = "10.1.0.0/16"
-  description   = "newer network"
+  description   = "taiga network"
   add_wg_access = true
 }
 
@@ -94,7 +94,6 @@ resource "grid_name_proxy" "p1" {
 output "node1_zmachine1_ip" {
   value = grid_deployment.node1.vms[0].ip
 }
-
 
 output "node1_zmachine1_ygg_ip" {
   value = grid_deployment.node1.vms[0].planetary_ip

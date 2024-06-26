@@ -15,9 +15,15 @@ terraform {
 
 provider "grid" {
 }
+
+resource "random_string" "name" {
+  length  = 8
+  special = false
+}
+
 resource "grid_scheduler" "sched" {
   requests {
-    name = "taiga_instance"
+    name = "node"
     cru  = 2
     sru  = 58 * 1024
     mru  = 8096
@@ -31,14 +37,15 @@ resource "grid_scheduler" "sched" {
 }
 
 resource "grid_network" "net2" {
-  nodes       = [grid_scheduler.sched.nodes["taiga_instance"]]
+  name        = random_string.name.result
+  nodes       = [grid_scheduler.sched.nodes["node"]]
   ip_range    = "10.1.0.0/16"
-  name        = "network1"
-  description = "newer network"
+  description = "taiga network"
 }
 
 resource "grid_deployment" "node1" {
-  node         = grid_scheduler.sched.nodes["taiga_instance"]
+  name         = random_string.name.result
+  node         = grid_scheduler.sched.nodes["node"]
   network_name = grid_network.net2.name
   disks {
     name = "data0"
@@ -87,12 +94,11 @@ locals {
 }
 
 resource "grid_name_proxy" "p1" {
+  name            = random_string.name.result
   node            = grid_scheduler.sched.nodes["gateway"]
-  name            = "grid3taiga"
   backends        = [format("http://[%s]:9000", local.ygg_ip)]
   tls_passthrough = false
 }
-
 
 output "ygg_ip" {
   value = grid_deployment.node1.vms[0].planetary_ip

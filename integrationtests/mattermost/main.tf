@@ -15,15 +15,20 @@ terraform {
   }
 }
 
+resource "random_string" "name" {
+  length  = 8
+  special = false
+}
+
 provider "grid" {
 }
 
 resource "grid_scheduler" "sched" {
   requests {
-    name = "mattermost_instance"
+    name = "node"
     cru  = 2
-    sru  = 512
-    mru  = 4096
+    sru  = 1 * 1024
+    mru  = 4 * 1024
   }
 
   requests {
@@ -33,24 +38,17 @@ resource "grid_scheduler" "sched" {
   }
 }
 
-# this data source is used to break circular dependency in cases similar to the following:
-# vm: needs to know the domain in its init script
-# gateway_name: needs the ip of the vm to use as backend.
-# - the fqdn can be computed from grid_gateway_domain for the vm
-# - the backend can reference the vm ip directly 
-data "grid_gateway_domain" "domain" {
-  node = grid_scheduler.sched.nodes["gateway"]
-  name = "khaledmatter"
-}
 resource "grid_network" "net1" {
-  nodes         = [grid_scheduler.sched.nodes["mattermost_instance"]]
+  name          = random_string.name.result
+  nodes         = [grid_scheduler.sched.nodes["node"]]
   ip_range      = "10.1.0.0/16"
-  name          = "networkk"
-  description   = "newer network"
+  description   = "mattermost network"
   add_wg_access = true
 }
+
 resource "grid_deployment" "d1" {
-  node         = grid_scheduler.sched.nodes["mattermost_instance"]
+  name         = random_string.name.result
+  node         = grid_scheduler.sched.nodes["node"]
   network_name = grid_network.net1.name
   vms {
     name       = "vm1"
@@ -60,7 +58,7 @@ resource "grid_deployment" "d1" {
     memory     = 4096
     env_vars = {
       SSH_KEY      = "${var.public_key}",
-      DB_PASSWORD  = "khaled"
+      DB_PASSWORD  = "ashroof"
       SITE_URL     = format("https://%s", data.grid_gateway_domain.domain.fqdn)
       SMTPPASSWORD = "password"
       SMTPUSERNAME = "Ashraf"
@@ -75,12 +73,23 @@ locals {
   ygg_ip = try(length(grid_deployment.d1.vms[0].planetary_ip), 0) > 0 ? grid_deployment.d1.vms[0].planetary_ip : ""
 }
 
+# this data source is used to break circular dependency in cases similar to the following:
+# vm: needs to know the domain in its init script
+# gateway_name: needs the ip of the vm to use as backend.
+# - the fqdn can be computed from grid_gateway_domain for the vm
+# - the backend can reference the vm ip directly 
+data "grid_gateway_domain" "domain" {
+  node = grid_scheduler.sched.nodes["gateway"]
+  name = random_string.name.result
+}
+
 resource "grid_name_proxy" "p1" {
+  name            = random_string.name.result
   node            = grid_scheduler.sched.nodes["gateway"]
-  name            = "khaledmatter"
   backends        = [format("http://[%s]:8000", local.ygg_ip)]
   tls_passthrough = false
 }
+
 output "fqdn" {
   value = data.grid_gateway_domain.domain.fqdn
 }
@@ -88,4 +97,3 @@ output "fqdn" {
 output "ygg_ip" {
   value = grid_deployment.d1.vms[0].planetary_ip
 }
-
