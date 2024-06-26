@@ -87,7 +87,7 @@ resource "grid_name_proxy" "p1" {
   solution_type   = local.solution_type
   name            = local.name
   node            = grid_scheduler.sched.nodes["gateway"]
-  backends        = [format("http://%s:9000", grid_deployment.node1.vms[0].planetary_ip)]
+  backends        = [format("http://[%s]:9000", grid_deployment.node1.vms[0].planetary_ip)]
   tls_passthrough = false
 }
 

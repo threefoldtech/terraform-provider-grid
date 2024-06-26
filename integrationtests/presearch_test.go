@@ -1,13 +1,11 @@
 package integrationtests
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/gruntwork-io/terratest/modules/retry"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/require"
 	"github.com/threefoldtech/terraform-provider-grid/internal/provider/scheduler"
@@ -42,7 +40,7 @@ func TestPresearch(t *testing.T) {
 	defer terraform.Destroy(t, terraformOptions)
 
 	_, err = terraform.InitAndApplyE(t, terraformOptions)
-	if err != nil && errors.As(err, &retry.FatalError{Underlying: scheduler.NoNodesFoundErr}) {
+	if err != nil && strings.Contains(err.Error(), scheduler.NoNodesFoundErr.Error()) {
 		t.Skip("couldn't find any available nodes")
 		return
 	}

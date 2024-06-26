@@ -1,12 +1,10 @@
 package integrationtests
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 	"testing"
 
-	"github.com/gruntwork-io/terratest/modules/retry"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
 	"github.com/threefoldtech/terraform-provider-grid/internal/provider/scheduler"
@@ -71,7 +69,7 @@ func TestVM(t *testing.T) {
 		defer terraform.Destroy(t, terraformOptions)
 
 		_, err = terraform.InitAndApplyE(t, terraformOptions)
-		if err != nil && errors.As(err, &retry.FatalError{Underlying: scheduler.NoNodesFoundErr}) {
+		if err != nil && strings.Contains(err.Error(), scheduler.NoNodesFoundErr.Error()) {
 			t.Skip("couldn't find any nodes with public ip")
 			return
 		}

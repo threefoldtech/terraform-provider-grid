@@ -41,7 +41,7 @@ func TestTaiga(t *testing.T) {
 	defer terraform.Destroy(t, terraformOptions)
 
 	_, err = terraform.InitAndApplyE(t, terraformOptions)
-	if err != nil && errors.As(err, &retry.FatalError{Underlying: scheduler.NoNodesFoundErr}) {
+	if err != nil && errors.Is(err, retry.FatalError{Underlying: scheduler.NoNodesFoundErr}) {
 		t.Skip("couldn't find any available nodes")
 		return
 	}
