@@ -40,7 +40,7 @@ resource "grid_deployment" "servers" {
       entrypoint  = local.entrypoint
       mounts {
         disk_name   = vms.value.disk.name
-          mount_point = vms.value.mount_point
+        mount_point = vms.value.mount_point
       }
       env_vars = {
         SSH_KEY         = var.ssh_key
@@ -78,7 +78,7 @@ resource "grid_deployment" "clients" {
       entrypoint  = local.entrypoint
       mounts {
         disk_name   = vms.value.disk.name
-          mount_point = vms.value.mount_point
+        mount_point = vms.value.mount_point
       }
       env_vars = {
         SSH_KEY         = var.ssh_key

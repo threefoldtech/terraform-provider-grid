@@ -54,18 +54,19 @@ variable "clients" {
   }))
 }
 
+
 output "server1_ip" {
-  value = module.nomad.servers.vm[0].vms[0].ip
+  value = module.nomad.servers.vm[0].vms[0].name == "server1" ? module.nomad.servers.vm[0].vms[0].ip : module.nomad.servers.vm[1].vms[0].name == "server1" ? module.nomad.servers.vm[1].vms[0].ip : module.nomad.servers.vm[2].vms[0].ip
 }
 output "server1_ygg_ip" {
-  value = module.nomad.servers.vm[0].vms[0].planetary_ip
+  value = module.nomad.servers.vm[0].vms[0].name == "server1" ? module.nomad.servers.vm[0].vms[0].planetary_ip : module.nomad.servers.vm[1].vms[0].name == "server1" ? module.nomad.servers.vm[1].vms[0].planetary_ip : module.nomad.servers.vm[2].vms[0].planetary_ip
 }
 output "server2_ygg_ip" {
-  value = module.nomad.servers.vm[1].vms[0].planetary_ip
+  value = module.nomad.servers.vm[0].vms[0].name == "server2" ? module.nomad.servers.vm[0].vms[0].planetary_ip : module.nomad.servers.vm[1].vms[0].name == "server2" ? module.nomad.servers.vm[1].vms[0].planetary_ip : module.nomad.servers.vm[2].vms[0].planetary_ip
 }
 output "server3_ygg_ip" {
-  value = module.nomad.servers.vm[2].vms[0].planetary_ip
+  value = module.nomad.servers.vm[0].vms[0].name == "server3" ? module.nomad.servers.vm[0].vms[0].planetary_ip : module.nomad.servers.vm[1].vms[0].name == "server3" ? module.nomad.servers.vm[1].vms[0].planetary_ip : module.nomad.servers.vm[2].vms[0].planetary_ip
 }
 output "client1_ygg_ip" {
-  value = module.nomad.clients.vm[0].vms[0].planetary_ip
+  value = module.nomad.servers.vm[0].vms[0].name == "client1" ? module.nomad.servers.vm[0].vms[0].planetary_ip : module.nomad.servers.vm[1].vms[0].name == "client1" ? module.nomad.servers.vm[1].vms[0].planetary_ip : module.nomad.servers.vm[2].vms[0].planetary_ip
 }

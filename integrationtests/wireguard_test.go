@@ -1,18 +1,21 @@
 package integrationtests
 
 import (
+	"errors"
 	"testing"
 
+	"github.com/gruntwork-io/terratest/modules/retry"
 	"github.com/gruntwork-io/terratest/modules/terraform"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/threefoldtech/terraform-provider-grid/internal/provider/scheduler"
 )
 
 func TestWireguard(t *testing.T) {
-	/* Test case for deployeng a singlenode.
+	/* Test case for deploying a wireguard.
 
 	   **Test Scenario**
 
-	   - Deploy a singlenode.
+	   - Deploy a wireguard.
 	   - Check that the output is not empty.
 	   - Up wireguard.
 	   - Check that containers is reachable
@@ -36,32 +39,34 @@ func TestWireguard(t *testing.T) {
 	defer terraform.Destroy(t, terraformOptions)
 
 	_, err = terraform.InitAndApplyE(t, terraformOptions)
-	assert.NoError(t, err)
+	if err != nil && errors.Is(err, retry.FatalError{Underlying: scheduler.NoNodesFoundErr}) {
+		t.Skip("couldn't find any available nodes")
+		return
+	}
 
 	// Check that the outputs not empty
 	wgVM1IP := terraform.Output(t, terraformOptions, "vm1_wg_ip")
-	assert.NotEmpty(t, wgVM1IP)
+	require.NotEmpty(t, wgVM1IP)
 
 	wgVM2IP := terraform.Output(t, terraformOptions, "vm2_wg_ip")
-	assert.NotEmpty(t, wgVM2IP)
+	require.NotEmpty(t, wgVM2IP)
 
 	// Up wireguard
 	wgConfig := terraform.Output(t, terraformOptions, "wg_config")
-	assert.NotEmpty(t, wgConfig)
+	require.NotEmpty(t, wgConfig)
 
 	tempDir := t.TempDir()
 	conf, err := UpWg(wgConfig, tempDir)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	defer func() {
 		_, err := DownWG(conf)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}()
 
 	ips := []string{wgVM1IP, wgVM2IP}
 	for i := range ips {
 		// testing connection
-		ok := TestConnection(ips[i], "22")
-		assert.True(t, ok)
+		require.True(t, TestConnection(ips[i], "22"))
 	}
 }

@@ -1,17 +1,20 @@
 package integrationtests
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/go-redis/redis"
+	"github.com/gruntwork-io/terratest/modules/retry"
 	"github.com/gruntwork-io/terratest/modules/terraform"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/threefoldtech/terraform-provider-grid/internal/provider/scheduler"
 )
 
 func TestZdbs(t *testing.T) {
 
 	t.Run("zdb_test", func(t *testing.T) {
-		/* Test case for deployeng a singlenode.
+		/* Test case for deploying a zdb.
 
 		   **Test Scenario**
 
@@ -32,29 +35,34 @@ func TestZdbs(t *testing.T) {
 		defer terraform.Destroy(t, terraformOptions)
 
 		_, err := terraform.InitAndApplyE(t, terraformOptions)
-		assert.NoError(t, err)
+		if err != nil && errors.Is(err, retry.FatalError{Underlying: scheduler.NoNodesFoundErr}) {
+			t.Skip("couldn't find any available nodes")
+			return
+		}
+
+		require.NoError(t, err)
 
 		// Check that the outputs not empty
 		deploymentID := terraform.Output(t, terraformOptions, "deployment_id")
-		assert.NotEmpty(t, deploymentID)
+		require.NotEmpty(t, deploymentID)
 
 		zdbEndpoint := terraform.Output(t, terraformOptions, "zdb1_endpoint")
-		assert.NotEmpty(t, zdbEndpoint)
+		require.NotEmpty(t, zdbEndpoint)
 
 		zdbNamespace := terraform.Output(t, terraformOptions, "zdb1_namespace")
-		assert.NotEmpty(t, zdbNamespace)
+		require.NotEmpty(t, zdbNamespace)
 
 		rdb := redis.NewClient(&redis.Options{
 			Addr: zdbEndpoint,
 		})
 		_, err = rdb.Do("SELECT", zdbNamespace, password).Result()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		_, err = rdb.Set("key1", "val1", 0).Result()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		res, err := rdb.Get("key1").Result()
-		assert.NoError(t, err)
-		assert.Equal(t, res, "val1")
+		require.NoError(t, err)
+		require.Equal(t, res, "val1")
 	})
 }

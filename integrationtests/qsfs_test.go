@@ -1,11 +1,15 @@
 package integrationtests
 
 import (
+	"errors"
 	"os/exec"
 	"testing"
+	"time"
 
+	"github.com/gruntwork-io/terratest/modules/retry"
 	"github.com/gruntwork-io/terratest/modules/terraform"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/threefoldtech/terraform-provider-grid/internal/provider/scheduler"
 )
 
 func TestQSFS(t *testing.T) {
@@ -15,7 +19,7 @@ func TestQSFS(t *testing.T) {
 	}
 
 	t.Run("qsfs_test", func(t *testing.T) {
-		/* Test case for deployeng a QSFS check metrics.
+		/* Test case for deploying a QSFS check metrics.
 		   **Test Scenario**
 		   - Deploy a qsfs.
 		   - Check that the outputs not empty.
@@ -34,30 +38,36 @@ func TestQSFS(t *testing.T) {
 		defer terraform.Destroy(t, terraformOptions)
 
 		_, err = terraform.InitAndApplyE(t, terraformOptions)
-		assert.NoError(t, err)
+		if err != nil && errors.Is(err, retry.FatalError{Underlying: scheduler.NoNodesFoundErr}) {
+			t.Skip("couldn't find any available nodes")
+			return
+		}
+
+		require.NoError(t, err)
 
 		// Check that the outputs not empty
 		metrics := terraform.Output(t, terraformOptions, "metrics")
-		assert.NotEmpty(t, metrics)
+		require.NotEmpty(t, metrics)
 
 		yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
-		assert.NotEmpty(t, yggIP)
+		require.NotEmpty(t, yggIP)
 
 		// get metrics
 		cmd := exec.Command("curl", metrics)
 		output, err := cmd.Output()
-		assert.NoError(t, err)
-		assert.Contains(t, string(output), "fs_syscalls{syscall=\"create\"} 0")
+		require.NoError(t, err)
+		require.Contains(t, string(output), "fs_syscalls{syscall=\"create\"} 0")
 
 		// try write to a file in mounted disk
 		_, err = RemoteRun("root", yggIP, "cd /qsfs && echo hamadatext >> hamadafile", privateKey)
-		assert.NoError(t, err)
+		require.NoError(t, err)
+
+		time.Sleep(5 * time.Second)
 
 		// get metrics after write
 		cmd = exec.Command("curl", metrics)
 		output, err = cmd.Output()
-		assert.NoError(t, err)
-		assert.Contains(t, string(output), "fs_syscalls{syscall=\"create\"} 1")
-
+		require.NoError(t, err)
+		require.Contains(t, string(output), "fs_syscalls{syscall=\"create\"} 1")
 	})
 }

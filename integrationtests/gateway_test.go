@@ -14,7 +14,7 @@ import (
 	"github.com/threefoldtech/terraform-provider-grid/internal/provider/scheduler"
 )
 
-func TestGateway(t *testing.T) {
+func TestGatewayDeployments(t *testing.T) {
 	publicKey, privateKey, err := GenerateSSHKeyPair()
 	if err != nil {
 		t.Fatalf("failed to generate ssh key pair: %s", err.Error())
