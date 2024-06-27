@@ -94,7 +94,7 @@ locals {
 }
 
 resource "grid_name_proxy" "p1" {
-  name            = random_string.name.result
+  name            = "grid3taiga"
   node            = grid_scheduler.sched.nodes["gateway"]
   backends        = [format("http://[%s]:9000", local.ygg_ip)]
   tls_passthrough = false

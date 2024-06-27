@@ -1,6 +1,7 @@
 package integrationtests
 
 import (
+	"os"
 	"os/exec"
 	"strings"
 	"testing"
@@ -12,6 +13,11 @@ import (
 )
 
 func TestQSFS(t *testing.T) {
+	if network, _ := os.LookupEnv("NETWORK"); network != "test" {
+		t.Skip("https://github.com/threefoldtech/terraform-provider-grid/issues/770")
+		return
+	}
+
 	publicKey, privateKey, err := GenerateSSHKeyPair()
 	if err != nil {
 		t.Fatalf("failed to generate ssh key pair: %s", err.Error())

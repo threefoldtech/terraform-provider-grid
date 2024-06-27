@@ -80,11 +80,11 @@ locals {
 # - the backend can reference the vm ip directly 
 data "grid_gateway_domain" "domain" {
   node = grid_scheduler.sched.nodes["gateway"]
-  name = random_string.name.result
+  name = "testmatter"
 }
 
 resource "grid_name_proxy" "p1" {
-  name            = random_string.name.result
+  name            = "testmatter"
   node            = grid_scheduler.sched.nodes["gateway"]
   backends        = [format("http://[%s]:8000", local.ygg_ip)]
   tls_passthrough = false
