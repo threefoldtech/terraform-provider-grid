@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/threefoldtech/terraform-provider-grid/internal/provider/scheduler"
 )
 
@@ -17,7 +17,7 @@ func TestVM(t *testing.T) {
 	}
 
 	t.Run("single_vm", func(t *testing.T) {
-		/* Test case for deployeng a singlenode.
+		/* Test case for deploying a single vm.
 
 		   **Test Scenario**
 
@@ -35,23 +35,26 @@ func TestVM(t *testing.T) {
 		defer terraform.Destroy(t, terraformOptions)
 
 		_, err = terraform.InitAndApplyE(t, terraformOptions)
-		if !(assert.NoError(t, err)) {
+		if err != nil && strings.Contains(err.Error(), scheduler.NoNodesFoundErr.Error()) {
+			t.Skip("couldn't find any available nodes")
 			return
 		}
 
+		require.NoError(t, err)
+
 		yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
-		assert.NotEmpty(t, yggIP)
+		require.NotEmpty(t, yggIP)
 
 		vmIP := terraform.Output(t, terraformOptions, "vm_ip")
-		assert.NotEmpty(t, vmIP)
+		require.NotEmpty(t, vmIP)
 
 		// testing connection
 		ok := TestConnection(yggIP, "22")
-		assert.True(t, ok)
+		require.True(t, ok)
 	})
 
 	t.Run("vm_public_ip", func(t *testing.T) {
-		/* Test case for deployeng a singlenode.
+		/* Test case for deploying a single vm with public IP.
 
 		   **Test Scenario**
 
@@ -70,29 +73,28 @@ func TestVM(t *testing.T) {
 
 		_, err = terraform.InitAndApplyE(t, terraformOptions)
 		if err != nil && strings.Contains(err.Error(), scheduler.NoNodesFoundErr.Error()) {
-			t.Skip("couldn't find any nodes with public ip")
+			t.Skip("couldn't find any available nodes")
 			return
 		}
-		if !(assert.NoError(t, err)) {
-			return
-		}
+
+		require.NoError(t, err)
 
 		vmComputedIP := terraform.Output(t, terraformOptions, "vm_public_ip")
-		assert.NotEmpty(t, vmComputedIP)
+		require.NotEmpty(t, vmComputedIP)
 
 		vmIP := terraform.Output(t, terraformOptions, "vm_ip")
-		assert.NotEmpty(t, vmIP)
+		require.NotEmpty(t, vmIP)
 
 		// spliting ip to connect on it
 		publicIP := strings.Split(vmComputedIP, "/")[0]
 
 		// testing connections
 		ok := TestConnection(publicIP, "22")
-		assert.True(t, ok)
+		require.True(t, ok)
 	})
 
 	t.Run("vm_invalid_cpu", func(t *testing.T) {
-		/* Test case for deployeng a singlenode.
+		/* Test case for deploying a single vm with invalid cpu.
 
 		   **Test Scenario**
 
@@ -110,12 +112,11 @@ func TestVM(t *testing.T) {
 		defer terraform.Destroy(t, terraformOptions)
 
 		_, err = terraform.InitAndApplyE(t, terraformOptions)
-
-		assert.Error(t, err, "Should fail with can't deploy with 0 cpu but err is null")
+		require.Error(t, err, "Should fail with can't deploy with 0 cpu but err is null")
 	})
 
 	t.Run("vm_invalid_memory", func(t *testing.T) {
-		/* Test case for deployeng a singlenode.
+		/* Test case for deploying a single vm with invalid memory.
 
 		   **Test Scenario**
 
@@ -133,16 +134,17 @@ func TestVM(t *testing.T) {
 		defer terraform.Destroy(t, terraformOptions)
 
 		_, err = terraform.InitAndApplyE(t, terraformOptions)
-		assert.Error(t, err, "Should fail with mem capacity can't be less that 250M but err is null")
+		require.Error(t, err, "Should fail with mem capacity can't be less that 250M but err is null")
 	})
 	t.Run("vm_mounts", func(t *testing.T) {
-		/* Test case for deployeng a disk and mount it.
+		/* Test case for deploying a disk and mount it and try to create a file bigger than disk size.
 
 		   **Test Scenario**
 
-		   - Deploy a vm mouting a disk.
+		   - Deploy a vm mounting a disk.
 		   - Check that the outputs are not empty.
 		   - Check that disk has been mounted successfully.
+			 - try to create a file with size larger than the disk size.
 		   - Destroy the deployment.
 
 		*/
@@ -162,63 +164,34 @@ func TestVM(t *testing.T) {
 		defer terraform.Destroy(t, terraformOptions)
 
 		_, err = terraform.InitAndApplyE(t, terraformOptions)
-		if !(assert.NoError(t, err)) {
+		if err != nil && strings.Contains(err.Error(), scheduler.NoNodesFoundErr.Error()) {
+			t.Skip("couldn't find any available nodes")
 			return
 		}
+
+		require.NoError(t, err)
 
 		// Check that the outputs not empty
 		yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
-		assert.NotEmpty(t, yggIP)
+		require.NotEmpty(t, yggIP)
 
 		vmIP := terraform.Output(t, terraformOptions, "vm_ip")
-		assert.NotEmpty(t, vmIP)
+		require.NotEmpty(t, vmIP)
 
 		ok := TestConnection(yggIP, "22")
-		assert.True(t, ok)
+		require.True(t, ok)
 
 		// Check that disk has been mounted successfully
 		output, err := RemoteRun("root", yggIP, fmt.Sprintf("df -h | grep -w /%s", mountPoint), privateKey)
-		assert.NoError(t, err)
-		assert.Contains(t, string(output), fmt.Sprintf("%d.0G", diskSize))
-	})
-
-	t.Run("vm_mount_invalid_write", func(t *testing.T) {
-		/* Test case for deployeng a mount disk and try to create a file bigger than disk size.
-
-		   **Test Scenario**
-
-		   - Deploy a vm mounting a disk.
-		   - Check that the outputs not empty.
-		   - ssh to VM and try to create a file with size larger than the disk size.
-		   - Destroy the deployment
-		*/
-		diskSize := 1
-		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-			TerraformDir: "./vm_mount_invalid_write",
-			Vars: map[string]interface{}{
-				"public_key": publicKey,
-				"disk_size":  diskSize,
-			},
-		})
-		defer terraform.Destroy(t, terraformOptions)
-
-		_, err = terraform.InitAndApplyE(t, terraformOptions)
-		if !(assert.NoError(t, err)) {
-			return
-		}
-
-		yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
-		assert.NotEmpty(t, yggIP)
-
-		ok := TestConnection(yggIP, "22")
-		assert.True(t, ok)
+		require.NoError(t, err)
+		require.Contains(t, string(output), fmt.Sprintf("%d.0G", diskSize))
 
 		// ssh to VM and try to create a file bigger than disk size.
 		_, err = RemoteRun("root", yggIP, fmt.Sprintf("cd /app/ && dd if=/dev/vda bs=%dG count=1 of=test.txt", diskSize+1), privateKey)
-		assert.Error(t, err, "should fail with out of memory")
+		require.Error(t, err, "should fail with out of memory")
 	})
-	t.Run("vm_multinode", func(t *testing.T) {
-		/* Test case for deployeng a multinode.
+	t.Run("vm_multi_node", func(t *testing.T) {
+		/* Test case for deploying multiple vms.
 		   **Test Scenario**
 
 		   - Deploy two vms on multiple nodes.
@@ -235,28 +208,31 @@ func TestVM(t *testing.T) {
 		defer terraform.Destroy(t, terraformOptions)
 
 		_, err = terraform.InitAndApplyE(t, terraformOptions)
-		if !(assert.NoError(t, err)) {
+		if err != nil && strings.Contains(err.Error(), scheduler.NoNodesFoundErr.Error()) {
+			t.Skip("couldn't find any available nodes")
 			return
 		}
 
+		require.NoError(t, err)
+
 		// Check that the outputs not empty
 		vm1IP := terraform.Output(t, terraformOptions, "vm1_ip")
-		assert.NotEmpty(t, vm1IP)
+		require.NotEmpty(t, vm1IP)
 
 		vm2IP := terraform.Output(t, terraformOptions, "vm2_ip")
-		assert.NotEmpty(t, vm2IP)
+		require.NotEmpty(t, vm2IP)
 
 		vm1YggIP := terraform.Output(t, terraformOptions, "vm1_ygg_ip")
-		assert.NotEmpty(t, vm1YggIP)
+		require.NotEmpty(t, vm1YggIP)
 
 		vm2YggIP := terraform.Output(t, terraformOptions, "vm2_ygg_ip")
-		assert.NotEmpty(t, vm2YggIP)
+		require.NotEmpty(t, vm2YggIP)
 
 		// testing connections
 		ok := TestConnection(vm1YggIP, "22")
-		assert.True(t, ok)
+		require.True(t, ok)
 
 		ok = TestConnection(vm2YggIP, "22")
-		assert.True(t, ok)
+		require.True(t, ok)
 	})
 }
