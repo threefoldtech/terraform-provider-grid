@@ -36,6 +36,7 @@ resource "random_string" "name" {
 
 locals {
   solution_type = "Peertube"
+  name          = "peertube"
   node          = grid_scheduler.sched.nodes["peertube"]
 }
 
@@ -46,7 +47,7 @@ locals {
 # - the backend can reference the vm ip directly
 data "grid_gateway_domain" "domain" {
   node = grid_scheduler.sched.nodes["domain"]
-  name = random_string.name.result
+  name = local.name
 }
 
 resource "grid_network" "net1" {
@@ -90,7 +91,7 @@ locals {
 resource "grid_name_proxy" "p1" {
   node            = grid_scheduler.sched.nodes["domain"]
   solution_type   = local.solution_type
-  name            = random_string.name.result
+  name            = local.name
   backends        = [format("http://[%s]:9000", local.ygg_ip)]
   tls_passthrough = false
 }

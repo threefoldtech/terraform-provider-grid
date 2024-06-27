@@ -1,6 +1,7 @@
 package integrationtests
 
 import (
+	"os"
 	"strings"
 	"testing"
 
@@ -24,6 +25,11 @@ func TestZdbs(t *testing.T) {
 		   - Destroy the deployment
 
 		*/
+		if network, _ := os.LookupEnv("NETWORK"); network != "test" {
+			t.Skip("https://github.com/threefoldtech/terraform-provider-grid/issues/770")
+			return
+		}
+
 		password := "password123"
 		terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 			TerraformDir: "./zdbs",

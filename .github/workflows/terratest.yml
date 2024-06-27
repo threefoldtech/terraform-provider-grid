@@ -51,22 +51,89 @@ jobs:
           mkdir -p ~/.terraform.d/plugins/threefoldtechdev.com/providers/grid/0.2/linux_amd64/
           go build -o terraform-provider-grid
           mv terraform-provider-grid ~/.terraform.d/plugins/threefoldtechdev.com/providers/grid/0.2/linux_amd64/
-      - name: Run Go Tests
+      - name: Test virtual machines
+        env:
+          MNEMONICS: ${{ secrets.MNEMONICS }}
+          NETWORK: ${{ matrix.network }}
+        working-directory: integrationtests
+        run: go test -v ./... --tags=integration -run TestVM
+
+      - name: Test kubernetes
         env:
           MNEMONICS: ${{ secrets.MNEMONICS }}
           NETWORK: ${{ matrix.network }}
         working-directory: integrationtests
         run: |
-          go test -v ./... --tags=integration -run TestVM
           go test -v ./... --tags=integration -run TestK8s
           go test -v ./... --tags=integration -run TestModuleK8s
-          go test -v ./... --tags=integration -run TestGatewayDeployments
-          go test -v ./... --tags=integration -run TestGatewayPrivate
-          go test -v ./... --tags=integration -run TestWireguard
-          go test -v ./... --tags=integration -run TestZdbs
-          go test -v ./... --tags=integration -run TestQSFS
-          go test -v ./... --tags=integration -run TestPeertube
-          go test -v ./... --tags=integration -run TestPresearch
-          go test -v ./... --tags=integration -run TestMattermost
-          go test -v ./... --tags=integration -run TestTaiga
-          go test -v ./... --tags=integration -run TestNomad
+
+      - name: Test Gateways
+        env:
+          MNEMONICS: ${{ secrets.MNEMONICS }}
+          NETWORK: ${{ matrix.network }}
+        working-directory: integrationtests
+        run: go test -v ./... --tags=integration -run TestGatewayDeployments
+
+      - name: Test private gateways
+        env:
+          MNEMONICS: ${{ secrets.MNEMONICS }}
+          NETWORK: ${{ matrix.network }}
+        working-directory: integrationtests
+        run: go test -v ./... --tags=integration -run TestGatewayPrivate
+
+      - name: Test wireguard
+        env:
+          MNEMONICS: ${{ secrets.MNEMONICS }}
+          NETWORK: ${{ matrix.network }}
+        working-directory: integrationtests
+        run: go test -v ./... --tags=integration -run TestWireguard
+
+      - name: Test ZDBs
+        env:
+          MNEMONICS: ${{ secrets.MNEMONICS }}
+          NETWORK: ${{ matrix.network }}
+        working-directory: integrationtests
+        run: go test -v ./... --tags=integration -run TestZdbs
+
+      - name: Test QSFS
+        env:
+          MNEMONICS: ${{ secrets.MNEMONICS }}
+          NETWORK: ${{ matrix.network }}
+        working-directory: integrationtests
+        run: go test -v ./... --tags=integration -run TestQSFS
+
+      - name: Test peertube
+        env:
+          MNEMONICS: ${{ secrets.MNEMONICS }}
+          NETWORK: ${{ matrix.network }}
+        working-directory: integrationtests
+        run: go test -v ./... --tags=integration -run TestPeertube
+
+      - name: Test presearch
+        env:
+          MNEMONICS: ${{ secrets.MNEMONICS }}
+          NETWORK: ${{ matrix.network }}
+        working-directory: integrationtests
+        run: go test -v ./... --tags=integration -run TestPresearch
+
+      - name: Test taiga
+        env:
+          MNEMONICS: ${{ secrets.MNEMONICS }}
+          NETWORK: ${{ matrix.network }}
+        working-directory: integrationtests
+        run: go test -v ./... --tags=integration -run TestTaiga
+
+      - name: Test mattermost
+        env:
+          MNEMONICS: ${{ secrets.MNEMONICS }}
+          NETWORK: ${{ matrix.network }}
+        working-directory: integrationtests
+        run: go test -v ./... --tags=integration -run TestMattermost
+
+      - name: Test nomad
+        env:
+          MNEMONICS: ${{ secrets.MNEMONICS }}
+          NETWORK: ${{ matrix.network }}
+        working-directory: integrationtests
+        run: go test -v ./... --tags=integration -run TestNomad
+
