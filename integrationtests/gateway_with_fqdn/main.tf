@@ -20,27 +20,28 @@ provider "grid" {
 
 resource "grid_scheduler" "sched" {
   requests {
-    name = "node1"
-    cru  = 2
-    sru  = 512
-    mru  = 1024
+    name    = "node"
+    cru     = 2
+    sru     = 512
+    mru     = 1024
+    farm_id = 1
   }
 }
 
-locals {
-  name = "luihkybveruvytc"
+resource "random_string" "name" {
+  length  = 8
+  special = false
 }
-
 
 resource "grid_network" "net1" {
-  nodes       = [grid_scheduler.sched.nodes["node1"]]
+  name        = random_string.name.result
+  nodes       = [grid_scheduler.sched.nodes["node"]]
   ip_range    = "10.1.0.0/16"
-  name        = local.name
-  description = "newer network"
+  description = "fqdn network"
 }
 resource "grid_deployment" "d1" {
-  name         = local.name
-  node         = grid_scheduler.sched.nodes["node1"]
+  name         = random_string.name.result
+  node         = grid_scheduler.sched.nodes["node"]
   network_name = grid_network.net1.name
   vms {
     name       = "vm1"

@@ -7,7 +7,8 @@ import (
 	"time"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/threefoldtech/terraform-provider-grid/internal/provider/scheduler"
 )
 
 func TestPresearch(t *testing.T) {
@@ -27,28 +28,36 @@ func TestPresearch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to generate ssh key pair: %s", err.Error())
 	}
-	presearchRegestrationCode := "e5083a8d0a6362c6cf7a3078bfac81e3"
+
+	presearchRegistrationCode := "e5083a8d0a6362c6cf7a3078bfac81e3"
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./presearch",
 		Vars: map[string]interface{}{
 			"public_key":                  publicKey,
-			"presearch_regestration_code": presearchRegestrationCode,
+			"presearch_registration_code": presearchRegistrationCode,
 		},
 	})
 	defer terraform.Destroy(t, terraformOptions)
 
 	_, err = terraform.InitAndApplyE(t, terraformOptions)
-	assert.NoError(t, err)
+	if err != nil &&
+		(strings.Contains(err.Error(), scheduler.NoNodesFoundErr.Error()) ||
+			strings.Contains(err.Error(), "error creating threefold plugin client")) {
+		t.Skip("couldn't find any available nodes")
+		return
+	}
+
+	require.NoError(t, err)
 
 	yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
-	assert.NotEmpty(t, yggIP)
+	require.NotEmpty(t, yggIP)
 
 	ok := TestConnection(yggIP, "22")
-	assert.True(t, ok)
+	require.True(t, ok)
 
 	output, err := RemoteRun("root", yggIP, "cat /proc/1/environ", privateKey)
-	assert.NoError(t, err)
-	assert.Contains(t, string(output), fmt.Sprintf("PRESEARCH_REGISTRATION_CODE=%s", presearchRegestrationCode))
+	require.NoError(t, err)
+	require.Contains(t, string(output), fmt.Sprintf("PRESEARCH_REGISTRATION_CODE=%s", presearchRegistrationCode))
 
 	ticker := time.NewTicker(2 * time.Second)
 	for now := time.Now(); time.Since(now) < 1*time.Minute; {
@@ -59,6 +68,6 @@ func TestPresearch(t *testing.T) {
 		}
 	}
 
-	assert.NoError(t, err)
-	assert.Contains(t, output, "prenode: Success")
+	require.NoError(t, err)
+	require.Contains(t, output, "prenode: Success")
 }

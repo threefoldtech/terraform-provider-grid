@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
@@ -36,26 +36,24 @@ func TestNomad(t *testing.T) {
 			t.Fatalf("failed to get create tf plugin client: %s", err.Error())
 		}
 
-		status := "up"
-		freeMRU := convertMBToBytes(256)
-		freeSRU := convertGBToBytes(2)
 		nodes, err := deployer.FilterNodes(
 			context.Background(),
 			tf,
 			types.NodeFilter{
-				Status:  []string{status},
-				FreeMRU: freeMRU,
-				FreeSRU: freeSRU,
+				Status:  []string{"up"},
+				FreeMRU: convertMBToBytes(256),
+				FreeSRU: convertGBToBytes(2),
 				// Freefarm
 				FarmIDs: []uint64{1},
 			},
 			[]uint64{*convertGBToBytes(1)},
 			nil,
 			[]uint64{*convertGBToBytes(1)},
+			5,
 		)
-		tf.Close()
-		if err != nil || len(nodes) < 5 {
-			t.Fatal("gridproxy could not find nodes with suitable resources")
+		if err != nil {
+			t.Skip("could not find nodes with suitable resources")
+			return
 		}
 
 		server1Node := nodes[0].NodeID
@@ -144,45 +142,43 @@ func TestNomad(t *testing.T) {
 
 		_, err = terraform.InitAndApplyE(t, terraformOptions)
 		defer terraform.Destroy(t, terraformOptions)
-		if !assert.NoError(t, err) {
-			return
-		}
+		require.NoError(t, err)
 
 		// Check that the outputs not empty
 		server1IP := terraform.Output(t, terraformOptions, "server1_ip")
-		assert.NotEmpty(t, server1IP)
-		assert.Equal(t, server1IP, firstServerIP)
+		require.NotEmpty(t, server1IP)
+		require.Equal(t, server1IP, firstServerIP)
 
 		server1YggIP := terraform.Output(t, terraformOptions, "server1_ygg_ip")
-		assert.NotEmpty(t, server1YggIP)
+		require.NotEmpty(t, server1YggIP)
 
 		server2YggIP := terraform.Output(t, terraformOptions, "server2_ygg_ip")
-		assert.NotEmpty(t, server2YggIP)
+		require.NotEmpty(t, server2YggIP)
 
 		server3YggIP := terraform.Output(t, terraformOptions, "server3_ygg_ip")
-		assert.NotEmpty(t, server3YggIP)
+		require.NotEmpty(t, server3YggIP)
 
 		client1YggIP := terraform.Output(t, terraformOptions, "client1_ygg_ip")
-		assert.NotEmpty(t, client1YggIP)
+		require.NotEmpty(t, client1YggIP)
 
 		// testing connection on port 22, waits at max 3mins until it becomes ready otherwise it fails
 		ok := TestConnection(server1YggIP, "22")
-		assert.True(t, ok)
+		require.True(t, ok)
 
 		ok = TestConnection(server2YggIP, "22")
-		assert.True(t, ok)
+		require.True(t, ok)
 
 		ok = TestConnection(server3YggIP, "22")
-		assert.True(t, ok)
+		require.True(t, ok)
 
 		ok = TestConnection(client1YggIP, "22")
-		assert.True(t, ok)
+		require.True(t, ok)
 
 		// until services are ready
-		time.Sleep(5 * time.Second)
+		time.Sleep(30 * time.Second)
 
 		output, err := RemoteRun("root", server1YggIP, "nomad node status", privateKey)
-		assert.Empty(t, err)
-		assert.Equal(t, 2, strings.Count(output, "ready"))
+		require.Empty(t, err)
+		require.Equal(t, 2, strings.Count(output, "ready"))
 	})
 }

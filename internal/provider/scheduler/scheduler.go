@@ -137,11 +137,12 @@ func (n *Scheduler) addNodes(nodes []proxyTypes.Node) {
 
 // Schedule makes sure there's at least one node that satisfies the given request
 func (n *Scheduler) Schedule(ctx context.Context, r *Request) (uint32, error) {
-	if r.FarmId != 0 {
-		if n.hasFarmerBot(ctx, r.FarmId) {
-			return n.farmerBotSchedule(ctx, r)
-		}
-	}
+	// TODO: update farmerbot
+	// if r.FarmId != 0 {
+	// 	if n.hasFarmerBot(ctx, r.FarmId) {
+	// 		return n.farmerBotSchedule(ctx, r)
+	// 	}
+	// }
 	return n.gridProxySchedule(ctx, r)
 }
 

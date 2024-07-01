@@ -3,11 +3,13 @@ package integrationtests
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/threefoldtech/terraform-provider-grid/internal/provider/scheduler"
 )
 
 func TestMattermost(t *testing.T) {
@@ -38,21 +40,28 @@ func TestMattermost(t *testing.T) {
 	defer terraform.Destroy(t, terraformOptions)
 
 	_, err = terraform.InitAndApplyE(t, terraformOptions)
-	assert.NoError(t, err)
+	if err != nil &&
+		(strings.Contains(err.Error(), scheduler.NoNodesFoundErr.Error()) ||
+			strings.Contains(err.Error(), "error creating threefold plugin client")) {
+		t.Skip("couldn't find any available nodes")
+		return
+	}
+
+	require.NoError(t, err)
 
 	// Check that the outputs not empty
 	yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
-	assert.NotEmpty(t, yggIP)
+	require.NotEmpty(t, yggIP)
 	fqdn := terraform.Output(t, terraformOptions, "fqdn")
-	assert.NotEmpty(t, fqdn)
+	require.NotEmpty(t, fqdn)
 
 	ok := TestConnection(yggIP, "22")
-	assert.True(t, ok)
+	require.True(t, ok)
 
 	// Check that the solution is running successfully
 	output, err := RemoteRun("root", yggIP, "zinit list", privateKey)
-	assert.NoError(t, err)
-	assert.Contains(t, output, "mattermost: Running")
+	require.NoError(t, err)
+	require.Contains(t, output, "mattermost: Running")
 
 	statusOk := false
 	ticker := time.NewTicker(2 * time.Second)
@@ -64,5 +73,6 @@ func TestMattermost(t *testing.T) {
 			break
 		}
 	}
-	assert.True(t, statusOk, "website did not respond with 200 status code")
+
+	require.True(t, statusOk, "website did not respond with 200 status code")
 }

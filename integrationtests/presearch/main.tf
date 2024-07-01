@@ -3,7 +3,7 @@ variable "public_key" {
   type = string
 }
 
-variable "presearch_regestration_code" {
+variable "presearch_registration_code" {
   type = string
 }
 
@@ -18,25 +18,40 @@ terraform {
 
 provider "grid" {
 }
+
+resource "random_string" "name" {
+  length  = 8
+  special = false
+}
+
+locals {
+  solution_type = "Presearch"
+}
+
 resource "grid_scheduler" "sched" {
   requests {
-    name = "presearch_instance"
-    cru  = 1
-    sru  = 5 * 1024
-    mru  = 1024
+    name    = "presearch"
+    cru     = 1
+    sru     = 5 * 1024
+    mru     = 1024
+    farm_id = 1
   }
 }
+
 resource "grid_network" "net1" {
-  nodes       = [grid_scheduler.sched.nodes["presearch_instance"]]
-  ip_range    = "10.1.0.0/16"
-  name        = "network"
-  description = "newer network"
+  solution_type = local.solution_type
+  name          = random_string.name.result
+  nodes         = [grid_scheduler.sched.nodes["presearch"]]
+  ip_range      = "10.1.0.0/16"
+  description   = "presearch network"
 }
 
 # Deployment specs
 resource "grid_deployment" "d1" {
-  node         = grid_scheduler.sched.nodes["presearch_instance"]
-  network_name = grid_network.net1.name
+  solution_type = local.solution_type
+  name          = random_string.name.result
+  node          = grid_scheduler.sched.nodes["presearch"]
+  network_name  = grid_network.net1.name
 
   disks {
     name        = "data"
@@ -45,16 +60,18 @@ resource "grid_deployment" "d1" {
   }
 
   vms {
-    name       = "presearch"
+    name       = random_string.name.result
     flist      = "https://hub.grid.tf/tf-official-apps/presearch-v2.2.flist"
     entrypoint = "/sbin/zinit init"
     planetary  = true
     cpu        = 1
     memory     = 1024
+
     mounts {
       disk_name   = "data"
       mount_point = "/var/lib/docker"
     }
+
     env_vars = {
       SSH_KEY                     = "${var.public_key}",
       PRESEARCH_REGISTRATION_CODE = "e5083a8d0a6362c6cf7a3078bfac81e3",

@@ -37,6 +37,7 @@ resource "grid_network" "net1" {
   description   = "newer network"
   add_wg_access = true
 }
+
 resource "grid_deployment" "d1" {
   solution_type = local.solution_type
   name          = local.name
@@ -60,6 +61,7 @@ resource "grid_deployment" "d1" {
     planetary = true
   }
 }
+
 # this data source is used to break circular dependency in cases similar to the following:
 # vm: needs to know the domain in its init script
 # gateway_name: needs the ip of the vm to use as backend.
@@ -67,8 +69,9 @@ resource "grid_deployment" "d1" {
 # - the backend can reference the vm ip directly 
 data "grid_gateway_domain" "domain" {
   node = grid_scheduler.sched.nodes["gateway"]
-  name = "ashrafmattermost"
+  name = local.name
 }
+
 resource "grid_name_proxy" "p1" {
   solution_type   = local.solution_type
   name            = local.name
@@ -76,13 +79,15 @@ resource "grid_name_proxy" "p1" {
   backends        = [format("http://[%s]:8000", grid_deployment.d1.vms[0].planetary_ip)]
   tls_passthrough = false
 }
+
 output "fqdn" {
   value = data.grid_gateway_domain.domain.fqdn
 }
+
 output "node1_zmachine1_ip" {
   value = grid_deployment.d1.vms[0].ip
 }
+
 output "ygg_ip" {
   value = grid_deployment.d1.vms[0].planetary_ip
 }
-

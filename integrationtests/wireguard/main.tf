@@ -17,7 +17,7 @@ provider "grid" {
 
 resource "grid_scheduler" "scheduler" {
   requests {
-    name = "node1"
+    name = "node"
     cru  = 2
     sru  = 512
     mru  = 1024
@@ -25,15 +25,15 @@ resource "grid_scheduler" "scheduler" {
 }
 
 resource "grid_network" "net1" {
-  nodes         = [grid_scheduler.scheduler.nodes["node1"]]
+  nodes         = [grid_scheduler.scheduler.nodes["node"]]
   ip_range      = "10.1.0.0/16"
   name          = "network"
-  description   = "newer network"
+  description   = "wirequard network"
   add_wg_access = true
 }
 
 resource "grid_deployment" "d1" {
-  node         = grid_scheduler.scheduler.nodes["node1"]
+  node         = grid_scheduler.scheduler.nodes["node"]
   network_name = grid_network.net1.name
   vms {
     name       = "vm1"

@@ -16,23 +16,27 @@ provider "grid" {
 
 resource "grid_scheduler" "scheduler" {
   requests {
-    name = "node1"
-    hru  = 10240
+    name = "node"
+    hru  = 10 * 1024
   }
 }
 
+resource "random_string" "name" {
+  length  = 8
+  special = false
+}
+
 resource "grid_deployment" "d1" {
-  node = grid_scheduler.scheduler.nodes["node1"]
+  node = grid_scheduler.scheduler.nodes["node"]
 
   zdbs {
-    name        = "zdb123"
+    name        = random_string.name.result
     size        = 10
-    description = "zdb1 description"
+    description = "zdb description"
     password    = var.password
     mode        = "user"
   }
 }
-
 
 output "deployment_id" {
   value = grid_deployment.d1.id

@@ -11,13 +11,13 @@ provider "grid" {
 
 locals {
   solution_type = "Presearch"
-  name          = "mypreasearch"
+  name          = "presearch"
 }
 
 
 resource "grid_scheduler" "sched" {
   requests {
-    name             = "node1"
+    name             = "presearch"
     cru              = 1
     sru              = 1024 * 10
     mru              = 1024
@@ -29,9 +29,9 @@ resource "grid_scheduler" "sched" {
 resource "grid_network" "net1" {
   solution_type = local.solution_type
   name          = local.name
-  nodes         = [grid_scheduler.sched.nodes["node1"]]
+  nodes         = [grid_scheduler.sched.nodes["presearch"]]
   ip_range      = "10.1.0.0/16"
-  description   = "newer network"
+  description   = "presearch network"
   add_wg_access = true
 }
 
@@ -39,7 +39,7 @@ resource "grid_network" "net1" {
 resource "grid_deployment" "d1" {
   solution_type = local.solution_type
   name          = local.name
-  node          = grid_scheduler.sched.nodes["node1"]
+  node          = grid_scheduler.sched.nodes["presearch"]
   network_name  = grid_network.net1.name
 
   disks {
@@ -49,7 +49,7 @@ resource "grid_deployment" "d1" {
   }
 
   vms {
-    name       = "presearch"
+    name       = local.name
     flist      = "https://hub.grid.tf/tf-official-apps/presearch-v2.2.flist"
     entrypoint = "/sbin/zinit init"
     publicip   = true

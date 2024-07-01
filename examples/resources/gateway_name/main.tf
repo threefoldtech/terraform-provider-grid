@@ -33,6 +33,7 @@ resource "grid_name_proxy" "p1" {
   backends        = [format("http://69.164.223.208")]
   tls_passthrough = false
 }
+
 output "fqdn" {
   value = data.grid_gateway_domain.domain.fqdn
 }
