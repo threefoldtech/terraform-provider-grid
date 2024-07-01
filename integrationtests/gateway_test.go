@@ -42,7 +42,9 @@ func TestGatewayDeployments(t *testing.T) {
 		defer terraform.Destroy(t, terraformOptions)
 
 		_, err := terraform.InitAndApplyE(t, terraformOptions)
-		if err != nil && strings.Contains(err.Error(), scheduler.NoNodesFoundErr.Error()) {
+		if err != nil &&
+			strings.Contains(err.Error(), scheduler.NoNodesFoundErr.Error()) &&
+			strings.Contains(err.Error(), "error creating threefold plugin client") {
 			t.Skip("couldn't find any available nodes")
 			return
 		}
@@ -108,7 +110,9 @@ func TestGatewayDeployments(t *testing.T) {
 		defer terraform.Destroy(t, terraformOptions)
 
 		_, err := terraform.InitAndApplyE(t, terraformOptions)
-		if err != nil && strings.Contains(err.Error(), scheduler.NoNodesFoundErr.Error()) {
+		if err != nil &&
+			strings.Contains(err.Error(), scheduler.NoNodesFoundErr.Error()) &&
+			strings.Contains(err.Error(), "error creating threefold plugin client") {
 			t.Skip("couldn't find any available nodes")
 			return
 		}

@@ -86,7 +86,7 @@ resource "grid_deployment" "node1" {
 
 data "grid_gateway_domain" "domain" {
   node = grid_scheduler.sched.nodes["gateway"]
-  name = "grid3taiga"
+  name = "testtaiga"
 }
 
 locals {
@@ -94,7 +94,7 @@ locals {
 }
 
 resource "grid_name_proxy" "p1" {
-  name            = "grid3taiga"
+  name            = "testtaiga"
   node            = grid_scheduler.sched.nodes["gateway"]
   backends        = [format("http://[%s]:9000", local.ygg_ip)]
   tls_passthrough = false

@@ -175,7 +175,7 @@ func TestNomad(t *testing.T) {
 		require.True(t, ok)
 
 		// until services are ready
-		time.Sleep(10 * time.Second)
+		time.Sleep(30 * time.Second)
 
 		output, err := RemoteRun("root", server1YggIP, "nomad node status", privateKey)
 		require.Empty(t, err)
