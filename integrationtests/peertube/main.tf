@@ -16,10 +16,11 @@ provider "grid" {
 }
 resource "grid_scheduler" "sched" {
   requests {
-    name = "peertube"
-    cru  = 2
-    sru  = 512
-    mru  = 4096
+    name    = "peertube"
+    cru     = 2
+    sru     = 512
+    mru     = 4096
+    farm_id = 1
   }
 
   requests {

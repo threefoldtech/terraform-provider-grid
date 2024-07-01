@@ -25,7 +25,7 @@ func TestZdbs(t *testing.T) {
 		   - Destroy the deployment
 
 		*/
-		if network, _ := os.LookupEnv("NETWORK"); network != "test" {
+		if network, _ := os.LookupEnv("NETWORK"); network == "test" {
 			t.Skip("https://github.com/threefoldtech/terraform-provider-grid/issues/770")
 			return
 		}
@@ -41,8 +41,8 @@ func TestZdbs(t *testing.T) {
 
 		_, err := terraform.InitAndApplyE(t, terraformOptions)
 		if err != nil &&
-			strings.Contains(err.Error(), scheduler.NoNodesFoundErr.Error()) &&
-			strings.Contains(err.Error(), "error creating threefold plugin client") {
+			(strings.Contains(err.Error(), scheduler.NoNodesFoundErr.Error()) ||
+				strings.Contains(err.Error(), "error creating threefold plugin client")) {
 			t.Skip("couldn't find any available nodes")
 			return
 		}

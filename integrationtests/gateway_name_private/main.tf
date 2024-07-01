@@ -26,6 +26,7 @@ resource "grid_scheduler" "sched" {
     sru           = 512
     mru           = 1024
     public_config = true
+    farm_id       = 1
   }
 }
 

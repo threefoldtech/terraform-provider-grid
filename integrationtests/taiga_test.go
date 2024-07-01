@@ -41,8 +41,8 @@ func TestTaiga(t *testing.T) {
 
 	_, err = terraform.InitAndApplyE(t, terraformOptions)
 	if err != nil &&
-		strings.Contains(err.Error(), scheduler.NoNodesFoundErr.Error()) &&
-		strings.Contains(err.Error(), "error creating threefold plugin client") {
+		(strings.Contains(err.Error(), scheduler.NoNodesFoundErr.Error()) ||
+			strings.Contains(err.Error(), "error creating threefold plugin client")) {
 		t.Skip("couldn't find any available nodes")
 		return
 	}

@@ -34,6 +34,7 @@ resource "grid_scheduler" "sched" {
     sru      = local.master_disk_size * 1024
     mru      = local.master_memory
     distinct = true
+    farm_id  = 1
   }
 
   requests {

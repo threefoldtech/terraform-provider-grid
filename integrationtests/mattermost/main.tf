@@ -25,10 +25,11 @@ provider "grid" {
 
 resource "grid_scheduler" "sched" {
   requests {
-    name = "node"
-    cru  = 2
-    sru  = 1 * 1024
-    mru  = 4 * 1024
+    name    = "node"
+    cru     = 2
+    sru     = 1 * 1024
+    mru     = 4 * 1024
+    farm_id = 1
   }
 
   requests {
