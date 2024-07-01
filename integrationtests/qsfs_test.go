@@ -13,7 +13,7 @@ import (
 )
 
 func TestQSFS(t *testing.T) {
-	if network, _ := os.LookupEnv("NETWORK"); network == "test" {
+	if network, _ := os.LookupEnv("NETWORK"); network == "test" || network == "main" {
 		t.Skip("https://github.com/threefoldtech/terraform-provider-grid/issues/770")
 		return
 	}

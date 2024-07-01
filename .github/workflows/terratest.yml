@@ -1,5 +1,4 @@
 name: Intgeration tests
-run-name: Intgeration tests on ${{ matrix.network }} 
 
 on:
   schedule:
