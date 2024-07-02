@@ -9,11 +9,15 @@ import (
 )
 
 const (
+	rmbTimeout              = 40
 	FarmerBotVersionAction  = "farmerbot.farmmanager.version"
 	FarmerBotFindNodeAction = "farmerbot.nodemanager.findnode"
 )
 
 func (s *Scheduler) hasFarmerBot(ctx context.Context, farmID uint32) bool {
+	ctx, cancel := context.WithTimeout(ctx, rmbTimeout)
+	defer cancel()
+
 	info, err := s.getFarmInfo(ctx, farmID)
 	if err != nil {
 		return false
@@ -32,6 +36,9 @@ func (s *Scheduler) hasFarmerBot(ctx context.Context, farmID uint32) bool {
 }
 
 func (n *Scheduler) farmerBotSchedule(ctx context.Context, r *Request) (uint32, error) {
+	ctx, cancel := context.WithTimeout(ctx, rmbTimeout)
+	defer cancel()
+
 	info, err := n.getFarmInfo(ctx, r.FarmID)
 	if err != nil {
 		return 0, errors.Wrapf(err, "failed to get farm %d info", r.FarmID)
