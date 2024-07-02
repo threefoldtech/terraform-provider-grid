@@ -1,5 +1,5 @@
 module "kubernetes" {
-  source  = "github.com/threefoldtech/terraform-provider-grid/modules/k8s-module"
+  source  = "../../modules/k8s-module"
   token   = local.token
   network = local.network
   master  = var.master
@@ -64,5 +64,5 @@ locals {
 }
 
 output "mr_ygg_ip" {
-  value = module.kubernetes.master.planetary_ip
+  value = module.kubernetes.master
 }

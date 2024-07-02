@@ -22,7 +22,7 @@ func TestModuleK8s(t *testing.T) {
 
 	*/
 
-	t.Skip("https://github.com/threefoldtech/terraform-provider-grid/issues/770")
+	// t.Skip("https://github.com/threefoldtech/terraform-provider-grid/issues/770")
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()
 	if err != nil {
@@ -41,6 +41,8 @@ func TestModuleK8s(t *testing.T) {
 		FreeMRU:  &freeMRU,
 		FreeSRU:  &freeSRU,
 		TotalCRU: &freeCRU,
+		Excluded: []uint64{146, 150, 153, 151},
+		FarmIDs:  []uint64{1},
 	}
 
 	nodes, err := deployer.FilterNodes(context.Background(), tfPlugin, f, []uint64{freeSRU}, []uint64{}, []uint64{}, 3)
@@ -57,9 +59,9 @@ func TestModuleK8s(t *testing.T) {
 		TerraformDir: "./k8s_using_module",
 		Vars: map[string]interface{}{
 			"ssh":           publicKey,
-			"network_nodes": []int{12, masterNode},
+			"network_nodes": []int{masterNode},
 			"master": map[string]interface{}{
-				"name":        "mr",
+				"name":        "master",
 				"node":        masterNode,
 				"cpu":         1,
 				"memory":      1024,
@@ -70,7 +72,7 @@ func TestModuleK8s(t *testing.T) {
 			},
 			"workers": []map[string]interface{}{
 				{
-					"name":        "w0",
+					"name":        "worker0",
 					"node":        worker0Node,
 					"cpu":         1,
 					"memory":      1024,
