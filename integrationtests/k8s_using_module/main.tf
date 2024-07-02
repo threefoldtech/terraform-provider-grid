@@ -64,5 +64,5 @@ locals {
 }
 
 output "mr_ygg_ip" {
-  value = module.kubernetes.master
+  value = module.kubernetes.master.planetary_ip
 }

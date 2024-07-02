@@ -41,15 +41,13 @@ func TestModuleK8s(t *testing.T) {
 		FreeMRU:  &freeMRU,
 		FreeSRU:  &freeSRU,
 		TotalCRU: &freeCRU,
-		Excluded: []uint64{146, 150, 153, 151},
-		FarmIDs:  []uint64{1},
 	}
 
-	nodes, err := deployer.FilterNodes(context.Background(), tfPlugin, f, []uint64{freeSRU}, []uint64{}, []uint64{}, 3)
-	if err != nil || len(nodes) != 3 {
-		t.Fatal("grid proxy could not find nodes with suitable resources")
-	}
+	nodes, err := deployer.FilterNodes(context.Background(), tfPlugin, f, []uint64{freeSRU}, []uint64{}, []uint64{})
 	require.NoError(t, err)
+	if len(nodes) < 3 {
+		t.Skip("couldn't find enough nodes")
+	}
 
 	masterNode := nodes[0].NodeID
 	worker0Node := nodes[1].NodeID
@@ -59,9 +57,9 @@ func TestModuleK8s(t *testing.T) {
 		TerraformDir: "./k8s_using_module",
 		Vars: map[string]interface{}{
 			"ssh":           publicKey,
-			"network_nodes": []int{masterNode},
+			"network_nodes": []int{masterNode, worker0Node, worker1Node},
 			"master": map[string]interface{}{
-				"name":        "master",
+				"name":        "mr",
 				"node":        masterNode,
 				"cpu":         1,
 				"memory":      1024,
@@ -72,7 +70,7 @@ func TestModuleK8s(t *testing.T) {
 			},
 			"workers": []map[string]interface{}{
 				{
-					"name":        "worker0",
+					"name":        "w0",
 					"node":        worker0Node,
 					"cpu":         1,
 					"memory":      1024,
@@ -127,6 +125,7 @@ func TestModuleK8s(t *testing.T) {
 			"planetary":   true,
 		},
 	}
+
 	terraformOptions.Vars["disks"] = []map[string]interface{}{
 		{
 			"name":        "mrdisk",

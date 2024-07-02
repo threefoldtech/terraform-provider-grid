@@ -1,6 +1,3 @@
-//go:build integration
-// +build integration
-
 // Package integrationtests includes integration tests for deploying solutions on the tf grid, and some utilities to test these solutions.
 package integrationtests
 
@@ -25,7 +22,7 @@ func setup() (deployer.TFPluginClient, error) {
 		network = "dev"
 	}
 
-	return deployer.NewTFPluginClient(mnemonics, deployer.WithNetwork(network), deployer.WithLogs())
+	return deployer.NewTFPluginClient(mnemonics, deployer.WithNetwork(network), deployer.WithLogs(), deployer.WithRMBTimeout(60))
 }
 
 // RemoteRun used for running cmd remotely using ssh
@@ -65,7 +62,6 @@ func RemoteRun(user string, addr string, cmd string, privateKey string) (string,
 
 // GenerateSSHKeyPair creats the public and private key for the machine
 func GenerateSSHKeyPair() (string, string, error) {
-
 	rsaKey, err := rsa.GenerateKey(rand.Reader, 1024)
 	if err != nil {
 		return "", "", errors.Wrapf(err, "could not generate rsa key")
