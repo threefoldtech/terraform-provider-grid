@@ -64,15 +64,15 @@ type NodeFilterOption struct {
 func buildNodeOptions(r *Request) NodeFilterOption {
 	options := NodeFilterOption{}
 	if r.Capacity.HRU != 0 {
-		options.HRU = r.Capacity.HRU
+		options.HRU = r.Capacity.HRU / (1024 * 1024 * 1024)
 	}
 
 	if r.Capacity.SRU != 0 {
-		options.SRU = r.Capacity.SRU
+		options.SRU = r.Capacity.SRU / (1024 * 1024 * 1024)
 	}
 
 	if r.Capacity.MRU != 0 {
-		options.MRU = r.Capacity.MRU
+		options.MRU = r.Capacity.MRU / (1024 * 1024 * 1024)
 	}
 
 	if r.Capacity.CRU != 0 {
