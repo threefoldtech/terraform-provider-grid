@@ -41,6 +41,7 @@ func TestModuleK8s(t *testing.T) {
 		FreeMRU:  &freeMRU,
 		FreeSRU:  &freeSRU,
 		TotalCRU: &freeCRU,
+		FarmIDs:  []uint64{1},
 	}
 
 	nodes, err := deployer.FilterNodes(context.Background(), tfPlugin, f, []uint64{freeSRU}, []uint64{}, []uint64{})
@@ -101,7 +102,7 @@ func TestModuleK8s(t *testing.T) {
 	require.NoError(t, err)
 	defer terraform.Destroy(t, terraformOptions)
 
-	RequireNodesAreReady(t, terraformOptions, privateKey)
+	RequireNodesAreReady(t, terraformOptions, privateKey, 2)
 
 	terraformOptions.Vars["workers"] = []map[string]interface{}{
 		{
@@ -149,5 +150,5 @@ func TestModuleK8s(t *testing.T) {
 	_, err = terraform.ApplyE(t, terraformOptions)
 	require.NoError(t, err)
 
-	RequireNodesAreReady(t, terraformOptions, privateKey)
+	RequireNodesAreReady(t, terraformOptions, privateKey, 3)
 }
