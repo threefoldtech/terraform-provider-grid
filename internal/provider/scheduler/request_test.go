@@ -29,7 +29,7 @@ func TestFulfilsSuccess(t *testing.T) {
 			SRU: 3,
 			HRU: 3,
 		},
-		FarmId:         1,
+		FarmID:         1,
 		PublicIpsCount: 1,
 		PublicConfig:   false,
 	}, farm), true, "fullfil-success")
@@ -53,7 +53,7 @@ func TestFulfilsFail(t *testing.T) {
 			SRU: 3,
 			HRU: 3,
 		},
-		FarmId:         1,
+		FarmID:         1,
 		PublicIpsCount: 0,
 		PublicConfig:   false,
 	}
@@ -66,7 +66,7 @@ func TestFulfilsFail(t *testing.T) {
 		"mru":              func(r *Request) { r.Capacity.MRU = 4 },
 		"sru":              func(r *Request) { r.Capacity.SRU = 9 },
 		"hru":              func(r *Request) { r.Capacity.HRU = 4 },
-		"farm_id":          func(r *Request) { r.FarmId = 2 },
+		"farm_id":          func(r *Request) { r.FarmID = 2 },
 		"public_ips_count": func(r *Request) { r.PublicIpsCount = 3 },
 		"public_config":    func(r *Request) { r.PublicConfig = true },
 	}
@@ -86,7 +86,7 @@ func TestConstructFilter(t *testing.T) {
 			HRU: 3,
 		},
 		Name:           "a",
-		FarmId:         1,
+		FarmID:         1,
 		PublicIpsCount: 1,
 		PublicConfig:   false,
 		Certified:      true,
@@ -99,7 +99,7 @@ func TestConstructFilter(t *testing.T) {
 	assert.Equal(t, *con.FreeHRU, uint64(3), "construct-filter-hru")
 	assert.Empty(t, con.Country, "construct-filter-country")
 	assert.Empty(t, con.City, "construct-filter-city")
-	assert.Equal(t, con.FarmIDs, []uint64{uint64(r.FarmId)}, "construct-filter-farm-ids")
+	assert.Equal(t, con.FarmIDs, []uint64{uint64(r.FarmID)}, "construct-filter-farm-ids")
 	assert.Equal(t, *con.FreeIPs, uint64(1), "construct-filter-free-ips")
 	assert.Empty(t, con.IPv4, "construct-filter-ipv4")
 	assert.Empty(t, con.IPv6, "construct-filter-ipv6")

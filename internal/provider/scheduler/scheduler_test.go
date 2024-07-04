@@ -3,7 +3,6 @@ package scheduler
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -21,9 +20,8 @@ type RMBClientMock struct {
 	hasFarmerBot bool
 }
 
-func (r *RMBClientMock) Call(ctx context.Context, twin uint32, fn string, data interface{}, result interface{}) error {
-	d := data.(FarmerBotAction)
-	switch d.Action {
+func (r *RMBClientMock) CallWithSession(ctx context.Context, twin uint32, session *string, fn string, data interface{}, result interface{}) error {
+	switch fn {
 	case FarmerBotVersionAction:
 		if r.hasFarmerBot {
 			return nil
@@ -31,15 +29,13 @@ func (r *RMBClientMock) Call(ctx context.Context, twin uint32, fn string, data i
 		return errors.New("this farm does not have a farmer bot")
 	case FarmerBotFindNodeAction:
 		if r.nodeID == 0 {
-			d.Error = "could not find node"
-			return nil
+			return fmt.Errorf("could not find node")
 		}
-		output := result.(*FarmerBotAction)
-
-		output.Result.Params = append(output.Args.Params, Params{Key: "nodeid", Value: strconv.FormatUint(uint64(r.nodeID), 10)})
+		output := result.(*uint32)
+		*output = r.nodeID
 		return nil
 	default:
-		return fmt.Errorf("fn: %s not supported", d.Action)
+		return fmt.Errorf("fn: %s not supported", fn)
 	}
 }
 
@@ -126,7 +122,7 @@ func TestSchedulerEmpty(t *testing.T) {
 		},
 		PublicIpsCount: 1,
 		Name:           "req",
-		FarmId:         10,
+		FarmID:         10,
 		PublicConfig:   true,
 		Certified:      false,
 		Dedicated:      false,
@@ -177,7 +173,7 @@ func TestSchedulerSuccess(t *testing.T) {
 			MRU: 11,
 		},
 		Name:           "req",
-		FarmId:         1,
+		FarmID:         1,
 		PublicConfig:   true,
 		PublicIpsCount: 1,
 		Certified:      false,
@@ -232,7 +228,7 @@ func TestSchedulerSuccessOn4thPage(t *testing.T) {
 		},
 		PublicConfig:   true,
 		Name:           "req",
-		FarmId:         1,
+		FarmID:         1,
 		PublicIpsCount: 1,
 		Certified:      false,
 	})
@@ -293,6 +289,7 @@ func TestSchedulerFailure(t *testing.T) {
 		assert.Error(t, err, fmt.Sprintf("scheduler-failure-%s", key))
 	}
 }
+
 func TestSchedulerFailureAfterSuccess(t *testing.T) {
 	proxy := &GridProxyClientMock{}
 	rmbClient := &RMBClientMock{
@@ -335,7 +332,7 @@ func TestSchedulerFailureAfterSuccess(t *testing.T) {
 		},
 		PublicIpsCount: 1,
 		Name:           "req",
-		FarmId:         1,
+		FarmID:         1,
 		PublicConfig:   true,
 		Certified:      false,
 	})
@@ -350,7 +347,7 @@ func TestSchedulerFailureAfterSuccess(t *testing.T) {
 		},
 		PublicIpsCount: 1,
 		Name:           "req",
-		FarmId:         1,
+		FarmID:         1,
 		PublicConfig:   true,
 		Certified:      false,
 	})
@@ -400,7 +397,7 @@ func TestSchedulerSuccessAfterSuccess(t *testing.T) {
 		},
 		PublicIpsCount: 1,
 		Name:           "req",
-		FarmId:         1,
+		FarmID:         1,
 		PublicConfig:   true,
 		Certified:      false,
 	})
@@ -415,7 +412,7 @@ func TestSchedulerSuccessAfterSuccess(t *testing.T) {
 		},
 		PublicIpsCount: 1,
 		Name:           "req",
-		FarmId:         1,
+		FarmID:         1,
 		PublicConfig:   true,
 		Certified:      false,
 	})

@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/terraform-provider-grid/internal/provider/scheduler"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
@@ -132,7 +133,7 @@ func parseRequests(d *schema.ResourceData, assignment map[string]uint32) []sched
 
 		reqs = append(reqs, scheduler.Request{
 			Name:           mp["name"].(string),
-			FarmId:         uint32(mp["farm_id"].(int)),
+			FarmID:         uint32(mp["farm_id"].(int)),
 			PublicConfig:   mp["public_config"].(bool),
 			PublicIpsCount: uint32(mp["public_ips_count"].(int)),
 			Certified:      mp["certified"].(bool),
@@ -158,7 +159,12 @@ func schedule(ctx context.Context, d *schema.ResourceData, meta interface{}) dia
 	assignment := parseAssignment(d)
 	reqs := parseRequests(d, assignment)
 
-	scheduler := scheduler.NewScheduler(tfPluginClient.GridProxyClient, uint64(tfPluginClient.TwinID), tfPluginClient.RMB)
+	rpcClient, ok := tfPluginClient.RMB.(*peer.RpcClient)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("failed to cast rmb client into rpc client"))
+	}
+
+	scheduler := scheduler.NewScheduler(tfPluginClient.GridProxyClient, uint64(tfPluginClient.TwinID), rpcClient)
 	if err := scheduler.ProcessRequests(ctx, reqs, assignment); err != nil {
 		return diag.FromErr(err)
 	}
