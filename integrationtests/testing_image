@@ -1,0 +1,27 @@
+FROM ubuntu:latest
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+    make \
+    guile-3.0 \
+    wget \
+    unzip \
+    && apt-get clean
+
+RUN wget https://golang.org/dl/go1.17.2.linux-amd64.tar.gz && \
+    tar -C /usr/local -xzf go1.17.2.linux-amd64.tar.gz && \
+    rm go1.17.2.linux-amd64.tar.gz
+
+RUN wget https://releases.hashicorp.com/terraform/1.0.8/terraform_1.0.8_linux_amd64.zip && \
+    unzip terraform_1.0.8_linux_amd64.zip -d /usr/local/bin && \
+    rm terraform_1.0.8_linux_amd64.zip
+
+ENV PATH=$PATH:/usr/local/go/bin
+ENV GOPATH=/go
+ENV GOBIN=/go/bin
+
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+
+CMD ["git clone https://github.com/threefoldtech/terraform-provider-grid.git"]
+CMD ["sleep","infinity"]
