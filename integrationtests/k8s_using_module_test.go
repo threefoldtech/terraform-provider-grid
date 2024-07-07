@@ -22,8 +22,6 @@ func TestModuleK8s(t *testing.T) {
 
 	*/
 
-	// t.Skip("https://github.com/threefoldtech/terraform-provider-grid/issues/770")
-
 	publicKey, privateKey, err := GenerateSSHKeyPair()
 	if err != nil {
 		t.Fatalf("failed to generate ssh key pair: %s", err.Error())
