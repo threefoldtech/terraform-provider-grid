@@ -30,7 +30,7 @@ variable "master" {
 
   validation {
     condition     = var.master.memory >= 1024
-    error_message = "Memory must be at least 1GB not ${var.master.memory}MB"
+    error_message = "Memory must be at least 1GB"
   }
 }
 
@@ -50,7 +50,7 @@ variable "workers" {
     condition = ([
       for w in var.workers : true if w.memory >= 1024
     ]) != length(var.workers)
-    error_message = "Memory must be at least 1GB not ${var.master.memory}MB"
+    error_message = "Memory must be at least 1GB"
   }
 }
 

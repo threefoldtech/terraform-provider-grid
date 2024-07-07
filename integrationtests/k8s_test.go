@@ -11,7 +11,7 @@ import (
 )
 
 // RequireNodesAreReady runs `kubectl get node` on the master node and requires that all nodes are ready
-func RequireNodesAreReady(t *testing.T, terraformOptions *terraform.Options, privateKey string) {
+func RequireNodesAreReady(t *testing.T, terraformOptions *terraform.Options, privateKey string, nodesNumber int) {
 	t.Helper()
 
 	masterYggIP := terraform.Output(t, terraformOptions, "mr_ygg_ip")
@@ -21,9 +21,8 @@ func RequireNodesAreReady(t *testing.T, terraformOptions *terraform.Options, pri
 
 	output, err := RemoteRun("root", masterYggIP, "export KUBECONFIG=/etc/rancher/k3s/k3s.yaml && kubectl get node", privateKey)
 	output = strings.TrimSpace(output)
-	require.Empty(t, err)
+	require.NoError(t, err)
 
-	nodesNumber := 2
 	numberOfReadyNodes := strings.Count(output, "Ready")
 	require.True(t, numberOfReadyNodes == nodesNumber, "number of ready nodes is not equal to number of nodes only %d nodes are ready", numberOfReadyNodes)
 }
@@ -82,7 +81,7 @@ func TestK8s(t *testing.T) {
 		require.True(t, ok)
 
 		// ssh to master node
-		RequireNodesAreReady(t, terraformOptions, privateKey)
+		RequireNodesAreReady(t, terraformOptions, privateKey, 2)
 	})
 
 	t.Run("k8s_invalid_names", func(t *testing.T) {
