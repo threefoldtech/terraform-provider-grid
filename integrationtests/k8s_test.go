@@ -1,7 +1,6 @@
 package integrationtests
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -25,7 +24,6 @@ func RequireNodesAreReady(t *testing.T, terraformOptions *terraform.Options, pri
 	require.NoError(t, err)
 
 	numberOfReadyNodes := strings.Count(output, "Ready")
-	fmt.Println(output)
 	require.True(t, numberOfReadyNodes == nodesNumber, "number of ready nodes is not equal to number of nodes only %d nodes are ready", numberOfReadyNodes)
 }
 

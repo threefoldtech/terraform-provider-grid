@@ -1,3 +1,6 @@
+//go:build integration
+// +build integration
+
 // Package integrationtests includes integration tests for deploying solutions on the tf grid, and some utilities to test these solutions.
 package integrationtests
 
@@ -22,7 +25,7 @@ func setup() (deployer.TFPluginClient, error) {
 		network = "dev"
 	}
 
-	return deployer.NewTFPluginClient(mnemonics, deployer.WithNetwork(network), deployer.WithLogs(), deployer.WithRMBTimeout(60))
+	return deployer.NewTFPluginClient(mnemonics, deployer.WithNetwork(network), deployer.WithLogs())
 }
 
 // RemoteRun used for running cmd remotely using ssh

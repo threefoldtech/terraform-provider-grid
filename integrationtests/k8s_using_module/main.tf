@@ -1,5 +1,5 @@
 module "kubernetes" {
-  source  = "../../modules/k8s-module"
+  source  = "github.com/threefoldtech/terraform-provider-grid/modules/k8s-module"
   token   = local.token
   network = local.network
   master  = var.master
