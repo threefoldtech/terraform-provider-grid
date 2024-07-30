@@ -11,8 +11,12 @@ terraform {
   }
 }
 
+resource "random_string" "name" {
+  length  = 8
+  special = false
+}
+
 locals {
-  name         = "testvm"
   vm_disk_size = 2
   vm_memory    = 2048
 }
@@ -22,22 +26,21 @@ provider "grid" {
 
 resource "grid_scheduler" "scheduler" {
   requests {
-    name    = "node1"
-    cru     = 0
-    sru     = local.vm_disk_size * 1024
-    mru     = local.vm_memory
-    farm_id = 1
+    name = "node"
+    cru  = 0
+    sru  = local.vm_disk_size * 1024
+    mru  = local.vm_memory
   }
 }
 
 resource "grid_network" "net1" {
-  nodes       = [grid_scheduler.scheduler.nodes["node1"]]
+  nodes       = [grid_scheduler.scheduler.nodes["node"]]
   ip_range    = "10.1.0.0/16"
-  name        = "network"
-  description = "newer network"
+  name        = random_string.name.result
+  description = "vm network"
 }
 resource "grid_deployment" "d1" {
-  node         = grid_scheduler.scheduler.nodes["node1"]
+  node         = grid_scheduler.scheduler.nodes["node"]
   network_name = grid_network.net1.name
   vms {
     name       = "vm1"

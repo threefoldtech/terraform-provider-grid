@@ -5,21 +5,23 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/threefoldtech/terraform-provider-grid/internal/provider/scheduler"
 )
 
-func TestGateWay(t *testing.T) {
+func TestGatewayDeployments(t *testing.T) {
 	publicKey, privateKey, err := GenerateSSHKeyPair()
 	if err != nil {
 		t.Fatalf("failed to generate ssh key pair: %s", err.Error())
 	}
 
 	t.Run("gateway_name", func(t *testing.T) {
-		/* Test case for deployeng a gateway name proxy.
+		/* Test case for deploying a gateway name proxy.
 
 		   **Test Scenario**
 
@@ -40,42 +42,49 @@ func TestGateWay(t *testing.T) {
 		defer terraform.Destroy(t, terraformOptions)
 
 		_, err := terraform.InitAndApplyE(t, terraformOptions)
-		assert.NoError(t, err)
+		if err != nil &&
+			(strings.Contains(err.Error(), scheduler.NoNodesFoundErr.Error()) ||
+				strings.Contains(err.Error(), "error creating threefold plugin client")) {
+			t.Skip("couldn't find any available nodes")
+			return
+		}
+
+		require.NoError(t, err)
 
 		// Check that the outputs not empty
 		fqdn := terraform.Output(t, terraformOptions, "fqdn")
-		assert.NotEmpty(t, fqdn)
+		require.NotEmpty(t, fqdn)
 
 		yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
-		assert.NotEmpty(t, yggIP)
+		require.NotEmpty(t, yggIP)
 
 		ok := TestConnection(yggIP, "22")
-		assert.True(t, ok)
+		require.True(t, ok)
 
 		_, err = RemoteRun("root", yggIP, "apk add python3; python3 -m http.server 9000 --bind :: &> /dev/null &", privateKey)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		time.Sleep(3 * time.Second)
 
 		response, err := http.Get(fmt.Sprintf("https://%s", fqdn))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		if response != nil {
 			body, err := io.ReadAll(response.Body)
 			if body != nil {
 				defer response.Body.Close()
 			}
-			assert.NoError(t, err)
-			assert.Contains(t, string(body), "Directory listing for")
+			require.NoError(t, err)
+			require.Contains(t, string(body), "Directory listing for")
 		}
 	})
 
 	t.Run("gateway_fqdn", func(t *testing.T) {
-		/* Test case for deployeng a gateway with fdqn.
+		/* Test case for deploying a gateway with FQDN.
 
 		   **Test Scenario**
 
-		   - Deploy a gateway with fdqn.
+		   - Deploy a gateway with FQDN.
 		   - Deploy a vm.
 		   - Assert that outputs are not empty.
 		   - Run python server on vm.
@@ -101,35 +110,40 @@ func TestGateWay(t *testing.T) {
 		defer terraform.Destroy(t, terraformOptions)
 
 		_, err := terraform.InitAndApplyE(t, terraformOptions)
-		if !assert.NoError(t, err) {
+		if err != nil &&
+			(strings.Contains(err.Error(), scheduler.NoNodesFoundErr.Error()) ||
+				strings.Contains(err.Error(), "error creating threefold plugin client")) {
+			t.Skip("couldn't find any available nodes")
 			return
 		}
 
+		require.NoError(t, err)
+
 		// Check that the outputs not empty
 		fqdn = terraform.Output(t, terraformOptions, "fqdn")
-		assert.NotEmpty(t, fqdn)
+		require.NotEmpty(t, fqdn)
 
 		yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
-		assert.NotEmpty(t, yggIP)
+		require.NotEmpty(t, yggIP)
 
 		ok := TestConnection(yggIP, "22")
-		assert.True(t, ok)
+		require.True(t, ok)
 
 		_, err = RemoteRun("root", yggIP, "apk add python3; python3 -m http.server 9000 --bind :: &> /dev/null &", privateKey)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		time.Sleep(3 * time.Second)
 
 		response, err := http.Get(fmt.Sprintf("http://%s", fqdn))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		if response != nil {
 			body, err := io.ReadAll(response.Body)
 			if body != nil {
 				defer response.Body.Close()
 			}
-			assert.NoError(t, err)
-			assert.Contains(t, string(body), "Directory listing for")
+			require.NoError(t, err)
+			require.Contains(t, string(body), "Directory listing for")
 		}
 	})
 }

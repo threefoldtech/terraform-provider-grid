@@ -15,27 +15,31 @@ terraform {
 provider "grid" {
 }
 
+resource "random_string" "name" {
+  length  = 8
+  special = false
+}
+
 resource "grid_scheduler" "scheduler" {
   requests {
-    name             = "node1"
+    name             = "node"
     cru              = 2
     sru              = 512
     mru              = 1024
     public_config    = true
-    farm_id          = 1
     public_ips_count = 1
   }
 }
 
 resource "grid_network" "net1" {
-  nodes       = [grid_scheduler.scheduler.nodes["node1"]]
+  nodes       = [grid_scheduler.scheduler.nodes["node"]]
   ip_range    = "10.1.0.0/16"
-  name        = "network"
-  description = "newer network"
+  name        = random_string.name.result
+  description = "vm network"
 }
 
 resource "grid_deployment" "d1" {
-  node         = grid_scheduler.scheduler.nodes["node1"]
+  node         = grid_scheduler.scheduler.nodes["node"]
   network_name = grid_network.net1.name
   vms {
     name       = "vm1"

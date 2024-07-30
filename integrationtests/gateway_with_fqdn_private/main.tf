@@ -18,19 +18,19 @@ terraform {
 provider "grid" {
 }
 
-locals {
-  name = "luihkybveruvytc"
+resource "random_string" "name" {
+  length  = 8
+  special = false
 }
-
 
 resource "grid_network" "net1" {
   nodes       = [11]
   ip_range    = "10.1.0.0/16"
-  name        = local.name
-  description = "newer network"
+  name        = random_string.name.result
+  description = "private FQDN gateway network"
 }
 resource "grid_deployment" "d1" {
-  name         = local.name
+  name         = random_string.name.result
   node         = 11
   network_name = grid_network.net1.name
   vms {

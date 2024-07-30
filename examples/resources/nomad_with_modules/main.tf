@@ -21,7 +21,7 @@ locals {
   servers = [
     {
       name        = "server1"
-      node        = 13 
+      node        = 13
       cpu         = 2
       memory      = 1024
       rootfs_size = 1024
@@ -45,10 +45,10 @@ locals {
       }
     },
     {
-      name   = "server3"
-      node   = 13
-      cpu    = 2
-      memory = 1024
+      name        = "server3"
+      node        = 13
+      cpu         = 2
+      memory      = 1024
       rootfs_size = 1024
       disk = {
         name = "server3dsk"
@@ -59,10 +59,10 @@ locals {
 
   clients = [
     {
-      name   = "client1"
-      node   = 27 
-      cpu    = 2
-      memory = 1024
+      name        = "client1"
+      node        = 27
+      cpu         = 2
+      memory      = 1024
       rootfs_size = 1024
       disk = {
         name = "client1dsk"

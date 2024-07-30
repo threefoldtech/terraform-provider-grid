@@ -14,6 +14,7 @@ terraform {
 
 provider "grid" {
 }
+
 locals {
   master_disk_size = 2
   master_memory    = 2048
@@ -21,29 +22,35 @@ locals {
   worker_memory    = 2048
 }
 
+resource "random_string" "name" {
+  length  = 8
+  special = false
+}
+
 resource "grid_scheduler" "sched" {
   requests {
-    name    = "node1"
-    cru     = 2
-    sru     = local.master_disk_size * 1024
-    mru     = local.master_memory
-    farm_id = 1
+    name     = "node1"
+    cru      = 2
+    sru      = local.master_disk_size * 1024
+    mru      = local.master_memory
+    distinct = true
+    farm_id  = 1
   }
 
   requests {
-    name    = "node2"
-    cru     = 2
-    sru     = local.worker_disk_size * 1024
-    mru     = local.worker_memory
-    farm_id = 1
+    name     = "node2"
+    cru      = 2
+    sru      = local.worker_disk_size * 1024
+    mru      = local.worker_memory
+    distinct = true
   }
 }
 
 resource "grid_network" "net1" {
   nodes         = distinct([grid_scheduler.sched.nodes["node1"], grid_scheduler.sched.nodes["node2"]])
   ip_range      = "10.1.0.0/16"
-  name          = "network12346"
-  description   = "newer network"
+  name          = random_string.name.result
+  description   = "kubernetes network"
   add_wg_access = true
 }
 
@@ -69,7 +76,6 @@ resource "grid_kubernetes" "k8s1" {
     planetary = true
   }
 }
-
 
 output "mr_ygg_ip" {
   value = grid_kubernetes.k8s1.master[0].planetary_ip

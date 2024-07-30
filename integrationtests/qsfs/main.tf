@@ -13,29 +13,37 @@ terraform {
 
 provider "grid" {
 }
+
+resource "random_string" "name" {
+  length  = 8
+  special = false
+}
+
 resource "grid_scheduler" "sched" {
   requests {
-    name = "qsfs_instance"
-    cru  = 2
-    sru  = 2048
-    mru  = 1024
-    hru  = 12 * 1024
+    name    = "node"
+    cru     = 2
+    sru     = 2 * 1024
+    mru     = 2 * 1024
+    hru     = 12 * 1024
+    farm_id = 1
   }
 }
+
 locals {
   metas = ["meta1", "meta2", "meta3", "meta4"]
   datas = ["data1", "data2", "data3", "data4", "data5", "data6", "data7", "data8"]
 }
 
 resource "grid_network" "net1" {
-  nodes       = [grid_scheduler.sched.nodes["qsfs_instance"]]
+  name        = random_string.name.result
+  nodes       = [grid_scheduler.sched.nodes["node"]]
   ip_range    = "10.1.0.0/16"
-  name        = "net1"
-  description = "newer network"
+  description = "qsfs network"
 }
 
 resource "grid_deployment" "d1" {
-  node = grid_scheduler.sched.nodes["qsfs_instance"]
+  node = grid_scheduler.sched.nodes["node"]
   dynamic "zdbs" {
     for_each = local.metas
     content {
@@ -59,12 +67,12 @@ resource "grid_deployment" "d1" {
 }
 
 resource "grid_deployment" "qsfs" {
-  node         = grid_scheduler.sched.nodes["qsfs_instance"]
+  node         = grid_scheduler.sched.nodes["node"]
   network_name = grid_network.net1.name
   qsfs {
     name                  = "qsfs"
     description           = "description6"
-    cache                 = 2048
+    cache                 = 2048 # 10 GB
     minimal_shards        = 2
     expected_shards       = 3
     redundant_groups      = 0
@@ -114,9 +122,11 @@ resource "grid_deployment" "qsfs" {
     }
   }
 }
+
 output "metrics" {
   value = grid_deployment.qsfs.qsfs[0].metrics_endpoint
 }
+
 output "ygg_ip" {
   value = grid_deployment.qsfs.vms[0].planetary_ip
 }

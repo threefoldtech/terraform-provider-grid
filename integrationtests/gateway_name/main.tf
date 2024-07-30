@@ -14,18 +14,25 @@ terraform {
 provider "grid" {
 }
 
+resource "random_string" "name" {
+  length  = 8
+  special = false
+}
+
 resource "grid_scheduler" "sched" {
   requests {
-    name = "node1"
-    cru  = 2
-    sru  = 512
-    mru  = 1024
+    name    = "node"
+    cru     = 2
+    sru     = 512
+    mru     = 1024
+    farm_id = 1
   }
   # a name workload
   requests {
     name             = "gateway"
     public_config    = true
     public_ips_count = 1
+    farm_id          = 1
   }
 }
 
@@ -36,23 +43,18 @@ resource "grid_scheduler" "sched" {
 # - the backend can reference the vm ip directly 
 data "grid_gateway_domain" "domain" {
   node = grid_scheduler.sched.nodes["gateway"]
-  name = "examp123456"
+  name = "test123456"
 }
-
-locals {
-  name = "vmtesting"
-}
-
 
 resource "grid_network" "net1" {
-  nodes       = [grid_scheduler.sched.nodes["node1"]]
+  name        = random_string.name.result
+  nodes       = [grid_scheduler.sched.nodes["node"]]
   ip_range    = "10.1.0.0/16"
-  name        = local.name
-  description = "newer network"
+  description = "name gateway network"
 }
 resource "grid_deployment" "d1" {
-  name         = local.name
-  node         = grid_scheduler.sched.nodes["node1"]
+  name         = random_string.name.result
+  node         = grid_scheduler.sched.nodes["node"]
   network_name = grid_network.net1.name
   vms {
     name       = "vm1"
@@ -73,10 +75,11 @@ locals {
 
 resource "grid_name_proxy" "p1" {
   node            = grid_scheduler.sched.nodes["gateway"]
-  name            = "examp123456"
+  name            = data.grid_gateway_domain.domain.name
   backends        = [format("http://[%s]:9000", local.ygg_ip)]
   tls_passthrough = false
 }
+
 output "fqdn" {
   value = data.grid_gateway_domain.domain.fqdn
 }

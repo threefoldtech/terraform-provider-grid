@@ -9,11 +9,14 @@ import (
 	"github.com/pkg/errors"
 	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
 )
 
 // NoNodesFoundErr for empty nodes returned from scheduler
 var NoNodesFoundErr = errors.New("couldn't find a node satisfying the given requirements")
+
+type rmbClient interface {
+	CallWithSession(ctx context.Context, twin uint32, session *string, fn string, data interface{}, result interface{}) error
+}
 
 // Scheduler struct for scheduling
 type Scheduler struct {
@@ -21,7 +24,7 @@ type Scheduler struct {
 	farms           map[uint32]farmInfo
 	twinID          uint64
 	gridProxyClient proxy.Client
-	rmbClient       rmb.Client
+	rmbClient       rmbClient
 }
 
 // nodeInfo related to scheduling
@@ -45,7 +48,7 @@ func (node *nodeInfo) fulfils(r *Request, farm farmInfo) bool {
 	if r.Capacity.MRU > node.FreeCapacity.MRU ||
 		r.Capacity.HRU > node.FreeCapacity.HRU ||
 		r.Capacity.SRU > node.FreeCapacity.SRU ||
-		(r.FarmId != 0 && node.Node.FarmID != int(r.FarmId)) ||
+		(r.FarmID != 0 && node.Node.FarmID != int(r.FarmID)) ||
 		(r.PublicConfig && node.Node.PublicConfig.Domain == "") ||
 		(r.PublicIpsCount > uint32(farm.freeIPs)) ||
 		(r.Dedicated && !node.Node.Dedicated) ||
@@ -57,7 +60,7 @@ func (node *nodeInfo) fulfils(r *Request, farm farmInfo) bool {
 }
 
 // NewScheduler generates a new scheduler
-func NewScheduler(gridProxyClient proxy.Client, twinID uint64, rmbClient rmb.Client) Scheduler {
+func NewScheduler(gridProxyClient proxy.Client, twinID uint64, rmbClient rmbClient) Scheduler {
 	return Scheduler{
 		nodes:           map[uint32]nodeInfo{},
 		gridProxyClient: gridProxyClient,
@@ -137,8 +140,8 @@ func (n *Scheduler) addNodes(nodes []proxyTypes.Node) {
 
 // Schedule makes sure there's at least one node that satisfies the given request
 func (n *Scheduler) Schedule(ctx context.Context, r *Request) (uint32, error) {
-	if r.FarmId != 0 {
-		if n.hasFarmerBot(ctx, r.FarmId) {
+	if r.FarmID != 0 {
+		if n.hasFarmerBot(ctx, r.FarmID) {
 			return n.farmerBotSchedule(ctx, r)
 		}
 	}
