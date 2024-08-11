@@ -26,11 +26,11 @@ func New(version string, st state.Getter) (func() *schema.Provider, subi.Substra
 	return func() *schema.Provider {
 		p := &schema.Provider{
 			Schema: map[string]*schema.Schema{
-				"mnemonics": {
+				"mnemonic": {
 					Type:        schema.TypeString,
 					Required:    true,
 					Sensitive:   true,
-					DefaultFunc: schema.EnvDefaultFunc("MNEMONICS", nil),
+					DefaultFunc: schema.EnvDefaultFunc("MNEMONIC", nil),
 				},
 				"key_type": {
 					Type:        schema.TypeString,
@@ -103,7 +103,7 @@ func New(version string, st state.Getter) (func() *schema.Provider, subi.Substra
 func providerConfigure(st state.Getter) (func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics), subi.SubstrateExt) {
 	var substrateConn subi.SubstrateExt
 	return func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
-		mnemonics := d.Get("mnemonics").(string)
+		mnemonic := d.Get("mnemonic").(string)
 		keyType := d.Get("key_type").(string)
 		network := d.Get("network").(string)
 		substrateURL := d.Get("substrate_url").(string)
@@ -141,7 +141,7 @@ func providerConfigure(st state.Getter) (func(ctx context.Context, d *schema.Res
 			opts = append(opts, deployer.WithLogs())
 		}
 
-		tfPluginClient, err := deployer.NewTFPluginClient(mnemonics, opts...)
+		tfPluginClient, err := deployer.NewTFPluginClient(mnemonic, opts...)
 		if err != nil {
 			return nil, diag.FromErr(errors.Wrap(err, "error creating threefold plugin client"))
 		}

@@ -18,14 +18,14 @@ import (
 )
 
 func setup() (deployer.TFPluginClient, error) {
-	mnemonics := os.Getenv("MNEMONICS")
+	mnemonic := os.Getenv("MNEMONIC")
 
 	network := os.Getenv("NETWORK")
 	if network == "" {
 		network = "dev"
 	}
 
-	return deployer.NewTFPluginClient(mnemonics, deployer.WithNetwork(network), deployer.WithLogs())
+	return deployer.NewTFPluginClient(mnemonic, deployer.WithNetwork(network), deployer.WithLogs())
 }
 
 // RemoteRun used for running cmd remotely using ssh

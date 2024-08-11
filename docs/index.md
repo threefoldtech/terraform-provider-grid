@@ -18,7 +18,7 @@ description: |-
 ### Optional
 
 - `key_type` (String) key type registered on substrate (ed25519 or sr25519)
-- `mnemonics` (String, Sensitive)
+- `mnemonic` (String, Sensitive)
 - `network` (String) grid network, one of: dev test qa main
 - `relay_url` (String) rmb proxy url, example: wss://relay.dev.grid.tf
 - `rmb_timeout` (Number) timeout duration in seconds for rmb calls
