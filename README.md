@@ -49,7 +49,7 @@ make docs
 
 ```bash
 cd examples/resources/singlenode
-export MNEMONICS="mnemonics words"
+export MNEMONIC="mnemonic words"
 export NETWORK="network" # dev, qa, test, main
 terraform init && terraform apply # creates resources defined in main.tf
 terraform destroy # destroy the created resource
@@ -67,7 +67,7 @@ make
 ## Run tests
 
 ```bash
-export MNEMONICS="mnemonics words"
+export MNEMONIC="mnemonic words"
 export NETWORK="network" # dev, qa, test, main
 ```
 
