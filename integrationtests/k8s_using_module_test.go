@@ -42,7 +42,7 @@ func TestModuleK8s(t *testing.T) {
 		FarmIDs:  []uint64{1},
 	}
 
-	nodes, err := deployer.FilterNodes(context.Background(), tfPlugin, f, []uint64{freeSRU}, []uint64{}, []uint64{})
+	nodes, err := deployer.FilterNodes(context.Background(), tfPlugin, f, []uint64{freeSRU}, []uint64{}, []uint64{uint64(1024)})
 	require.NoError(t, err)
 	if len(nodes) < 3 {
 		t.Skip("couldn't find enough nodes")
