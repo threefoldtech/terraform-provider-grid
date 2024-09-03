@@ -16,10 +16,10 @@ locals {
 
 resource "grid_scheduler" "sched" {
   requests {
-    name             = "node1"
-    cru              = 1
-    sru              = 1024*10
-    mru              = 1024
+    name = "node1"
+    cru  = 1
+    sru  = 1024 * 10
+    mru  = 1024
   }
 }
 
@@ -47,7 +47,7 @@ resource "grid_deployment" "d1" {
     memory     = 1024
     entrypoint = "/sbin/zinit init"
     mounts {
-      disk_name   = "data"
+      name        = "data"
       mount_point = "/app"
     }
     env_vars = {

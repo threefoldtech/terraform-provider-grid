@@ -36,7 +36,7 @@ resource "grid_deployment" "d1" {
     memory     = 2048
     entrypoint = "/entrypoint.sh"
     mounts {
-      disk_name   = "store"
+      name        = "store"
       mount_point = "/nix"
     }
 

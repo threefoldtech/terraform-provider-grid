@@ -1,3 +1,7 @@
+//go:build integration
+// +build integration
+
+// Package integrationtests includes integration tests for deploying solutions on the tf grid, and some utilities to test these solutions.
 package integrationtests
 
 import (
@@ -42,7 +46,7 @@ func TestModuleK8s(t *testing.T) {
 		FarmIDs:  []uint64{1},
 	}
 
-	nodes, err := deployer.FilterNodes(context.Background(), tfPlugin, f, []uint64{freeSRU}, []uint64{}, []uint64{uint64(1024)})
+	nodes, err := deployer.FilterNodes(context.Background(), tfPlugin, f, []uint64{freeSRU}, []uint64{}, []uint64{})
 	require.NoError(t, err)
 	if len(nodes) < 3 {
 		t.Skip("couldn't find enough nodes")

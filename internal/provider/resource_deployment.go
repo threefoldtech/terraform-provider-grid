@@ -162,6 +162,11 @@ func resourceDeployment() *schema.Resource {
 							Description:      "Vm (zmachine) workload name. This has to be unique within the deployment. Must contain only alphanumeric and underscore characters.",
 							ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 						},
+						"node": {
+							Type:        schema.TypeInt,
+							Optional:    true,
+							Description: "Node id to place the vm on.",
+						},
 						"flist": {
 							Type:        schema.TypeString,
 							Required:    true,
@@ -245,7 +250,7 @@ func resourceDeployment() *schema.Resource {
 							Description: "List of vm (ZMachine) mounts. Can reference QSFSs and Disks.",
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
-									"disk_name": {
+									"name": {
 										Type:        schema.TypeString,
 										Required:    true,
 										Description: "Name of QSFS or Disk to mount.",

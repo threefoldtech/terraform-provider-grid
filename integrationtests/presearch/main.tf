@@ -68,7 +68,7 @@ resource "grid_deployment" "d1" {
     memory     = 1024
 
     mounts {
-      disk_name   = "data"
+      name        = "data"
       mount_point = "/var/lib/docker"
     }
 

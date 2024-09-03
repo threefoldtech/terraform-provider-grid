@@ -117,7 +117,7 @@ resource "grid_deployment" "qsfs" {
       SSH_KEY = "${var.public_key}"
     }
     mounts {
-      disk_name   = "qsfs"
+      name        = "qsfs"
       mount_point = "/qsfs"
     }
   }

@@ -38,7 +38,7 @@ resource "grid_deployment" "d1" {
       SSH_KEY = file("~/.ssh/id_rsa.pub")
     }
     mounts {
-      disk_name   = "data"
+      name        = "data"
       mount_point = "/app"
     }
     planetary = true

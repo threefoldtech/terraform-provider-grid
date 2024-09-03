@@ -5,11 +5,14 @@ linters:
     - gofmt
     - govet
     - ineffassign
-    - megacheck
+    - gosimple
+    - staticcheck
+    - unused
     - misspell
     - unconvert
   enable-all: false
 run:
   timeout: 20m
-  skip-dirs:
+issues:
+  exclude-dirs:
     - integrationtests

@@ -11,10 +11,10 @@ require (
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.34.0
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.9.0
-	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.15.11
-	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.15.11
-	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.15.11
-	github.com/threefoldtech/zos v0.5.6-0.20240611092312-66184cdeb953
+	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.15.17-0.20240904122047-8dbb80d1d261
+	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.15.16
+	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.15.16
+	github.com/threefoldtech/zos v0.5.6-0.20240902110349-172a0a29a6ee
 	golang.org/x/crypto v0.26.0
 	golang.org/x/sync v0.8.0
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20210803171230-4253848d036c
@@ -64,8 +64,8 @@ require (
 	github.com/google/s2a-go v0.1.7 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.2 // indirect
 	github.com/googleapis/gax-go/v2 v2.12.0 // indirect
-	github.com/gorilla/schema v1.3.0 // indirect
-	github.com/gorilla/websocket v1.5.2 // indirect
+	github.com/gorilla/schema v1.4.1 // indirect
+	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/gtank/merlin v0.1.1 // indirect
 	github.com/gtank/ristretto255 v0.1.2 // indirect
 	github.com/hashicorp/cli v1.1.6 // indirect
@@ -118,7 +118,7 @@ require (
 	github.com/rs/zerolog v1.33.0 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
-	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20240416134707-eb36aa90df2d // indirect
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20240827163226-d4e15e206974 // indirect
 	github.com/tmccombs/hcl2json v0.3.3 // indirect
 	github.com/ulikunitz/xz v0.5.10 // indirect
 	github.com/vedhavyas/go-subkey v1.0.3 // indirect

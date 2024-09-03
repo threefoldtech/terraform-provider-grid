@@ -169,7 +169,7 @@ Read-Only:
 
 Required:
 
-- `disk_name` (String) Name of QSFS or Disk to mount.
+- `name` (String) Name of QSFS or Disk to mount.
 - `mount_point` (String) Directory to mount the disk on inside the ZMachine.
 
 

@@ -39,7 +39,7 @@ resource "grid_deployment" "servers" {
       planetary   = vms.value.planetary
       entrypoint  = local.entrypoint
       mounts {
-        disk_name   = vms.value.disk.name
+        name        = vms.value.disk.name
         mount_point = vms.value.mount_point
       }
       env_vars = {
@@ -77,7 +77,7 @@ resource "grid_deployment" "clients" {
       planetary   = vms.value.planetary
       entrypoint  = local.entrypoint
       mounts {
-        disk_name   = vms.value.disk.name
+        name        = vms.value.disk.name
         mount_point = vms.value.mount_point
       }
       env_vars = {

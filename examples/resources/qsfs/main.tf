@@ -106,7 +106,7 @@ resource "grid_deployment" "qsfs" {
       SSH_KEY = file("~/.ssh/id_rsa.pub")
     }
     mounts {
-      disk_name   = "qsfs"
+      name        = "qsfs"
       mount_point = "/qsfs"
     }
   }
