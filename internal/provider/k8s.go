@@ -15,6 +15,7 @@ import (
 
 // newK8sFromSchema reads the k8s resource configuration data from the schema.ResourceData, converts them into a new K8s instance, and returns this instance.
 func newK8sFromSchema(d *schema.ResourceData) (*workloads.K8sCluster, error) {
+	networkName := d.Get("network_name").(string)
 	nodesIPRange := make(map[uint32]gridtypes.IPNet)
 
 	masterMap := d.Get("master").([]interface{})[0].(map[string]interface{})
@@ -30,6 +31,9 @@ func newK8sFromSchema(d *schema.ResourceData) (*workloads.K8sCluster, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	master := masterI.(*workloads.K8sNode)
+	master.NetworkName = networkName
 
 	workers := make([]workloads.K8sNode, 0)
 
@@ -47,7 +51,9 @@ func newK8sFromSchema(d *schema.ResourceData) (*workloads.K8sCluster, error) {
 		if err != nil {
 			return nil, err
 		}
-		workers = append(workers, *data.(*workloads.K8sNode))
+		workerWorkload := *data.(*workloads.K8sNode)
+		workerWorkload.NetworkName = networkName
+		workers = append(workers, workerWorkload)
 	}
 
 	nodeDeploymentIDIf := d.Get("node_deployment_id").(map[string]interface{})
@@ -60,18 +66,18 @@ func newK8sFromSchema(d *schema.ResourceData) (*workloads.K8sCluster, error) {
 		deploymentID := uint64(id.(int))
 		nodeDeploymentID[uint32(nodeInt)] = deploymentID
 	}
-	master := masterI.(*workloads.K8sNode)
-	solutionType := d.Get("solution_type").(string)
 
+	solutionType := d.Get("solution_type").(string)
 	if solutionType == "" {
 		solutionType = fmt.Sprintf("kubernetes/%s", master.Name)
 	}
+
 	k8s := workloads.K8sCluster{
 		Master:           master,
 		Workers:          workers,
 		Token:            d.Get("token").(string),
 		SSHKey:           d.Get("ssh_key").(string),
-		NetworkName:      d.Get("network_name").(string),
+		NetworkName:      networkName,
 		SolutionType:     solutionType,
 		NodeDeploymentID: nodeDeploymentID,
 		NodesIPRange:     nodesIPRange,
@@ -126,12 +132,16 @@ func storeK8sState(d *schema.ResourceData, k8s *workloads.K8sCluster) (errors er
 	master["mycelium_ip_seed"] = hex.EncodeToString(k8s.Master.MyceliumIPSeed)
 	retainChecksums(workers, master, k8s)
 
+	removeExtraFieldsFromK8sNode(master)
 	l := []interface{}{master}
 	err = d.Set("master", l)
 	if err != nil {
 		errors = multierror.Append(errors, err)
 	}
 
+	for i := range workers {
+		removeExtraFieldsFromK8sNode(workers[i].(map[string]interface{}))
+	}
 	err = d.Set("workers", workers)
 	if err != nil {
 		errors = multierror.Append(errors, err)
@@ -168,4 +178,14 @@ func storeK8sState(d *schema.ResourceData, k8s *workloads.K8sCluster) (errors er
 	}
 
 	return
+}
+
+func removeExtraFieldsFromK8sNode(k8sNode map[string]interface{}) {
+	delete(k8sNode, "zlogs")
+	delete(k8sNode, "gpus")
+	delete(k8sNode, "corex")
+	delete(k8sNode, "mounts")
+	delete(k8sNode, "rootfs_size")
+	delete(k8sNode, "description")
+	delete(k8sNode, "env_vars")
 }

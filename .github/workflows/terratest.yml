@@ -2,21 +2,35 @@ name: Intgeration tests
 
 on:
   schedule:
-    - cron: "0 0 * * *"
+    - cron: "0 1 * * *"
   workflow_dispatch:
   push:
     tags:
       - "v*"
 
 jobs:
-  go-tests:
-    name: Run Go Tests
+  test-dev:
+    name: Testing
     runs-on: ubuntu-latest
     timeout-minutes: 0
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
-        network: ["dev", "qa", "test", "main"]
+        # network: ["dev", "qa", "test", "main"]
+        network: ["dev"]
+        tests: [{name: "vm", test: "go test -v ./... --tags=integration -run TestVM"},
+          {name: "k8s", test: "go test -v ./... --tags=integration -run TestK8s"},
+          {name: "gateway", test: "go test -v ./... --tags=integration -run TestGatewayDeployments"},
+          {name: "gateway-private", test: "go test -v ./... --tags=integration -run TestGatewayPrivate"},
+          {name: "wireguard", test: "go test -v ./... --tags=integration -run TestWireguard"},
+          {name: "zdb", test: "go test -v ./... --tags=integration -run TestZdbs"},
+          {name: "qsfs", test: "go test -v ./... --tags=integration -run TestQSFS"},
+          {name: "peertube", test: "go test -v ./... --tags=integration -run TestPeertube"},
+          {name: "presearch", test: "go test -v ./... --tags=integration -run TestPresearch"},
+          {name: "taiga", test: "go test -v ./... --tags=integration -run TestTaiga"},
+          {name: "mattermost", test: "go test -v ./... --tags=integration -run TestMattermost"}]
+
     steps:
       - uses: actions/setup-go@v5
         with:
@@ -41,7 +55,7 @@ jobs:
           PEERS=$(curl https://raw.githubusercontent.com/AhmedHanafy725/yggdrasil-config/main/config.json | jq '.yggdrasil.peers[]' -r | sed 's/\//\\\//g' | sed -z 's/\n/\\n/g')
           sudo sed -i -- 's/Peers\: \[\]/Peers: [\n'"$PEERS"']/g' /etc/yggdrasil/yggdrasil.conf
           sudo systemctl restart yggdrasil
-      - uses: actions/checkout@v4.1.1
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Build
@@ -50,89 +64,196 @@ jobs:
           mkdir -p ~/.terraform.d/plugins/threefoldtechdev.com/providers/grid/0.2/linux_amd64/
           go build -o terraform-provider-grid
           mv terraform-provider-grid ~/.terraform.d/plugins/threefoldtechdev.com/providers/grid/0.2/linux_amd64/
-      - name: Test virtual machines
+      - name: Test ${{ matrix.tests.name }}
         env:
           MNEMONIC: ${{ secrets.MNEMONICS }}
+          MNEMONICS: ${{ secrets.MNEMONICS }}
           NETWORK: ${{ matrix.network }}
         working-directory: integrationtests
-        run: go test -v ./... --tags=integration -run TestVM
+        run: ${{ matrix.tests.test }}
+        
+  test-qa:
+    name: Testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 0
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        network: ["qa"]
+        tests: [{name: "vm", test: "go test -v ./... --tags=integration -run TestVM"},
+          {name: "k8s", test: "go test -v ./... --tags=integration -run TestK8s"},
+          {name: "gateway", test: "go test -v ./... --tags=integration -run TestGatewayDeployments"},
+          {name: "gateway-private", test: "go test -v ./... --tags=integration -run TestGatewayPrivate"},
+          {name: "wireguard", test: "go test -v ./... --tags=integration -run TestWireguard"},
+          {name: "zdb", test: "go test -v ./... --tags=integration -run TestZdbs"},
+          {name: "qsfs", test: "go test -v ./... --tags=integration -run TestQSFS"},
+          {name: "peertube", test: "go test -v ./... --tags=integration -run TestPeertube"},
+          {name: "presearch", test: "go test -v ./... --tags=integration -run TestPresearch"},
+          {name: "taiga", test: "go test -v ./... --tags=integration -run TestTaiga"},
+          {name: "mattermost", test: "go test -v ./... --tags=integration -run TestMattermost"}]
 
-      - name: Test kubernetes
+    steps:
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.21
+      - uses: autero1/action-terraform@v3.0.1
         env:
-          MNEMONIC: ${{ secrets.MNEMONICS }}
-          NETWORK: ${{ matrix.network }}
-        working-directory: integrationtests
+          ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+        with:
+          terraform-version: 1.8.5
+      - name: install wg and yggdrasil and add peers
         run: |
-          go test -v ./... --tags=integration -run TestK8s
-          go test -v ./... --tags=integration -run TestModuleK8s
-
-      - name: Test Gateways
+          sudo apt-get update
+          sudo apt-get install -y wireguard
+          sudo apt-get install dirmngr
+          sudo apt-get install curl
+          gpg --fetch-keys https://neilalexander.s3.dualstack.eu-west-2.amazonaws.com/deb/key.txt
+          gpg --export 569130E8CA20FBC4CB3FDE555898470A764B32C9 | sudo apt-key add -
+          echo 'deb http://neilalexander.s3.dualstack.eu-west-2.amazonaws.com/deb/ debian yggdrasil' | sudo tee /etc/apt/sources.list.d/yggdrasil.list
+          sudo apt-get update
+          sudo apt-get install yggdrasil
+          sudo systemctl enable yggdrasil
+          PEERS=$(curl https://raw.githubusercontent.com/AhmedHanafy725/yggdrasil-config/main/config.json | jq '.yggdrasil.peers[]' -r | sed 's/\//\\\//g' | sed -z 's/\n/\\n/g')
+          sudo sed -i -- 's/Peers\: \[\]/Peers: [\n'"$PEERS"']/g' /etc/yggdrasil/yggdrasil.conf
+          sudo systemctl restart yggdrasil
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Build
+        run: |
+          go mod tidy
+          mkdir -p ~/.terraform.d/plugins/threefoldtechdev.com/providers/grid/0.2/linux_amd64/
+          go build -o terraform-provider-grid
+          mv terraform-provider-grid ~/.terraform.d/plugins/threefoldtechdev.com/providers/grid/0.2/linux_amd64/
+      - name: Test ${{ matrix.tests.name }}
         env:
           MNEMONIC: ${{ secrets.MNEMONICS }}
+          MNEMONICS: ${{ secrets.MNEMONICS }}
           NETWORK: ${{ matrix.network }}
         working-directory: integrationtests
-        run: go test -v ./... --tags=integration -run TestGatewayDeployments
+        run: ${{ matrix.tests.test }}
+    
+  test-test:
+    name: Testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 0
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        network: ["test"]
+        tests: [{name: "vm", test: "go test -v ./... --tags=integration -run TestVM"},
+          {name: "k8s", test: "go test -v ./... --tags=integration -run TestK8s"},
+          {name: "gateway", test: "go test -v ./... --tags=integration -run TestGatewayDeployments"},
+          {name: "gateway-private", test: "go test -v ./... --tags=integration -run TestGatewayPrivate"},
+          {name: "wireguard", test: "go test -v ./... --tags=integration -run TestWireguard"},
+          {name: "zdb", test: "go test -v ./... --tags=integration -run TestZdbs"},
+          {name: "qsfs", test: "go test -v ./... --tags=integration -run TestQSFS"},
+          {name: "peertube", test: "go test -v ./... --tags=integration -run TestPeertube"},
+          {name: "presearch", test: "go test -v ./... --tags=integration -run TestPresearch"},
+          {name: "taiga", test: "go test -v ./... --tags=integration -run TestTaiga"},
+          {name: "mattermost", test: "go test -v ./... --tags=integration -run TestMattermost"}]
 
-      - name: Test private gateways
+    steps:
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.21
+      - uses: autero1/action-terraform@v3.0.1
+        env:
+          ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+        with:
+          terraform-version: 1.8.5
+      - name: install wg and yggdrasil and add peers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wireguard
+          sudo apt-get install dirmngr
+          sudo apt-get install curl
+          gpg --fetch-keys https://neilalexander.s3.dualstack.eu-west-2.amazonaws.com/deb/key.txt
+          gpg --export 569130E8CA20FBC4CB3FDE555898470A764B32C9 | sudo apt-key add -
+          echo 'deb http://neilalexander.s3.dualstack.eu-west-2.amazonaws.com/deb/ debian yggdrasil' | sudo tee /etc/apt/sources.list.d/yggdrasil.list
+          sudo apt-get update
+          sudo apt-get install yggdrasil
+          sudo systemctl enable yggdrasil
+          PEERS=$(curl https://raw.githubusercontent.com/AhmedHanafy725/yggdrasil-config/main/config.json | jq '.yggdrasil.peers[]' -r | sed 's/\//\\\//g' | sed -z 's/\n/\\n/g')
+          sudo sed -i -- 's/Peers\: \[\]/Peers: [\n'"$PEERS"']/g' /etc/yggdrasil/yggdrasil.conf
+          sudo systemctl restart yggdrasil
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Build
+        run: |
+          go mod tidy
+          mkdir -p ~/.terraform.d/plugins/threefoldtechdev.com/providers/grid/0.2/linux_amd64/
+          go build -o terraform-provider-grid
+          mv terraform-provider-grid ~/.terraform.d/plugins/threefoldtechdev.com/providers/grid/0.2/linux_amd64/
+      - name: Test ${{ matrix.tests.name }}
         env:
           MNEMONIC: ${{ secrets.MNEMONICS }}
+          MNEMONICS: ${{ secrets.MNEMONICS }}
           NETWORK: ${{ matrix.network }}
         working-directory: integrationtests
-        run: go test -v ./... --tags=integration -run TestGatewayPrivate
+        run: ${{ matrix.tests.test }}
+    
+  test-main:
+    name: Testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 0
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        network: ["main"]
+        tests: [{name: "vm", test: "go test -v ./... --tags=integration -run TestVM"},
+          {name: "k8s", test: "go test -v ./... --tags=integration -run TestK8s"},
+          {name: "gateway", test: "go test -v ./... --tags=integration -run TestGatewayDeployments"},
+          {name: "gateway-private", test: "go test -v ./... --tags=integration -run TestGatewayPrivate"},
+          {name: "wireguard", test: "go test -v ./... --tags=integration -run TestWireguard"},
+          {name: "zdb", test: "go test -v ./... --tags=integration -run TestZdbs"},
+          {name: "qsfs", test: "go test -v ./... --tags=integration -run TestQSFS"},
+          {name: "peertube", test: "go test -v ./... --tags=integration -run TestPeertube"},
+          {name: "presearch", test: "go test -v ./... --tags=integration -run TestPresearch"},
+          {name: "taiga", test: "go test -v ./... --tags=integration -run TestTaiga"},
+          {name: "mattermost", test: "go test -v ./... --tags=integration -run TestMattermost"}]
 
-      - name: Test wireguard
+    steps:
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.21
+      - uses: autero1/action-terraform@v3.0.1
+        env:
+          ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+        with:
+          terraform-version: 1.8.5
+      - name: install wg and yggdrasil and add peers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wireguard
+          sudo apt-get install dirmngr
+          sudo apt-get install curl
+          gpg --fetch-keys https://neilalexander.s3.dualstack.eu-west-2.amazonaws.com/deb/key.txt
+          gpg --export 569130E8CA20FBC4CB3FDE555898470A764B32C9 | sudo apt-key add -
+          echo 'deb http://neilalexander.s3.dualstack.eu-west-2.amazonaws.com/deb/ debian yggdrasil' | sudo tee /etc/apt/sources.list.d/yggdrasil.list
+          sudo apt-get update
+          sudo apt-get install yggdrasil
+          sudo systemctl enable yggdrasil
+          PEERS=$(curl https://raw.githubusercontent.com/AhmedHanafy725/yggdrasil-config/main/config.json | jq '.yggdrasil.peers[]' -r | sed 's/\//\\\//g' | sed -z 's/\n/\\n/g')
+          sudo sed -i -- 's/Peers\: \[\]/Peers: [\n'"$PEERS"']/g' /etc/yggdrasil/yggdrasil.conf
+          sudo systemctl restart yggdrasil
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Build
+        run: |
+          go mod tidy
+          mkdir -p ~/.terraform.d/plugins/threefoldtechdev.com/providers/grid/0.2/linux_amd64/
+          go build -o terraform-provider-grid
+          mv terraform-provider-grid ~/.terraform.d/plugins/threefoldtechdev.com/providers/grid/0.2/linux_amd64/
+      - name: Test ${{ matrix.tests.name }}
         env:
           MNEMONIC: ${{ secrets.MNEMONICS }}
+          MNEMONICS: ${{ secrets.MNEMONICS }}
           NETWORK: ${{ matrix.network }}
         working-directory: integrationtests
-        run: go test -v ./... --tags=integration -run TestWireguard
-
-      - name: Test ZDBs
-        env:
-          MNEMONIC: ${{ secrets.MNEMONICS }}
-          NETWORK: ${{ matrix.network }}
-        working-directory: integrationtests
-        run: go test -v ./... --tags=integration -run TestZdbs
-
-      - name: Test QSFS
-        env:
-          MNEMONIC: ${{ secrets.MNEMONICS }}
-          NETWORK: ${{ matrix.network }}
-        working-directory: integrationtests
-        run: go test -v ./... --tags=integration -run TestQSFS
-
-      - name: Test peertube
-        env:
-          MNEMONIC: ${{ secrets.MNEMONICS }}
-          NETWORK: ${{ matrix.network }}
-        working-directory: integrationtests
-        run: go test -v ./... --tags=integration -run TestPeertube
-
-      - name: Test presearch
-        env:
-          MNEMONIC: ${{ secrets.MNEMONICS }}
-          NETWORK: ${{ matrix.network }}
-        working-directory: integrationtests
-        run: go test -v ./... --tags=integration -run TestPresearch
-
-      - name: Test taiga
-        env:
-          MNEMONIC: ${{ secrets.MNEMONICS }}
-          NETWORK: ${{ matrix.network }}
-        working-directory: integrationtests
-        run: go test -v ./... --tags=integration -run TestTaiga
-
-      - name: Test mattermost
-        env:
-          MNEMONIC: ${{ secrets.MNEMONICS }}
-          NETWORK: ${{ matrix.network }}
-        working-directory: integrationtests
-        run: go test -v ./... --tags=integration -run TestMattermost
-
-      - name: Test nomad
-        env:
-          MNEMONIC: ${{ secrets.MNEMONICS }}
-          NETWORK: ${{ matrix.network }}
-        working-directory: integrationtests
-        run: go test -v ./... --tags=integration -run TestNomad
-
+        run: ${{ matrix.tests.test }}

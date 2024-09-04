@@ -31,7 +31,7 @@ resource "grid_scheduler" "scheduler" {
   requests {
     name = "node"
     cru  = 1
-    sru  = var.disk_size * 1024
+    sru  = var.disk_size * 1024 + 1024
     mru  = 1024
   }
 }
@@ -58,7 +58,7 @@ resource "grid_deployment" "d1" {
     memory     = 1024
     entrypoint = "/init.sh"
     mounts {
-      disk_name   = "data"
+      name        = "data"
       mount_point = "/${var.mount_point}"
     }
     env_vars = {

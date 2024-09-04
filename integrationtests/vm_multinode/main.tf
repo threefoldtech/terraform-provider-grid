@@ -24,14 +24,14 @@ resource "grid_scheduler" "scheduler" {
   requests {
     name = "node1"
     cru  = 2
-    sru  = 512
+    sru  = 1024
     mru  = 1024
   }
 
   requests {
     name = "node2"
     cru  = 1
-    sru  = 512
+    sru  = 1024
     mru  = 1024
   }
 }

@@ -62,7 +62,7 @@ resource "grid_deployment" "node1" {
     memory      = 8096
     rootfs_size = 51200
     mounts {
-      disk_name   = "data0"
+      name        = "data0"
       mount_point = "/var/lib/docker"
     }
     env_vars = {

@@ -56,7 +56,9 @@ func newDeploymentFromSchema(d *schema.ResourceData) (*workloads.Deployment, err
 			return nil, errors.Wrap(err, "failed to create workload from vm map")
 		}
 
-		vms = append(vms, *v.(*workloads.VM))
+		vmWorkload := *v.(*workloads.VM)
+		vmWorkload.NodeID = nodeID
+		vms = append(vms, vmWorkload)
 	}
 
 	// TODO: ip_range

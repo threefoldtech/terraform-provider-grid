@@ -1,0 +1,70 @@
+name: Intgeration tests for modules
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+jobs:
+  go-tests:
+    name: Run Go Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 0
+    strategy:
+      fail-fast: false
+      matrix:
+        network: ["dev", "qa", "test", "main"]
+    steps:
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.21
+      - uses: autero1/action-terraform@v3.0.1
+        env:
+          ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+        with:
+          terraform-version: 1.8.5
+      - name: install wg and yggdrasil and add peers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wireguard
+          sudo apt-get install dirmngr
+          sudo apt-get install curl
+          gpg --fetch-keys https://neilalexander.s3.dualstack.eu-west-2.amazonaws.com/deb/key.txt
+          gpg --export 569130E8CA20FBC4CB3FDE555898470A764B32C9 | sudo apt-key add -
+          echo 'deb http://neilalexander.s3.dualstack.eu-west-2.amazonaws.com/deb/ debian yggdrasil' | sudo tee /etc/apt/sources.list.d/yggdrasil.list
+          sudo apt-get update
+          sudo apt-get install yggdrasil
+          sudo systemctl enable yggdrasil
+          PEERS=$(curl https://raw.githubusercontent.com/AhmedHanafy725/yggdrasil-config/main/config.json | jq '.yggdrasil.peers[]' -r | sed 's/\//\\\//g' | sed -z 's/\n/\\n/g')
+          sudo sed -i -- 's/Peers\: \[\]/Peers: [\n'"$PEERS"']/g' /etc/yggdrasil/yggdrasil.conf
+          sudo systemctl restart yggdrasil
+      - uses: actions/checkout@v4.1.1
+        with:
+          fetch-depth: 0
+      - name: Build
+        run: |
+          go mod tidy
+          mkdir -p ~/.terraform.d/plugins/threefoldtechdev.com/providers/grid/0.2/linux_amd64/
+          go build -o terraform-provider-grid
+          mv terraform-provider-grid ~/.terraform.d/plugins/threefoldtechdev.com/providers/grid/0.2/linux_amd64/
+      - name: Test kubernetes module
+        env:
+          MNEMONIC: ${{ secrets.MNEMONICS }}
+          NETWORK: ${{ matrix.network }}
+        working-directory: integrationtests
+        run: |
+          go test -v ./... --tags=integration -run TestModuleK8s
+
+      - name: Test Gateways
+        env:
+          MNEMONIC: ${{ secrets.MNEMONICS }}
+          NETWORK: ${{ matrix.network }}
+        working-directory: integrationtests
+        run: go test -v ./... --tags=integration -run TestGatewayDeployments
+
+      - name: Test nomad module
+        env:
+          MNEMONIC: ${{ secrets.MNEMONICS }}
+          NETWORK: ${{ matrix.network }}
+        working-directory: integrationtests
+        run: go test -v ./... --tags=integration -run TestNomad

@@ -106,6 +106,12 @@ func resourceKubernetes() *schema.Resource {
 							Default:     "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist",
 							Description: "Flist used on master node, e.g. https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist. All flists could be found in `https://hub.grid.tf/`",
 						},
+						"entrypoint": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Default:     "/sbin/zinit init",
+							Description: "Command to execute as the kubernetes node init.",
+						},
 						"flist_checksum": {
 							Type:        schema.TypeString,
 							Optional:    true,
@@ -199,6 +205,12 @@ func resourceKubernetes() *schema.Resource {
 							Optional:    true,
 							Default:     "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist",
 							Description: "Flist used on worker node, e.g. https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist. All flists could be found in `https://hub.grid.tf/`.",
+						},
+						"entrypoint": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Default:     "/sbin/zinit init",
+							Description: "Command to execute as the kubernetes node init.",
 						},
 						"flist_checksum": {
 							Type:        schema.TypeString,

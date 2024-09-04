@@ -19,7 +19,7 @@ resource "grid_scheduler" "scheduler" {
   requests {
     name = "node"
     cru  = 2
-    sru  = 512
+    sru  = 1024
     mru  = 1024
   }
 }

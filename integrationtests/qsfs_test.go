@@ -1,3 +1,7 @@
+//go:build integration
+// +build integration
+
+// Package integrationtests includes integration tests for deploying solutions on the tf grid, and some utilities to test these solutions.
 package integrationtests
 
 import (
