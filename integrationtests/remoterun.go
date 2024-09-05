@@ -58,7 +58,7 @@ func RemoteRun(user string, addr string, cmd string, privateKey string) (string,
 
 	output, err := session.CombinedOutput(cmd)
 	if err != nil {
-		return "", errors.Wrapf(err, "could not excute command on remote with output %s", output)
+		return "", errors.Wrapf(err, "could not execute command on remote with output %s", output)
 	}
 	return string(output), nil
 }

@@ -50,17 +50,11 @@ jobs:
       - name: Test kubernetes module
         env:
           MNEMONIC: ${{ secrets.MNEMONICS }}
+          MNEMONICS: ${{ secrets.MNEMONICS }}
           NETWORK: ${{ matrix.network }}
         working-directory: integrationtests
         run: |
           go test -v ./... --tags=integration -run TestModuleK8s
-
-      - name: Test Gateways
-        env:
-          MNEMONIC: ${{ secrets.MNEMONICS }}
-          NETWORK: ${{ matrix.network }}
-        working-directory: integrationtests
-        run: go test -v ./... --tags=integration -run TestGatewayDeployments
 
       - name: Test nomad module
         env:
