@@ -67,7 +67,6 @@ resource "grid_deployment" "workers" {
     for_each = each.value
     content {
       name       = vms.value.name
-      flist      = "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist"
       cpu        = vms.value.cpu
       memory     = vms.value.memory
       publicip   = vms.value.publicip

@@ -73,10 +73,13 @@ func newK8sFromSchema(d *schema.ResourceData) (*workloads.K8sCluster, error) {
 	}
 
 	k8s := workloads.K8sCluster{
-		Master:           master,
-		Workers:          workers,
-		Token:            d.Get("token").(string),
-		SSHKey:           d.Get("ssh_key").(string),
+		Master:        master,
+		Workers:       workers,
+		Token:         d.Get("token").(string),
+		SSHKey:        d.Get("ssh_key").(string),
+		Flist:         d.Get("flist").(string),
+		FlistChecksum: d.Get("flist_checksum").(string),
+		// EntryPoint:       d.Get("entry_point").(string),
 		NetworkName:      networkName,
 		SolutionType:     solutionType,
 		NodeDeploymentID: nodeDeploymentID,
