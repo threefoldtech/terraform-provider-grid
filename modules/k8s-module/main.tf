@@ -71,7 +71,6 @@ resource "grid_deployment" "workers" {
       memory     = vms.value.memory
       publicip   = vms.value.publicip
       planetary  = vms.value.planetary
-      entrypoint = "/sbin/zinit init"
       env_vars = {
         SSH_KEY           = "${var.ssh}"
         K3S_TOKEN         = "${var.token}"

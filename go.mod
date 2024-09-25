@@ -11,7 +11,7 @@ require (
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.34.0
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.9.0
-	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.15.17-dev
+	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.15.17
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.15.16
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.15.16
 	github.com/threefoldtech/zos v0.5.6-0.20240902110349-172a0a29a6ee
