@@ -98,7 +98,7 @@ func resourceDeployment() *schema.Resource {
 						"name": {
 							Type:             schema.TypeString,
 							Required:         true,
-							Description:      "ZDB worklod name. This has to be unique within the deployment. Must contain only alphanumeric and underscore characters.",
+							Description:      "ZDB workload name. This has to be unique within the deployment. Must contain only alphanumeric and underscore characters.",
 							ValidateDiagFunc: validation.ToDiagFunc(validation.StringMatch(regexp.MustCompile(nameValidationRegex), nameValidationErrorMessage)),
 						},
 						"password": {

@@ -31,7 +31,7 @@ resource "grid_deployment" "master" {
   network_name = grid_network.net.name
   vms {
     name       = var.master.name
-    flist      = "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist"
+    flist      = "https://hub.grid.tf/tf-official-apps/threefolddev-k3s-v1.31.0.flist"
     cpu        = var.master.cpu
     publicip   = var.master.publicip
     planetary  = var.master.planetary
@@ -66,11 +66,11 @@ resource "grid_deployment" "workers" {
   dynamic "vms" {
     for_each = each.value
     content {
-      name       = vms.value.name
-      cpu        = vms.value.cpu
-      memory     = vms.value.memory
-      publicip   = vms.value.publicip
-      planetary  = vms.value.planetary
+      name      = vms.value.name
+      cpu       = vms.value.cpu
+      memory    = vms.value.memory
+      publicip  = vms.value.publicip
+      planetary = vms.value.planetary
       env_vars = {
         SSH_KEY           = "${var.ssh}"
         K3S_TOKEN         = "${var.token}"

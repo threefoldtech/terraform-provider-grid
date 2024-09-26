@@ -47,7 +47,7 @@ func resourceGatewayNameProxy() *schema.Resource {
 			"fqdn": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: "The computed fully quallified domain name of the deployed workload.",
+				Description: "The computed fully qualified domain name of the deployed workload.",
 			},
 			"tls_passthrough": {
 				Type:        schema.TypeBool,
