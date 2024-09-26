@@ -53,3 +53,7 @@ output "zdb1_endpoint" {
 output "zdb1_namespace" {
   value = grid_deployment.d1.zdbs[0].namespace
 }
+
+output "zdb1_mycelium_ip" {
+  value = grid_deployment.d1.zdbs[0].ips[2]
+}
