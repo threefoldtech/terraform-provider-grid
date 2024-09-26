@@ -51,7 +51,7 @@ func resourceKubernetes() *schema.Resource {
 			"flist": {
 				Type:        schema.TypeString,
 				Optional:    true,
-				Description: "Flist used on all nodes, e.g. https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist. All flists could be found in `https://hub.grid.tf/`",
+				Description: "Flist used on all nodes, e.g. https://hub.grid.tf/tf-official-apps/threefolddev-k3s-v1.31.0.flist. All flists could be found in `https://hub.grid.tf/`",
 			},
 			"entrypoint": {
 				Type:        schema.TypeString,
@@ -118,8 +118,8 @@ func resourceKubernetes() *schema.Resource {
 						"flist": {
 							Type:        schema.TypeString,
 							Optional:    true,
-							Default:     "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist",
-							Description: "Flist used on master node, e.g. https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist. All flists could be found in `https://hub.grid.tf/`",
+							Default:     "https://hub.grid.tf/tf-official-apps/threefolddev-k3s-v1.31.0.flist",
+							Description: "Flist used on master node, e.g. https://hub.grid.tf/tf-official-apps/threefolddev-k3s-v1.31.0.flist. All flists could be found in `https://hub.grid.tf/`",
 						},
 						"entrypoint": {
 							Type:        schema.TypeString,
@@ -218,7 +218,7 @@ func resourceKubernetes() *schema.Resource {
 						"flist": {
 							Type:        schema.TypeString,
 							Optional:    true,
-							Description: "Flist used on worker node, e.g. https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist. All flists could be found in `https://hub.grid.tf/`.",
+							Description: "Flist used on worker node, e.g. https://hub.grid.tf/tf-official-apps/threefolddev-k3s-v1.31.0.flist. All flists could be found in `https://hub.grid.tf/`.",
 						},
 						"entrypoint": {
 							Type:        schema.TypeString,

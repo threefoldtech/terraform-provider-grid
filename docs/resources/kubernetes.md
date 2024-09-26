@@ -47,7 +47,7 @@ Required:
 
 Optional:
 
-- `flist` (String) Flist used on master node, e.g. https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist. All flists could be found in `https://hub.grid.tf/`
+- `flist` (String) Flist used on master node, e.g. https://hub.grid.tf/tf-official-apps/threefolddev-k3s-v1.31.0.flist. All flists could be found in `https://hub.grid.tf/`
 - `flist_checksum` (String) if present, the flist is rejected if it has a different hash.
 - `planetary` (Boolean) Flag to enable Yggdrasil IP allocation.
 - `publicip` (Boolean) Flag to enable/disable public ipv4 reservation.
@@ -80,7 +80,7 @@ Required:
 
 Optional:
 
-- `flist` (String) Flist used on worker node, e.g. https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist. All flists could be found in `https://hub.grid.tf/`.
+- `flist` (String) Flist used on worker node, e.g. https://hub.grid.tf/tf-official-apps/threefolddev-k3s-v1.31.0.flist. All flists could be found in `https://hub.grid.tf/`.
 - `flist_checksum` (String) if present, the flist is rejected if it has a different hash.
 - `planetary` (Boolean) Flag to enable Yggdrasil IP allocation.
 - `publicip` (Boolean) Flag to enable/disable public ipv4 reservation.
