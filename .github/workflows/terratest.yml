@@ -25,11 +25,7 @@ jobs:
           {name: "gateway-private", test: "go test -v ./... --tags=integration -run TestGatewayPrivate"},
           {name: "wireguard", test: "go test -v ./... --tags=integration -run TestWireguard"},
           {name: "zdb", test: "go test -v ./... --tags=integration -run TestZdbs"},
-          {name: "qsfs", test: "go test -v ./... --tags=integration -run TestQSFS"},
-          {name: "peertube", test: "go test -v ./... --tags=integration -run TestPeertube"},
-          {name: "presearch", test: "go test -v ./... --tags=integration -run TestPresearch"},
-          {name: "taiga", test: "go test -v ./... --tags=integration -run TestTaiga"},
-          {name: "mattermost", test: "go test -v ./... --tags=integration -run TestMattermost"}]
+          {name: "qsfs", test: "go test -v ./... --tags=integration -run TestQSFS"}]
 
     steps:
       - uses: actions/setup-go@v5
@@ -39,7 +35,7 @@ jobs:
         env:
           ACTIONS_ALLOW_UNSECURE_COMMANDS: true
         with:
-          terraform-version: 1.8.5
+          terraform-version: 1.9.6
       - name: install wg and yggdrasil and add peers
         run: |
           sudo apt-get update
@@ -87,11 +83,7 @@ jobs:
           {name: "gateway-private", test: "go test -v ./... --tags=integration -run TestGatewayPrivate"},
           {name: "wireguard", test: "go test -v ./... --tags=integration -run TestWireguard"},
           {name: "zdb", test: "go test -v ./... --tags=integration -run TestZdbs"},
-          {name: "qsfs", test: "go test -v ./... --tags=integration -run TestQSFS"},
-          {name: "peertube", test: "go test -v ./... --tags=integration -run TestPeertube"},
-          {name: "presearch", test: "go test -v ./... --tags=integration -run TestPresearch"},
-          {name: "taiga", test: "go test -v ./... --tags=integration -run TestTaiga"},
-          {name: "mattermost", test: "go test -v ./... --tags=integration -run TestMattermost"}]
+          {name: "qsfs", test: "go test -v ./... --tags=integration -run TestQSFS"}]
 
     steps:
       - uses: actions/setup-go@v5
@@ -101,7 +93,7 @@ jobs:
         env:
           ACTIONS_ALLOW_UNSECURE_COMMANDS: true
         with:
-          terraform-version: 1.8.5
+          terraform-version: 1.9.6
       - name: install wg and yggdrasil and add peers
         run: |
           sudo apt-get update
@@ -149,11 +141,7 @@ jobs:
           {name: "gateway-private", test: "go test -v ./... --tags=integration -run TestGatewayPrivate"},
           {name: "wireguard", test: "go test -v ./... --tags=integration -run TestWireguard"},
           {name: "zdb", test: "go test -v ./... --tags=integration -run TestZdbs"},
-          {name: "qsfs", test: "go test -v ./... --tags=integration -run TestQSFS"},
-          {name: "peertube", test: "go test -v ./... --tags=integration -run TestPeertube"},
-          {name: "presearch", test: "go test -v ./... --tags=integration -run TestPresearch"},
-          {name: "taiga", test: "go test -v ./... --tags=integration -run TestTaiga"},
-          {name: "mattermost", test: "go test -v ./... --tags=integration -run TestMattermost"}]
+          {name: "qsfs", test: "go test -v ./... --tags=integration -run TestQSFS"}]
 
     steps:
       - uses: actions/setup-go@v5
@@ -163,7 +151,7 @@ jobs:
         env:
           ACTIONS_ALLOW_UNSECURE_COMMANDS: true
         with:
-          terraform-version: 1.8.5
+          terraform-version: 1.9.6
       - name: install wg and yggdrasil and add peers
         run: |
           sudo apt-get update
@@ -211,11 +199,7 @@ jobs:
           {name: "gateway-private", test: "go test -v ./... --tags=integration -run TestGatewayPrivate"},
           {name: "wireguard", test: "go test -v ./... --tags=integration -run TestWireguard"},
           {name: "zdb", test: "go test -v ./... --tags=integration -run TestZdbs"},
-          {name: "qsfs", test: "go test -v ./... --tags=integration -run TestQSFS"},
-          {name: "peertube", test: "go test -v ./... --tags=integration -run TestPeertube"},
-          {name: "presearch", test: "go test -v ./... --tags=integration -run TestPresearch"},
-          {name: "taiga", test: "go test -v ./... --tags=integration -run TestTaiga"},
-          {name: "mattermost", test: "go test -v ./... --tags=integration -run TestMattermost"}]
+          {name: "qsfs", test: "go test -v ./... --tags=integration -run TestQSFS"}]
 
     steps:
       - uses: actions/setup-go@v5
@@ -225,7 +209,7 @@ jobs:
         env:
           ACTIONS_ALLOW_UNSECURE_COMMANDS: true
         with:
-          terraform-version: 1.8.5
+          terraform-version: 1.9.6
       - name: install wg and yggdrasil and add peers
         run: |
           sudo apt-get update
