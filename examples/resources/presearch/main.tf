@@ -9,6 +9,14 @@ terraform {
 provider "grid" {
 }
 
+resource "random_bytes" "mycelium_ip_seed" {
+  length = 6
+}
+
+resource "random_bytes" "mycelium_key" {
+  length = 32
+}
+
 locals {
   solution_type = "Presearch"
   name          = "presearch"
@@ -33,6 +41,9 @@ resource "grid_network" "net1" {
   ip_range      = "10.1.0.0/16"
   description   = "presearch network"
   add_wg_access = true
+  mycelium_keys = {
+    format("%s", grid_scheduler.sched.nodes["presearch"]) = random_bytes.mycelium_key.hex
+  }
 }
 
 # Deployment specs
@@ -49,13 +60,13 @@ resource "grid_deployment" "d1" {
   }
 
   vms {
-    name       = local.name
-    flist      = "https://hub.grid.tf/tf-official-apps/presearch-v2.2.flist"
-    entrypoint = "/sbin/zinit init"
-    publicip   = true
-    planetary  = true
-    cpu        = 1
-    memory     = 1024
+    name             = local.name
+    flist            = "https://hub.grid.tf/tf-official-apps/presearch-v2.2.flist"
+    entrypoint       = "/sbin/zinit init"
+    publicip         = true
+    cpu              = 1
+    memory           = 1024
+    mycelium_ip_seed = random_bytes.mycelium_ip_seed.hex
 
     mounts {
       name        = "data"
@@ -99,6 +110,6 @@ output "computed_public_ip" {
   value = split("/", grid_deployment.d1.vms[0].computedip)[0]
 }
 
-output "ygg_ip" {
-  value = grid_deployment.d1.vms[0].planetary_ip
+output "mycelium_ip" {
+  value = grid_deployment.d1.vms[0].mycelium_ip
 }

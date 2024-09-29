@@ -9,6 +9,14 @@ terraform {
 provider "grid" {
 }
 
+resource "random_bytes" "mycelium_ip_seed" {
+  length = 6
+}
+
+resource "random_bytes" "mycelium_key" {
+  length = 32
+}
+
 resource "grid_scheduler" "sched" {
   requests {
     name = "peertube"
@@ -43,12 +51,15 @@ data "grid_gateway_domain" "domain" {
 resource "grid_network" "net1" {
   solution_type = local.solution_type
   name          = local.name
-  nodes         = [grid_scheduler.sched.nodes["peertube"]]
+  nodes         = [local.node]
   ip_range      = "10.1.0.0/16"
   description   = "peertube network"
+  mycelium_keys = {
+    format("%s", local.node) = random_bytes.mycelium_key.hex
+  }
 }
 resource "grid_deployment" "d1" {
-  node          = grid_scheduler.sched.nodes["peertube"]
+  node          = local.node
   solution_type = local.solution_type
   name          = local.name
   network_name  = grid_network.net1.name
@@ -71,19 +82,19 @@ resource "grid_deployment" "d1" {
       PEERTUBE_SMTP_PASSWORD      = "sendgridpassword"
       PEERTUBE_BIND_ADDRESS       = "::",
     }
-    planetary = true
+    mycelium_ip_seed = random_bytes.mycelium_ip_seed.hex
   }
 }
 
 locals {
-  ygg_ip = try(length(grid_deployment.d1.vms[0].planetary_ip), 0) > 0 ? grid_deployment.d1.vms[0].planetary_ip : ""
+  mycelium_ip = try(length(grid_deployment.d1.vms[0].mycelium_ip), 0) > 0 ? grid_deployment.d1.vms[0].mycelium_ip: ""
 }
 
 resource "grid_name_proxy" "p1" {
   node            = grid_scheduler.sched.nodes["domain"]
   solution_type   = local.solution_type
   name            = local.name
-  backends        = [format("http://[%s]:9000", local.ygg_ip)]
+  backends        = [format("http://[%s]:9000", local.mycelium_ip)]
   tls_passthrough = false
 }
 
@@ -91,6 +102,6 @@ output "fqdn" {
   value = data.grid_gateway_domain.domain.fqdn
 }
 
-output "ygg_ip" {
-  value = grid_deployment.d1.vms[0].planetary_ip
+output "mycelium_ip" {
+  value = grid_deployment.d1.vms[0].mycelium_ip
 }

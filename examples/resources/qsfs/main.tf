@@ -9,6 +9,14 @@ terraform {
 provider "grid" {
 }
 
+resource "random_bytes" "mycelium_ip_seed" {
+  length = 6
+}
+
+resource "random_bytes" "mycelium_key" {
+  length = 32
+}
+
 locals {
   metas = ["meta1", "meta2", "meta3", "meta4"]
   datas = ["data1", "data2", "data3", "data4"]
@@ -29,6 +37,9 @@ resource "grid_network" "net1" {
   nodes       = [grid_scheduler.sched.nodes["node"]]
   ip_range    = "10.1.0.0/16"
   description = "qsfs network"
+  mycelium_keys = {
+    format("%s", grid_scheduler.sched.nodes["node"]) = random_bytes.mycelium_key.hex
+  }
 }
 
 resource "grid_deployment" "d1" {
@@ -96,12 +107,12 @@ resource "grid_deployment" "qsfs" {
     }
   }
   vms {
-    name       = "vm"
-    flist      = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
-    cpu        = 2
-    memory     = 1024
-    entrypoint = "/sbin/zinit init"
-    planetary  = true
+    name             = "vm"
+    flist            = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
+    cpu              = 2
+    memory           = 1024
+    entrypoint       = "/sbin/zinit init"
+    mycelium_ip_seed = random_bytes.mycelium_ip_seed.hex
     env_vars = {
       SSH_KEY = file("~/.ssh/id_rsa.pub")
     }
@@ -116,6 +127,6 @@ output "metrics" {
   value = grid_deployment.qsfs.qsfs[0].metrics_endpoint
 }
 
-output "ygg_ip" {
-  value = grid_deployment.qsfs.vms[0].planetary_ip
+output "mycelium_ip" {
+  value = grid_deployment.qsfs.vms[0].mycelium_ip
 }

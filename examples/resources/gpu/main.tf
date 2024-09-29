@@ -49,7 +49,7 @@ resource "grid_deployment" "d1" {
       SSH_KEY = file("~/.ssh/id_rsa.pub")
     }
     mounts {
-      disk_name   = "data"
+      name        = "data"
       mount_point = "/app"
     }
     mycelium_ip_seed = random_bytes.mycelium_ip_seed.hex

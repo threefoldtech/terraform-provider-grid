@@ -9,6 +9,14 @@ terraform {
 provider "grid" {
 }
 
+resource "random_bytes" "mycelium_ip_seed" {
+  length = 6
+}
+
+resource "random_bytes" "mycelium_key" {
+  length = 32
+}
+
 locals {
   name = "mountdeployment"
 }
@@ -28,6 +36,9 @@ resource "grid_network" "net1" {
   ip_range    = "10.1.0.0/16"
   name        = local.name
   description = "newer network"
+  mycelium_keys = {
+    format("%s", grid_scheduler.sched.nodes["node1"]) = random_bytes.mycelium_key.hex
+  }
 }
 
 resource "grid_deployment" "d1" {
@@ -40,12 +51,13 @@ resource "grid_deployment" "d1" {
     description = "volume holding app data"
   }
   vms {
-    name       = "vm1"
-    flist      = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
-    cpu        = 1
-    publicip   = true
-    memory     = 1024
-    entrypoint = "/sbin/zinit init"
+    name             = "vm1"
+    flist            = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
+    cpu              = 1
+    publicip         = true
+    memory           = 1024
+    entrypoint       = "/sbin/zinit init"
+    mycelium_ip_seed = random_bytes.mycelium_ip_seed.hex
     mounts {
       name        = "data"
       mount_point = "/app"
@@ -55,11 +67,12 @@ resource "grid_deployment" "d1" {
     }
   }
   vms {
-    name       = "anothervm"
-    flist      = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
-    cpu        = 1
-    memory     = 1024
-    entrypoint = "/sbin/zinit init"
+    name             = "anothervm"
+    flist            = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
+    cpu              = 1
+    memory           = 1024
+    entrypoint       = "/sbin/zinit init"
+    mycelium_ip_seed = random_bytes.mycelium_ip_seed.hex
     env_vars = {
       SSH_KEY = file("~/.ssh/id_rsa.pub")
     }
@@ -73,6 +86,12 @@ output "node1_zmachine1_ip" {
 }
 output "node1_zmachine2_ip" {
   value = grid_deployment.d1.vms[1].ip
+}
+output "node1_zmachine1_mycelium_ip" {
+  value = grid_deployment.d1.vms[0].mycelium_ip
+}
+output "node1_zmachine2_mycelium_ip" {
+  value = grid_deployment.d1.vms[1].mycelium_ip
 }
 output "computed_public_ip" {
   value = grid_deployment.d1.vms[0].computedip

@@ -12,6 +12,18 @@ locals {
   name = "testvm"
 }
 
+resource "random_bytes" "vm1_mycelium_ip_seed" {
+  length = 6
+}
+
+resource "random_bytes" "vm2_mycelium_ip_seed" {
+  length = 6
+}
+
+resource "random_bytes" "mycelium_key" {
+  length = 32
+}
+
 resource "grid_scheduler" "sched" {
   requests {
     name             = "node1"
@@ -29,6 +41,9 @@ resource "grid_network" "net1" {
   nodes       = [grid_scheduler.sched.nodes["node1"]]
   ip_range    = "10.1.0.0/16"
   description = "newer network"
+  mycelium_keys = {
+    format("%s", grid_scheduler.sched.nodes["node1"]) = random_bytes.mycelium_key.hex
+  }
 }
 resource "grid_deployment" "d1" {
   name         = local.name
@@ -43,7 +58,7 @@ resource "grid_deployment" "d1" {
     env_vars = {
       SSH_KEY = file("~/.ssh/id_rsa.pub")
     }
-    planetary = true
+    mycelium_ip_seed = random_bytes.vm1_mycelium_ip_seed.hex
   }
   vms {
     name       = "anothervm"
@@ -54,14 +69,14 @@ resource "grid_deployment" "d1" {
     env_vars = {
       SSH_KEY = file("~/.ssh/id_rsa.pub")
     }
-    planetary = true
+    mycelium_ip_seed = random_bytes.vm2_mycelium_ip_seed.hex
   }
 }
 output "vm1_ip" {
   value = grid_deployment.d1.vms[0].ip
 }
-output "vm1_ygg_ip" {
-  value = grid_deployment.d1.vms[0].planetary_ip
+output "vm1_mycelium_ip" {
+  value = grid_deployment.d1.vms[0].mycelium_ip
 }
 output "vm1_console_url" {
   value = grid_deployment.d1.vms[0].console_url
@@ -69,6 +84,6 @@ output "vm1_console_url" {
 output "vm2_ip" {
   value = grid_deployment.d1.vms[1].ip
 }
-output "vm2_ygg_ip" {
-  value = grid_deployment.d1.vms[1].planetary_ip
+output "vm2_mycelium_ip" {
+  value = grid_deployment.d1.vms[1].mycelium_ip
 }
