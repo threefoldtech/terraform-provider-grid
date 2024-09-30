@@ -5,6 +5,13 @@ terraform {
     }
   }
 }
+resource "random_bytes" "mycelium_ip_seed" {
+  length = 6
+}
+
+resource "random_bytes" "mycelium_key" {
+  length = 32
+}
 
 locals {
   solution_type = "Mattermost"
@@ -36,6 +43,9 @@ resource "grid_network" "net1" {
   ip_range      = "10.1.0.0/16"
   description   = "newer network"
   add_wg_access = true
+  mycelium_keys = {
+    format("%s", grid_scheduler.sched.nodes["node"]) = random_bytes.mycelium_key.hex
+  }
 }
 
 resource "grid_deployment" "d1" {
@@ -58,7 +68,7 @@ resource "grid_deployment" "d1" {
       SMTPSERVER   = "smtp.gmail.com"
       SMTPPORT     = 587
     }
-    planetary = true
+    mycelium_ip_seed = random_bytes.mycelium_ip_seed.hex
   }
 }
 
@@ -76,7 +86,7 @@ resource "grid_name_proxy" "p1" {
   solution_type   = local.solution_type
   name            = local.name
   node            = grid_scheduler.sched.nodes["gateway"]
-  backends        = [format("http://[%s]:8000", grid_deployment.d1.vms[0].planetary_ip)]
+  backends        = [format("http://[%s]:8000", grid_deployment.d1.vms[0].mycelium_ip)]
   tls_passthrough = false
 }
 
@@ -88,6 +98,6 @@ output "node1_zmachine1_ip" {
   value = grid_deployment.d1.vms[0].ip
 }
 
-output "ygg_ip" {
-  value = grid_deployment.d1.vms[0].planetary_ip
+output "mycelium_ip" {
+  value = grid_deployment.d1.vms[0].mycelium_ip
 }

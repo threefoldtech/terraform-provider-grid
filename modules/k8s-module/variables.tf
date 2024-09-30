@@ -13,19 +13,21 @@ variable "network" {
     ip_range      = string
     description   = string
     add_wg_access = bool
+    mycelium_keys = map(string)
   })
 }
 
 variable "master" {
   type = object({
-    name        = string
-    node        = number
-    cpu         = number
-    memory      = number
-    disk_name   = string
-    mount_point = string
-    publicip    = bool
-    planetary   = bool
+    name             = string
+    node             = number
+    cpu              = number
+    memory           = number
+    disk_name        = string
+    mount_point      = string
+    publicip         = bool
+    planetary        = bool
+    mycelium_ip_seed = string
   })
 
   validation {
@@ -36,14 +38,15 @@ variable "master" {
 
 variable "workers" {
   type = list(object({
-    name        = string
-    node        = number
-    cpu         = number
-    memory      = number
-    disk_name   = string
-    mount_point = string
-    publicip    = bool
-    planetary   = bool
+    name             = string
+    node             = number
+    cpu              = number
+    memory           = number
+    disk_name        = string
+    mount_point      = string
+    publicip         = bool
+    planetary        = bool
+    mycelium_ip_seed = string
   }))
 
   validation {

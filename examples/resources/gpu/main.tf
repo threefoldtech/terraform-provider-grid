@@ -8,20 +8,31 @@ terraform {
 provider "grid" {
 }
 
-locals {
-  name = "testvm"
+resource "random_bytes" "mycelium_ip_seed" {
+  length = 6
 }
 
+resource "random_bytes" "mycelium_key" {
+  length = 32
+}
+
+locals {
+  name    = "testvm"
+  node_id = 93
+}
 
 resource "grid_network" "net1" {
   name        = local.name
-  nodes       = [93]
+  nodes       = [local.node_id]
   ip_range    = "10.1.0.0/16"
   description = "newer network"
+  mycelium_keys = {
+    format("%s", local.node_id) = random_bytes.mycelium_key.hex
+  }
 }
 resource "grid_deployment" "d1" {
   name         = local.name
-  node         = 93
+  node         = local.node_id
   network_name = grid_network.net1.name
   disks {
     name        = "data"
@@ -41,7 +52,7 @@ resource "grid_deployment" "d1" {
       name        = "data"
       mount_point = "/app"
     }
-    planetary = true
+    mycelium_ip_seed = random_bytes.mycelium_ip_seed.hex
     gpus = [
       "0000:0e:00.0/1002/744c" //choose the correct gpu id available on the node your are deploying on
     ]
@@ -52,7 +63,7 @@ resource "grid_deployment" "d1" {
 output "vm1_ip" {
   value = grid_deployment.d1.vms[0].ip
 }
-output "vm1_ygg_ip" {
-  value = grid_deployment.d1.vms[0].planetary_ip
+output "vm1_mycelium_ip" {
+  value = grid_deployment.d1.vms[0].mycelium_ip
 }
 

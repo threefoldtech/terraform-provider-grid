@@ -9,6 +9,14 @@ terraform {
 provider "grid" {
 }
 
+resource "random_bytes" "mycelium_ip_seed" {
+  length = 6
+}
+
+resource "random_bytes" "mycelium_key" {
+  length = 32
+}
+
 resource "grid_scheduler" "sched" {
   requests {
     name = "node1"
@@ -45,6 +53,9 @@ resource "grid_network" "net1" {
   name          = local.name
   description   = "newer network"
   add_wg_access = true
+  mycelium_keys = {
+      format("%s", local.node1) = random_bytes.mycelium_key.hex
+  }
 }
 resource "grid_deployment" "d1" {
   name         = local.name
@@ -59,6 +70,7 @@ resource "grid_deployment" "d1" {
     env_vars = {
       SSH_KEY = file("~/.ssh/id_rsa.pub")
     }
+    mycelium_ip_seed = random_bytes.mycelium_ip_seed.hex
     planetary = true
   }
 }
@@ -82,3 +94,6 @@ output "ygg_ip" {
   value = grid_deployment.d1.vms[0].planetary_ip
 }
 
+output "mycelium_ip" {
+  value = grid_deployment.d1.vms[0].mycelium_ip
+}

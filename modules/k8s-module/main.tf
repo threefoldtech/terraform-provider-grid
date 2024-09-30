@@ -11,6 +11,7 @@ locals {
   disks_map   = { for d in var.disks : d.node => d... }
   master_disk = lookup(local.disks_map, "${var.master.node}", {})[0]
   vms_list    = flatten([for node in grid_deployment.workers : node.vms])
+  flist       = "https://hub.grid.tf/tf-official-apps/threefolddev-k3s-v1.31.0.flist"
 }
 
 module "validator" {
@@ -24,6 +25,7 @@ resource "grid_network" "net" {
   name          = var.network.name
   description   = var.network.description
   add_wg_access = var.network.add_wg_access
+  mycelium_keys = var.network.mycelium_keys
 }
 
 resource "grid_deployment" "master" {
@@ -31,14 +33,14 @@ resource "grid_deployment" "master" {
   network_name = grid_network.net.name
   vms {
     name       = var.master.name
-    flist      = "https://hub.grid.tf/tf-official-apps/threefolddev-k3s-v1.31.0.flist"
+    flist      = local.flist
     cpu        = var.master.cpu
     publicip   = var.master.publicip
     planetary  = var.master.planetary
     memory     = var.master.memory
     entrypoint = "/sbin/zinit init"
     mounts {
-      disk_name   = var.master.disk_name
+      name        = var.master.disk_name
       mount_point = var.master.mount_point
     }
     env_vars = {
@@ -49,6 +51,7 @@ resource "grid_deployment" "master" {
       K3S_NODE_NAME     = "${var.master.name}"
       K3S_URL           = ""
     }
+    mycelium_ip_seed = var.master.mycelium_ip_seed
   }
 
   disks {
@@ -71,6 +74,7 @@ resource "grid_deployment" "workers" {
       memory    = vms.value.memory
       publicip  = vms.value.publicip
       planetary = vms.value.planetary
+      flist     = local.flist
       env_vars = {
         SSH_KEY           = "${var.ssh}"
         K3S_TOKEN         = "${var.token}"
@@ -79,8 +83,9 @@ resource "grid_deployment" "workers" {
         K3S_NODE_NAME     = "${vms.value.name}"
         K3S_URL           = "https://${grid_deployment.master.vms[0].ip}:6443"
       }
+      mycelium_ip_seed = vms.value.mycelium_ip_seed
       mounts {
-        disk_name   = vms.value.disk_name
+        name        = vms.value.disk_name
         mount_point = vms.value.mount_point
       }
     }

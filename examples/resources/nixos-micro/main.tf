@@ -8,19 +8,31 @@ terraform {
 provider "grid" {
 }
 
+resource "random_bytes" "mycelium_ip_seed" {
+  length = 6
+}
+
+resource "random_bytes" "mycelium_key" {
+  length = 32
+}
+
 locals {
-  name = "myvm"
+  name    = "myvm"
+  node_id = 11
 }
 
 resource "grid_network" "net1" {
   name        = local.name
-  nodes       = [34]
+  nodes       = [local.node_id]
   ip_range    = "10.1.0.0/16"
   description = "newer network"
   # add_wg_access = true
+  mycelium_keys = {
+    format("%s", local.node_id) = random_bytes.mycelium_key.hex
+  }
 }
 resource "grid_deployment" "d1" {
-  node         = 34
+  node         = local.node_id
   network_name = grid_network.net1.name
   disks {
     name        = "store"
@@ -39,6 +51,7 @@ resource "grid_deployment" "d1" {
       name        = "store"
       mount_point = "/nix"
     }
+    mycelium_ip_seed = random_bytes.mycelium_ip_seed.hex
 
     env_vars = {
       SSH_KEY = file("~/.ssh/id_rsa.pub")
@@ -56,8 +69,6 @@ pkgs.mkShell {
 }
 EOT
     }
-
-    planetary = true
   }
 }
 
@@ -71,6 +82,6 @@ output "computed_public_ip" {
   value = split("/", grid_deployment.d1.vms[0].computedip)[0]
 }
 
-output "ygg_ip" {
-  value = grid_deployment.d1.vms[0].planetary_ip
+output "mycelium_ip" {
+  value = grid_deployment.d1.vms[0].mycelium_ip
 }
