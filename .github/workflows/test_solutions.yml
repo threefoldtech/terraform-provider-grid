@@ -1,8 +1,8 @@
-name: Intgeration tests for modules
+name: Intgeration tests for solutions
 
 on:
   schedule:
-    - cron: "0 0 * * *"
+    - cron: "0 2 * * *"
   workflow_dispatch:
 
 jobs:
@@ -61,4 +61,8 @@ jobs:
           MNEMONIC: ${{ secrets.MNEMONICS }}
           NETWORK: ${{ matrix.network }}
         working-directory: integrationtests
-        run: go test -v ./... --tags=integration -run TestNomad
+        run: |
+          go test -v ./... --tags=integration -run TestPeertube
+          go test -v ./... --tags=integration -run TestPresearch
+          go test -v ./... --tags=integration -run TestTaiga
+          go test -v ./... --tags=integration -run TestMattermost
