@@ -47,16 +47,7 @@ jobs:
           mkdir -p ~/.terraform.d/plugins/threefoldtechdev.com/providers/grid/0.2/linux_amd64/
           go build -o terraform-provider-grid
           mv terraform-provider-grid ~/.terraform.d/plugins/threefoldtechdev.com/providers/grid/0.2/linux_amd64/
-      - name: Test kubernetes module
-        env:
-          MNEMONIC: ${{ secrets.MNEMONICS }}
-          MNEMONICS: ${{ secrets.MNEMONICS }}
-          NETWORK: ${{ matrix.network }}
-        working-directory: integrationtests
-        run: |
-          go test -v ./... --tags=integration -run TestModuleK8s
-
-      - name: Test nomad module
+      - name: Test solutions
         env:
           MNEMONIC: ${{ secrets.MNEMONICS }}
           NETWORK: ${{ matrix.network }}
