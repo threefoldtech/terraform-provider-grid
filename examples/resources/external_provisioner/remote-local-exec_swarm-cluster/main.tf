@@ -27,15 +27,17 @@ resource "random_bytes" "vm2_mycelium_key" {
 
 resource "grid_scheduler" "sched" {
   requests {
-    name = "node1"
-    cru  = 4
-    sru  = 50*1024
-    mru  = 2048
+    name      = "node1"
+    cru       = 4
+    sru       = 50 * 1024
+    mru       = 2048
+    yggdrasil = false
+    wireguard = true
   }
 }
 
 locals {
-  name = "myvm"
+  name    = "myvm"
   node_id = grid_scheduler.sched.nodes["node1"]
 }
 

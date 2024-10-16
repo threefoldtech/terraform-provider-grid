@@ -23,14 +23,18 @@ resource "grid_scheduler" "sched" {
     public_ips_count = 1
   }
   requests {
-    name = "node2"
-    cru  = 2
-    mru  = 2 * 1024
+    name      = "node2"
+    cru       = 2
+    mru       = 2 * 1024
+    yggdrasil = false
+    wireguard = true
   }
   requests {
     name             = "gateway"
     public_config    = true
     public_ips_count = 1
+    yggdrasil        = false
+    wireguard        = true
   }
 }
 

@@ -19,16 +19,20 @@ resource "random_bytes" "mycelium_key" {
 
 resource "grid_scheduler" "sched" {
   requests {
-    name = "peertube"
-    cru  = 2
-    sru  = 512
-    mru  = 4096
+    name      = "peertube"
+    cru       = 2
+    sru       = 512
+    mru       = 4096
+    yggdrasil = false
+    wireguard = false
   }
 
   requests {
     name             = "domain"
     public_config    = true
     public_ips_count = 1
+    yggdrasil        = false
+    wireguard        = false
   }
 }
 
@@ -87,7 +91,7 @@ resource "grid_deployment" "d1" {
 }
 
 locals {
-  mycelium_ip = try(length(grid_deployment.d1.vms[0].mycelium_ip), 0) > 0 ? grid_deployment.d1.vms[0].mycelium_ip: ""
+  mycelium_ip = try(length(grid_deployment.d1.vms[0].mycelium_ip), 0) > 0 ? grid_deployment.d1.vms[0].mycelium_ip : ""
 }
 
 resource "grid_name_proxy" "p1" {

@@ -12,8 +12,10 @@ provider "grid" {
 
 resource "grid_scheduler" "sched" {
   requests {
-    name = "node1"
-    sru  = 1024 * 12
+    name      = "node1"
+    sru       = 1024 * 12
+    yggdrasil = false
+    wireguard = false
   }
 }
 

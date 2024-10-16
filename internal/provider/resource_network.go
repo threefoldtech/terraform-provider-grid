@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"regexp"
+	"slices"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -16,8 +17,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
+	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
@@ -114,12 +117,29 @@ func resourceNetwork() *schema.Resource {
 }
 
 // NewNetwork reads the network resource configuration data from schema.ResourceData, converts them into a network instance, and returns this instance.
-func newNetwork(d *schema.ResourceData) (*workloads.ZNet, error) {
+func newNetwork(ctx context.Context, d *schema.ResourceData, ncPool client.NodeClientGetter, sub subi.SubstrateExt) (workloads.Network, error) {
+	var light bool
 	var err error
+
 	nodesIf := d.Get("nodes").([]interface{})
 	nodes := make([]uint32, len(nodesIf))
 	for idx, n := range nodesIf {
 		nodes[idx] = uint32(n.(int))
+	}
+
+	var nodesLight []bool
+	for _, n := range nodes {
+		isLight, err := isZosLight(ctx, n, ncPool, sub)
+		if err != nil {
+			return nil, err
+		}
+
+		nodesLight = append(nodesLight, isLight)
+	}
+
+	// if no nodes requires to use network version 4 then it is a light network
+	if !slices.Contains(nodesLight, false) {
+		light = true
 	}
 
 	nodeDeploymentIDIf := d.Get("node_deployment_id").(map[string]interface{})
@@ -133,14 +153,14 @@ func newNetwork(d *schema.ResourceData) (*workloads.ZNet, error) {
 		nodeDeploymentID[uint32(nodeInt)] = deploymentID
 	}
 
-	nodesIPRange := make(map[uint32]gridtypes.IPNet)
+	nodesIPRange := make(map[uint32]zos.IPNet)
 	nodesIPRangeIf := d.Get("nodes_ip_range").(map[string]interface{})
 	for node, r := range nodesIPRangeIf {
 		nodeInt, err := strconv.ParseUint(node, 10, 32)
 		if err != nil {
 			return nil, errors.Wrapf(err, "couldn't parse node id '%s'", node)
 		}
-		nodesIPRange[uint32(nodeInt)], err = gridtypes.ParseIPNet(r.(string))
+		nodesIPRange[uint32(nodeInt)], err = zos.ParseIPNet(r.(string))
 		if err != nil {
 			return nil, errors.Wrap(err, "couldn't parse node ip range")
 		}
@@ -165,10 +185,10 @@ func newNetwork(d *schema.ResourceData) (*workloads.ZNet, error) {
 	// external node related data
 	addWGAccess := d.Get("add_wg_access").(bool)
 
-	var externalIP *gridtypes.IPNet
+	var externalIP *zos.IPNet
 	externalIPStr := d.Get("external_ip").(string)
 	if externalIPStr != "" {
-		ip, err := gridtypes.ParseIPNet(externalIPStr)
+		ip, err := zos.ParseIPNet(externalIPStr)
 		if err != nil {
 			return nil, errors.Wrap(err, "couldn't parse external ip")
 		}
@@ -185,12 +205,25 @@ func newNetwork(d *schema.ResourceData) (*workloads.ZNet, error) {
 		return nil, errors.Wrap(err, "failed to get external_sk key")
 	}
 
-	ipRange, err := gridtypes.ParseIPNet(d.Get("ip_range").(string))
+	ipRange, err := zos.ParseIPNet(d.Get("ip_range").(string))
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't parse network ip range")
 	}
 
-	znet := workloads.ZNet{
+	if light {
+		return &workloads.ZNetLight{
+			Name:             d.Get("name").(string),
+			Description:      d.Get("description").(string),
+			Nodes:            nodes,
+			IPRange:          ipRange,
+			MyceliumKeys:     myceliumKeys,
+			PublicNodeID:     uint32(d.Get("public_node_id").(int)),
+			NodesIPRange:     nodesIPRange,
+			NodeDeploymentID: nodeDeploymentID,
+		}, nil
+	}
+
+	return &workloads.ZNet{
 		Name:             d.Get("name").(string),
 		Description:      d.Get("description").(string),
 		Nodes:            nodes,
@@ -205,38 +238,49 @@ func newNetwork(d *schema.ResourceData) (*workloads.ZNet, error) {
 		NodeDeploymentID: nodeDeploymentID,
 		Keys:             make(map[uint32]wgtypes.Key),
 		WGPort:           make(map[uint32]int),
-	}
-
-	return &znet, nil
+	}, nil
 }
 
-func storeState(d *schema.ResourceData, tfPluginClient *deployer.TFPluginClient, net *workloads.ZNet) (errors error) {
+func isZosLight(ctx context.Context, nodeID uint32, ncPool client.NodeClientGetter, sub subi.SubstrateExt) (bool, error) {
+	nodeClient, err := ncPool.GetNodeClient(sub, nodeID)
+	if err != nil {
+		return false, errors.Wrapf(err, "failed to get node client '%d'", nodeID)
+	}
 
+	features, err := nodeClient.SystemGetNodeFeatures(ctx)
+	if err != nil {
+		return false, errors.Wrapf(err, "failed to get node features '%d'", nodeID)
+	}
+
+	return slices.Contains(features, zos.NetworkLightType), nil
+}
+
+func storeState(d *schema.ResourceData, tfPluginClient *deployer.TFPluginClient, net workloads.Network) (errors error) {
 	nodeDeploymentID := make(map[string]interface{})
-	for node, id := range net.NodeDeploymentID {
+	for node, id := range net.GetNodeDeploymentID() {
 		nodeDeploymentID[fmt.Sprintf("%d", node)] = int(id)
 	}
 
 	nodesIPRange := make(map[string]interface{})
-	for node, r := range net.NodesIPRange {
+	for node, r := range net.GetNodesIPRange() {
 		nodesIPRange[fmt.Sprintf("%d", node)] = r.String()
 	}
 
 	myceliumKeys := make(map[string]interface{})
-	for node, key := range net.MyceliumKeys {
+	for node, key := range net.GetMyceliumKeys() {
 		myceliumKeys[fmt.Sprintf("%d", node)] = hex.EncodeToString(key)
 	}
 
 	nodes := make([]uint32, 0)
-	for _, node := range net.Nodes {
-		if _, ok := net.NodeDeploymentID[node]; ok {
+	for _, node := range net.GetNodes() {
+		if _, ok := net.GetNodeDeploymentID()[node]; ok {
 			nodes = append(nodes, node)
 		}
 	}
 
-	for node := range net.NodeDeploymentID {
+	for node := range net.GetNodeDeploymentID() {
 		if !workloads.Contains(nodes, node) {
-			if net.PublicNodeID == node {
+			if net.GetPublicNodeID() == node {
 				continue
 			}
 			nodes = append(nodes, node)
@@ -246,7 +290,7 @@ func storeState(d *schema.ResourceData, tfPluginClient *deployer.TFPluginClient,
 	// update network local status
 	updateNetworkLocalState(tfPluginClient, net)
 
-	net.Nodes = nodes
+	net.SetNodes(nodes)
 
 	log.Printf("storing nodes: : %v", nodes)
 	err := d.Set("nodes", nodes)
@@ -254,34 +298,34 @@ func storeState(d *schema.ResourceData, tfPluginClient *deployer.TFPluginClient,
 		errors = multierror.Append(errors, err)
 	}
 
-	err = d.Set("ip_range", net.IPRange.String())
+	err = d.Set("ip_range", net.GetIPRange().String())
 	if err != nil {
 		errors = multierror.Append(errors, err)
 	}
 
-	err = d.Set("access_wg_config", net.AccessWGConfig)
+	err = d.Set("access_wg_config", net.GetAccessWGConfig())
 	if err != nil {
 		errors = multierror.Append(errors, err)
 	}
 
-	if net.ExternalIP == nil {
+	if net.GetExternalIP() == nil {
 		err = d.Set("external_ip", nil)
 		if err != nil {
 			errors = multierror.Append(errors, err)
 		}
 	} else {
-		err = d.Set("external_ip", net.ExternalIP.String())
+		err = d.Set("external_ip", net.GetExternalIP().String())
 		if err != nil {
 			errors = multierror.Append(errors, err)
 		}
 	}
 
-	err = d.Set("external_sk", net.ExternalSK.String())
+	err = d.Set("external_sk", net.GetExternalSK().String())
 	if err != nil {
 		errors = multierror.Append(errors, err)
 	}
 
-	err = d.Set("public_node_id", net.PublicNodeID)
+	err = d.Set("public_node_id", net.GetPublicNodeID())
 	if err != nil {
 		errors = multierror.Append(errors, err)
 	}
@@ -300,9 +344,9 @@ func storeState(d *schema.ResourceData, tfPluginClient *deployer.TFPluginClient,
 	return
 }
 
-func updateNetworkLocalState(tfPluginClient *deployer.TFPluginClient, net *workloads.ZNet) {
-	tfPluginClient.State.Networks.DeleteNetwork(net.Name)
-	tfPluginClient.State.Networks.UpdateNetworkSubnets(net.Name, net.NodesIPRange)
+func updateNetworkLocalState(tfPluginClient *deployer.TFPluginClient, net workloads.Network) {
+	tfPluginClient.State.Networks.DeleteNetwork(net.GetName())
+	tfPluginClient.State.Networks.UpdateNetworkSubnets(net.GetName(), net.GetNodesIPRange())
 }
 
 func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -312,14 +356,14 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 		return diag.FromErr(fmt.Errorf("failed to cast meta into threefold plugin client"))
 	}
 
-	net, err := newNetwork(d)
+	net, err := newNetwork(ctx, d, tfPluginClient.NcPool, tfPluginClient.SubstrateConn)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load network data"))
 	}
 
 	err = tfPluginClient.NetworkDeployer.Deploy(ctx, net)
 	if err != nil {
-		if len(net.NodeDeploymentID) != 0 {
+		if len(net.GetNodeDeploymentID()) != 0 {
 			// failed to deploy and failed to revert, store the current state locally
 			diags = diag.FromErr(err)
 		} else {
@@ -343,7 +387,7 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 		return diag.FromErr(fmt.Errorf("failed to cast meta into threefold plugin client"))
 	}
 
-	net, err := newNetwork(d)
+	net, err := newNetwork(ctx, d, tfPluginClient.NcPool, tfPluginClient.SubstrateConn)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load network data"))
 	}
@@ -368,23 +412,13 @@ func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta inter
 		return diag.FromErr(fmt.Errorf("failed to cast meta into threefold plugin client"))
 	}
 
-	net, err := newNetwork(d)
+	net, err := newNetwork(ctx, d, tfPluginClient.NcPool, tfPluginClient.SubstrateConn)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load network data"))
 	}
 
-	if err := tfPluginClient.NetworkDeployer.InvalidateBrokenAttributes(net); err != nil {
+	if err := net.InvalidateBrokenAttributes(tfPluginClient.SubstrateConn, tfPluginClient.NcPool); err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't invalidate broken attributes"))
-	}
-
-	err = tfPluginClient.NetworkDeployer.ReadNodesConfig(ctx, net)
-	if err != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Warning,
-			Summary:  errTerraformOutSync,
-			Detail:   err.Error(),
-		})
-		return diags
 	}
 
 	err = storeState(d, tfPluginClient, net)
@@ -402,7 +436,7 @@ func resourceNetworkDelete(ctx context.Context, d *schema.ResourceData, meta int
 		return diag.FromErr(fmt.Errorf("failed to cast meta into threefold plugin client"))
 	}
 
-	net, err := newNetwork(d)
+	net, err := newNetwork(ctx, d, tfPluginClient.NcPool, tfPluginClient.SubstrateConn)
 	if err != nil {
 		return diag.FromErr(errors.Wrap(err, "couldn't load network data"))
 	}

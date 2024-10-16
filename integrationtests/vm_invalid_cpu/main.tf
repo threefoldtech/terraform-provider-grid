@@ -26,10 +26,12 @@ provider "grid" {
 
 resource "grid_scheduler" "scheduler" {
   requests {
-    name = "node"
-    cru  = 0
-    sru  = local.vm_disk_size * 1024
-    mru  = local.vm_memory
+    name      = "node"
+    cru       = 0
+    sru       = local.vm_disk_size * 1024
+    mru       = local.vm_memory
+    yggdrasil = true
+    wireguard = false
   }
 }
 

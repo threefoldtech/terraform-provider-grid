@@ -21,12 +21,14 @@ resource "random_string" "name" {
 
 resource "grid_scheduler" "sched" {
   requests {
-    name    = "node"
-    cru     = 2
-    sru     = 2 * 1024
-    mru     = 2 * 1024
-    hru     = 12 * 1024
-    farm_id = 1
+    name      = "node"
+    cru       = 2
+    sru       = 2 * 1024
+    mru       = 2 * 1024
+    hru       = 12 * 1024
+    farm_id   = 1
+    yggdrasil = true
+    wireguard = false
   }
 }
 

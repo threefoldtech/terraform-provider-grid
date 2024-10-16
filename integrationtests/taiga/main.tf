@@ -23,17 +23,21 @@ resource "random_string" "name" {
 
 resource "grid_scheduler" "sched" {
   requests {
-    name    = "node"
-    cru     = 2
-    sru     = 58 * 1024
-    mru     = 8096
-    farm_id = 1
+    name      = "node"
+    cru       = 2
+    sru       = 58 * 1024
+    mru       = 8096
+    farm_id   = 1
+    yggdrasil = true
+    wireguard = false
   }
 
   requests {
     name             = "gateway"
     public_config    = true
     public_ips_count = 1
+    yggdrasil        = false
+    wireguard        = false
   }
 }
 

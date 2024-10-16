@@ -107,6 +107,9 @@ func (m *GridProxyClientMock) Contract(ctx context.Context, contractID uint32) (
 func (m *GridProxyClientMock) ContractBills(ctx context.Context, contractID uint32, limit proxyTypes.Limit) (res []proxyTypes.ContractBilling, count uint, err error) {
 	return
 }
+func (m *GridProxyClientMock) PublicIps(ctx context.Context, filter proxyTypes.PublicIpFilter, limit proxyTypes.Limit) (res []proxyTypes.PublicIP, count uint, err error) {
+	return
+}
 
 func TestSchedulerEmpty(t *testing.T) {
 	proxy := &GridProxyClientMock{}

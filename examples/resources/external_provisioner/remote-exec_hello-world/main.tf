@@ -24,11 +24,13 @@ locals {
 
 resource "grid_scheduler" "sched" {
   requests {
-    name             = "node1"
-    cru              = 2
-    sru              = 1024
-    mru              = 1024
-    node_exclude     = [33]  # exlude node 33 from your search
+    name         = "node1"
+    cru          = 2
+    sru          = 1024
+    mru          = 1024
+    node_exclude = [33] # exlude node 33 from your search
+    yggdrasil    = false
+    wireguard    = true
   }
 }
 

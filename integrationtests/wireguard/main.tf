@@ -17,10 +17,12 @@ provider "grid" {
 
 resource "grid_scheduler" "scheduler" {
   requests {
-    name = "node"
-    cru  = 2
-    sru  = 1024
-    mru  = 1024
+    name      = "node"
+    cru       = 2
+    sru       = 1024
+    mru       = 1024
+    yggdrasil = true
+    wireguard = true
   }
 }
 

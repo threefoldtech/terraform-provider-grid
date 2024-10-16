@@ -16,17 +16,21 @@ provider "grid" {
 }
 resource "grid_scheduler" "sched" {
   requests {
-    name    = "peertube"
-    cru     = 2
-    sru     = 512
-    mru     = 4096
-    farm_id = 1
+    name      = "peertube"
+    cru       = 2
+    sru       = 512
+    mru       = 4096
+    farm_id   = 1
+    yggdrasil = true
+    wireguard = false
   }
 
   requests {
     name             = "domain"
     public_config    = true
     public_ips_count = 1
+    yggdrasil        = false
+    wireguard        = false
   }
 }
 

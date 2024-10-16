@@ -23,16 +23,20 @@ provider "grid" {
 
 resource "grid_scheduler" "sched" {
   requests {
-    name = "node"
-    cru  = 2
-    sru  = 1 * 1024
-    mru  = 4 * 1024
+    name      = "node"
+    cru       = 2
+    sru       = 1 * 1024
+    mru       = 4 * 1024
+    yggdrasil = false
+    wireguard = true
   }
 
   requests {
     name             = "gateway"
     public_config    = true
     public_ips_count = 1
+    yggdrasil        = false
+    wireguard        = false
   }
 }
 

@@ -27,15 +27,17 @@ resource "random_bytes" "vm2_mycelium_key" {
 
 resource "grid_scheduler" "sched" {
   requests {
-    name = "node1"
-    cru  = 4
-    sru  = 1024
-    mru  = 2048
+    name      = "node1"
+    cru       = 4
+    sru       = 1024
+    mru       = 2048
+    yggdrasil = false
+    wireguard = true
   }
 }
 
 locals {
-  name = "myvm"
+  name    = "myvm"
   node_id = grid_scheduler.sched.nodes["node1"]
 }
 
@@ -120,11 +122,11 @@ resource "grid_deployment" "swarm1" {
       "docker swarm join --token $(cat /root/token) [${self.vms[0].mycelium_ip}]:2377"
     ]
     connection {
-      type    = "ssh"
-      user    = "root"
-      agent   = true
-      host    = self.vms[0].mycelium_ip
-      timeout = "20s"
+      type        = "ssh"
+      user        = "root"
+      agent       = true
+      host        = self.vms[0].mycelium_ip
+      timeout     = "20s"
       private_key = file("~/.ssh/id_rsa")
     }
   }

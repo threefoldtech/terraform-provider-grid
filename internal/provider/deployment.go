@@ -2,6 +2,7 @@
 package provider
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
 	"strconv"
@@ -9,12 +10,20 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
+	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 )
 
-func newDeploymentFromSchema(d *schema.ResourceData) (*workloads.Deployment, error) {
+func newDeploymentFromSchema(ctx context.Context, d *schema.ResourceData, ncPool client.NodeClientGetter, sub subi.SubstrateExt) (*workloads.Deployment, error) {
 	networkName := d.Get("network_name").(string)
 	nodeID := uint32(d.Get("node").(int))
+
+	light, err := isZosLight(ctx, nodeID, ncPool, sub)
+	if err != nil {
+		return nil, err
+	}
+
 	name := d.Get("name").(string)
 	solutionType := d.Get("solution_type").(string)
 	if solutionType == "" {
@@ -40,6 +49,7 @@ func newDeploymentFromSchema(d *schema.ResourceData) (*workloads.Deployment, err
 	}
 
 	vms := make([]workloads.VM, 0)
+	vmsLight := make([]workloads.VMLight, 0)
 	for _, vm := range d.Get("vms").([]interface{}) {
 		vmMap := vm.(map[string]interface{})
 		vmMap["network_name"] = networkName
@@ -50,6 +60,18 @@ func newDeploymentFromSchema(d *schema.ResourceData) (*workloads.Deployment, err
 			return nil, errors.Wrapf(err, "failed to decode mycelium ip seed '%s'", myceliumIPSeed)
 		}
 		vmMap["mycelium_ip_seed"] = myceliumIPSeedBytes
+
+		if light {
+			v, err := workloads.NewWorkloadFromMap(vmMap, &workloads.VMLight{})
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to create workload from vm map")
+			}
+
+			vmWorkload := *v.(*workloads.VMLight)
+			vmWorkload.NodeID = nodeID
+			vmsLight = append(vmsLight, vmWorkload)
+			continue
+		}
 
 		v, err := workloads.NewWorkloadFromMap(vmMap, &workloads.VM{})
 		if err != nil {
@@ -88,7 +110,6 @@ func newDeploymentFromSchema(d *schema.ResourceData) (*workloads.Deployment, err
 
 	var contractID uint64
 	nodeDeploymentID := map[uint32]uint64{}
-	var err error
 	if d.Id() != "" {
 		contractID, err = strconv.ParseUint(d.Id(), 10, 64)
 		if err != nil {
@@ -104,6 +125,7 @@ func newDeploymentFromSchema(d *schema.ResourceData) (*workloads.Deployment, err
 		SolutionType:     solutionType,
 		Disks:            disks,
 		Vms:              vms,
+		VmsLight:         vmsLight,
 		QSFS:             qsfs,
 		Zdbs:             zdbs,
 		NetworkName:      networkName,
@@ -122,6 +144,17 @@ func syncContractsDeployments(r *schema.ResourceData, d *workloads.Deployment) (
 	qsfs := make([]interface{}, 0)
 
 	for _, vm := range d.Vms {
+		vmMap, err := workloads.ToMap(vm)
+		if err != nil {
+			return err
+		}
+
+		vmMap["mycelium_ip_seed"] = hex.EncodeToString(vm.MyceliumIPSeed)
+		delete(vmMap, "network_name")
+		vms = append(vms, vmMap)
+	}
+
+	for _, vm := range d.VmsLight {
 		vmMap, err := workloads.ToMap(vm)
 		if err != nil {
 			return err

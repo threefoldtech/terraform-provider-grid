@@ -484,7 +484,7 @@ func resourceDeploymentCreate(ctx context.Context, d *schema.ResourceData, meta 
 		return diag.FromErr(fmt.Errorf("failed to cast meta into threefold plugin client"))
 	}
 
-	dl, err := newDeploymentFromSchema(d)
+	dl, err := newDeploymentFromSchema(ctx, d, tfPluginClient.NcPool, tfPluginClient.SubstrateConn)
 	if err != nil {
 		return diag.Errorf("couldn't load deployment data with error: %v", err)
 	}
@@ -511,7 +511,7 @@ func resourceDeploymentRead(ctx context.Context, d *schema.ResourceData, meta in
 		return diag.FromErr(fmt.Errorf("failed to cast meta into threefold plugin client"))
 	}
 
-	dl, err := newDeploymentFromSchema(d)
+	dl, err := newDeploymentFromSchema(ctx, d, tfPluginClient.NcPool, tfPluginClient.SubstrateConn)
 	if err != nil {
 		return diag.Errorf("couldn't load deployment data with error: %v", err)
 	}
@@ -551,7 +551,7 @@ func resourceDeploymentUpdate(ctx context.Context, d *schema.ResourceData, meta 
 		d.SetId("")
 	}
 
-	dl, err := newDeploymentFromSchema(d)
+	dl, err := newDeploymentFromSchema(ctx, d, tfPluginClient.NcPool, tfPluginClient.SubstrateConn)
 	if err != nil {
 		return diag.Errorf("couldn't load deployment data with error: %v", err)
 	}
@@ -578,7 +578,7 @@ func resourceDeploymentDelete(ctx context.Context, d *schema.ResourceData, meta 
 		return diag.FromErr(fmt.Errorf("failed to cast meta into threefold plugin client"))
 	}
 
-	dl, err := newDeploymentFromSchema(d)
+	dl, err := newDeploymentFromSchema(ctx, d, tfPluginClient.NcPool, tfPluginClient.SubstrateConn)
 	if err != nil {
 		return diag.Errorf("couldn't load deployment data with error: %v", err)
 	}

@@ -19,15 +19,19 @@ resource "random_bytes" "mycelium_key" {
 
 resource "grid_scheduler" "sched" {
   requests {
-    name = "node1"
-    cru  = 1
-    sru  = 1024 * 10
-    mru  = 1024
+    name      = "node1"
+    cru       = 1
+    sru       = 1024 * 10
+    mru       = 1024
+    yggdrasil = true
+    wireguard = true
   }
   requests {
     name             = "gateway"
     public_config    = true
     public_ips_count = 1
+    yggdrasil        = false
+    wireguard        = false
   }
 }
 
@@ -54,7 +58,7 @@ resource "grid_network" "net1" {
   description   = "newer network"
   add_wg_access = true
   mycelium_keys = {
-      format("%s", local.node1) = random_bytes.mycelium_key.hex
+    format("%s", local.node1) = random_bytes.mycelium_key.hex
   }
 }
 resource "grid_deployment" "d1" {
@@ -71,7 +75,7 @@ resource "grid_deployment" "d1" {
       SSH_KEY = file("~/.ssh/id_rsa.pub")
     }
     mycelium_ip_seed = random_bytes.mycelium_ip_seed.hex
-    planetary = true
+    planetary        = true
   }
 }
 resource "grid_name_proxy" "p1" {

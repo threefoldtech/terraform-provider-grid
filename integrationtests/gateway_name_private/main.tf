@@ -27,6 +27,8 @@ resource "grid_scheduler" "sched" {
     mru           = 1024
     public_config = true
     farm_id       = 1
+    yggdrasil     = true
+    wireguard     = false
   }
 }
 

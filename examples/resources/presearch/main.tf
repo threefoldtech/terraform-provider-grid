@@ -31,6 +31,8 @@ resource "grid_scheduler" "sched" {
     mru              = 1024
     public_ips_count = 1
     public_config    = true
+    yggdrasil        = false
+    wireguard        = true
   }
 }
 

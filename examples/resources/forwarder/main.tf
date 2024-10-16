@@ -11,9 +11,11 @@ provider "grid" {
 
 resource "grid_scheduler" "sched" {
   requests {
-    name = "node1"
-    cru  = 2
-    mru  = 1024
+    name      = "node1"
+    cru       = 2
+    mru       = 1024
+    yggdrasil = false
+    wireguard = false
   }
   requests {
     name             = "node2"
@@ -21,6 +23,8 @@ resource "grid_scheduler" "sched" {
     mru              = 1024
     public_config    = true
     public_ips_count = 1
+    yggdrasil        = false
+    wireguard        = false
   }
 }
 

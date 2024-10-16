@@ -30,11 +30,13 @@ locals {
 
 resource "grid_scheduler" "sched" {
   requests {
-    name    = "presearch"
-    cru     = 1
-    sru     = 5 * 1024
-    mru     = 1024
-    farm_id = 1
+    name      = "presearch"
+    cru       = 1
+    sru       = 5 * 1024
+    mru       = 1024
+    farm_id   = 1
+    yggdrasil = true
+    wireguard = false
   }
 }
 
