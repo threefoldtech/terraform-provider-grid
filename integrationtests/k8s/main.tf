@@ -29,20 +29,24 @@ resource "random_string" "name" {
 
 resource "grid_scheduler" "sched" {
   requests {
-    name     = "node1"
-    cru      = 2
-    sru      = local.master_disk_size * 1024
-    mru      = local.master_memory
-    distinct = true
-    farm_id  = 1
+    name      = "node1"
+    cru       = 2
+    sru       = local.master_disk_size * 1024
+    mru       = local.master_memory
+    distinct  = true
+    farm_id   = 1
+    yggdrasil = true
+    wireguard = true
   }
 
   requests {
-    name     = "node2"
-    cru      = 2
-    sru      = local.worker_disk_size * 1024
-    mru      = local.worker_memory
-    distinct = true
+    name      = "node2"
+    cru       = 2
+    sru       = local.worker_disk_size * 1024
+    mru       = local.worker_memory
+    distinct  = true
+    yggdrasil = true
+    wireguard = true
   }
 }
 

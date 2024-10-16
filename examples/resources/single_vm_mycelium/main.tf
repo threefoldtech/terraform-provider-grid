@@ -30,6 +30,8 @@ resource "grid_scheduler" "sched" {
     node_exclude     = [33]  # exlude node 33 from your search
     public_ips_count = 0     # this deployment needs 0 public ips
     public_config    = false # this node does not need to have public config
+    yggdrasil        = false
+    wireguard        = false
   }
 }
 

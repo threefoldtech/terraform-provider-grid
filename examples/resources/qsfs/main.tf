@@ -24,11 +24,13 @@ locals {
 
 resource "grid_scheduler" "sched" {
   requests {
-    name = "node"
-    cru  = 2
-    sru  = 10 * 1024
-    mru  = 1024
-    hru  = 8 * 10 * 1024
+    name      = "node"
+    cru       = 2
+    sru       = 10 * 1024
+    mru       = 1024
+    hru       = 8 * 10 * 1024
+    yggdrasil = true
+    wireguard = false
   }
 }
 

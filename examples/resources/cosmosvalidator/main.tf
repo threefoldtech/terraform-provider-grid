@@ -24,6 +24,8 @@ resource "grid_scheduler" "sched" {
     cru              = 2
     public_config    = true
     public_ips_count = 1
+    yggdrasil        = true
+    wireguard        = true
   }
 }
 
@@ -50,12 +52,12 @@ resource "grid_deployment" "d1" {
   node          = local.node1
   network_name  = grid_network.net1.name
   vms {
-    name       = "vm1"
-    flist      = "https://hub.grid.tf/tf-official-apps/threefold_hub-latest.flist"
-    cpu        = 2
-    publicip   = true
-    memory     = 4096
-    entrypoint = "/sbin/zinit init"
+    name             = "vm1"
+    flist            = "https://hub.grid.tf/tf-official-apps/threefold_hub-latest.flist"
+    cpu              = 2
+    publicip         = true
+    memory           = 4096
+    entrypoint       = "/sbin/zinit init"
     mycelium_ip_seed = random_bytes.mycelium_ip_seed.hex
     env_vars = {
       SSH_KEY = file("~/.ssh/id_rsa.pub")
