@@ -2,6 +2,7 @@
 package scheduler
 
 import (
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
@@ -21,6 +22,8 @@ type Request struct {
 	Dedicated      bool
 	NodeExclude    []uint32
 	Distinct       bool
+	Yggdrasil      bool
+	Wireguard      bool
 }
 
 func (r *Request) constructFilter(twinID uint64) (f proxyTypes.NodeFilter) {
@@ -51,5 +54,12 @@ func (r *Request) constructFilter(twinID uint64) (f proxyTypes.NodeFilter) {
 	if r.Dedicated {
 		f.Rentable = &trueVal
 	}
+
+	if r.Yggdrasil || r.Wireguard || r.PublicConfig || r.PublicIpsCount != 0 {
+		f.Features = []string{zos.NetworkType, zos.ZMachineType}
+	} else {
+		f.Features = []string{zos.NetworkLightType, zos.ZMachineLightType}
+	}
+
 	return f
 }
