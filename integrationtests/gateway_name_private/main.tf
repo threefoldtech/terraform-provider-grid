@@ -14,6 +14,14 @@ terraform {
 provider "grid" {
 }
 
+resource "random_bytes" "mycelium_ip_seed" {
+  length = 6
+}
+
+resource "random_bytes" "mycelium_key" {
+  length = 32
+}
+
 resource "random_string" "name" {
   length  = 8
   special = false
@@ -45,6 +53,9 @@ resource "grid_network" "net1" {
   ip_range    = "10.1.0.0/16"
   name        = random_string.name.result
   description = "private name gateway network"
+  mycelium_keys = {
+    format("%s", grid_scheduler.sched.nodes["node"]) = random_bytes.mycelium_key.hex
+  }
 }
 
 resource "grid_deployment" "d1" {
@@ -60,12 +71,12 @@ resource "grid_deployment" "d1" {
     env_vars = {
       SSH_KEY = "${var.public_key}"
     }
-    planetary = true
+    mycelium_ip_seed = random_bytes.mycelium_ip_seed.hex
   }
 }
 
 locals {
-  ygg_ip = try(length(grid_deployment.d1.vms[0].planetary_ip), 0) > 0 ? grid_deployment.d1.vms[0].planetary_ip : ""
+  mycelium_ip = try(length(grid_deployment.d1.vms[0].mycelium_ip), 0) > 0 ? grid_deployment.d1.vms[0].mycelium_ip : ""
 }
 
 resource "grid_name_proxy" "p1" {
@@ -80,6 +91,6 @@ output "fqdn" {
   value = data.grid_gateway_domain.domain.fqdn
 }
 
-output "ygg_ip" {
-  value = grid_deployment.d1.vms[0].planetary_ip
+output "mycelium_ip" {
+  value = grid_deployment.d1.vms[0].mycelium_ip
 }

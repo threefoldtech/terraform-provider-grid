@@ -18,6 +18,14 @@ terraform {
 provider "grid" {
 }
 
+resource "random_bytes" "mycelium_ip_seed" {
+  length = 6
+}
+
+resource "random_bytes" "mycelium_key" {
+  length = 32
+}
+
 resource "random_string" "name" {
   length  = 8
   special = false
@@ -28,6 +36,9 @@ resource "grid_network" "net1" {
   ip_range    = "10.1.0.0/16"
   name        = random_string.name.result
   description = "private FQDN gateway network"
+  mycelium_keys = {
+    format("%s", 11) = random_bytes.mycelium_key.hex
+  }
 }
 resource "grid_deployment" "d1" {
   name         = random_string.name.result
@@ -42,7 +53,7 @@ resource "grid_deployment" "d1" {
     env_vars = {
       SSH_KEY = "${var.public_key}"
     }
-    planetary = true
+    mycelium_ip_seed = random_bytes.mycelium_ip_seed.hex
   }
 }
 
@@ -59,6 +70,6 @@ output "fqdn" {
   value = grid_fqdn_proxy.p1.fqdn
 }
 
-output "ygg_ip" {
-  value = grid_deployment.d1.vms[0].planetary_ip
+output "mycelium_ip" {
+  value = grid_deployment.d1.vms[0].mycelium_ip
 }
