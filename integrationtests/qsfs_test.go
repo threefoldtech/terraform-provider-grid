@@ -60,8 +60,8 @@ func TestQSFS(t *testing.T) {
 		metrics := terraform.Output(t, terraformOptions, "metrics")
 		require.NotEmpty(t, metrics)
 
-		yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
-		require.NotEmpty(t, yggIP)
+		myCeliumIP := terraform.Output(t, terraformOptions, "mycelium_ip")
+		require.NotEmpty(t, myCeliumIP)
 
 		// get metrics
 		cmd := exec.Command("curl", metrics)
@@ -70,7 +70,7 @@ func TestQSFS(t *testing.T) {
 		require.Contains(t, string(output), "fs_syscalls{syscall=\"create\"} 0")
 
 		// try write to a file in mounted disk
-		_, err = RemoteRun("root", yggIP, "cd /qsfs && echo hamadatext >> hamadafile", privateKey)
+		_, err = RemoteRun("root", myCeliumIP, "cd /qsfs && echo hamadatext >> hamadafile", privateKey)
 		require.NoError(t, err)
 
 		time.Sleep(5 * time.Second)
