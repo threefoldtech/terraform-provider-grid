@@ -36,7 +36,7 @@ jobs:
           ACTIONS_ALLOW_UNSECURE_COMMANDS: true
         with:
           terraform-version: 1.9.6
-      - name: install wg and yggdrasil and add peers
+      - name: install wg and mycelium and add peers
         run: |
           sudo apt-get update
           sudo apt-get install -y wireguard
@@ -88,21 +88,15 @@ jobs:
           ACTIONS_ALLOW_UNSECURE_COMMANDS: true
         with:
           terraform-version: 1.9.6
-      - name: install wg and yggdrasil and add peers
+      - name: install wg and mycelium and add peers
         run: |
           sudo apt-get update
           sudo apt-get install -y wireguard
           sudo apt-get install dirmngr
           sudo apt-get install curl
-          gpg --fetch-keys https://neilalexander.s3.dualstack.eu-west-2.amazonaws.com/deb/key.txt
-          gpg --export 569130E8CA20FBC4CB3FDE555898470A764B32C9 | sudo apt-key add -
-          echo 'deb http://neilalexander.s3.dualstack.eu-west-2.amazonaws.com/deb/ debian yggdrasil' | sudo tee /etc/apt/sources.list.d/yggdrasil.list
-          sudo apt-get update
-          sudo apt-get install yggdrasil
-          sudo systemctl enable yggdrasil
-          PEERS=$(curl https://raw.githubusercontent.com/AhmedHanafy725/yggdrasil-config/main/config.json | jq '.yggdrasil.peers[]' -r | sed 's/\//\\\//g' | sed -z 's/\n/\\n/g')
-          sudo sed -i -- 's/Peers\: \[\]/Peers: [\n'"$PEERS"']/g' /etc/yggdrasil/yggdrasil.conf
-          sudo systemctl restart yggdrasil
+          wget https://github.com/threefoldtech/mycelium/releases/download/v0.5.4/mycelium-x86_64-unknown-linux-musl.tar.gz
+          tar xzf mycelium-x86_64-unknown-linux-musl.tar.gz
+          sudo ./mycelium --peers tcp://188.40.132.242:9651 quic://185.69.166.8:9651 --tun-name utun9 -k /tmp/mycelium_priv_key.bin &
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -146,21 +140,15 @@ jobs:
           ACTIONS_ALLOW_UNSECURE_COMMANDS: true
         with:
           terraform-version: 1.9.6
-      - name: install wg and yggdrasil and add peers
+      - name: install wg and mycelium and add peers
         run: |
           sudo apt-get update
           sudo apt-get install -y wireguard
           sudo apt-get install dirmngr
           sudo apt-get install curl
-          gpg --fetch-keys https://neilalexander.s3.dualstack.eu-west-2.amazonaws.com/deb/key.txt
-          gpg --export 569130E8CA20FBC4CB3FDE555898470A764B32C9 | sudo apt-key add -
-          echo 'deb http://neilalexander.s3.dualstack.eu-west-2.amazonaws.com/deb/ debian yggdrasil' | sudo tee /etc/apt/sources.list.d/yggdrasil.list
-          sudo apt-get update
-          sudo apt-get install yggdrasil
-          sudo systemctl enable yggdrasil
-          PEERS=$(curl https://raw.githubusercontent.com/AhmedHanafy725/yggdrasil-config/main/config.json | jq '.yggdrasil.peers[]' -r | sed 's/\//\\\//g' | sed -z 's/\n/\\n/g')
-          sudo sed -i -- 's/Peers\: \[\]/Peers: [\n'"$PEERS"']/g' /etc/yggdrasil/yggdrasil.conf
-          sudo systemctl restart yggdrasil
+          wget https://github.com/threefoldtech/mycelium/releases/download/v0.5.4/mycelium-x86_64-unknown-linux-musl.tar.gz
+          tar xzf mycelium-x86_64-unknown-linux-musl.tar.gz
+          sudo ./mycelium --peers tcp://188.40.132.242:9651 quic://185.69.166.8:9651 --tun-name utun9 -k /tmp/mycelium_priv_key.bin &
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -204,21 +192,15 @@ jobs:
           ACTIONS_ALLOW_UNSECURE_COMMANDS: true
         with:
           terraform-version: 1.9.6
-      - name: install wg and yggdrasil and add peers
+      - name: install wg and mycelium and add peers
         run: |
           sudo apt-get update
           sudo apt-get install -y wireguard
           sudo apt-get install dirmngr
           sudo apt-get install curl
-          gpg --fetch-keys https://neilalexander.s3.dualstack.eu-west-2.amazonaws.com/deb/key.txt
-          gpg --export 569130E8CA20FBC4CB3FDE555898470A764B32C9 | sudo apt-key add -
-          echo 'deb http://neilalexander.s3.dualstack.eu-west-2.amazonaws.com/deb/ debian yggdrasil' | sudo tee /etc/apt/sources.list.d/yggdrasil.list
-          sudo apt-get update
-          sudo apt-get install yggdrasil
-          sudo systemctl enable yggdrasil
-          PEERS=$(curl https://raw.githubusercontent.com/AhmedHanafy725/yggdrasil-config/main/config.json | jq '.yggdrasil.peers[]' -r | sed 's/\//\\\//g' | sed -z 's/\n/\\n/g')
-          sudo sed -i -- 's/Peers\: \[\]/Peers: [\n'"$PEERS"']/g' /etc/yggdrasil/yggdrasil.conf
-          sudo systemctl restart yggdrasil
+          wget https://github.com/threefoldtech/mycelium/releases/download/v0.5.4/mycelium-x86_64-unknown-linux-musl.tar.gz
+          tar xzf mycelium-x86_64-unknown-linux-musl.tar.gz
+          sudo ./mycelium --peers tcp://188.40.132.242:9651 quic://185.69.166.8:9651 --tun-name utun9 -k /tmp/mycelium_priv_key.bin &
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
