@@ -18,12 +18,12 @@ import (
 func RequireNodesAreReady(t *testing.T, terraformOptions *terraform.Options, privateKey string, nodesNumber int) {
 	t.Helper()
 
-	masterYggIP := terraform.Output(t, terraformOptions, "mr_ygg_ip")
-	require.NotEmpty(t, masterYggIP)
+	masterMyCeliumIp := terraform.Output(t, terraformOptions, "mr_mycelium_ip")
+	require.NotEmpty(t, masterMyCeliumIp)
 
 	time.Sleep(40 * time.Second)
 
-	output, err := RemoteRun("root", masterYggIP, "export KUBECONFIG=/etc/rancher/k3s/k3s.yaml && kubectl get node", privateKey)
+	output, err := RemoteRun("root", masterMyCeliumIp, "export KUBECONFIG=/etc/rancher/k3s/k3s.yaml && kubectl get node", privateKey)
 	output = strings.TrimSpace(output)
 	require.NoError(t, err)
 
@@ -66,10 +66,10 @@ func TestK8s(t *testing.T) {
 		require.NoError(t, err)
 
 		// Check that the outputs not empty
-		masterIP := terraform.Output(t, terraformOptions, "mr_ygg_ip")
+		masterIP := terraform.Output(t, terraformOptions, "master_mycelium_ip")
 		require.NotEmpty(t, masterIP)
 
-		workerIP := terraform.Output(t, terraformOptions, "worker_ygg_ip")
+		workerIP := terraform.Output(t, terraformOptions, "worker_mycelium_ip")
 		require.NotEmpty(t, workerIP)
 
 		// Check wireguard config in output

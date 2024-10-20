@@ -54,16 +54,16 @@ func TestMattermost(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check that the outputs not empty
-	yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
-	require.NotEmpty(t, yggIP)
+	myCeliumIP := terraform.Output(t, terraformOptions, "mycelium_ip")
+	require.NotEmpty(t, myCeliumIP)
 	fqdn := terraform.Output(t, terraformOptions, "fqdn")
 	require.NotEmpty(t, fqdn)
 
-	ok := TestConnection(yggIP, "22")
+	ok := TestConnection(myCeliumIP, "22")
 	require.True(t, ok)
 
 	// Check that the solution is running successfully
-	output, err := RemoteRun("root", yggIP, "zinit list", privateKey)
+	output, err := RemoteRun("root", myCeliumIP, "zinit list", privateKey)
 	require.NoError(t, err)
 	require.Contains(t, output, "mattermost: Running")
 
