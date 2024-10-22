@@ -62,6 +62,7 @@ resource "grid_deployment" "d1" {
       SSH_KEY = "${var.public_key}"
     }
     mycelium_ip_seed = random_bytes.mycelium_ip_seed.hex
+    planetary = true
   }
 }
 
