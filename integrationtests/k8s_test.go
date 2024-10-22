@@ -18,7 +18,7 @@ import (
 func RequireNodesAreReady(t *testing.T, terraformOptions *terraform.Options, privateKey string, nodesNumber int) {
 	t.Helper()
 
-	masterMyCeliumIp := terraform.Output(t, terraformOptions, "mr_mycelium_ip")
+	masterMyCeliumIp := terraform.Output(t, terraformOptions, "master_mycelium_ip")
 	require.NotEmpty(t, masterMyCeliumIp)
 
 	time.Sleep(40 * time.Second)
