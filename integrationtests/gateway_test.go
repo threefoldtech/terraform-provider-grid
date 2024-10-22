@@ -59,13 +59,13 @@ func TestGatewayDeployments(t *testing.T) {
 		fqdn := terraform.Output(t, terraformOptions, "fqdn")
 		require.NotEmpty(t, fqdn)
 
-		yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
-		require.NotEmpty(t, yggIP)
+		myceliumIP := terraform.Output(t, terraformOptions, "mycelium_ip")
+		require.NotEmpty(t, myceliumIP)
 
-		ok := TestConnection(yggIP, "22")
+		ok := TestConnection(myceliumIP, "22")
 		require.True(t, ok)
 
-		_, err = RemoteRun("root", yggIP, "apk add python3; python3 -m http.server 9000 --bind :: &> /dev/null &", privateKey)
+		_, err = RemoteRun("root", myceliumIP, "apk add python3; python3 -m http.server 9000 --bind :: &> /dev/null &", privateKey)
 		require.NoError(t, err)
 
 		time.Sleep(3 * time.Second)
@@ -127,13 +127,13 @@ func TestGatewayDeployments(t *testing.T) {
 		fqdn = terraform.Output(t, terraformOptions, "fqdn")
 		require.NotEmpty(t, fqdn)
 
-		yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
-		require.NotEmpty(t, yggIP)
+		myceliumIP := terraform.Output(t, terraformOptions, "mycelium_ip")
+		require.NotEmpty(t, myceliumIP)
 
-		ok := TestConnection(yggIP, "22")
+		ok := TestConnection(myceliumIP, "22")
 		require.True(t, ok)
 
-		_, err = RemoteRun("root", yggIP, "apk add python3; python3 -m http.server 9000 --bind :: &> /dev/null &", privateKey)
+		_, err = RemoteRun("root", myceliumIP, "apk add python3; python3 -m http.server 9000 --bind :: &> /dev/null &", privateKey)
 		require.NoError(t, err)
 
 		time.Sleep(3 * time.Second)
