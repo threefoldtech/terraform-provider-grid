@@ -23,13 +23,7 @@ locals {
 
 provider "grid" {
 }
-resource "random_bytes" "mycelium_ip_seed" {
-  length = 6
-}
 
-resource "random_bytes" "mycelium_key" {
-  length = 32
-}
 resource "grid_scheduler" "scheduler" {
   requests {
     name = "node"
@@ -44,10 +38,6 @@ resource "grid_network" "net1" {
   ip_range    = "10.1.0.0/16"
   name        = random_string.name.result
   description = "vm network"
-  mycelium_keys = {
-    format("%s",grid_scheduler.scheduler.nodes["node"]) = random_bytes.mycelium_key.hex
-  }
-
 }
 resource "grid_deployment" "d1" {
   node         = grid_scheduler.scheduler.nodes["node"]
@@ -61,8 +51,6 @@ resource "grid_deployment" "d1" {
     env_vars = {
       SSH_KEY = "${var.public_key}"
     }
-    mycelium_ip_seed = random_bytes.mycelium_ip_seed.hex
-    planetary = true
   }
 }
 
