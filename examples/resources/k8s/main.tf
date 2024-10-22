@@ -50,27 +50,35 @@ resource "grid_scheduler" "sched" {
     distinct         = true
     public_ips_count = 1
     public_config    = true
+    yggdrasil        = false
+    wireguard        = true
   }
   requests {
-    name     = "worker1_node"
-    cru      = 2
-    sru      = 512
-    mru      = 2048
-    distinct = true
+    name      = "worker1_node"
+    cru       = 2
+    sru       = 512
+    mru       = 2048
+    distinct  = true
+    yggdrasil = false
+    wireguard = true
   }
   requests {
-    name     = "worker2_node"
-    cru      = 2
-    sru      = 512
-    mru      = 2048
-    distinct = true
+    name      = "worker2_node"
+    cru       = 2
+    sru       = 512
+    mru       = 2048
+    distinct  = true
+    yggdrasil = false
+    wireguard = true
   }
   requests {
-    name     = "worker3_node"
-    cru      = 2
-    sru      = 512
-    mru      = 2048
-    distinct = true
+    name      = "worker3_node"
+    cru       = 2
+    sru       = 512
+    mru       = 2048
+    distinct  = true
+    yggdrasil = false
+    wireguard = true
   }
 }
 
