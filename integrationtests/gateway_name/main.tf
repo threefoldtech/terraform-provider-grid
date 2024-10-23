@@ -35,6 +35,8 @@ resource "grid_scheduler" "sched" {
     public_config    = true
     public_ips_count = 1
     farm_id          = 1
+    yggdrasil        = false
+    wireguard        = false
   }
 }
 
