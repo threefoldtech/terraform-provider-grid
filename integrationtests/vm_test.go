@@ -48,14 +48,14 @@ func TestVM(t *testing.T) {
 
 		require.NoError(t, err)
 
-		yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
-		require.NotEmpty(t, yggIP)
+		myCeliumIP := terraform.Output(t, terraformOptions, "mycelium_ip")
+		require.NotEmpty(t, myCeliumIP)
 
 		vmIP := terraform.Output(t, terraformOptions, "vm_ip")
 		require.NotEmpty(t, vmIP)
 
 		// testing connection
-		ok := TestConnection(yggIP, "22")
+		ok := TestConnection(myCeliumIP, "22")
 		require.True(t, ok)
 	})
 
@@ -182,22 +182,22 @@ func TestVM(t *testing.T) {
 		require.NoError(t, err)
 
 		// Check that the outputs not empty
-		yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
-		require.NotEmpty(t, yggIP)
+		myCeliumIP := terraform.Output(t, terraformOptions, "mycelium_ip")
+		require.NotEmpty(t, myCeliumIP)
 
 		vmIP := terraform.Output(t, terraformOptions, "vm_ip")
 		require.NotEmpty(t, vmIP)
 
-		ok := TestConnection(yggIP, "22")
+		ok := TestConnection(myCeliumIP, "22")
 		require.True(t, ok)
 
 		// Check that disk has been mounted successfully
-		output, err := RemoteRun("root", yggIP, fmt.Sprintf("df -h | grep -w /%s", mountPoint), privateKey)
+		output, err := RemoteRun("root", myCeliumIP, fmt.Sprintf("df -h | grep -w /%s", mountPoint), privateKey)
 		require.NoError(t, err)
 		require.Contains(t, string(output), fmt.Sprintf("%d.0G", diskSize))
 
 		// ssh to VM and try to create a file bigger than disk size.
-		_, err = RemoteRun("root", yggIP, fmt.Sprintf("cd /app/ && dd if=/dev/vda bs=%dG count=1 of=test.txt", diskSize+1), privateKey)
+		_, err = RemoteRun("root", myCeliumIP, fmt.Sprintf("cd /app/ && dd if=/dev/vda bs=%dG count=1 of=test.txt", diskSize+1), privateKey)
 		require.Error(t, err, "should fail with out of memory")
 	})
 	t.Run("vm_multi_node", func(t *testing.T) {
@@ -234,17 +234,17 @@ func TestVM(t *testing.T) {
 		vm2IP := terraform.Output(t, terraformOptions, "vm2_ip")
 		require.NotEmpty(t, vm2IP)
 
-		vm1YggIP := terraform.Output(t, terraformOptions, "vm1_ygg_ip")
-		require.NotEmpty(t, vm1YggIP)
+		vm1MyCeliumIP := terraform.Output(t, terraformOptions, "vm1_mycelium_ip")
+		require.NotEmpty(t, vm1MyCeliumIP)
 
-		vm2YggIP := terraform.Output(t, terraformOptions, "vm2_ygg_ip")
-		require.NotEmpty(t, vm2YggIP)
+		vm2MyCeliumIP := terraform.Output(t, terraformOptions, "vm2_mycelium_ip")
+		require.NotEmpty(t, vm2MyCeliumIP)
 
 		// testing connections
-		ok := TestConnection(vm1YggIP, "22")
+		ok := TestConnection(vm1MyCeliumIP, "22")
 		require.True(t, ok)
 
-		ok = TestConnection(vm2YggIP, "22")
+		ok = TestConnection(vm2MyCeliumIP, "22")
 		require.True(t, ok)
 	})
 }

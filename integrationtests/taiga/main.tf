@@ -20,7 +20,13 @@ resource "random_string" "name" {
   length  = 8
   special = false
 }
+resource "random_bytes" "mycelium_ip_seed" {
+  length = 6
+}
 
+resource "random_bytes" "mycelium_key" {
+  length = 32
+}
 resource "grid_scheduler" "sched" {
   requests {
     name      = "node"
@@ -46,6 +52,9 @@ resource "grid_network" "net2" {
   nodes       = [grid_scheduler.sched.nodes["node"]]
   ip_range    = "10.1.0.0/16"
   description = "taiga network"
+  mycelium_keys = {
+    format("%s", grid_scheduler.sched.nodes["node"]) = random_bytes.mycelium_key.hex
+  }
 }
 
 resource "grid_deployment" "node1" {
@@ -85,7 +94,7 @@ resource "grid_deployment" "node1" {
       EMAIL_HOST_USER     = "",
       EMAIL_HOST_PASSWORD = "",
     }
-    planetary = true
+    mycelium_ip_seed = random_bytes.mycelium_ip_seed.hex
   }
 }
 
@@ -95,18 +104,18 @@ data "grid_gateway_domain" "domain" {
 }
 
 locals {
-  ygg_ip = try(length(grid_deployment.node1.vms[0].planetary_ip), 0) > 0 ? grid_deployment.node1.vms[0].planetary_ip : ""
+  mycelium_ip = try(length(grid_deployment.node1.vms[0].mycelium_ip), 0) > 0 ? grid_deployment.node1.vms[0].mycelium_ip : ""
 }
 
 resource "grid_name_proxy" "p1" {
   name            = "testtaiga"
   node            = grid_scheduler.sched.nodes["gateway"]
-  backends        = [format("http://[%s]:9000", local.ygg_ip)]
+  backends        = [format("http://[%s]:9000", local.mycelium_ip)]
   tls_passthrough = false
 }
 
-output "ygg_ip" {
-  value = grid_deployment.node1.vms[0].planetary_ip
+output "mycelium_ip" {
+  value = grid_deployment.node1.vms[0].mycelium_ip
 }
 
 output "fqdn" {

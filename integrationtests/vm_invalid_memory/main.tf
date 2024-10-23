@@ -54,7 +54,6 @@ resource "grid_deployment" "d1" {
     env_vars = {
       SSH_KEY = "${var.public_key}"
     }
-    planetary = true
   }
 }
 

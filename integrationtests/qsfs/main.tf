@@ -18,7 +18,13 @@ resource "random_string" "name" {
   length  = 8
   special = false
 }
+resource "random_bytes" "mycelium_ip_seed" {
+  length = 6
+}
 
+resource "random_bytes" "mycelium_key" {
+  length = 32
+}
 resource "grid_scheduler" "sched" {
   requests {
     name      = "node"
@@ -42,6 +48,9 @@ resource "grid_network" "net1" {
   nodes       = [grid_scheduler.sched.nodes["node"]]
   ip_range    = "10.1.0.0/16"
   description = "qsfs network"
+  mycelium_keys = {
+    format("%s",grid_scheduler.sched.nodes["node"]) = random_bytes.mycelium_key.hex
+  }
 }
 
 resource "grid_deployment" "d1" {
@@ -91,7 +100,7 @@ resource "grid_deployment" "qsfs" {
       dynamic "backends" {
         for_each = [for zdb in grid_deployment.d1.zdbs : zdb if zdb.mode != "seq"]
         content {
-          address   = format("[%s]:%d", backends.value.ips[1], backends.value.port)
+          address   = format("[%s]:%d", backends.value.ips[2], backends.value.port)
           namespace = backends.value.namespace
           password  = backends.value.password
         }
@@ -101,7 +110,7 @@ resource "grid_deployment" "qsfs" {
       dynamic "backends" {
         for_each = [for zdb in grid_deployment.d1.zdbs : zdb if zdb.mode == "seq"]
         content {
-          address   = format("[%s]:%d", backends.value.ips[1], backends.value.port)
+          address   = format("[%s]:%d", backends.value.ips[2], backends.value.port)
           namespace = backends.value.namespace
           password  = backends.value.password
         }
@@ -114,7 +123,7 @@ resource "grid_deployment" "qsfs" {
     cpu        = 2
     memory     = 1024
     entrypoint = "/sbin/zinit init"
-    planetary  = true
+    mycelium_ip_seed = random_bytes.mycelium_ip_seed.hex
     env_vars = {
       SSH_KEY = "${var.public_key}"
     }
@@ -129,6 +138,6 @@ output "metrics" {
   value = grid_deployment.qsfs.qsfs[0].metrics_endpoint
 }
 
-output "ygg_ip" {
-  value = grid_deployment.qsfs.vms[0].planetary_ip
+output "mycelium_ip" {
+  value = grid_deployment.qsfs.vms[0].mycelium_ip
 }

@@ -53,20 +53,20 @@ func TestPresearch(t *testing.T) {
 
 	require.NoError(t, err)
 
-	yggIP := terraform.Output(t, terraformOptions, "ygg_ip")
-	require.NotEmpty(t, yggIP)
+	myceliumIP := terraform.Output(t, terraformOptions, "mycelium_ip")
+	require.NotEmpty(t, myceliumIP)
 
-	ok := TestConnection(yggIP, "22")
+	ok := TestConnection(myceliumIP, "22")
 	require.True(t, ok)
 
-	output, err := RemoteRun("root", yggIP, "cat /proc/1/environ", privateKey)
+	output, err := RemoteRun("root", myceliumIP, "cat /proc/1/environ", privateKey)
 	require.NoError(t, err)
 	require.Contains(t, string(output), fmt.Sprintf("PRESEARCH_REGISTRATION_CODE=%s", presearchRegistrationCode))
 
 	ticker := time.NewTicker(2 * time.Second)
 	for now := time.Now(); time.Since(now) < 1*time.Minute; {
 		<-ticker.C
-		output, err = RemoteRun("root", yggIP, "zinit list", privateKey)
+		output, err = RemoteRun("root", myceliumIP, "zinit list", privateKey)
 		if err == nil && strings.Contains(output, "prenode: Success") {
 			break
 		}

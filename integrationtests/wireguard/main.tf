@@ -13,6 +13,16 @@ terraform {
 }
 
 provider "grid" {
+  mnemonic = "ring brand park runway cigar month yard venture else wealth surprise attract"
+  network = "dev"
+}
+
+resource "random_bytes" "mycelium_ip_seed" {
+  length = 6
+}
+
+resource "random_bytes" "mycelium_key" {
+  length = 32
 }
 
 resource "grid_scheduler" "scheduler" {
@@ -31,6 +41,9 @@ resource "grid_network" "net1" {
   ip_range      = "10.1.0.0/16"
   name          = "network"
   description   = "wirequard network"
+  mycelium_keys = {
+    format("%s", grid_scheduler.scheduler.nodes["node"]) = random_bytes.mycelium_key.hex
+  }
   add_wg_access = true
 }
 
@@ -47,6 +60,7 @@ resource "grid_deployment" "d1" {
     env_vars = {
       SSH_KEY = "${var.public_key}"
     }
+    mycelium_ip_seed = random_bytes.mycelium_ip_seed.hex
   }
   vms {
     name       = "anothervm"
@@ -57,6 +71,7 @@ resource "grid_deployment" "d1" {
     env_vars = {
       SSH_KEY = "${var.public_key}"
     }
+    mycelium_ip_seed = random_bytes.mycelium_ip_seed.hex
   }
 }
 

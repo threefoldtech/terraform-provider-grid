@@ -19,6 +19,13 @@ resource "random_string" "name" {
   length  = 8
   special = false
 }
+resource "random_bytes" "mycelium_ip_seed" {
+  length = 6
+}
+
+resource "random_bytes" "mycelium_key" {
+  length = 32
+}
 
 provider "grid" {
 }
@@ -49,6 +56,9 @@ resource "grid_network" "net1" {
   ip_range      = "10.1.0.0/16"
   description   = "mattermost network"
   add_wg_access = true
+  mycelium_keys = {
+    format("%s", grid_scheduler.sched.nodes["node"]) = random_bytes.mycelium_key.hex
+  }
 }
 
 resource "grid_deployment" "d1" {
@@ -70,12 +80,12 @@ resource "grid_deployment" "d1" {
       SMTPSERVER   = "smtp.gmail.com"
       SMTPPORT     = 587
     }
-    planetary = true
+    mycelium_ip_seed = random_bytes.mycelium_ip_seed.hex
   }
 }
 
 locals {
-  ygg_ip = try(length(grid_deployment.d1.vms[0].planetary_ip), 0) > 0 ? grid_deployment.d1.vms[0].planetary_ip : ""
+  mycelium_ip = try(length(grid_deployment.d1.vms[0].mycelium_ip), 0) > 0 ? grid_deployment.d1.vms[0].mycelium_ip : ""
 }
 
 # this data source is used to break circular dependency in cases similar to the following:
@@ -91,7 +101,7 @@ data "grid_gateway_domain" "domain" {
 resource "grid_name_proxy" "p1" {
   name            = "testmatter"
   node            = grid_scheduler.sched.nodes["gateway"]
-  backends        = [format("http://[%s]:8000", local.ygg_ip)]
+  backends        = [format("http://[%s]:8000", local.mycelium_ip)]
   tls_passthrough = false
 }
 
@@ -99,6 +109,6 @@ output "fqdn" {
   value = data.grid_gateway_domain.domain.fqdn
 }
 
-output "ygg_ip" {
-  value = grid_deployment.d1.vms[0].planetary_ip
+output "mycelium_ip" {
+  value = grid_deployment.d1.vms[0].mycelium_ip
 }
