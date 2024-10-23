@@ -23,16 +23,20 @@ resource "random_bytes" "mycelium_key" {
 
 resource "grid_scheduler" "sched" {
   requests {
-    name = "node"
-    cru  = 4
-    sru  = 100 * 1024
-    mru  = 8096
+    name      = "node"
+    cru       = 4
+    sru       = 100 * 1024
+    mru       = 8096
+    yggdrasil = false
+    wireguard = true
   }
 
   requests {
     name             = "gateway"
     public_config    = true
     public_ips_count = 1
+    yggdrasil        = false
+    wireguard        = false
   }
 }
 

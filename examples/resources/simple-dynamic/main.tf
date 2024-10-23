@@ -20,10 +20,12 @@ resource "random_bytes" "server1_mycelium_key" {
 resource "grid_scheduler" "sched" {
   # a machine for the first server instance
   requests {
-    name = "server1"
-    cru  = 1
-    sru  = 256
-    mru  = 256
+    name      = "server1"
+    cru       = 1
+    sru       = 256
+    mru       = 256
+    yggdrasil = false
+    wireguard = false
   }
   # # a machine for the second server instance
   # requests {
@@ -38,6 +40,8 @@ resource "grid_scheduler" "sched" {
     sru           = 256
     mru           = 256
     public_config = true
+    yggdrasil     = false
+    wireguard     = false
   }
 }
 

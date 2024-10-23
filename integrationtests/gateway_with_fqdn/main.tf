@@ -29,11 +29,13 @@ resource "random_bytes" "mycelium_key" {
 
 resource "grid_scheduler" "sched" {
   requests {
-    name    = "node"
-    cru     = 2
-    sru     = 512
-    mru     = 1024
-    farm_id = 1
+    name      = "node"
+    cru       = 2
+    sru       = 512
+    mru       = 1024
+    farm_id   = 1
+    yggdrasil = true
+    wireguard = false
   }
 }
 

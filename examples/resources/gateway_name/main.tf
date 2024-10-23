@@ -14,6 +14,8 @@ resource "grid_scheduler" "sched" {
     name             = "gateway"
     public_config    = true
     public_ips_count = 1
+    yggdrasil        = false
+    wireguard        = false
   }
 }
 

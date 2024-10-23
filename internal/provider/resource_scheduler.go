@@ -60,6 +60,16 @@ func resourceScheduler() *schema.Resource {
 							Optional:    true,
 							Description: "Farm id to search for eligible nodes.",
 						},
+						"yggdrasil": {
+							Type:        schema.TypeBool,
+							Required:    true,
+							Description: "Flag to pick only nodes supporting yggdrasil.",
+						},
+						"wireguard": {
+							Type:        schema.TypeBool,
+							Required:    true,
+							Description: "Flag to pick only nodes supporting wireguard.",
+						},
 						"public_config": {
 							Type:        schema.TypeBool,
 							Optional:    true,
@@ -144,7 +154,9 @@ func parseRequests(d *schema.ResourceData, assignment map[string]uint32) []sched
 				HRU: uint64(mp["hru"].(int)) * uint64(gridtypes.Megabyte),
 				SRU: uint64(mp["sru"].(int)) * uint64(gridtypes.Megabyte),
 			},
-			Distinct: mp["distinct"].(bool),
+			Distinct:  mp["distinct"].(bool),
+			Yggdrasil: mp["yggdrasil"].(bool),
+			Wireguard: mp["wireguard"].(bool),
 		})
 	}
 	return reqs

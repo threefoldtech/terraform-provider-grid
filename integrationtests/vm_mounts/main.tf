@@ -36,10 +36,12 @@ resource "random_bytes" "mycelium_key" {
 
 resource "grid_scheduler" "scheduler" {
   requests {
-    name = "node"
-    cru  = 1
-    sru  = var.disk_size * 1024 + 1024
-    mru  = 1024
+    name      = "node"
+    cru       = 1
+    sru       = var.disk_size * 1024 + 1024
+    mru       = 1024
+    yggdrasil = true
+    wireguard = false
   }
 }
 
