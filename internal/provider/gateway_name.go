@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
 )
 
 // newNameGatewayFromSchema reads the gateway_name_proxy resource configuration data from schema.ResourceData, converts them into a GatewayName instance, then returns this instance.

@@ -10,13 +10,14 @@ require (
 	github.com/hashicorp/terraform-plugin-docs v0.19.4
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.34.0
 	github.com/pkg/errors v0.9.1
-	github.com/stretchr/testify v1.9.0
-	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.16.0
-	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.16.0
-	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.16.0
+	github.com/stretchr/testify v1.10.0
+	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.16.8
+	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.16.8
+	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.16.8
 	github.com/threefoldtech/zos v0.5.6-0.20240902110349-172a0a29a6ee
-	golang.org/x/crypto v0.28.0
-	golang.org/x/sync v0.8.0
+	github.com/threefoldtech/zosbase v0.1.4
+	golang.org/x/crypto v0.31.0
+	golang.org/x/sync v0.10.0
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20210803171230-4253848d036c
 )
 
@@ -54,6 +55,7 @@ require (
 	github.com/ethereum/go-ethereum v1.11.6 // indirect
 	github.com/fatih/color v1.16.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
+	github.com/getsentry/sentry-go v0.29.1 // indirect
 	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
@@ -96,10 +98,10 @@ require (
 	github.com/jbenet/go-base58 v0.0.0-20150317085156-6237cf65f3a6 // indirect
 	github.com/jinzhu/copier v0.0.0-20190924061706-b57f9002281a // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
-	github.com/klauspost/compress v1.17.0 // indirect
+	github.com/klauspost/compress v1.17.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/mattn/go-runewidth v0.0.13 // indirect
+	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/mattn/go-zglob v0.0.2-0.20190814121620-e3c945676326 // indirect
 	github.com/mimoo/StrobeGo v0.0.0-20220103164710-9a04d6ca976b // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
@@ -119,8 +121,7 @@ require (
 	github.com/rs/zerolog v1.33.0 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
-	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20241007205731-5e76664a3cc4 // indirect
-	github.com/threefoldtech/zos4 v0.5.6-0.20241008102757-02d898c580c4 // indirect
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20241127100051-77e684bcb1b2 // indirect
 	github.com/tmccombs/hcl2json v0.3.3 // indirect
 	github.com/ulikunitz/xz v0.5.10 // indirect
 	github.com/vedhavyas/go-subkey v1.0.3 // indirect
@@ -141,8 +142,8 @@ require (
 	golang.org/x/mod v0.17.0 // indirect
 	golang.org/x/net v0.25.0 // indirect
 	golang.org/x/oauth2 v0.17.0 // indirect
-	golang.org/x/sys v0.26.0 // indirect
-	golang.org/x/text v0.19.0 // indirect
+	golang.org/x/sys v0.28.0 // indirect
+	golang.org/x/text v0.21.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
 	gonum.org/v1/gonum v0.15.0 // indirect
