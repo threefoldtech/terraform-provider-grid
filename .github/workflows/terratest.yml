@@ -42,7 +42,7 @@ jobs:
           sudo apt-get install -y wireguard
           sudo apt-get install dirmngr
           sudo apt-get install curl
-          wget https://github.com/threefoldtech/mycelium/releases/download/v0.5.7/mycelium-x86_64-unknown-linux-musl.tar.gz
+          wget https://github.com/threefoldtech/mycelium/releases/download/v0.6.2/mycelium-x86_64-unknown-linux-musl.tar.gz
           tar xzf mycelium-x86_64-unknown-linux-musl.tar.gz
           sudo ./mycelium --peers tcp://188.40.132.242:9651 quic://185.69.166.8:9651 --tun-name utun9 -k /tmp/mycelium_priv_key.bin &
       - uses: actions/checkout@v4
@@ -94,7 +94,7 @@ jobs:
           sudo apt-get install -y wireguard
           sudo apt-get install dirmngr
           sudo apt-get install curl
-          wget https://github.com/threefoldtech/mycelium/releases/download/v0.5.7/mycelium-x86_64-unknown-linux-musl.tar.gz
+          wget https://github.com/threefoldtech/mycelium/releases/download/v0.6.2/mycelium-x86_64-unknown-linux-musl.tar.gz
           tar xzf mycelium-x86_64-unknown-linux-musl.tar.gz
           sudo ./mycelium --peers tcp://188.40.132.242:9651 quic://185.69.166.8:9651 --tun-name utun9 -k /tmp/mycelium_priv_key.bin &
       - uses: actions/checkout@v4
@@ -146,7 +146,7 @@ jobs:
           sudo apt-get install -y wireguard
           sudo apt-get install dirmngr
           sudo apt-get install curl
-          wget https://github.com/threefoldtech/mycelium/releases/download/v0.5.7/mycelium-x86_64-unknown-linux-musl.tar.gz
+          wget https://github.com/threefoldtech/mycelium/releases/download/v0.6.2/mycelium-x86_64-unknown-linux-musl.tar.gz
           tar xzf mycelium-x86_64-unknown-linux-musl.tar.gz
           sudo ./mycelium --peers tcp://188.40.132.242:9651 quic://185.69.166.8:9651 --tun-name utun9 -k /tmp/mycelium_priv_key.bin &
       - uses: actions/checkout@v4
@@ -198,7 +198,7 @@ jobs:
           sudo apt-get install -y wireguard
           sudo apt-get install dirmngr
           sudo apt-get install curl
-          wget https://github.com/threefoldtech/mycelium/releases/download/v0.5.7/mycelium-x86_64-unknown-linux-musl.tar.gz
+          wget https://github.com/threefoldtech/mycelium/releases/download/v0.6.2/mycelium-x86_64-unknown-linux-musl.tar.gz
           tar xzf mycelium-x86_64-unknown-linux-musl.tar.gz
           sudo ./mycelium --peers tcp://188.40.132.242:9651 quic://185.69.166.8:9651 --tun-name utun9 -k /tmp/mycelium_priv_key.bin &
       - uses: actions/checkout@v4
