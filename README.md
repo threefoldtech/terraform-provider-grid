@@ -7,7 +7,7 @@ A terraform provider for the [threefold grid](https://threefold.io) to manage yo
 ## Requirements
 
 - [Terraform](https://www.terraform.io/downloads.html) >= 0.13.x
-- [Go](https://golang.org/doc/install) >= 1.21
+- [Go](https://golang.org/doc/install) >= 1.25
 - [Gettting started document](https://manual.grid.tf/documentation/system_administrators/terraform/terraform_readme.html#get-started)
 
 ## Using provider for different environments
