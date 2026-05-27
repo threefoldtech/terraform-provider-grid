@@ -106,3 +106,8 @@ export NETWORK="network" # dev, qa, test, main
 - the examples directory contains some examples to show user how to use the provider so kindly note that
   - User should change the nodes to match the node that wants to deploy on
   - In examples that uses`SSH_KEY` default location is `file("~/.ssh/id_rsa.pub")` the path should be changed to match your public key location
+
+## License
+
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+Copyright (c) TFTech NV.
