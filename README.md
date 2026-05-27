@@ -115,8 +115,8 @@ go test . -run <TestNameFunction/SubFunctionName> -v --tags=integration
 
 ## Known issues
 
-- [increasing IPs in active deployment](https://github.com/threefoldtech/terraform-provider-grid/issues/15)
-- [same private IPs for parallel deployments](https://github.com/threefoldtech/terraform-provider-grid/issues/781#issuecomment-1865961184)
+- [increasing IPs in active deployment](https://github.com/threefoldtech/grid_terraform/issues/15)
+- [same private IPs for parallel deployments](https://github.com/threefoldtech/grid_terraform/issues/781#issuecomment-1865961184)
 
 ## Latest releases
 
