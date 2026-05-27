@@ -1,4 +1,4 @@
-# Terraform Provider for Grid
+# Grid Terraform
 
 A HashiCorp Terraform provider for managing decentralized cloud infrastructure through declarative configuration files. It enables infrastructure-as-code deployments of virtual machines, networks, Kubernetes clusters, and storage resources.
 
