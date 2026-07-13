@@ -8,9 +8,9 @@ import (
 	"slices"
 
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
-	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
-	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/zos"
+	proxy "github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/client"
+	proxyTypes "github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/types"
 )
 
 // NoNodesFoundErr for empty nodes returned from scheduler

@@ -7,7 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	proxyTypes "github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/types"
 )
 
 type GridProxyClientMock struct {
