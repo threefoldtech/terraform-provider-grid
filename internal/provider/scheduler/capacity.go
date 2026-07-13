@@ -2,7 +2,7 @@
 package scheduler
 
 import (
-	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	proxyTypes "github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/types"
 )
 
 // Capacity struct for capacity (MRU, SRU, HRU)

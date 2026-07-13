@@ -10,8 +10,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/terraform-provider-grid/internal/state"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/deployer"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/subi"
 )
 
 const errTerraformOutSync = "Error reading data from remote, terraform state might be out of sync with the remote state"

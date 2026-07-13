@@ -7,7 +7,7 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/state"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/state"
 )
 
 // Getter interface for local state

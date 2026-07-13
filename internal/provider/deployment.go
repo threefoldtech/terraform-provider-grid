@@ -10,9 +10,9 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
-	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+	client "github.com/threefoldtech/zos_sdk_go/grid-client/node"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/subi"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/workloads"
 )
 
 func newDeploymentFromSchema(ctx context.Context, d *schema.ResourceData, ncPool client.NodeClientGetter, sub subi.SubstrateExt) (*workloads.Deployment, error) {

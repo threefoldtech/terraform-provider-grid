@@ -16,11 +16,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
-	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/deployer"
+	client "github.com/threefoldtech/zos_sdk_go/grid-client/node"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/subi"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/workloads"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/zos"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
