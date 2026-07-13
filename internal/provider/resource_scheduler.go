@@ -13,7 +13,7 @@ import (
 	"github.com/threefoldtech/terraform-provider-grid/internal/provider/scheduler"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
-	"github.com/threefoldtech/zosbase/pkg/gridtypes"
+	"github.com/threefoldtech/zos_base/pkg/gridtypes"
 )
 
 func resourceScheduler() *schema.Resource {

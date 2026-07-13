@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
+	"github.com/threefoldtech/zos_base/pkg/gridtypes/zos"
 )
 
 // newFQDNGatewayFromSchema reads the gateway_fqdn_proxy resource configuration data from schema.ResourceData, converts them into a GatewayFQDND instance, then returns this instance.
